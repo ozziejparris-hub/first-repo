@@ -1,0 +1,11 @@
+# Core dependencies
+pydantic-ai>=0.0.1
+python-dotenv>=1.0.0
+requests>=2.31.0
+python-telegram-bot>=20.7
+
+# Database (built-in with Python)
+# sqlite3 is included in Python standard library
+
+# Optional: for better async support
+aiohttp>=3.9.0
