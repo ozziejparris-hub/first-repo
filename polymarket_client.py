@@ -2,57 +2,142 @@ import requests
 from typing import List, Dict, Optional
 from datetime import datetime
 import time
+import json
 
 
 class PolymarketClient:
     """Client for interacting with Polymarket API."""
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str = None):
         self.api_key = api_key
         self.base_url = "https://gamma-api.polymarket.com"
         self.clob_url = "https://clob.polymarket.com"
         self.session = requests.Session()
-        self.session.headers.update({
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        })
+
+        # Set up headers with multiple authentication formats
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "PolymarketTracker/1.0"
+        }
+
+        # Add API key in multiple header formats to maximize compatibility
+        if api_key:
+            headers.update({
+                "Authorization": f"Bearer {api_key}",
+                "X-API-Key": api_key,
+                "APIKEY": api_key
+            })
+
+        self.session.headers.update(headers)
 
     def get_markets(self, category: str = "Geopolitics", limit: int = 100) -> List[Dict]:
         """
-        Fetch markets from Polymarket.
-        Note: Polymarket's API structure may vary. This is a general implementation.
+        Fetch markets from Polymarket using correct API parameters.
         """
         try:
-            # Using the public API endpoint for markets
+            url = f"{self.base_url}/markets"
+
+            # Use correct Polymarket API parameters
+            params = {
+                "limit": limit,
+                "offset": 0,
+                "closed": False,  # Only active markets
+                "archived": False  # Exclude archived
+            }
+
+            print(f"Fetching markets from: {url}")
+            print(f"Params: {params}")
+
+            response = self.session.get(url, params=params, timeout=30)
+
+            print(f"Response status: {response.status_code}")
+
+            # Don't raise for status yet - let's see what we got
+            if response.status_code != 200:
+                print(f"Error response: {response.text}")
+                print(f"Response headers: {dict(response.headers)}")
+                return []
+
+            # Handle response data
+            data = response.json()
+
+            # Response might be a list or a dict with 'data' key
+            if isinstance(data, dict):
+                if 'data' in data:
+                    markets = data['data']
+                elif 'markets' in data:
+                    markets = data['markets']
+                else:
+                    print(f"Unexpected response format. Keys: {data.keys()}")
+                    return []
+            else:
+                markets = data
+
+            print(f"Total markets fetched: {len(markets)}")
+
+            # Filter for specified category
+            filtered_markets = []
+            for market in markets:
+                # Check if market has tags/category related to the specified category
+                tags = market.get('tags', []) or []
+                category_field = str(market.get('category', '')).lower()
+                question = str(market.get('question', '')).lower()
+
+                category_lower = category.lower()
+
+                # Check multiple fields for category match
+                if (any(category_lower in str(tag).lower() for tag in tags) or
+                    category_lower in category_field or
+                    category_lower in question or
+                    'politics' in category_field or
+                    'politics' in question):
+                    filtered_markets.append(market)
+
+            print(f"Filtered to {len(filtered_markets)} {category} markets")
+            return filtered_markets
+
+        except requests.exceptions.RequestException as e:
+            print(f"Request error fetching markets: {e}")
+            return []
+        except json.JSONDecodeError as e:
+            print(f"JSON decode error: {e}")
+            return []
+        except Exception as e:
+            print(f"Unexpected error fetching markets: {e}")
+            return []
+
+    def get_all_markets(self, limit: int = 100) -> List[Dict]:
+        """
+        Fetch ALL markets without category filtering.
+        Useful for debugging and seeing what's available.
+        """
+        try:
             url = f"{self.base_url}/markets"
             params = {
                 "limit": limit,
                 "offset": 0,
-                "active": True
+                "closed": False,
+                "archived": False
             }
 
             response = self.session.get(url, params=params, timeout=30)
-            response.raise_for_status()
 
-            markets = response.json()
+            if response.status_code != 200:
+                print(f"Error: {response.status_code} - {response.text}")
+                return []
 
-            # Filter for geopolitics category
-            # Note: The exact field name might vary based on Polymarket's API
-            filtered_markets = []
-            for market in markets:
-                # Check if market has tags/category related to geopolitics
-                tags = market.get('tags', []) or []
-                category_field = market.get('category', '').lower()
+            data = response.json()
 
-                if ('geopolitics' in [t.lower() for t in tags] or
-                    'geopolitics' in category_field or
-                    'politics' in category_field):
-                    filtered_markets.append(market)
+            if isinstance(data, dict):
+                markets = data.get('data', data.get('markets', []))
+            else:
+                markets = data
 
-            return filtered_markets
+            return markets
 
-        except requests.exceptions.RequestException as e:
-            print(f"Error fetching markets: {e}")
+        except Exception as e:
+            print(f"Error fetching all markets: {e}")
             return []
 
     def get_market_trades(self, market_id: str, limit: int = 100) -> List[Dict]:
@@ -67,22 +152,22 @@ class PolymarketClient:
             }
 
             response = self.session.get(url, params=params, timeout=30)
-            response.raise_for_status()
+
+            if response.status_code != 200:
+                print(f"Error fetching trades for {market_id}: {response.status_code}")
+                return []
 
             return response.json()
 
-        except requests.exceptions.RequestException as e:
+        except Exception as e:
             print(f"Error fetching trades for market {market_id}: {e}")
             return []
 
     def get_trader_history(self, trader_address: str, limit: int = 1000) -> List[Dict]:
         """
         Fetch trading history for a specific trader.
-        This endpoint may require authentication or may not be publicly available.
         """
         try:
-            # Note: This endpoint structure is hypothetical and may need adjustment
-            # based on actual Polymarket API documentation
             url = f"{self.clob_url}/trades"
             params = {
                 "maker": trader_address,
@@ -90,11 +175,14 @@ class PolymarketClient:
             }
 
             response = self.session.get(url, params=params, timeout=30)
-            response.raise_for_status()
+
+            if response.status_code != 200:
+                print(f"Error fetching trader history for {trader_address}: {response.status_code}")
+                return []
 
             return response.json()
 
-        except requests.exceptions.RequestException as e:
+        except Exception as e:
             print(f"Error fetching trader history for {trader_address}: {e}")
             return []
 
@@ -104,11 +192,13 @@ class PolymarketClient:
             url = f"{self.base_url}/markets/{market_id}"
 
             response = self.session.get(url, timeout=30)
-            response.raise_for_status()
+
+            if response.status_code != 200:
+                return None
 
             return response.json()
 
-        except requests.exceptions.RequestException as e:
+        except Exception as e:
             print(f"Error fetching market details for {market_id}: {e}")
             return None
 
@@ -127,8 +217,7 @@ class PolymarketClient:
                 'total_volume': 0.0
             }
 
-        # This is a simplified analysis
-        # In reality, we'd need to check if markets resolved and if trader was on winning side
+        # Calculate metrics from trade history
         total_trades = len(trades)
 
         # Calculate total volume
@@ -137,14 +226,16 @@ class PolymarketClient:
             for trade in trades
         )
 
-        # For now, we'll need to implement proper win rate calculation
-        # This requires checking market resolutions
-        # Placeholder for demonstration
+        # Win rate calculation requires market resolution data
+        # This is a placeholder - in production you'd need to:
+        # 1. Get all markets the trader participated in
+        # 2. Check if those markets are resolved
+        # 3. Determine if the trader's position won
         successful_trades = 0
 
         for trade in trades:
-            # This needs actual market resolution data
-            # Placeholder logic
+            # TODO: Implement actual win rate calculation
+            # This requires checking market resolutions
             pass
 
         win_rate = (successful_trades / total_trades * 100) if total_trades > 0 else 0.0
@@ -163,7 +254,7 @@ class PolymarketClient:
         traders = set()
 
         for market in markets:
-            market_id = market.get('id') or market.get('market_id')
+            market_id = market.get('id') or market.get('market_id') or market.get('conditionId')
             if not market_id:
                 continue
 
@@ -180,3 +271,25 @@ class PolymarketClient:
                     traders.add(taker)
 
         return traders
+
+    def test_connection(self) -> bool:
+        """
+        Test if the API connection is working.
+        Returns True if successful, False otherwise.
+        """
+        try:
+            url = f"{self.base_url}/markets"
+            params = {"limit": 1}
+
+            response = self.session.get(url, params=params, timeout=10)
+
+            if response.status_code == 200:
+                print("✅ API connection successful!")
+                return True
+            else:
+                print(f"❌ API returned status {response.status_code}: {response.text}")
+                return False
+
+        except Exception as e:
+            print(f"❌ Connection test failed: {e}")
+            return False
