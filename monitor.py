@@ -51,7 +51,7 @@ class PolymarketMonitor:
 
         if not flagged_traders:
             print("No flagged traders to monitor yet.")
-            return
+            return 0
 
         print(f"Checking trades for {len(flagged_traders)} flagged traders...")
 

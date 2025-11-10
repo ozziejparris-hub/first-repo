@@ -199,6 +199,9 @@ class PolymarketClient:
     def get_market_trades(self, market_id: str, limit: int = 100) -> List[Dict]:
         """
         Fetch recent trades for a specific market.
+
+        Note: CLOB API may not accept the same authentication as Gamma API.
+        Trying without auth headers first.
         """
         try:
             url = f"{self.clob_url}/trades"
@@ -207,13 +210,19 @@ class PolymarketClient:
                 "limit": limit
             }
 
-            response = self.session.get(url, params=params, timeout=30)
+            # Try without authentication first (CLOB might be public)
+            response = requests.get(url, params=params, timeout=30)
 
             if response.status_code != 200:
                 print(f"Error fetching trades for {market_id}: {response.status_code}")
                 return []
 
-            return response.json()
+            data = response.json()
+
+            # Response might be list or dict
+            if isinstance(data, dict) and 'data' in data:
+                return data['data']
+            return data if isinstance(data, list) else []
 
         except Exception as e:
             print(f"Error fetching trades for market {market_id}: {e}")
@@ -222,6 +231,8 @@ class PolymarketClient:
     def get_trader_history(self, trader_address: str, limit: int = 1000) -> List[Dict]:
         """
         Fetch trading history for a specific trader.
+
+        Note: CLOB API likely doesn't require authentication for public trade data.
         """
         try:
             url = f"{self.clob_url}/trades"
@@ -230,13 +241,19 @@ class PolymarketClient:
                 "limit": limit
             }
 
-            response = self.session.get(url, params=params, timeout=30)
+            # Try without authentication (CLOB might be public)
+            response = requests.get(url, params=params, timeout=30)
 
             if response.status_code != 200:
                 print(f"Error fetching trader history for {trader_address}: {response.status_code}")
                 return []
 
-            return response.json()
+            data = response.json()
+
+            # Response might be list or dict
+            if isinstance(data, dict) and 'data' in data:
+                return data['data']
+            return data if isinstance(data, list) else []
 
         except Exception as e:
             print(f"Error fetching trader history for {trader_address}: {e}")

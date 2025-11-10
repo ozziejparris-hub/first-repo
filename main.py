@@ -75,10 +75,10 @@ async def start_monitoring():
 
     # Test agent connection
     try:
-        response = agent.run_sync(
+        response = await agent.run(
             "Introduce yourself briefly and confirm you're ready to monitor Polymarket."
         )
-        print(f"\n{response.output}\n")
+        print(f"\n{response.data}\n")
     except Exception as e:
         print(f"⚠️ Warning: Could not connect to Ollama Mistral model: {e}")
         print("Continuing without AI agent (monitoring will still work)...\n")
