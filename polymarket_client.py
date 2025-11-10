@@ -33,7 +33,10 @@ class PolymarketClient:
 
     def get_markets(self, category: str = "Geopolitics", limit: int = 100) -> List[Dict]:
         """
-        Fetch markets from Polymarket using correct API parameters.
+        Fetch markets from Polymarket and filter by category.
+
+        Since Polymarket markets don't have tags or category fields,
+        we use keyword matching on questions, descriptions, and event titles.
         """
         try:
             url = f"{self.base_url}/markets"
@@ -76,23 +79,8 @@ class PolymarketClient:
 
             print(f"Total markets fetched: {len(markets)}")
 
-            # Filter for specified category
-            filtered_markets = []
-            for market in markets:
-                # Check if market has tags/category related to the specified category
-                tags = market.get('tags', []) or []
-                category_field = str(market.get('category', '')).lower()
-                question = str(market.get('question', '')).lower()
-
-                category_lower = category.lower()
-
-                # Check multiple fields for category match
-                if (any(category_lower in str(tag).lower() for tag in tags) or
-                    category_lower in category_field or
-                    category_lower in question or
-                    'politics' in category_field or
-                    'politics' in question):
-                    filtered_markets.append(market)
+            # Filter based on category using keyword matching
+            filtered_markets = self._filter_by_category(markets, category)
 
             print(f"Filtered to {len(filtered_markets)} {category} markets")
             return filtered_markets
@@ -106,6 +94,74 @@ class PolymarketClient:
         except Exception as e:
             print(f"Unexpected error fetching markets: {e}")
             return []
+
+    def _filter_by_category(self, markets: List[Dict], category: str) -> List[Dict]:
+        """
+        Filter markets by category using keyword matching.
+
+        Since Polymarket doesn't use tags/categories, we match keywords
+        in questions, descriptions, and event titles.
+        """
+        category_lower = category.lower()
+
+        # Define keywords for different categories
+        keyword_sets = {
+            'geopolitics': [
+                'geopolitic', 'war', 'election', 'president', 'prime minister',
+                'congress', 'senate', 'parliament', 'government', 'military',
+                'ukraine', 'russia', 'china', 'taiwan', 'israel', 'iran',
+                'politics', 'political', 'nato', 'treaty', 'sanctions',
+                'ambassador', 'diplomat', 'foreign policy', 'invasion',
+                'ceasefire', 'peace deal', 'united nations', 'brexit',
+                'referendum', 'impeach', 'cabinet', 'minister', 'secretary of',
+                'supreme leader', 'dictator', 'regime'
+            ],
+            'politics': [
+                'election', 'president', 'congress', 'senate', 'parliament',
+                'government', 'politics', 'political', 'vote', 'ballot',
+                'campaign', 'candidate', 'governor', 'mayor', 'legislative'
+            ],
+            'crypto': [
+                'bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'blockchain',
+                'nft', 'defi', 'token', 'coin', 'satoshi', 'mining'
+            ],
+            'sports': [
+                'nfl', 'nba', 'mlb', 'nhl', 'fifa', 'olympics', 'super bowl',
+                'world cup', 'championship', 'playoff', 'finals', 'match',
+                'game', 'team', 'player', 'athlete', 'tournament'
+            ],
+            'finance': [
+                'stock', 'market', 'sp500', 's&p', 'dow', 'nasdaq', 'fed',
+                'interest rate', 'inflation', 'recession', 'gdp', 'unemployment'
+            ]
+        }
+
+        # Get keywords for requested category
+        keywords = keyword_sets.get(category_lower, [category_lower])
+
+        filtered = []
+
+        for market in markets:
+            # Get searchable text fields
+            question = str(market.get('question', '')).lower()
+            description = str(market.get('description', '')).lower()
+
+            # Check events for category keywords
+            events = market.get('events', [])
+            event_text = ''
+            for event in events:
+                event_title = str(event.get('title', '')).lower()
+                event_slug = str(event.get('slug', '')).lower()
+                event_text += f" {event_title} {event_slug}"
+
+            # Combine all searchable text
+            searchable = f"{question} {description} {event_text}"
+
+            # Check if any keyword matches
+            if any(keyword in searchable for keyword in keywords):
+                filtered.append(market)
+
+        return filtered
 
     def get_all_markets(self, limit: int = 100) -> List[Dict]:
         """
