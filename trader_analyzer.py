@@ -7,11 +7,11 @@ class TraderAnalyzer:
     """Analyze traders to identify successful ones worth tracking."""
 
     def __init__(self, db: Database, polymarket: PolymarketClient,
-                 min_trades: int = 20, min_volume: float = 5000.0):
+                 min_trades: int = 50, min_volume: float = 10000.0):
         self.db = db
         self.polymarket = polymarket
         self.min_trades = min_trades
-        self.min_volume = min_volume  # Minimum $5k traded
+        self.min_volume = min_volume  # Minimum $10k traded
 
     def analyze_and_flag_traders(self, trader_addresses: List[str]) -> int:
         """

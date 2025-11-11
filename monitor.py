@@ -125,22 +125,37 @@ class PolymarketMonitor:
         return new_trades_count
 
     async def notify_new_trades(self):
-        """Send notifications for trades that haven't been notified yet."""
+        """Send bundled notifications for trades that haven't been notified yet."""
         unnotified_trades = self.db.get_unnotified_trades()
 
         if not unnotified_trades:
             return
 
-        print(f"Sending {len(unnotified_trades)} trade notifications...")
+        print(f"Processing {len(unnotified_trades)} trade notifications...")
 
+        # Bundle trades by trader
+        trades_by_trader = {}
         for trade in unnotified_trades:
-            # Get trader stats
-            trader_stats = self.db.get_trader_stats(trade['trader_address'])
+            trader = trade['trader_address']
+            if trader not in trades_by_trader:
+                trades_by_trader[trader] = []
+            trades_by_trader[trader].append(trade)
 
-            if trader_stats:
-                await self.telegram.send_trade_alert(trade, trader_stats)
-                self.db.mark_trade_notified(trade['trade_id'])
-                await asyncio.sleep(1)  # Rate limiting
+        # Get trader stats for all traders
+        trader_stats_map = {}
+        for trader in trades_by_trader.keys():
+            stats = self.db.get_trader_stats(trader)
+            if stats:
+                trader_stats_map[trader] = stats
+
+        print(f"Bundled into {len(trades_by_trader)} traders")
+
+        # Send bundled notifications
+        await self.telegram.send_bundled_trade_alerts(trades_by_trader, trader_stats_map)
+
+        # Mark all as notified
+        for trade in unnotified_trades:
+            self.db.mark_trade_notified(trade['trade_id'])
 
     async def monitoring_loop(self):
         """Main monitoring loop that runs every check_interval."""
