@@ -344,13 +344,11 @@ class PolymarketClient:
 
         for trade in all_trades:
             # Extract trader addresses from trades
-            maker = trade.get('makerAddress') or trade.get('maker') or trade.get('user')
-            taker = trade.get('takerAddress') or trade.get('taker')
+            # Data API uses 'proxyWallet' field for trader address
+            trader = trade.get('proxyWallet') or trade.get('user') or trade.get('maker')
 
-            if maker:
-                traders.add(maker)
-            if taker:
-                traders.add(taker)
+            if trader:
+                traders.add(trader)
 
         return traders
 
