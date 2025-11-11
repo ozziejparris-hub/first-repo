@@ -86,7 +86,7 @@ async def start_monitoring():
     # Start the monitoring service
     print("🚀 Starting monitoring service...")
     print(f"📊 Target: Geopolitical markets on Polymarket")
-    print(f"🎯 Criteria: Win rate >70%, Min 20 trades")
+    print(f"🎯 Criteria: Min $5k volume, Min 20 trades")
     print(f"⏰ Check interval: Every 15 minutes")
     print(f"💬 Telegram: Notifications enabled")
     print()

@@ -7,11 +7,11 @@ class TraderAnalyzer:
     """Analyze traders to identify successful ones worth tracking."""
 
     def __init__(self, db: Database, polymarket: PolymarketClient,
-                 min_trades: int = 20, min_win_rate: float = 70.0):
+                 min_trades: int = 20, min_volume: float = 5000.0):
         self.db = db
         self.polymarket = polymarket
         self.min_trades = min_trades
-        self.min_win_rate = min_win_rate
+        self.min_volume = min_volume  # Minimum $5k traded
 
     def analyze_and_flag_traders(self, trader_addresses: List[str]) -> int:
         """
@@ -31,25 +31,26 @@ class TraderAnalyzer:
             stats = self.polymarket.analyze_trader_performance(address)
 
             total_trades = stats['total_trades']
-            win_rate = stats['win_rate']
+            total_volume = stats['total_volume']
+            win_rate = stats['win_rate']  # Keep as 0 for now (placeholder)
 
-            # Store trader data
+            # Flag based on volume AND trade count (not win rate)
             should_flag = (total_trades >= self.min_trades and
-                          win_rate >= self.min_win_rate)
+                          total_volume >= self.min_volume)
 
             self.db.add_or_update_trader(
                 address=address,
                 total_trades=total_trades,
                 successful_trades=stats['successful_trades'],
-                win_rate=win_rate,
-                total_volume=stats['total_volume'],
+                win_rate=win_rate,  # Store as 0 (placeholder for future)
+                total_volume=total_volume,
                 is_flagged=should_flag
             )
 
             if should_flag:
                 newly_flagged += 1
                 print(f"✅ Flagged trader {address[:10]}... "
-                      f"(Win Rate: {win_rate:.1f}%, Trades: {total_trades})")
+                      f"(Volume: ${total_volume:.2f}, Trades: {total_trades})")
 
         return newly_flagged
 
