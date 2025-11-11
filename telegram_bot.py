@@ -22,17 +22,51 @@ class TelegramNotifier:
         self.on_stop_callback: Optional[Callable] = None
 
     async def send_message(self, message: str):
-        """Send a message to the configured chat."""
+        """Send a message to the configured chat, splitting if too long."""
         if not self.chat_id:
             print("⚠️ Chat ID not configured. Cannot send message.")
             return
 
+        # Telegram max message length is 4096 characters
+        MAX_LENGTH = 4000  # Leave some margin
+
         try:
-            await self.application.bot.send_message(
-                chat_id=self.chat_id,
-                text=message,
-                parse_mode='HTML'
-            )
+            if len(message) <= MAX_LENGTH:
+                # Message is short enough, send as-is
+                await self.application.bot.send_message(
+                    chat_id=self.chat_id,
+                    text=message,
+                    parse_mode='HTML'
+                )
+            else:
+                # Split into multiple messages
+                parts = []
+                current_part = ""
+
+                for line in message.split('\n'):
+                    if len(current_part) + len(line) + 1 <= MAX_LENGTH:
+                        current_part += line + '\n'
+                    else:
+                        if current_part:
+                            parts.append(current_part)
+                        current_part = line + '\n'
+
+                if current_part:
+                    parts.append(current_part)
+
+                # Send each part
+                for i, part in enumerate(parts, 1):
+                    if len(parts) > 1:
+                        header = f"[Part {i}/{len(parts)}]\n\n"
+                        part = header + part
+
+                    await self.application.bot.send_message(
+                        chat_id=self.chat_id,
+                        text=part,
+                        parse_mode='HTML'
+                    )
+                    await asyncio.sleep(0.5)  # Small delay between messages
+
         except Exception as e:
             print(f"Error sending Telegram message: {e}")
 
@@ -41,8 +75,8 @@ class TelegramNotifier:
         message = (
             f"🚨 <b>New Trade Alert!</b>\n\n"
             f"<b>Trader:</b> <code>{trade['trader_address'][:16]}...</code>\n"
-            f"<b>Win Rate:</b> {trader_stats['win_rate']:.1f}% "
-            f"({trader_stats['successful_trades']}/{trader_stats['total_trades']} trades)\n\n"
+            f"<b>Volume:</b> ${trader_stats['total_volume']:.2f} "
+            f"({trader_stats['total_trades']} trades)\n\n"
             f"<b>Market:</b> {trade['market_title']}\n"
             f"<b>Outcome:</b> {trade['outcome']}\n"
             f"<b>Side:</b> {trade['side'].upper()}\n"
