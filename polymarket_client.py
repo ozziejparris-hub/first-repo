@@ -12,6 +12,7 @@ class PolymarketClient:
         self.api_key = api_key
         self.base_url = "https://gamma-api.polymarket.com"
         self.clob_url = "https://clob.polymarket.com"
+        self.data_api_url = "https://data-api.polymarket.com"  # Data API works publicly!
         self.session = requests.Session()
 
         # Set up headers with multiple authentication formats
@@ -198,19 +199,21 @@ class PolymarketClient:
 
     def get_market_trades(self, market_id: str, limit: int = 100) -> List[Dict]:
         """
-        Fetch recent trades for a specific market.
+        Fetch recent trades for a specific market using the Data API.
 
-        Note: CLOB API may not accept the same authentication as Gamma API.
-        Trying without auth headers first.
+        Uses the public Data API which doesn't require authentication.
         """
         try:
-            url = f"{self.clob_url}/trades"
+            url = f"{self.data_api_url}/trades"
             params = {
-                "market": market_id,
-                "limit": limit
+                "limit": min(limit, 500)  # Data API max is 500
             }
 
-            # Try without authentication first (CLOB might be public)
+            # Add market filter if provided (use conditionId for Data API)
+            if market_id:
+                params["market"] = market_id
+
+            # Data API is public, no auth needed
             response = requests.get(url, params=params, timeout=30)
 
             if response.status_code != 200:
@@ -219,9 +222,7 @@ class PolymarketClient:
 
             data = response.json()
 
-            # Response might be list or dict
-            if isinstance(data, dict) and 'data' in data:
-                return data['data']
+            # Data API returns a list of trades
             return data if isinstance(data, list) else []
 
         except Exception as e:
@@ -230,18 +231,18 @@ class PolymarketClient:
 
     def get_trader_history(self, trader_address: str, limit: int = 1000) -> List[Dict]:
         """
-        Fetch trading history for a specific trader.
+        Fetch trading history for a specific trader using the Data API.
 
-        Note: CLOB API likely doesn't require authentication for public trade data.
+        Uses the public Data API which doesn't require authentication.
         """
         try:
-            url = f"{self.clob_url}/trades"
+            url = f"{self.data_api_url}/trades"
             params = {
-                "maker": trader_address,
-                "limit": limit
+                "user": trader_address,  # Data API uses "user" parameter
+                "limit": min(limit, 500)  # Data API max is 500
             }
 
-            # Try without authentication (CLOB might be public)
+            # Data API is public, no auth needed
             response = requests.get(url, params=params, timeout=30)
 
             if response.status_code != 200:
@@ -250,9 +251,7 @@ class PolymarketClient:
 
             data = response.json()
 
-            # Response might be list or dict
-            if isinstance(data, dict) and 'data' in data:
-                return data['data']
+            # Data API returns a list of trades
             return data if isinstance(data, list) else []
 
         except Exception as e:
@@ -323,25 +322,33 @@ class PolymarketClient:
     def get_active_traders_from_markets(self, markets: List[Dict]) -> set:
         """
         Extract unique trader addresses from recent market activity.
+
+        Since Data API works better without market filtering, we fetch all recent
+        trades and filter for our markets locally.
         """
         traders = set()
 
+        # Collect market IDs (prefer conditionId for Data API)
+        market_ids = set()
         for market in markets:
-            market_id = market.get('id') or market.get('market_id') or market.get('conditionId')
-            if not market_id:
-                continue
+            condition_id = market.get('conditionId')
+            if condition_id:
+                market_ids.add(condition_id)
 
-            trades = self.get_market_trades(market_id, limit=50)
-            time.sleep(0.5)  # Rate limiting
+        # If no conditionIds, try fetching recent trades without market filter
+        # Data API returns recent trades across all markets
+        print(f"Fetching recent trades to find active traders...")
+        all_trades = self.get_market_trades(market_id=None, limit=500)
 
-            for trade in trades:
-                maker = trade.get('maker')
-                taker = trade.get('taker')
+        print(f"Found {len(all_trades)} recent trades")
 
-                if maker:
-                    traders.add(maker)
-                if taker:
-                    traders.add(taker)
+        for trade in all_trades:
+            # Extract trader addresses from trades
+            # Data API uses 'proxyWallet' field for trader address
+            trader = trade.get('proxyWallet') or trade.get('user') or trade.get('maker')
+
+            if trader:
+                traders.add(trader)
 
         return traders
 
