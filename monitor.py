@@ -29,6 +29,33 @@ class PolymarketMonitor:
         print("🛑 Stop requested via Telegram")
         self.is_running = False
 
+    def _should_exclude_market(self, market_title: str) -> bool:
+        """
+        Check if a market should be excluded based on exclusion keywords.
+
+        Returns True if the market matches exclusion criteria (crypto/sports/entertainment).
+        """
+        # Define EXCLUSION keywords (matches polymarket_client.py filtering)
+        exclusion_keywords = [
+            'bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'xrp', 'ripple',
+            'price above', 'price below', 'up or down',
+            'nfl', 'nba', 'mlb', 'nhl', 'super bowl',
+            'championship', 'playoff', 'team', 'vs.', 'game', 'match',
+            'elon musk', 'tweet', 'x post', 'taylor swift', 'album', 'movie',
+            'fed rate', 'interest rate', 'stock market', 'sp500', 's&p',
+            'warriors', 'thunder', 'lakers', 'celtics', 'cowboys', 'patriots',
+            'maple leafs', 'bruins'  # Added specific team names user reported
+        ]
+
+        title_lower = market_title.lower()
+
+        # Check if any exclusion keyword is in the title
+        for keyword in exclusion_keywords:
+            if keyword in title_lower:
+                return True
+
+        return False
+
     async def initial_scan(self):
         """Perform initial scan to identify successful traders."""
         print("🔍 Starting initial scan for successful traders...")
@@ -76,6 +103,7 @@ class PolymarketMonitor:
 
         new_trades_count = 0
         duplicate_count = 0
+        excluded_count = 0
 
         for trader_address, trade in relevant_trades:
             # Extract trade information
@@ -91,6 +119,11 @@ class PolymarketMonitor:
             side = trade.get('side', 'unknown')
             timestamp_raw = trade.get('timestamp')
             market_title = trade.get('title', 'Unknown Market')
+
+            # CHECK: Skip trades from excluded markets (crypto/sports/entertainment)
+            if self._should_exclude_market(market_title):
+                excluded_count += 1
+                continue
 
             # Parse timestamp
             try:
@@ -117,11 +150,11 @@ class PolymarketMonitor:
 
             if is_new:
                 new_trades_count += 1
-                print(f"📝 NEW: {trader_address[:10]}... traded {shares:.1f} @ ${price:.3f}")
+                print(f"📝 NEW: {trader_address[:10]}... traded {shares:.1f} @ ${price:.3f} in {market_title[:30]}...")
             else:
                 duplicate_count += 1
 
-        print(f"✅ New trades: {new_trades_count} | Already seen: {duplicate_count}")
+        print(f"✅ New trades: {new_trades_count} | Already seen: {duplicate_count} | Excluded (crypto/sports): {excluded_count}")
         return new_trades_count
 
     async def notify_new_trades(self):
