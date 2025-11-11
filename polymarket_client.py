@@ -98,25 +98,34 @@ class PolymarketClient:
 
     def _filter_by_category(self, markets: List[Dict], category: str) -> List[Dict]:
         """
-        Filter markets by category using keyword matching.
+        Filter markets by category using keyword matching with exclusions.
 
         Since Polymarket doesn't use tags/categories, we match keywords
-        in questions, descriptions, and event titles.
+        in questions, descriptions, and event titles, then exclude noise.
         """
         category_lower = category.lower()
 
-        # Define keywords for different categories
+        # Define STRICT inclusion keywords for geopolitics
+        geopolitics_keywords = [
+            'election', 'ceasefire', 'war', 'military action', 'invasion',
+            'congress pass', 'senate confirm', 'impeach', 'cabinet',
+            'ambassador', 'nato', 'treaty', 'sanctions',
+            'president of', 'prime minister', 'supreme leader',
+            'ukraine', 'russia', 'gaza', 'iran', 'north korea',
+            'parliament', 'referendum', 'brexit', 'peace deal'
+        ]
+
+        # Define EXCLUSION keywords (these override inclusions)
+        exclusion_keywords = [
+            'bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'price above',
+            'price below', '$', 'nfl', 'nba', 'mlb', 'nhl', 'super bowl',
+            'championship', 'playoff', 'team', 'vs.', 'game', 'match',
+            'elon musk', 'tweet', 'x post', 'taylor swift', 'album', 'movie',
+            'fed rate', 'interest rate', 'stock market', 'sp500', 's&p'
+        ]
+
         keyword_sets = {
-            'geopolitics': [
-                'geopolitic', 'war', 'election', 'president', 'prime minister',
-                'congress', 'senate', 'parliament', 'government', 'military',
-                'ukraine', 'russia', 'china', 'taiwan', 'israel', 'iran',
-                'politics', 'political', 'nato', 'treaty', 'sanctions',
-                'ambassador', 'diplomat', 'foreign policy', 'invasion',
-                'ceasefire', 'peace deal', 'united nations', 'brexit',
-                'referendum', 'impeach', 'cabinet', 'minister', 'secretary of',
-                'supreme leader', 'dictator', 'regime'
-            ],
+            'geopolitics': geopolitics_keywords,
             'politics': [
                 'election', 'president', 'congress', 'senate', 'parliament',
                 'government', 'politics', 'political', 'vote', 'ballot',
@@ -158,7 +167,13 @@ class PolymarketClient:
             # Combine all searchable text
             searchable = f"{question} {description} {event_text}"
 
-            # Check if any keyword matches
+            # For geopolitics, apply exclusion filter
+            if category_lower == 'geopolitics':
+                # First check if it should be excluded
+                if any(excl in searchable for excl in exclusion_keywords):
+                    continue
+
+            # Check if any inclusion keyword matches
             if any(keyword in searchable for keyword in keywords):
                 filtered.append(market)
 

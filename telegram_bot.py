@@ -20,6 +20,9 @@ class TelegramNotifier:
         self.application = None
         self.should_stop = False
         self.on_stop_callback: Optional[Callable] = None
+        # Rate limiting: track last notification time per trader
+        self.last_notification = {}  # trader_address -> timestamp
+        self.notification_cooldown = 300  # 5 minutes in seconds
 
     async def send_message(self, message: str):
         """Send a message to the configured chat, splitting if too long."""
@@ -70,22 +73,66 @@ class TelegramNotifier:
         except Exception as e:
             print(f"Error sending Telegram message: {e}")
 
-    async def send_trade_alert(self, trade: dict, trader_stats: dict):
-        """Send a formatted alert for a new trade from a flagged trader."""
-        message = (
-            f"🚨 <b>New Trade Alert!</b>\n\n"
-            f"<b>Trader:</b> <code>{trade['trader_address'][:16]}...</code>\n"
-            f"<b>Volume:</b> ${trader_stats['total_volume']:.2f} "
-            f"({trader_stats['total_trades']} trades)\n\n"
-            f"<b>Market:</b> {trade['market_title']}\n"
-            f"<b>Outcome:</b> {trade['outcome']}\n"
-            f"<b>Side:</b> {trade['side'].upper()}\n"
-            f"<b>Shares:</b> {trade['shares']:.2f}\n"
-            f"<b>Price:</b> ${trade['price']:.4f}\n"
-            f"<b>Time:</b> {trade['timestamp']}\n"
-        )
+    def should_notify_trader(self, trader_address: str) -> bool:
+        """Check if enough time has passed since last notification for this trader."""
+        now = datetime.now().timestamp()
+        last_time = self.last_notification.get(trader_address, 0)
 
-        await self.send_message(message)
+        if now - last_time >= self.notification_cooldown:
+            self.last_notification[trader_address] = now
+            return True
+        return False
+
+    async def send_bundled_trade_alerts(self, trades_by_trader: dict, trader_stats_map: dict):
+        """Send bundled trade alerts grouped by trader with rate limiting."""
+        for trader_address, trades in trades_by_trader.items():
+            # Rate limiting: skip if notified recently
+            if not self.should_notify_trader(trader_address):
+                print(f"⏭️ Skipping {trader_address[:10]}... (rate limited)")
+                continue
+
+            trader_stats = trader_stats_map.get(trader_address)
+            if not trader_stats:
+                continue
+
+            # Build bundled message
+            if len(trades) == 1:
+                # Single trade
+                trade = trades[0]
+                message = (
+                    f"🚨 <b>New Trade Alert!</b>\n\n"
+                    f"<b>Trader:</b> <code>{trader_address[:16]}...</code>\n"
+                    f"<b>Volume:</b> ${trader_stats['total_volume']:.2f} "
+                    f"({trader_stats['total_trades']} trades)\n\n"
+                    f"<b>Market:</b> {trade['market_title'][:60]}\n"
+                    f"<b>Outcome:</b> {trade['outcome']}\n"
+                    f"<b>Side:</b> {trade['side'].upper()}\n"
+                    f"<b>Shares:</b> {trade['shares']:.2f}\n"
+                    f"<b>Price:</b> ${trade['price']:.4f}\n"
+                    f"<b>Time:</b> {trade['timestamp']}\n"
+                )
+            else:
+                # Multiple trades - bundle them
+                message = (
+                    f"🚨 <b>{len(trades)} New Trades!</b>\n\n"
+                    f"<b>Trader:</b> <code>{trader_address[:16]}...</code>\n"
+                    f"<b>Volume:</b> ${trader_stats['total_volume']:.2f} "
+                    f"({trader_stats['total_trades']} trades)\n\n"
+                )
+
+                for i, trade in enumerate(trades[:5], 1):  # Max 5 per message
+                    message += (
+                        f"<b>Trade {i}:</b>\n"
+                        f"  Market: {trade['market_title'][:50]}\n"
+                        f"  {trade['outcome']} {trade['side'].upper()} "
+                        f"{trade['shares']:.1f} @ ${trade['price']:.3f}\n\n"
+                    )
+
+                if len(trades) > 5:
+                    message += f"<i>...and {len(trades) - 5} more trades</i>\n"
+
+            await self.send_message(message)
+            await asyncio.sleep(1)  # Delay between traders
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command."""
