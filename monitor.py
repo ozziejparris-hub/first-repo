@@ -53,62 +53,75 @@ class PolymarketMonitor:
             print("No flagged traders to monitor yet.")
             return 0
 
-        print(f"Checking trades for {len(flagged_traders)} flagged traders...")
+        print(f"Monitoring {len(flagged_traders)} flagged traders...")
+
+        # Strategy: Fetch all recent trades and filter for our flagged traders
+        # This is more efficient than calling get_trader_history() for each trader
+        print("Fetching recent trades from Polymarket...")
+        all_recent_trades = self.polymarket.get_market_trades(market_id=None, limit=500)
+
+        print(f"✅ Fetched {len(all_recent_trades)} recent trades")
+
+        # Convert flagged traders to a set for fast lookup
+        flagged_set = set(flagged_traders)
+
+        # Filter for trades from our flagged traders
+        relevant_trades = []
+        for trade in all_recent_trades:
+            trader = trade.get('proxyWallet')
+            if trader in flagged_set:
+                relevant_trades.append((trader, trade))
+
+        print(f"📊 Found {len(relevant_trades)} trades from flagged traders")
 
         new_trades_count = 0
+        duplicate_count = 0
 
-        for trader_address in flagged_traders:
-            # Get recent trades for this trader
-            recent_trades = self.polymarket.get_trader_history(trader_address, limit=10)
+        for trader_address, trade in relevant_trades:
+            # Extract trade information
+            trade_id = trade.get('transactionHash') or trade.get('id')
+            if not trade_id:
+                print(f"⚠️ Trade missing ID, skipping...")
+                continue
 
-            for trade in recent_trades:
-                # Extract trade information
-                trade_id = trade.get('id') or trade.get('trade_id')
-                if not trade_id:
-                    continue
+            market_id = trade.get('conditionId') or trade.get('market')
+            outcome = trade.get('outcome', 'Unknown')
+            shares = float(trade.get('size', 0))
+            price = float(trade.get('price', 0))
+            side = trade.get('side', 'unknown')
+            timestamp_raw = trade.get('timestamp')
+            market_title = trade.get('title', 'Unknown Market')
 
-                market_id = trade.get('market') or trade.get('market_id')
-                outcome = trade.get('outcome', 'Unknown')
-                shares = float(trade.get('size', 0))
-                price = float(trade.get('price', 0))
-                side = trade.get('side', 'unknown')
-                timestamp_raw = trade.get('timestamp') or trade.get('created_at')
+            # Parse timestamp
+            try:
+                if isinstance(timestamp_raw, (int, float)):
+                    timestamp = datetime.fromtimestamp(timestamp_raw)
+                else:
+                    timestamp = datetime.fromisoformat(str(timestamp_raw).replace('Z', '+00:00'))
+            except:
+                timestamp = datetime.now()
 
-                # Parse timestamp
-                try:
-                    if isinstance(timestamp_raw, (int, float)):
-                        timestamp = datetime.fromtimestamp(timestamp_raw)
-                    else:
-                        timestamp = datetime.fromisoformat(str(timestamp_raw).replace('Z', '+00:00'))
-                except:
-                    timestamp = datetime.now()
+            # Try to add trade to database
+            is_new = self.db.add_trade(
+                trade_id=trade_id,
+                trader_address=trader_address,
+                market_id=market_id,
+                market_title=market_title,
+                market_category='Geopolitics',
+                outcome=outcome,
+                shares=shares,
+                price=price,
+                side=side,
+                timestamp=timestamp
+            )
 
-                # Get market details
-                market_details = self.polymarket.get_market_details(market_id)
-                market_title = market_details.get('question', 'Unknown Market') if market_details else 'Unknown Market'
+            if is_new:
+                new_trades_count += 1
+                print(f"📝 NEW: {trader_address[:10]}... traded {shares:.1f} @ ${price:.3f}")
+            else:
+                duplicate_count += 1
 
-                # Try to add trade to database
-                is_new = self.db.add_trade(
-                    trade_id=trade_id,
-                    trader_address=trader_address,
-                    market_id=market_id,
-                    market_title=market_title,
-                    market_category='Geopolitics',
-                    outcome=outcome,
-                    shares=shares,
-                    price=price,
-                    side=side,
-                    timestamp=timestamp
-                )
-
-                if is_new:
-                    new_trades_count += 1
-                    print(f"📝 New trade detected: {trade_id[:16]}...")
-
-            # Rate limiting
-            time.sleep(1)
-
-        print(f"Found {new_trades_count} new trades")
+        print(f"✅ New trades: {new_trades_count} | Already seen: {duplicate_count}")
         return new_trades_count
 
     async def notify_new_trades(self):
