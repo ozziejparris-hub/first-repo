@@ -27,19 +27,23 @@ def main():
     print("   Analyzes betting patterns, diversification, and activity")
     print("   Requires: Trade history data")
     print()
-    print("3. Test Analysis Demo")
+    print("3. Weighted Consensus System ⭐ NEW")
+    print("   ELO ratings + weighted majority algorithm for market predictions")
+    print("   Requires: Resolved markets for ELO calculation")
+    print()
+    print("4. Test Analysis Demo")
     print("   Demo of performance analysis calculations (no database)")
     print()
-    print("4. Test Behavior Demo")
+    print("5. Test Behavior Demo")
     print("   Demo of behavior analysis calculations (no database)")
     print()
-    print("5. Test Market Filtering")
+    print("6. Test Market Filtering")
     print("   Test crypto/sports market exclusion logic")
     print()
-    print("6. Exit")
+    print("7. Exit")
     print()
 
-    choice = input("Enter choice (1-6): ").strip()
+    choice = input("Enter choice (1-7): ").strip()
 
     if choice == "1":
         print("\nRunning Trader Performance Analysis...")
@@ -52,26 +56,31 @@ def main():
         behavior_main()
 
     elif choice == "3":
+        print("\nRunning Weighted Consensus System...")
+        from weighted_consensus_system import main as consensus_main
+        consensus_main()
+
+    elif choice == "4":
         print("\nRunning Performance Analysis Demo...")
         from test_analysis_demo import main as demo_main
         demo_main()
 
-    elif choice == "4":
+    elif choice == "5":
         print("\nRunning Behavior Analysis Demo...")
         from test_behavior_demo import main as behavior_demo_main
         behavior_demo_main()
 
-    elif choice == "5":
+    elif choice == "6":
         print("\nRunning Market Filtering Test...")
         from test_market_filtering import test_market_exclusion
         test_market_exclusion()
 
-    elif choice == "6":
+    elif choice == "7":
         print("Goodbye!")
         return
 
     else:
-        print("Invalid choice. Please enter a number between 1 and 6.")
+        print("Invalid choice. Please enter a number between 1 and 7.")
         return
 
 
