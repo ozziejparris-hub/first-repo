@@ -27,23 +27,27 @@ def main():
     print("   Analyzes betting patterns, diversification, and activity")
     print("   Requires: Trade history data")
     print()
-    print("3. Weighted Consensus System ⭐ NEW")
+    print("3. Weighted Consensus System")
     print("   ELO ratings + weighted majority algorithm for market predictions")
     print("   Requires: Resolved markets for ELO calculation")
     print()
-    print("4. Test Analysis Demo")
+    print("4. Trader Specialization Analysis ⭐ NEW")
+    print("   Category-specific ELO + specialist identification + context-aware predictions")
+    print("   Requires: Resolved markets across multiple categories")
+    print()
+    print("5. Test Analysis Demo")
     print("   Demo of performance analysis calculations (no database)")
     print()
-    print("5. Test Behavior Demo")
+    print("6. Test Behavior Demo")
     print("   Demo of behavior analysis calculations (no database)")
     print()
-    print("6. Test Market Filtering")
+    print("7. Test Market Filtering")
     print("   Test crypto/sports market exclusion logic")
     print()
-    print("7. Exit")
+    print("8. Exit")
     print()
 
-    choice = input("Enter choice (1-7): ").strip()
+    choice = input("Enter choice (1-8): ").strip()
 
     if choice == "1":
         print("\nRunning Trader Performance Analysis...")
@@ -61,26 +65,31 @@ def main():
         consensus_main()
 
     elif choice == "4":
+        print("\nRunning Trader Specialization Analysis...")
+        from trader_specialization_analysis import main as spec_main
+        spec_main()
+
+    elif choice == "5":
         print("\nRunning Performance Analysis Demo...")
         from test_analysis_demo import main as demo_main
         demo_main()
 
-    elif choice == "5":
+    elif choice == "6":
         print("\nRunning Behavior Analysis Demo...")
         from test_behavior_demo import main as behavior_demo_main
         behavior_demo_main()
 
-    elif choice == "6":
+    elif choice == "7":
         print("\nRunning Market Filtering Test...")
         from test_market_filtering import test_market_exclusion
         test_market_exclusion()
 
-    elif choice == "7":
+    elif choice == "8":
         print("Goodbye!")
         return
 
     else:
-        print("Invalid choice. Please enter a number between 1 and 7.")
+        print("Invalid choice. Please enter a number between 1 and 8.")
         return
 
 
