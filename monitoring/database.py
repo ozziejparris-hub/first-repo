@@ -1,4 +1,5 @@
 import sqlite3
+import os
 from datetime import datetime
 from typing import List, Dict, Optional
 import json
@@ -7,7 +8,10 @@ import json
 class Database:
     """Handle SQLite database operations for tracking traders and trades."""
 
-    def __init__(self, db_path: str = "polymarket_tracker.db"):
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            # Default to data directory in parent folder
+            db_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'polymarket_tracker.db')
         self.db_path = db_path
         self.init_database()
 

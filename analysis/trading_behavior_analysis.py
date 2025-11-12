@@ -23,7 +23,10 @@ from collections import defaultdict, Counter
 class TradingBehaviorAnalyzer:
     """Analyzes trading behavior patterns and classifies trader styles."""
 
-    def __init__(self, db_path: str = "polymarket_tracker.db"):
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            # Default to data directory in parent folder
+            db_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'polymarket_tracker.db')
         self.db_path = db_path
 
     def get_db_connection(self):
@@ -663,10 +666,15 @@ def main():
     analyzer = TradingBehaviorAnalyzer()
 
     # Check if database exists
-    if not os.path.exists("polymarket_tracker.db"):
-        print("❌ Error: polymarket_tracker.db not found")
+    db_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'polymarket_tracker.db')
+    if not os.path.exists(db_path):
+        print("❌ Error: polymarket_tracker.db not found in /data/")
         print("   Make sure the monitoring script has run and collected trades")
         return
+
+    # Ensure reports directory exists
+    reports_dir = os.path.join(os.path.dirname(__file__), '..', 'reports')
+    os.makedirs(reports_dir, exist_ok=True)
 
     # Run analysis for different time periods
     print("\nSelect analysis period:")
@@ -681,18 +689,21 @@ def main():
         days_filter = 7
         metrics = analyzer.analyze_all_traders(days_filter)
         analyzer.generate_report(metrics, days_filter)
-        analyzer.save_to_csv(metrics, f"trading_behavior_7days_{datetime.now().strftime('%Y%m%d')}.csv")
+        csv_path = os.path.join(reports_dir, f"trading_behavior_7days_{datetime.now().strftime('%Y%m%d')}.csv")
+        analyzer.save_to_csv(metrics, csv_path)
 
     elif choice == "2":
         days_filter = 30
         metrics = analyzer.analyze_all_traders(days_filter)
         analyzer.generate_report(metrics, days_filter)
-        analyzer.save_to_csv(metrics, f"trading_behavior_30days_{datetime.now().strftime('%Y%m%d')}.csv")
+        csv_path = os.path.join(reports_dir, f"trading_behavior_30days_{datetime.now().strftime('%Y%m%d')}.csv")
+        analyzer.save_to_csv(metrics, csv_path)
 
     elif choice == "3":
         metrics = analyzer.analyze_all_traders(None)
         analyzer.generate_report(metrics, None)
-        analyzer.save_to_csv(metrics, f"trading_behavior_alltime_{datetime.now().strftime('%Y%m%d')}.csv")
+        csv_path = os.path.join(reports_dir, f"trading_behavior_alltime_{datetime.now().strftime('%Y%m%d')}.csv")
+        analyzer.save_to_csv(metrics, csv_path)
 
     elif choice == "4":
         # Run all periods
@@ -700,14 +711,16 @@ def main():
             metrics = analyzer.analyze_all_traders(days)
             analyzer.generate_report(metrics, days)
             suffix = f"{days}days" if days else "alltime"
-            analyzer.save_to_csv(metrics, f"trading_behavior_{suffix}_{datetime.now().strftime('%Y%m%d')}.csv")
+            csv_path = os.path.join(reports_dir, f"trading_behavior_{suffix}_{datetime.now().strftime('%Y%m%d')}.csv")
+            analyzer.save_to_csv(metrics, csv_path)
             print("\n" + "="*70 + "\n")
 
     else:
         print("Invalid choice, running all-time analysis...")
         metrics = analyzer.analyze_all_traders(None)
         analyzer.generate_report(metrics, None)
-        analyzer.save_to_csv(metrics, f"trading_behavior_alltime_{datetime.now().strftime('%Y%m%d')}.csv")
+        csv_path = os.path.join(reports_dir, f"trading_behavior_alltime_{datetime.now().strftime('%Y%m%d')}.csv")
+        analyzer.save_to_csv(metrics, csv_path)
 
 
 if __name__ == "__main__":

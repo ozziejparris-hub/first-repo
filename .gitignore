@@ -5,6 +5,8 @@
 *.db
 *.sqlite
 *.sqlite3
+data/*.db
+data/*.sqlite
 
 # Python
 __pycache__/
@@ -51,6 +53,10 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Generated reports
+reports/*.csv
+reports/*.json
 
 # Testing
 .pytest_cache/
