@@ -1,5 +1,6 @@
 import asyncio
 import time
+import re
 from datetime import datetime
 from typing import Optional
 from database import Database
@@ -31,29 +32,136 @@ class PolymarketMonitor:
 
     def _should_exclude_market(self, market_title: str) -> bool:
         """
-        Check if a market should be excluded based on exclusion keywords.
+        Check if a market should be excluded based on comprehensive filtering.
 
-        Returns True if the market matches exclusion criteria (crypto/sports/entertainment).
+        EXCLUDES:
+        - International sports matches: "Will [Country] win on [date]?"
+        - Esports: Counter-Strike, Valorant, BO1/BO3 patterns
+        - Spreads: Markets starting with "Spread:"
+        - Crypto prices: Bitcoin/Ethereum/Solana price predictions
+        - General sports, entertainment, stocks
+
+        KEEPS:
+        - Elections (Mayor, President, Senator, etc.)
+        - Geopolitics (Putin, Zelenskyy, Israel, Iran, invasions, etc.)
+        - Economics (ECB, Fed, GDP, inflation)
+        - Business (company rankings, market cap)
+        - Climate/Environment
+
+        Returns True if the market should be EXCLUDED.
         """
-        # Define EXCLUSION keywords (matches polymarket_client.py filtering)
-        exclusion_keywords = [
-            'bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'xrp', 'ripple',
-            'price above', 'price below', 'up or down',
-            'nfl', 'nba', 'mlb', 'nhl', 'super bowl',
-            'championship', 'playoff', 'team', 'vs.', 'game', 'match',
-            'elon musk', 'tweet', 'x post', 'taylor swift', 'album', 'movie',
-            'fed rate', 'interest rate', 'stock market', 'sp500', 's&p',
-            'warriors', 'thunder', 'lakers', 'celtics', 'cowboys', 'patriots',
-            'maple leafs', 'bruins'  # Added specific team names user reported
-        ]
-
         title_lower = market_title.lower()
 
-        # Check if any exclusion keyword is in the title
-        for keyword in exclusion_keywords:
-            if keyword in title_lower:
-                return True
+        # ===== PATTERN 1: INTERNATIONAL SPORTS MATCHES =====
+        # Pattern: "Will [Country] win on YYYY-MM-DD?"
+        # Examples: "Will Italy win on 2025-11-13?", "Will Northern Ireland win on 2025-11-17?"
+        # Updated regex to handle multi-word country names (e.g., "Northern Ireland", "Faroe Islands")
+        sports_match_pattern = r'will\s+[\w\s]+\s+win\s+on\s+\d{4}-\d{2}-\d{2}'
+        if re.search(sports_match_pattern, title_lower):
+            # Double-check it's not geopolitics (e.g., "Will Italy win the war on...")
+            # Geopolitics would have words like "war", "conflict", "election" before "on"
+            geopolitics_context = ['war', 'conflict', 'election', 'invasion', 'battle', 'ceasefire']
+            has_geopolitics_context = any(word in title_lower for word in geopolitics_context)
 
+            if not has_geopolitics_context:
+                return True  # EXCLUDE: It's a sports match
+
+        # ===== PATTERN 2: ESPORTS =====
+        # Keywords: Counter-Strike, Valorant, League of Legends, Dota
+        # Format indicators: (BO1), (BO3), (BO5), "vs" with team names
+        esports_keywords = [
+            'counter-strike', 'counter strike', 'cs:go', 'cs2',
+            'valorant', 'league of legends', 'lol', 'dota', 'dota 2',
+            'overwatch', 'rocket league', 'starcraft',
+            '(bo1)', '(bo3)', '(bo5)',  # Best of X indicators
+            ' vs ', ' v ', ' versus '  # vs patterns common in esports
+        ]
+
+        for keyword in esports_keywords:
+            if keyword in title_lower:
+                # Additional check: if contains "vs" or "BO", very likely esports
+                if any(indicator in title_lower for indicator in [' vs ', ' v ', '(bo', 'versus']):
+                    return True  # EXCLUDE: Esports match
+
+        # ===== PATTERN 3: SPREADS =====
+        # Pattern: "Spread: [Team] (-X.X)" or "Spread: [Team] (+X.X)"
+        if market_title.startswith('Spread:'):
+            return True  # EXCLUDE: Sports spread betting
+
+        # ===== PATTERN 4: CRYPTO PRICE PREDICTIONS =====
+        # Crypto keywords + price indicators
+        crypto_keywords = [
+            'bitcoin', 'btc', 'ethereum', 'eth', 'solana', 'sol',
+            'xrp', 'ripple', 'cardano', 'ada', 'dogecoin', 'doge',
+            'polkadot', 'dot', 'polygon', 'matic', 'avalanche', 'avax'
+        ]
+
+        price_indicators = [
+            'dip to $', 'reach $', 'hit $', 'above $', 'below $',
+            '>$', '<$', 'price above', 'price below',
+            'will.*hit.*\\$\\d+', 'will.*reach.*\\$\\d+',  # "Will Bitcoin reach $100k?"
+            'up or down'
+        ]
+
+        has_crypto = any(keyword in title_lower for keyword in crypto_keywords)
+        has_price_indicator = any(
+            indicator in title_lower or re.search(indicator, title_lower)
+            for indicator in price_indicators
+        )
+
+        if has_crypto and has_price_indicator:
+            return True  # EXCLUDE: Crypto price prediction
+
+        # ===== PATTERN 5: TRADITIONAL SPORTS =====
+        # NFL, NBA, MLB, NHL, etc.
+        traditional_sports_keywords = [
+            'nfl', 'nba', 'mlb', 'nhl', 'mls',  # American leagues
+            'super bowl', 'world series', 'stanley cup', 'nba finals',
+            'championship', 'playoff', 'playoffs',
+            # Specific teams (add more as needed)
+            'warriors', 'lakers', 'celtics', 'heat', 'bulls', 'knicks',
+            'cowboys', 'patriots', 'chiefs', 'eagles', 'packers',
+            'yankees', 'red sox', 'dodgers', 'mets', 'cubs',
+            'maple leafs', 'bruins', 'canadiens', 'rangers',
+            # General sports terms
+            'touchdown', 'home run', 'goal', 'field goal', 'penalty kick',
+            'quarterback', 'pitcher', 'goalie'
+        ]
+
+        for keyword in traditional_sports_keywords:
+            if keyword in title_lower:
+                return True  # EXCLUDE: Traditional sports
+
+        # ===== PATTERN 6: ENTERTAINMENT/CELEBRITY =====
+        entertainment_keywords = [
+            'elon musk', 'taylor swift', 'kanye', 'kardashian',
+            'oscar', 'grammy', 'emmy', 'golden globe',
+            'movie', 'film', 'album', 'song', 'concert',
+            'tweet', 'twitter', 'x post', 'instagram post',
+            'tiktok', 'youtube', 'spotify'
+        ]
+
+        for keyword in entertainment_keywords:
+            if keyword in title_lower:
+                return True  # EXCLUDE: Entertainment/celebrity
+
+        # ===== PATTERN 7: STOCK MARKET (but keep economics/policy) =====
+        # Exclude stock predictions but KEEP Fed/ECB/policy decisions
+        stock_keywords = [
+            's&p 500', 'sp500', 's&p500', 'dow jones', 'nasdaq',
+            'stock market', 'stock price', 'share price'
+        ]
+
+        # Don't exclude if it mentions Fed/ECB/central bank policy
+        policy_context = ['fed', 'ecb', 'central bank', 'interest rate', 'policy', 'meeting']
+        has_policy_context = any(word in title_lower for word in policy_context)
+
+        if not has_policy_context:
+            for keyword in stock_keywords:
+                if keyword in title_lower:
+                    return True  # EXCLUDE: Stock market prediction
+
+        # If we got here, the market PASSES all exclusion filters
         return False
 
     async def initial_scan(self):
