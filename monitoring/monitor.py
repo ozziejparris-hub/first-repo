@@ -32,33 +32,64 @@ class PolymarketMonitor:
 
     def _should_exclude_market(self, market_title: str) -> bool:
         """
-        Check if a market should be excluded - CRYPTO-FOCUSED VERSION (v3).
+        Check if a market should be excluded - VERSION 4 (COMPREHENSIVE).
 
-        CRITICAL EXCLUSIONS (90% of noise is now crypto):
-        1. 🔥 "Up or Down" - ALWAYS crypto speculation
-        2. 🔥 "Dip to $" - crypto price markets
-        3. 🔥 Crypto price predictions (comprehensive)
-        4. ⚡ Team vs Team sports
-        5. Sports betting, entertainment, etc.
+        CRITICAL EXCLUSIONS:
+        1. 🔥 Crypto "price of" patterns (NEW - was being missed)
+        2. 🔥 "Up or Down" crypto speculation
+        3. 🔥 "Dip to $" crypto markets
+        4. 🔥 Other crypto price predictions
+        5. ⚡ Team vs Team sports (improved regex)
+        6. 🎭 Entertainment (Spotify, Miss Universe, box office, etc.)
+        7. ⚽ Sports leagues and championships
 
         Returns True if market should be EXCLUDED.
         """
         title = market_title
         title_lower = market_title.lower()
 
-        # ===== 🔥 CRYPTO PATTERN 1: "UP OR DOWN" (HIGHEST PRIORITY) =====
-        # Pattern: "[Crypto] Up or Down - [Time]"
-        # 100% of these are crypto speculation
+        # ===== 🔥 CRYPTO PATTERN 1: "PRICE OF" (NEW - CRITICAL MISSED PATTERN) =====
+        # Pattern: "Will the price of [Crypto] be above/below/between $X"
+        # This was the #1 missed pattern from Telegram notifications!
+        if "price of" in title_lower:
+            crypto_names = [
+                'bitcoin', 'btc',
+                'ethereum', 'eth',
+                'solana', 'sol',
+                'xrp', 'ripple',
+                'bnb', 'binance',
+                'cardano', 'ada',
+                'dogecoin', 'doge',
+                'polygon', 'matic',
+                'avalanche', 'avax',
+                'chainlink', 'link'
+            ]
+
+            price_indicators = [
+                'be above $',
+                'be less than $',
+                'be below $',
+                'be between $',
+                'above $',
+                'less than $',
+                'below $'
+            ]
+
+            has_crypto = any(crypto in title_lower for crypto in crypto_names)
+            has_price_indicator = any(indicator in title_lower for indicator in price_indicators)
+
+            if has_crypto and has_price_indicator:
+                return True  # EXCLUDE: Crypto "price of" market
+
+        # ===== 🔥 CRYPTO PATTERN 2: "UP OR DOWN" =====
         if "up or down" in title_lower:
             return True  # EXCLUDE: Always crypto speculation
 
-        # ===== 🔥 CRYPTO PATTERN 2: "DIP TO $" =====
-        # Pattern: "Will [Crypto] dip to $X"
+        # ===== 🔥 CRYPTO PATTERN 3: "DIP TO $" =====
         if "dip to $" in title_lower:
             return True  # EXCLUDE: Crypto price market
 
-        # ===== 🔥 CRYPTO PATTERN 3: COMPREHENSIVE CRYPTO PRICE PREDICTIONS =====
-        # Full names AND tickers to catch both formats
+        # ===== 🔥 CRYPTO PATTERN 4: OTHER CRYPTO PRICE PREDICTIONS =====
         crypto_names = [
             'bitcoin', 'btc',
             'ethereum', 'eth',
@@ -72,33 +103,104 @@ class PolymarketMonitor:
             'chainlink', 'link'
         ]
 
-        # Price prediction verbs
         price_verbs = [
             'reach $', 'hit $', 'close above', 'close between',
-            'finish week', 'all time high', 'dip to', 'be between $'
+            'finish week', 'all time high', 'dip to'
         ]
 
-        # If has crypto name + price verb = price prediction
         if any(crypto in title_lower for crypto in crypto_names):
             if any(verb in title_lower for verb in price_verbs):
                 return True  # EXCLUDE: Crypto price prediction
 
-        # ===== ⚡ PATTERN 4: TEAM VS TEAM =====
-        if ' vs. ' in title or ' vs ' in title_lower:
+        # ===== ⚡ SPORTS PATTERN 1: TEAM VS TEAM (IMPROVED REGEX) =====
+        # Use regex to catch all variations: "vs.", "vs", "VS.", "Vs."
+        # This catches "Warriors vs. Pelicans" that was slipping through
+        if re.search(r'\bvs\.?\b', title, re.IGNORECASE):
             military_keywords = ['military', 'clash', 'engagement', 'war', 'conflict',
                                'ceasefire', 'invasion', 'battle', 'strike', 'attack']
             if not any(keyword in title_lower for keyword in military_keywords):
                 return True  # EXCLUDE: Sports match
 
-        # ===== PATTERN 5: DRAW BETTING =====
+        # ===== SPORTS PATTERN 2: DRAW BETTING =====
         if 'end in a draw' in title_lower:
             return True  # EXCLUDE: Soccer draw betting
 
-        # ===== PATTERN 6: SPORTS BETTING TERMS =====
+        # ===== SPORTS PATTERN 3: SPORTS BETTING TERMS =====
         if any(term in title_lower for term in ['total sets:', 'o/u ', 'spread:', 'over/under']):
             return True  # EXCLUDE: Sports betting
 
-        # ===== PATTERN 7: STOCK PRICE (not policy) =====
+        # ===== SPORTS PATTERN 4: SPORTS LEAGUES =====
+        sports_leagues = [
+            'nfl', 'nba', 'nhl', 'mlb', 'mls',
+            'champions league', 'uefa',
+            'ligue 1', 'premier league', 'la liga',
+            'super bowl', 'stanley cup', 'afc west', 'nfc east',
+            'playoff', 'championship'
+        ]
+
+        if any(league in title_lower for league in sports_leagues):
+            # Exception: Keep FIFA World Cup qualifying (geopolitical)
+            if 'world cup' in title_lower and 'qualifying' in title_lower:
+                pass  # Keep it - geopolitical significance
+            else:
+                return True  # EXCLUDE: Sports league
+
+        # ===== SPORTS PATTERN 5: INTERNATIONAL SPORTS MATCHES =====
+        sports_match_pattern = r'will\s+[\w\s]+\s+win\s+on\s+\d{4}-\d{2}-\d{2}'
+        if re.search(sports_match_pattern, title_lower):
+            geopolitics_context = ['war', 'conflict', 'election', 'invasion', 'battle']
+            if not any(word in title_lower for word in geopolitics_context):
+                return True  # EXCLUDE: Sports match
+
+        # ===== SPORTS PATTERN 6: ESPORTS =====
+        esports_keywords = ['counter-strike', 'valorant', 'league of legends', 'dota', '(bo1)', '(bo3)']
+        if any(keyword in title_lower for keyword in esports_keywords):
+            if any(ind in title_lower for ind in [' vs ', '(bo']):
+                return True  # EXCLUDE: Esports
+
+        # ===== SPORTS PATTERN 7: OBVIOUS SPORTS TEAMS =====
+        sports_teams = [
+            'penguins', 'predators', 'thunder', 'hornets', 'nets', 'magic',
+            'clippers', 'mavericks', 'warriors', 'lakers', 'celtics', 'pelicans'
+        ]
+        if any(team in title_lower for team in sports_teams):
+            # Check for both "vs" and "vs." variations
+            if any(ind in title_lower for ind in [' vs.', ' vs ', 'win on ', 'beat ']):
+                return True  # EXCLUDE: Sports game
+
+        # ===== 🎭 ENTERTAINMENT PATTERN 1: MUSIC/STREAMING =====
+        # Spotify charts, most streamed, etc.
+        if 'spotify' in title_lower:
+            if any(indicator in title_lower for indicator in ['top', 'most streamed', '#1', 'artist']):
+                return True  # EXCLUDE: Music charts
+
+        # ===== 🎭 ENTERTAINMENT PATTERN 2: BEAUTY PAGEANTS =====
+        if 'miss universe' in title_lower or 'miss world' in title_lower:
+            return True  # EXCLUDE: Beauty pageants
+
+        # ===== 🎭 ENTERTAINMENT PATTERN 3: BOX OFFICE =====
+        if 'box office' in title_lower or 'opening weekend' in title_lower:
+            return True  # EXCLUDE: Movie box office
+
+        # ===== 🎭 ENTERTAINMENT PATTERN 4: APP STORE RANKINGS =====
+        if 'app store' in title_lower and '#1' in title:
+            return True  # EXCLUDE: App rankings
+
+        # ===== 🎭 ENTERTAINMENT PATTERN 5: GENERAL ENTERTAINMENT =====
+        entertainment_keywords = [
+            'mrbeast', 'video get', 'youtube views', 'million views',
+            'game of the year', 'game awards',
+            'elon musk', 'taylor swift', 'oscar', 'grammy',
+            'movie', 'album', 'tweet', 'x post', 'tiktok'
+        ]
+        if any(keyword in title_lower for keyword in entertainment_keywords):
+            return True  # EXCLUDE: Entertainment
+
+        # ===== PATTERN: GAMING TOURNAMENTS =====
+        if 'cup' in title_lower and any(k in title_lower for k in ['uniswap', 'gaming', 'esports']):
+            return True  # EXCLUDE: Gaming tournament
+
+        # ===== PATTERN: STOCK PRICE (not policy) =====
         stock_tickers = [
             'aapl', 'apple',
             'msft', 'microsoft',
@@ -112,51 +214,7 @@ class PolymarketMonitor:
             if any(indicator in title_lower for indicator in price_indicators):
                 return True  # EXCLUDE: Stock price bets
 
-        # ===== PATTERN 8: ENTERTAINMENT =====
-        entertainment_keywords = [
-            'mrbeast', 'video get', 'youtube views', 'million views',
-            'game of the year', 'game awards'  # Gaming awards
-        ]
-        if any(keyword in title_lower for keyword in entertainment_keywords):
-            return True  # EXCLUDE: Entertainment
-
-        # ===== PATTERN 9: GAMING TOURNAMENTS =====
-        if 'cup' in title_lower and any(k in title_lower for k in ['uniswap', 'gaming', 'esports']):
-            return True  # EXCLUDE: Gaming tournament
-
-        # ===== PATTERN 10: INTERNATIONAL SPORTS MATCHES =====
-        sports_match_pattern = r'will\s+[\w\s]+\s+win\s+on\s+\d{4}-\d{2}-\d{2}'
-        if re.search(sports_match_pattern, title_lower):
-            geopolitics_context = ['war', 'conflict', 'election', 'invasion', 'battle']
-            if not any(word in title_lower for word in geopolitics_context):
-                return True  # EXCLUDE: Sports match
-
-        # ===== PATTERN 11: ESPORTS =====
-        esports_keywords = ['counter-strike', 'valorant', 'league of legends', 'dota', '(bo1)', '(bo3)']
-        if any(keyword in title_lower for keyword in esports_keywords):
-            if any(ind in title_lower for ind in [' vs ', '(bo']):
-                return True  # EXCLUDE: Esports
-
-        # ===== PATTERN 12: OBVIOUS SPORTS TEAMS =====
-        sports_teams = ['penguins', 'predators', 'thunder', 'hornets', 'nets', 'magic',
-                       'clippers', 'mavericks', 'warriors', 'lakers', 'celtics']
-        if any(team in title_lower for team in sports_teams):
-            if any(ind in title_lower for ind in [' vs ', 'win on ', 'beat ']):
-                return True  # EXCLUDE: Sports game
-
-        # ===== PATTERN 13: TRADITIONAL SPORTS =====
-        traditional_sports = ['nfl', 'nba', 'mlb', 'nhl', 'super bowl', 'stanley cup',
-                            'playoff', 'championship', 'cowboys', 'patriots', 'yankees']
-        if any(keyword in title_lower for keyword in traditional_sports):
-            return True  # EXCLUDE: Sports
-
-        # ===== PATTERN 14: ENTERTAINMENT/CELEBRITY =====
-        celebrity_keywords = ['elon musk', 'taylor swift', 'oscar', 'grammy',
-                            'movie', 'album', 'tweet', 'x post', 'tiktok']
-        if any(keyword in title_lower for keyword in celebrity_keywords):
-            return True  # EXCLUDE: Entertainment
-
-        # ===== PATTERN 15: STOCK MARKET (keep policy) =====
+        # ===== PATTERN: STOCK MARKET (keep policy) =====
         stock_keywords = ['s&p 500', 'sp500', 'dow jones', 'nasdaq', 'stock market']
         policy_context = ['fed', 'ecb', 'interest rate', 'central bank']
         has_policy = any(word in title_lower for word in policy_context)
@@ -164,7 +222,7 @@ class PolymarketMonitor:
         if not has_policy and any(keyword in title_lower for keyword in stock_keywords):
             return True  # EXCLUDE: Stock market
 
-        return False  # PASS: Keep this market
+        return False  # PASS: Keep this market - it's valuable geopolitics/economics
 
     async def initial_scan(self):
         """Perform initial scan to identify successful traders."""
