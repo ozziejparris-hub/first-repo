@@ -33,18 +33,52 @@ class PolymarketMonitor:
         """
         Check if a market should be excluded based on exclusion keywords.
 
-        Returns True if the market matches exclusion criteria (crypto/sports/entertainment).
+        Returns True if the market matches exclusion criteria (crypto/sports/entertainment/esports).
         """
         # Define EXCLUSION keywords (matches polymarket_client.py filtering)
         exclusion_keywords = [
+            # Crypto
             'bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'xrp', 'ripple',
             'price above', 'price below', 'up or down',
+
+            # Traditional sports
             'nfl', 'nba', 'mlb', 'nhl', 'super bowl',
-            'championship', 'playoff', 'team', 'vs.', 'game', 'match',
+            'championship', 'playoff', 'vs.', 'game', 'match',
+
+            # Traditional sports teams
+            'warriors', 'thunder', 'lakers', 'celtics', 'cowboys', 'patriots',
+            'maple leafs', 'bruins',
+
+            # Entertainment/Finance
             'elon musk', 'tweet', 'x post', 'taylor swift', 'album', 'movie',
             'fed rate', 'interest rate', 'stock market', 'sp500', 's&p',
-            'warriors', 'thunder', 'lakers', 'celtics', 'cowboys', 'patriots',
-            'maple leafs', 'bruins'  # Added specific team names user reported
+
+            # ESPORTS - Direct keywords
+            'esports', 'e-sports', 'gaming tournament',
+
+            # ESPORTS - Tournament keywords (future-proof across all games)
+            'major', 'starladder', 'iem', 'intel extreme masters',
+            'blast', 'esl', 'pgl', 'faceit', 'dreamhack',
+            'worlds', 'masters', 'champions', 'the international',
+            'epic league', 'weplay', 'gamers galaxy', 'rog',
+
+            # ESPORTS - Common team names (CS:GO, Valorant, LoL, Dota 2)
+            'g2 esports', 'team vitality', 'fnatic', 'astralis',
+            'natus vincere', "na'vi", 'navi', 'furia',
+            'team falcons', 'ninjas in pyjamas', 'faze clan',
+            'cloud9', 'team liquid', 'team spirit', 'heroic',
+            'mousesports', 'mouz', 'complexity', 'parivision',
+            'tyloo', 'eternal fire', 'saw', 'imperial',
+            '9 pandas', 'betboom', 'virtus.pro', 'virtus pro',
+            'ence', 'big', 'godsent', 'og esports',
+            't1 esports', 'gen.g', 'drx', 'jd gaming',
+            'edward gaming', 'royal never give up', 'fpx',
+
+            # ESPORTS - Game titles
+            'cs:go', 'csgo', 'counter-strike', 'counter strike',
+            'league of legends', 'valorant', 'dota 2', 'dota2',
+            'overwatch', 'fortnite', 'rocket league', 'apex legends',
+            'call of duty', 'rainbow six'
         ]
 
         title_lower = market_title.lower()
