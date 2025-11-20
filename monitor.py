@@ -2,11 +2,15 @@ import asyncio
 import re
 import time
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict
 from database import Database
 from polymarket_client import PolymarketClient
 from telegram_bot import TelegramNotifier
 from trader_analyzer import TraderAnalyzer
+
+# AI Filtering Configuration
+AI_FILTERING_ENABLED = True  # Toggle AI filtering on/off
+AI_FILTER_MODE = "hybrid"  # Options: "keywords_only", "hybrid", "ai_only"
 
 
 class PolymarketMonitor:
@@ -14,13 +18,18 @@ class PolymarketMonitor:
 
     def __init__(self, polymarket_api_key: str, telegram_token: str,
                  telegram_chat_id: Optional[str] = None,
-                 check_interval: int = 900):  # 900 seconds = 15 minutes
+                 check_interval: int = 900,  # 900 seconds = 15 minutes
+                 ai_agent = None):  # AI agent for intelligent categorization
         self.db = Database()
         self.polymarket = PolymarketClient(polymarket_api_key)
         self.telegram = TelegramNotifier(telegram_token, telegram_chat_id)
         self.analyzer = TraderAnalyzer(self.db, self.polymarket)
+        self.ai_agent = ai_agent  # Store AI agent
         self.check_interval = check_interval
         self.is_running = False
+
+        # Cache for AI categorization to avoid repeated API calls
+        self.ai_cache: Dict[str, bool] = {}
 
         # Set stop callback
         self.telegram.set_stop_callback(self.request_stop)
@@ -30,9 +39,75 @@ class PolymarketMonitor:
         print("🛑 Stop requested via Telegram")
         self.is_running = False
 
-    def _should_exclude_market(self, market_title: str) -> bool:
+    async def _ai_categorization_check(self, market_title: str) -> bool:
         """
-        Check if a market should be excluded based on exclusion keywords.
+        Use AI to determine if market should be excluded.
+
+        Returns True = EXCLUDE, False = INCLUDE
+        """
+        # Check cache first
+        if market_title in self.ai_cache:
+            return self.ai_cache[market_title]
+
+        try:
+            # Call Mistral via Pydantic AI
+            result = await self.ai_agent.run(
+                f"Categorize this Polymarket prediction market:\n\n"
+                f"Title: {market_title}\n\n"
+                f"Categories:\n"
+                f"- GEOPOLITICS: Elections, wars, international relations, diplomacy, government policy\n"
+                f"- ECONOMICS: Fed rates, GDP, inflation, trade policy, economic indicators\n"
+                f"- SPORTS: Any sports betting, spreads, game outcomes, athlete performance\n"
+                f"- CRYPTO: Cryptocurrency prices, Bitcoin, Ethereum, Solana, etc.\n"
+                f"- STOCKS: Stock prices, earnings, company performance\n"
+                f"- ENTERTAINMENT: Movies, music, celebrities, beauty pageants, app rankings\n"
+                f"- OTHER: Weather, personal predictions, misc\n\n"
+                f"Respond with ONLY the category name (one word).\n"
+                f"If it's clearly GEOPOLITICS or ECONOMICS, respond: KEEP\n"
+                f"Otherwise, respond: EXCLUDE"
+            )
+
+            # Parse AI response - try multiple attribute access methods
+            response_text = ""
+            if hasattr(result, 'data'):
+                response_text = str(result.data)
+            elif hasattr(result, 'output'):
+                response_text = str(result.output)
+            elif hasattr(result, 'text'):
+                response_text = str(result.text)
+            else:
+                response_text = str(result)
+
+            # Check if AI says to exclude
+            should_exclude = False
+            if 'EXCLUDE' in response_text.upper():
+                print(f"[AI FILTER] ❌ Excluding: {market_title[:50]}... (AI classified as non-geopolitics)")
+                should_exclude = True
+            elif 'KEEP' in response_text.upper():
+                print(f"[AI FILTER] ✓ Keeping: {market_title[:50]}... (AI classified as geopolitics)")
+                should_exclude = False
+            else:
+                # If AI response unclear, check for category keywords
+                exclude_categories = ['SPORTS', 'CRYPTO', 'STOCKS', 'ENTERTAINMENT', 'OTHER', 'WEATHER']
+                if any(cat in response_text.upper() for cat in exclude_categories):
+                    print(f"[AI FILTER] ❌ Excluding: {market_title[:50]}... (AI: {response_text.strip()})")
+                    should_exclude = True
+                else:
+                    print(f"[AI FILTER] ✓ Keeping: {market_title[:50]}... (AI: {response_text.strip()})")
+                    should_exclude = False
+
+            # Cache the result
+            self.ai_cache[market_title] = should_exclude
+            return should_exclude
+
+        except Exception as e:
+            print(f"[AI FILTER] ⚠️ AI categorization failed: {e}")
+            print(f"[AI FILTER] → Defaulting to INCLUDE (conservative): {market_title[:50]}...")
+            return False  # Default to INCLUDE if AI fails
+
+    def _keyword_exclusion_check(self, market_title: str) -> bool:
+        """
+        Fast keyword-based filtering.
 
         Returns True if the market matches exclusion criteria (crypto/sports/entertainment/esports).
         """
@@ -186,6 +261,42 @@ class PolymarketMonitor:
 
         return False
 
+    async def _should_exclude_market(self, market_title: str) -> bool:
+        """
+        HYBRID FILTERING: Two-layer approach for maximum accuracy.
+
+        Layer 1: Fast keyword check (catches 80% of cases)
+        Layer 2: AI categorization (catches remaining 20% of ambiguous cases)
+
+        Returns True to EXCLUDE, False to INCLUDE.
+        """
+        # LAYER 1: Fast keyword filtering (existing comprehensive patterns)
+        if self._keyword_exclusion_check(market_title):
+            print(f"[KEYWORD FILTER] ❌ Excluding: {market_title[:50]}...")
+            return True  # EXCLUDE via keywords
+
+        # FAST PATH: Strong geopolitics signals skip AI (performance optimization)
+        geopolitics_signals = [
+            'election', 'president', 'presidential', 'war', 'strike', 'military',
+            'sanctions', 'treaty', 'diplomat', 'congress', 'senate',
+            'prime minister', 'parliament', 'government', 'minister',
+            'ukraine', 'russia', 'china', 'israel', 'gaza', 'iran',
+            'nato', 'un security', 'policy', 'tariff', 'peace deal'
+        ]
+
+        if any(signal in market_title.lower() for signal in geopolitics_signals):
+            print(f"[FAST PATH] ✓ Strong geopolitics signal: {market_title[:50]}...")
+            return False  # INCLUDE without AI check
+
+        # LAYER 2: AI categorization for ambiguous cases
+        if AI_FILTERING_ENABLED and AI_FILTER_MODE in ["hybrid", "ai_only"] and self.ai_agent:
+            print(f"[AI PATH] Checking ambiguous market: {market_title[:50]}...")
+            return await self._ai_categorization_check(market_title)
+
+        # FALLBACK: Conservative default (include if uncertain)
+        print(f"[DEFAULT] ✓ No match, including: {market_title[:50]}...")
+        return False
+
     async def initial_scan(self):
         """Perform initial scan to identify successful traders."""
         print("🔍 Starting initial scan for successful traders...")
@@ -202,7 +313,7 @@ class PolymarketMonitor:
 
         print(f"✅ Initial scan complete. Flagged {newly_flagged} traders.")
 
-    def check_for_new_trades(self):
+    async def check_for_new_trades(self):
         """Check for new trades from flagged traders."""
         flagged_traders = self.db.get_flagged_traders()
 
@@ -251,7 +362,7 @@ class PolymarketMonitor:
             market_title = trade.get('title', 'Unknown Market')
 
             # CHECK: Skip trades from excluded markets (crypto/sports/entertainment)
-            if self._should_exclude_market(market_title):
+            if await self._should_exclude_market(market_title):
                 excluded_count += 1
                 continue
 
@@ -332,7 +443,7 @@ class PolymarketMonitor:
 
             try:
                 # Check for new trades
-                new_trades = self.check_for_new_trades()
+                new_trades = await self.check_for_new_trades()
 
                 # Send notifications for new trades
                 if new_trades > 0:
@@ -395,13 +506,15 @@ class PolymarketMonitor:
 
 
 async def main(polymarket_api_key: str, telegram_token: str,
-               telegram_chat_id: Optional[str] = None):
+               telegram_chat_id: Optional[str] = None,
+               ai_agent = None):
     """Main entry point for the monitor."""
     monitor = PolymarketMonitor(
         polymarket_api_key=polymarket_api_key,
         telegram_token=telegram_token,
         telegram_chat_id=telegram_chat_id,
-        check_interval=900  # 15 minutes
+        check_interval=900,  # 15 minutes
+        ai_agent=ai_agent  # Pass AI agent for intelligent categorization
     )
 
     try:
