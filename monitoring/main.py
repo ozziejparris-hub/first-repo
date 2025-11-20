@@ -153,12 +153,13 @@ async def start_monitoring():
     print(f"💬 Telegram: Bundled notifications with 5min rate limit")
     if agent:
         print(f"🤖 AI Agent: Enabled (Mistral via Ollama)")
+        print(f"🧠 AI Filtering: Hybrid mode (keywords + AI for ambiguous cases)")
     else:
-        print(f"🤖 AI Agent: Disabled")
+        print(f"🤖 AI Agent: Disabled (keywords only)")
     print()
 
     try:
-        await run_monitor(POLYMARKET_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
+        await run_monitor(POLYMARKET_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, ai_agent=agent)
     except KeyboardInterrupt:
         print("\n\n⚠️ Received shutdown signal...")
     except Exception as e:

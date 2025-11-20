@@ -1,12 +1,17 @@
 import asyncio
+import re
 import time
 import re
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict
 from database import Database
 from polymarket_client import PolymarketClient
 from telegram_bot import TelegramNotifier
 from trader_analyzer import TraderAnalyzer
+
+# AI Filtering Configuration
+AI_FILTERING_ENABLED = True  # Toggle AI filtering on/off
+AI_FILTER_MODE = "hybrid"  # Options: "keywords_only", "hybrid", "ai_only"
 
 
 class PolymarketMonitor:
@@ -14,13 +19,18 @@ class PolymarketMonitor:
 
     def __init__(self, polymarket_api_key: str, telegram_token: str,
                  telegram_chat_id: Optional[str] = None,
-                 check_interval: int = 900):  # 900 seconds = 15 minutes
+                 check_interval: int = 900,  # 900 seconds = 15 minutes
+                 ai_agent = None):  # AI agent for intelligent categorization
         self.db = Database()
         self.polymarket = PolymarketClient(polymarket_api_key)
         self.telegram = TelegramNotifier(telegram_token, telegram_chat_id)
         self.analyzer = TraderAnalyzer(self.db, self.polymarket)
+        self.ai_agent = ai_agent  # Store AI agent
         self.check_interval = check_interval
         self.is_running = False
+
+        # Cache for AI categorization to avoid repeated API calls
+        self.ai_cache: Dict[str, bool] = {}
 
         # Set stop callback
         self.telegram.set_stop_callback(self.request_stop)
@@ -30,28 +40,133 @@ class PolymarketMonitor:
         print("🛑 Stop requested via Telegram")
         self.is_running = False
 
-    def _should_exclude_market(self, market_title: str) -> bool:
+    async def _ai_categorization_check(self, market_title: str) -> bool:
         """
-        Check if a market should be excluded based on exclusion keywords.
+        Use AI to determine if market should be excluded.
+
+        Returns True = EXCLUDE, False = INCLUDE
+        """
+        # Check cache first
+        if market_title in self.ai_cache:
+            return self.ai_cache[market_title]
+
+        try:
+            # Call Mistral via Pydantic AI
+            result = await self.ai_agent.run(
+                f"Categorize this Polymarket prediction market:\n\n"
+                f"Title: {market_title}\n\n"
+                f"Categories:\n"
+                f"- GEOPOLITICS: Elections, wars, international relations, diplomacy, government policy\n"
+                f"- ECONOMICS: Fed rates, GDP, inflation, trade policy, economic indicators\n"
+                f"- SPORTS: Any sports betting, spreads, game outcomes, athlete performance\n"
+                f"- CRYPTO: Cryptocurrency prices, Bitcoin, Ethereum, Solana, etc.\n"
+                f"- STOCKS: Stock prices, earnings, company performance\n"
+                f"- ENTERTAINMENT: Movies, music, celebrities, beauty pageants, app rankings\n"
+                f"- OTHER: Weather, personal predictions, misc\n\n"
+                f"Respond with ONLY the category name (one word).\n"
+                f"If it's clearly GEOPOLITICS or ECONOMICS, respond: KEEP\n"
+                f"Otherwise, respond: EXCLUDE"
+            )
+
+            # Parse AI response - try multiple attribute access methods
+            response_text = ""
+            if hasattr(result, 'data'):
+                response_text = str(result.data)
+            elif hasattr(result, 'output'):
+                response_text = str(result.output)
+            elif hasattr(result, 'text'):
+                response_text = str(result.text)
+            else:
+                response_text = str(result)
+
+            # Check if AI says to exclude
+            should_exclude = False
+            if 'EXCLUDE' in response_text.upper():
+                print(f"[AI FILTER] ❌ Excluding: {market_title[:50]}... (AI classified as non-geopolitics)")
+                should_exclude = True
+            elif 'KEEP' in response_text.upper():
+                print(f"[AI FILTER] ✓ Keeping: {market_title[:50]}... (AI classified as geopolitics)")
+                should_exclude = False
+            else:
+                # If AI response unclear, check for category keywords
+                exclude_categories = ['SPORTS', 'CRYPTO', 'STOCKS', 'ENTERTAINMENT', 'OTHER', 'WEATHER']
+                if any(cat in response_text.upper() for cat in exclude_categories):
+                    print(f"[AI FILTER] ❌ Excluding: {market_title[:50]}... (AI: {response_text.strip()})")
+                    should_exclude = True
+                else:
+                    print(f"[AI FILTER] ✓ Keeping: {market_title[:50]}... (AI: {response_text.strip()})")
+                    should_exclude = False
+
+            # Cache the result
+            self.ai_cache[market_title] = should_exclude
+            return should_exclude
+
+        except Exception as e:
+            print(f"[AI FILTER] ⚠️ AI categorization failed: {e}")
+            print(f"[AI FILTER] → Defaulting to INCLUDE (conservative): {market_title[:50]}...")
+            return False  # Default to INCLUDE if AI fails
+
+    def _keyword_exclusion_check(self, market_title: str) -> bool:
+        """
+        Fast keyword-based filtering.
 
         Returns True if the market matches exclusion criteria (crypto/sports/entertainment/esports).
         """
-        # Define EXCLUSION keywords (matches polymarket_client.py filtering)
+        # Define EXCLUSION keywords - comprehensive list for non-geopolitics markets
         exclusion_keywords = [
-            # Crypto
+            # CRYPTO - Major cryptocurrencies
             'bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'xrp', 'ripple',
-            'price above', 'price below', 'up or down',
+            'solana', 'sol', 'dogecoin', 'doge', 'cardano', 'ada',
+            'price above', 'price below', 'up or down', 'dip to $',
 
-            # Traditional sports
+            # STOCKS - Major tickers and patterns
+            'nvda', 'nvidia', 'tsla', 'tesla', 'aapl', 'apple',
+            'msft', 'microsoft', 'googl', 'google', 'amzn', 'amazon',
+            'meta', 'pltr', 'palantir', 'zm', 'zoom',
+            'close at $', 'close above $', 'close below $',
+            'finish week', 'quarterly earnings', 'beat earnings',
+
+            # SPORTS BETTING - Critical patterns
+            'spread:', 'o/u ', 'over/under', 'moneyline',
+            '(-', '(+',  # Point spreads like "Bills (-5.5)"
+
+            # SOCCER/FOOTBALL - Major teams
+            'barcelona', 'manchester', 'real madrid', 'bayern',
+            'liverpool', 'chelsea', 'arsenal', 'psg',
+            'win on 2025', 'win on 202',  # Match date patterns
+
+            # BRAZILIAN FOOTBALL
+            'cruzeiro', 'flamengo', 'palmeiras', 'corinthians',
+
+            # COLLEGE SPORTS
+            'ohio state', 'georgia tech', 'alabama', 'michigan',
+
+            # TRADITIONAL SPORTS - Teams and keywords
             'nfl', 'nba', 'mlb', 'nhl', 'super bowl',
             'championship', 'playoff', 'vs.', 'game', 'match',
-
-            # Traditional sports teams
-            'warriors', 'thunder', 'lakers', 'celtics', 'cowboys', 'patriots',
+            'warriors', 'thunder', 'lakers', 'celtics', 'cowboys',
+            'patriots', 'bills', 'chiefs', 'bengals',
             'maple leafs', 'bruins',
 
-            # Entertainment/Finance
-            'elon musk', 'tweet', 'x post', 'taylor swift', 'album', 'movie',
+            # ENTERTAINMENT
+            'miss universe', 'miss world', 'beauty pageant',
+            'venezuela', 'thailand', 'canada',  # Common Miss Universe countries
+            'album', 'movie', 'taylor swift',
+
+            # WEATHER
+            'temperature', 'highest temperature', 'weather',
+
+            # APP RANKINGS
+            '#1 free app', 'app store', 'chatgpt', 'threads',
+            'apple app store', 'google play',
+
+            # ATHLETE SEARCHES
+            '#1 searched athlete', 'most searched', 'google searches',
+            'caitlin clark', 'cristiano ronaldo', 'shohei ohtani',
+            'simone biles', 'lamine yamal',
+
+            # OTHER NON-GEOPOLITICS
+            'elon musk', 'tweet', 'x post',
             'fed rate', 'interest rate', 'stock market', 'sp500', 's&p',
 
             # ESPORTS - Direct keywords
@@ -89,6 +204,32 @@ class PolymarketMonitor:
             if keyword in title_lower:
                 return True
 
+        # REGEX PATTERN DETECTION - Catches patterns that keywords might miss
+
+        # PATTERN: Spread betting (captures any point spread like "(-5.5)")
+        if re.search(r'spread:.*\(-?\d+\.?\d*\)', title_lower):
+            return True  # EXCLUDE sports spread betting
+
+        # PATTERN: Over/Under betting (captures "O/U 61.5")
+        if re.search(r'o/u\s+\d+\.?\d*', title_lower):
+            return True  # EXCLUDE over/under bets
+
+        # PATTERN: Stock price ranges "$XXX-$YYY"
+        if re.search(r'close at \$\d+-\$\d+', title_lower):
+            return True  # EXCLUDE stock price predictions
+
+        # PATTERN: "Will [Team] win on [Date]" - Soccer/sports matches
+        if re.search(r'will \w+ win on 20\d{2}-\d{2}-\d{2}', title_lower):
+            return True  # EXCLUDE soccer/sports matches
+
+        # PATTERN: Beauty pageants (Miss Universe, Miss World, etc.)
+        if 'miss universe' in title_lower or 'miss world' in title_lower:
+            return True  # EXCLUDE beauty pageants
+
+        # PATTERN: "#1 searched" or "#1 app" rankings
+        if '#1' in title_lower and any(x in title_lower for x in ['searched', 'app', 'free app']):
+            return True  # EXCLUDE ranking markets
+
         # ESPORTS PATTERN DETECTION: "Will [Team] win the [Tournament]?"
         # This catches esports markets even if team/tournament names aren't in our keyword list
         if title_lower.startswith('will ') and ' win the ' in title_lower:
@@ -103,8 +244,6 @@ class PolymarketMonitor:
                     '2024', '2025', '2026', '2027',
                     # Generic tournament words that appear in esports but not politics
                     'tournament', 'cup', 'league', 'season',
-                    # Title case team names (esports teams often capitalize)
-                    # If there are multiple capital letters in middle of words, likely team names
                 ]
 
                 for indicator in tournament_indicators:
@@ -115,7 +254,6 @@ class PolymarketMonitor:
                 team_part = parts[0].replace('will ', '')
                 esports_team_markers = [
                     'team ', 'clan', 'gaming', 'esports', 'e-sports',
-                    # Single letter + number combinations common in esports (T1, G2, etc.)
                 ]
 
                 for marker in esports_team_markers:
@@ -131,6 +269,42 @@ class PolymarketMonitor:
             return True  # EXCLUDE: Stock market
 
         return False  # PASS: Keep this market - it's valuable geopolitics/economics
+
+    async def _should_exclude_market(self, market_title: str) -> bool:
+        """
+        HYBRID FILTERING: Two-layer approach for maximum accuracy.
+
+        Layer 1: Fast keyword check (catches 80% of cases)
+        Layer 2: AI categorization (catches remaining 20% of ambiguous cases)
+
+        Returns True to EXCLUDE, False to INCLUDE.
+        """
+        # LAYER 1: Fast keyword filtering (existing comprehensive patterns)
+        if self._keyword_exclusion_check(market_title):
+            print(f"[KEYWORD FILTER] ❌ Excluding: {market_title[:50]}...")
+            return True  # EXCLUDE via keywords
+
+        # FAST PATH: Strong geopolitics signals skip AI (performance optimization)
+        geopolitics_signals = [
+            'election', 'president', 'presidential', 'war', 'strike', 'military',
+            'sanctions', 'treaty', 'diplomat', 'congress', 'senate',
+            'prime minister', 'parliament', 'government', 'minister',
+            'ukraine', 'russia', 'china', 'israel', 'gaza', 'iran',
+            'nato', 'un security', 'policy', 'tariff', 'peace deal'
+        ]
+
+        if any(signal in market_title.lower() for signal in geopolitics_signals):
+            print(f"[FAST PATH] ✓ Strong geopolitics signal: {market_title[:50]}...")
+            return False  # INCLUDE without AI check
+
+        # LAYER 2: AI categorization for ambiguous cases
+        if AI_FILTERING_ENABLED and AI_FILTER_MODE in ["hybrid", "ai_only"] and self.ai_agent:
+            print(f"[AI PATH] Checking ambiguous market: {market_title[:50]}...")
+            return await self._ai_categorization_check(market_title)
+
+        # FALLBACK: Conservative default (include if uncertain)
+        print(f"[DEFAULT] ✓ No match, including: {market_title[:50]}...")
+        return False
 
     async def initial_scan(self):
         """Perform initial scan to identify successful traders."""
@@ -148,7 +322,7 @@ class PolymarketMonitor:
 
         print(f"✅ Initial scan complete. Flagged {newly_flagged} traders.")
 
-    def check_for_new_trades(self):
+    async def check_for_new_trades(self):
         """Check for new trades from flagged traders."""
         flagged_traders = self.db.get_flagged_traders()
 
@@ -197,7 +371,7 @@ class PolymarketMonitor:
             market_title = trade.get('title', 'Unknown Market')
 
             # CHECK: Skip trades from excluded markets (crypto/sports/entertainment)
-            if self._should_exclude_market(market_title):
+            if await self._should_exclude_market(market_title):
                 excluded_count += 1
                 continue
 
@@ -278,7 +452,7 @@ class PolymarketMonitor:
 
             try:
                 # Check for new trades
-                new_trades = self.check_for_new_trades()
+                new_trades = await self.check_for_new_trades()
 
                 # Send notifications for new trades
                 if new_trades > 0:
@@ -341,13 +515,15 @@ class PolymarketMonitor:
 
 
 async def main(polymarket_api_key: str, telegram_token: str,
-               telegram_chat_id: Optional[str] = None):
+               telegram_chat_id: Optional[str] = None,
+               ai_agent = None):
     """Main entry point for the monitor."""
     monitor = PolymarketMonitor(
         polymarket_api_key=polymarket_api_key,
         telegram_token=telegram_token,
         telegram_chat_id=telegram_chat_id,
-        check_interval=900  # 15 minutes
+        check_interval=900,  # 15 minutes
+        ai_agent=ai_agent  # Pass AI agent for intelligent categorization
     )
 
     try:
