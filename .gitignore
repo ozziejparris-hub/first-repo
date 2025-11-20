@@ -12,9 +12,14 @@ __pycache__/
 *.sqlite
 data/*.db
 
+# Reports
+reports/*.csv
+reports/*.json
+
 # IDE
 .vscode/
 .idea/
 
 # OS
 .DS_Store
+Thumbs.db
