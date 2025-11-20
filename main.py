@@ -6,6 +6,7 @@ Monitors geopolitical prediction markets and tracks successful traders.
 
 import os
 import asyncio
+import requests
 from dotenv import load_dotenv
 from pydantic_ai import Agent
 from monitor import main as run_monitor
@@ -43,6 +44,27 @@ def validate_environment():
     return True
 
 
+def check_ollama_running():
+    """Check if Ollama is running and accessible."""
+    try:
+        response = requests.get("http://localhost:11434/api/tags", timeout=2)
+        return response.status_code == 200
+    except Exception:
+        return False
+
+
+def check_mistral_model_available():
+    """Check if Mistral model is downloaded in Ollama."""
+    try:
+        response = requests.get("http://localhost:11434/api/tags", timeout=2)
+        if response.status_code == 200:
+            models = response.json().get('models', [])
+            return any('mistral' in m.get('name', '').lower() for m in models)
+        return False
+    except Exception:
+        return False
+
+
 def initialize_pydantic_agent():
     """Initialize the Pydantic AI agent with Mistral via Ollama."""
     agent = Agent(
@@ -69,19 +91,59 @@ async def start_monitoring():
     if not validate_environment():
         return
 
-    # Initialize Pydantic AI agent
+    # Initialize Pydantic AI agent with comprehensive checks
     print("\n🤖 Initializing Pydantic AI agent...")
-    agent = initialize_pydantic_agent()
 
-    # Test agent connection
-    try:
-        response = await agent.run(
-            "Introduce yourself briefly and confirm you're ready to monitor Polymarket."
-        )
-        print(f"\n{response.data}\n")
-    except Exception as e:
-        print(f"⚠️ Warning: Could not connect to Ollama Mistral model: {e}")
-        print("Continuing without AI agent (monitoring will still work)...\n")
+    # Check if Ollama is running
+    if not check_ollama_running():
+        print("⚠️ Ollama is not running or not accessible.")
+        print("   To use AI features, start Ollama with: ollama serve")
+        print("   Continuing without AI agent (monitoring will still work)...\n")
+        agent = None
+    # Check if Mistral model is available
+    elif not check_mistral_model_available():
+        print("⚠️ Mistral model not found in Ollama.")
+        print("   To use AI features, download with: ollama pull mistral")
+        print("   Continuing without AI agent (monitoring will still work)...\n")
+        agent = None
+    else:
+        # Initialize agent
+        agent = initialize_pydantic_agent()
+
+        # Test agent connection with robust error handling
+        try:
+            response = await agent.run(
+                "Introduce yourself briefly and confirm you're ready to monitor Polymarket."
+            )
+
+            # Try multiple ways to access the response data
+            message = None
+            if hasattr(response, 'data'):
+                message = response.data
+            elif hasattr(response, 'output'):
+                message = response.output
+            elif hasattr(response, 'text'):
+                message = response.text
+            elif hasattr(response, 'result'):
+                message = response.result
+            else:
+                # Fallback: try string conversion
+                message = str(response)
+
+            print(f"\n✅ AI Agent: {message}\n")
+
+        except AttributeError as e:
+            # Debug information for attribute errors
+            print(f"[DEBUG] Response type: {type(response)}")
+            print(f"[DEBUG] Available attributes: {[attr for attr in dir(response) if not attr.startswith('_')]}")
+            print(f"⚠️ Warning: Could not access agent response: {e}")
+            print("Continuing without AI agent (monitoring will still work)...\n")
+            agent = None
+
+        except Exception as e:
+            print(f"⚠️ Warning: Could not connect to Ollama Mistral model: {e}")
+            print("Continuing without AI agent (monitoring will still work)...\n")
+            agent = None
 
     # Start the monitoring service
     print("🚀 Starting monitoring service...")
@@ -89,6 +151,10 @@ async def start_monitoring():
     print(f"🎯 Criteria: Min $10k volume, Min 50 trades")
     print(f"⏰ Check interval: Every 15 minutes")
     print(f"💬 Telegram: Bundled notifications with 5min rate limit")
+    if agent:
+        print(f"🤖 AI Agent: Enabled (Mistral via Ollama)")
+    else:
+        print(f"🤖 AI Agent: Disabled")
     print()
 
     try:
