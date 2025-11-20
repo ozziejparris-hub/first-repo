@@ -1,4 +1,5 @@
 import asyncio
+import re
 import time
 from datetime import datetime
 from typing import Optional
@@ -35,22 +36,61 @@ class PolymarketMonitor:
 
         Returns True if the market matches exclusion criteria (crypto/sports/entertainment/esports).
         """
-        # Define EXCLUSION keywords (matches polymarket_client.py filtering)
+        # Define EXCLUSION keywords - comprehensive list for non-geopolitics markets
         exclusion_keywords = [
-            # Crypto
+            # CRYPTO - Major cryptocurrencies
             'bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'xrp', 'ripple',
-            'price above', 'price below', 'up or down',
+            'solana', 'sol', 'dogecoin', 'doge', 'cardano', 'ada',
+            'price above', 'price below', 'up or down', 'dip to $',
 
-            # Traditional sports
+            # STOCKS - Major tickers and patterns
+            'nvda', 'nvidia', 'tsla', 'tesla', 'aapl', 'apple',
+            'msft', 'microsoft', 'googl', 'google', 'amzn', 'amazon',
+            'meta', 'pltr', 'palantir', 'zm', 'zoom',
+            'close at $', 'close above $', 'close below $',
+            'finish week', 'quarterly earnings', 'beat earnings',
+
+            # SPORTS BETTING - Critical patterns
+            'spread:', 'o/u ', 'over/under', 'moneyline',
+            '(-', '(+',  # Point spreads like "Bills (-5.5)"
+
+            # SOCCER/FOOTBALL - Major teams
+            'barcelona', 'manchester', 'real madrid', 'bayern',
+            'liverpool', 'chelsea', 'arsenal', 'psg',
+            'win on 2025', 'win on 202',  # Match date patterns
+
+            # BRAZILIAN FOOTBALL
+            'cruzeiro', 'flamengo', 'palmeiras', 'corinthians',
+
+            # COLLEGE SPORTS
+            'ohio state', 'georgia tech', 'alabama', 'michigan',
+
+            # TRADITIONAL SPORTS - Teams and keywords
             'nfl', 'nba', 'mlb', 'nhl', 'super bowl',
             'championship', 'playoff', 'vs.', 'game', 'match',
-
-            # Traditional sports teams
-            'warriors', 'thunder', 'lakers', 'celtics', 'cowboys', 'patriots',
+            'warriors', 'thunder', 'lakers', 'celtics', 'cowboys',
+            'patriots', 'bills', 'chiefs', 'bengals',
             'maple leafs', 'bruins',
 
-            # Entertainment/Finance
-            'elon musk', 'tweet', 'x post', 'taylor swift', 'album', 'movie',
+            # ENTERTAINMENT
+            'miss universe', 'miss world', 'beauty pageant',
+            'venezuela', 'thailand', 'canada',  # Common Miss Universe countries
+            'album', 'movie', 'taylor swift',
+
+            # WEATHER
+            'temperature', 'highest temperature', 'weather',
+
+            # APP RANKINGS
+            '#1 free app', 'app store', 'chatgpt', 'threads',
+            'apple app store', 'google play',
+
+            # ATHLETE SEARCHES
+            '#1 searched athlete', 'most searched', 'google searches',
+            'caitlin clark', 'cristiano ronaldo', 'shohei ohtani',
+            'simone biles', 'lamine yamal',
+
+            # OTHER NON-GEOPOLITICS
+            'elon musk', 'tweet', 'x post',
             'fed rate', 'interest rate', 'stock market', 'sp500', 's&p',
 
             # ESPORTS - Direct keywords
@@ -88,6 +128,32 @@ class PolymarketMonitor:
             if keyword in title_lower:
                 return True
 
+        # REGEX PATTERN DETECTION - Catches patterns that keywords might miss
+
+        # PATTERN: Spread betting (captures any point spread like "(-5.5)")
+        if re.search(r'spread:.*\(-?\d+\.?\d*\)', title_lower):
+            return True  # EXCLUDE sports spread betting
+
+        # PATTERN: Over/Under betting (captures "O/U 61.5")
+        if re.search(r'o/u\s+\d+\.?\d*', title_lower):
+            return True  # EXCLUDE over/under bets
+
+        # PATTERN: Stock price ranges "$XXX-$YYY"
+        if re.search(r'close at \$\d+-\$\d+', title_lower):
+            return True  # EXCLUDE stock price predictions
+
+        # PATTERN: "Will [Team] win on [Date]" - Soccer/sports matches
+        if re.search(r'will \w+ win on 20\d{2}-\d{2}-\d{2}', title_lower):
+            return True  # EXCLUDE soccer/sports matches
+
+        # PATTERN: Beauty pageants (Miss Universe, Miss World, etc.)
+        if 'miss universe' in title_lower or 'miss world' in title_lower:
+            return True  # EXCLUDE beauty pageants
+
+        # PATTERN: "#1 searched" or "#1 app" rankings
+        if '#1' in title_lower and any(x in title_lower for x in ['searched', 'app', 'free app']):
+            return True  # EXCLUDE ranking markets
+
         # ESPORTS PATTERN DETECTION: "Will [Team] win the [Tournament]?"
         # This catches esports markets even if team/tournament names aren't in our keyword list
         if title_lower.startswith('will ') and ' win the ' in title_lower:
@@ -102,8 +168,6 @@ class PolymarketMonitor:
                     '2024', '2025', '2026', '2027',
                     # Generic tournament words that appear in esports but not politics
                     'tournament', 'cup', 'league', 'season',
-                    # Title case team names (esports teams often capitalize)
-                    # If there are multiple capital letters in middle of words, likely team names
                 ]
 
                 for indicator in tournament_indicators:
@@ -114,7 +178,6 @@ class PolymarketMonitor:
                 team_part = parts[0].replace('will ', '')
                 esports_team_markers = [
                     'team ', 'clan', 'gaming', 'esports', 'e-sports',
-                    # Single letter + number combinations common in esports (T1, G2, etc.)
                 ]
 
                 for marker in esports_team_markers:
