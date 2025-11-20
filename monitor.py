@@ -88,6 +88,39 @@ class PolymarketMonitor:
             if keyword in title_lower:
                 return True
 
+        # ESPORTS PATTERN DETECTION: "Will [Team] win the [Tournament]?"
+        # This catches esports markets even if team/tournament names aren't in our keyword list
+        if title_lower.startswith('will ') and ' win the ' in title_lower:
+            # Extract what comes after "win the" to check if it's a tournament context
+            parts = title_lower.split(' win the ')
+            if len(parts) >= 2:
+                tournament_part = parts[1]
+
+                # Indicators this is likely an esports/gaming tournament:
+                tournament_indicators = [
+                    # Year patterns (tournaments often have years)
+                    '2024', '2025', '2026', '2027',
+                    # Generic tournament words that appear in esports but not politics
+                    'tournament', 'cup', 'league', 'season',
+                    # Title case team names (esports teams often capitalize)
+                    # If there are multiple capital letters in middle of words, likely team names
+                ]
+
+                for indicator in tournament_indicators:
+                    if indicator in tournament_part:
+                        return True
+
+                # Check if the team name (before "win the") contains typical esports markers
+                team_part = parts[0].replace('will ', '')
+                esports_team_markers = [
+                    'team ', 'clan', 'gaming', 'esports', 'e-sports',
+                    # Single letter + number combinations common in esports (T1, G2, etc.)
+                ]
+
+                for marker in esports_team_markers:
+                    if marker in team_part:
+                        return True
+
         return False
 
     async def initial_scan(self):
