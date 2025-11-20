@@ -1,5 +1,6 @@
 import asyncio
 import time
+import re
 from datetime import datetime
 from typing import Optional
 from database import Database
@@ -121,7 +122,15 @@ class PolymarketMonitor:
                     if marker in team_part:
                         return True
 
-        return False
+        # ===== PATTERN: STOCK MARKET (keep policy) =====
+        stock_keywords = ['s&p 500', 'sp500', 'dow jones', 'nasdaq', 'stock market']
+        policy_context = ['fed', 'ecb', 'interest rate', 'central bank']
+        has_policy = any(word in title_lower for word in policy_context)
+
+        if not has_policy and any(keyword in title_lower for keyword in stock_keywords):
+            return True  # EXCLUDE: Stock market
+
+        return False  # PASS: Keep this market - it's valuable geopolitics/economics
 
     async def initial_scan(self):
         """Perform initial scan to identify successful traders."""

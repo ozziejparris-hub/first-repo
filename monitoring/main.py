@@ -11,8 +11,8 @@ from dotenv import load_dotenv
 from pydantic_ai import Agent
 from monitor import main as run_monitor
 
-# Load environment variables from .env
-load_dotenv()
+# Load environment variables from .env (in parent directory)
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 # Get API keys from environment
 POLYMARKET_API_KEY = os.getenv("POLYMARKET_API_KEY")
