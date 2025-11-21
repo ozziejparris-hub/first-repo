@@ -1,4 +1,5 @@
 from typing import List, Dict
+import time
 from database import Database
 from polymarket_client import PolymarketClient
 
@@ -90,3 +91,58 @@ class TraderAnalyzer:
             )
 
         return summary
+
+    def check_market_resolutions(self) -> int:
+        """
+        Check if any tracked markets have been resolved and update database.
+        Should be called periodically (e.g., once per day or every 10 monitoring cycles).
+
+        Returns the number of newly resolved markets.
+        """
+        print("[RESOLUTION CHECK] Checking for newly resolved markets...")
+
+        unresolved_markets = self.db.get_unresolved_markets()
+        print(f"[RESOLUTION CHECK] Found {len(unresolved_markets)} unresolved markets to check")
+
+        newly_resolved = 0
+
+        for market in unresolved_markets:
+            market_id = market['market_id']
+
+            try:
+                # Get market details from Polymarket API
+                market_data = self.polymarket.get_market(market_id)
+
+                if not market_data:
+                    continue
+
+                # Check if market is closed/resolved
+                closed = market_data.get('closed', False)
+                archived = market_data.get('archived', False)
+
+                if closed or archived:
+                    # Try to determine winning outcome
+                    outcomes = market_data.get('outcomes', [])
+                    winning_outcome = None
+
+                    for outcome in outcomes:
+                        # Check if this outcome paid out (payoutNumerator = 1000 means it won)
+                        if outcome.get('payoutNumerator') == 1000:
+                            winning_outcome = outcome.get('name', '').lower()
+                            break
+
+                    if winning_outcome:
+                        # Store resolution in database
+                        self.db.update_market_resolution(market_id, winning_outcome)
+                        newly_resolved += 1
+                        print(f"[RESOLUTION] Market resolved: {market['title'][:50]}... → {winning_outcome}")
+
+                # Rate limiting to avoid overwhelming API
+                time.sleep(0.1)
+
+            except Exception as e:
+                print(f"[RESOLUTION ERROR] Failed to check market {market_id}: {e}")
+                continue
+
+        print(f"[RESOLUTION CHECK] Complete. Found {newly_resolved} newly resolved markets")
+        return newly_resolved

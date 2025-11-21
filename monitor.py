@@ -512,6 +512,15 @@ class PolymarketMonitor:
                             f"🆕 Found {newly_flagged} new successful traders!"
                         )
 
+                # Check for market resolutions (every 10 cycles)
+                if cycle_count % 10 == 0:
+                    print("\n🎯 Checking for resolved markets...")
+                    newly_resolved = self.analyzer.check_market_resolutions()
+                    if newly_resolved > 0:
+                        await self.telegram.send_message(
+                            f"✅ {newly_resolved} market(s) resolved! Win rate data updated."
+                        )
+
                 print(f"\n✅ Cycle complete. Next check in {self.check_interval // 60} minutes.")
 
             except Exception as e:
