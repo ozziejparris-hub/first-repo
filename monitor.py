@@ -54,10 +54,13 @@ class PolymarketMonitor:
             result = await self.ai_agent.run(
                 f"Categorize this Polymarket prediction market:\n\n"
                 f"Title: {market_title}\n\n"
+                f"IMPORTANT: Vague 'Will [country/team] win?' without context is usually SPORTS.\n"
+                f"- Geopolitics example: 'Will José Antonio Kast win the Chilean presidential election?' (specific)\n"
+                f"- Sports example: 'Will Australia win?' (vague, no election/government context)\n\n"
                 f"Categories:\n"
                 f"- GEOPOLITICS: Elections, wars, international relations, diplomacy, government policy\n"
                 f"- ECONOMICS: Fed rates, GDP, inflation, trade policy, economic indicators\n"
-                f"- SPORTS: Any sports betting, spreads, game outcomes, athlete performance\n"
+                f"- SPORTS: Any sports betting, spreads, game outcomes, athlete performance, vague match predictions\n"
                 f"- CRYPTO: Cryptocurrency prices, Bitcoin, Ethereum, Solana, etc.\n"
                 f"- STOCKS: Stock prices, earnings, company performance\n"
                 f"- ENTERTAINMENT: Movies, music, celebrities, beauty pageants, app rankings\n"
@@ -193,7 +196,16 @@ class PolymarketMonitor:
             'cs:go', 'csgo', 'counter-strike', 'counter strike',
             'league of legends', 'valorant', 'dota 2', 'dota2',
             'overwatch', 'fortnite', 'rocket league', 'apex legends',
-            'call of duty', 'rainbow six'
+            'call of duty', 'rainbow six',
+
+            # CRICKET/RUGBY
+            'test match', 'odi', 't20', 'cricket world cup', 'ashes',
+            'ipl', 'big bash', 'county championship',
+            'rugby world cup', 'six nations', 'tri nations', 'super rugby',
+            'rugby championship', 'rugby league',
+
+            # GENERIC MATCH TERMS
+            'match on', 'game on', 'fixture', 'vs on', 'versus on'
         ]
 
         title_lower = market_title.lower()
@@ -258,6 +270,48 @@ class PolymarketMonitor:
                 for marker in esports_team_markers:
                     if marker in team_part:
                         return True
+
+        # ===== VAGUE SPORTS MATCH DETECTION =====
+        # Short, context-free "Will X win?" = likely sports
+        # These lack the specificity of geopolitics ("Will X win the presidential election?")
+        if len(market_title) < 50:
+            # Pattern: "Will [name] win?" with no context
+            if re.search(r'^will [\w\s]+ win(\?)?$', title_lower.strip()):
+                # Check if it has geopolitics context
+                geo_context = ['election', 'president', 'presidential', 'minister',
+                               'parliament', 'vote', 'campaign', 'primary', 'referendum']
+
+                if not any(ctx in title_lower for ctx in geo_context):
+                    return True  # EXCLUDE vague match without geopolitics context
+
+        # ===== SPORTS COUNTRY/TEAM IN NON-GEOPOLITICS CONTEXT =====
+        # Countries that appear frequently in cricket, rugby, soccer betting
+        sports_entities = [
+            # Cricket/Rugby nations
+            'australia', 'england', 'india', 'pakistan', 'south africa',
+            'new zealand', 'sri lanka', 'west indies', 'bangladesh',
+            # Soccer nations (when in sports context)
+            'brazil', 'argentina', 'france', 'germany', 'spain',
+            'italy', 'portugal', 'netherlands', 'belgium',
+            # US Sports cities
+            'boston', 'new york', 'chicago', 'philadelphia',
+            'dallas', 'houston', 'miami', 'seattle'
+        ]
+
+        for entity in sports_entities:
+            if entity in title_lower and 'win' in title_lower:
+                # Check for geopolitics markers
+                geo_markers = ['election', 'vote', 'president', 'minister',
+                               'parliament', 'policy', 'government', 'referendum']
+                if not any(marker in title_lower for marker in geo_markers):
+                    return True  # EXCLUDE country without geopolitics context
+
+        # ===== MATCH WITH DATE PATTERN =====
+        # "Will X win on [date]" or "Will X win [month] [day]" = sports match
+        if re.search(r'will \w+ win (on )?(20\d{2}[-/]\d{2}[-/]\d{2}|\w+ \d{1,2})', title_lower):
+            # Check if it's NOT an election date
+            if 'election' not in title_lower and 'vote' not in title_lower:
+                return True  # EXCLUDE match with specific date
 
         return False
 
