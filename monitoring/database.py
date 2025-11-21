@@ -67,9 +67,17 @@ class Database:
                 end_date TIMESTAMP,
                 resolved BOOLEAN DEFAULT 0,
                 winning_outcome TEXT,
+                resolution_date TIMESTAMP,
                 last_checked TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        # Migration: Add resolution_date field if it doesn't exist
+        try:
+            cursor.execute("ALTER TABLE markets ADD COLUMN resolution_date TIMESTAMP")
+            print("[DATABASE] Added 'resolution_date' column to markets table")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
 
         conn.commit()
         conn.close()
@@ -173,26 +181,91 @@ class Database:
 
     def update_market(self, market_id: str, title: str, category: str,
                      end_date: Optional[datetime] = None, resolved: bool = False,
-                     winning_outcome: Optional[str] = None):
+                     winning_outcome: Optional[str] = None,
+                     resolution_date: Optional[datetime] = None):
         """Add or update market information."""
         conn = self.get_connection()
         cursor = conn.cursor()
 
         cursor.execute("""
             INSERT INTO markets (market_id, title, category, end_date, resolved,
-                               winning_outcome, last_checked)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                               winning_outcome, resolution_date, last_checked)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(market_id) DO UPDATE SET
                 title = excluded.title,
                 category = excluded.category,
                 end_date = excluded.end_date,
                 resolved = excluded.resolved,
                 winning_outcome = excluded.winning_outcome,
+                resolution_date = excluded.resolution_date,
                 last_checked = excluded.last_checked
-        """, (market_id, title, category, end_date, resolved, winning_outcome, datetime.now()))
+        """, (market_id, title, category, end_date, resolved, winning_outcome,
+              resolution_date, datetime.now()))
 
         conn.commit()
         conn.close()
+
+    def update_market_resolution(self, market_id: str, winning_outcome: str):
+        """
+        Update market with resolution information.
+
+        Args:
+            market_id: Market identifier
+            winning_outcome: The outcome that won (e.g., "Yes", "No", specific outcome name)
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE markets
+            SET resolved = 1,
+                winning_outcome = ?,
+                resolution_date = ?,
+                last_checked = ?
+            WHERE market_id = ?
+        """, (winning_outcome, datetime.now(), datetime.now(), market_id))
+
+        conn.commit()
+        conn.close()
+
+        print(f"[DATABASE] Marked market {market_id} as resolved: {winning_outcome}")
+
+    def get_resolved_markets(self) -> List[Dict]:
+        """Get all resolved markets."""
+        conn = self.get_connection()
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT * FROM markets
+            WHERE resolved = 1
+            AND winning_outcome IS NOT NULL
+            AND winning_outcome != ''
+        """)
+
+        markets = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+
+        return markets
+
+    def get_unresolved_markets(self) -> List[Dict]:
+        """Get all unresolved markets that we're tracking."""
+        conn = self.get_connection()
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT DISTINCT m.market_id, m.title, m.category, m.end_date, m.last_checked
+            FROM markets m
+            INNER JOIN trades t ON m.market_id = t.market_id
+            WHERE (m.resolved = 0 OR m.resolved IS NULL)
+            ORDER BY m.last_checked ASC
+        """)
+
+        markets = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+
+        return markets
 
     def get_trader_stats(self, address: str) -> Optional[Dict]:
         """Get statistics for a specific trader."""
