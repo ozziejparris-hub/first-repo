@@ -5,8 +5,8 @@ Debug script to test trade detection for flagged traders.
 
 import os
 from dotenv import load_dotenv
-from polymarket_client import PolymarketClient
-from database import Database
+from monitoring.polymarket_client import PolymarketClient
+from monitoring.database import Database
 
 load_dotenv()
 

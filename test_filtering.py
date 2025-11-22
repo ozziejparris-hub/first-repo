@@ -5,7 +5,7 @@ Test the updated keyword-based filtering for geopolitics markets.
 
 import os
 from dotenv import load_dotenv
-from polymarket_client import PolymarketClient
+from monitoring.polymarket_client import PolymarketClient
 
 load_dotenv()
 

@@ -5,7 +5,7 @@ Quick test to verify trades fetching works with Data API.
 
 import os
 from dotenv import load_dotenv
-from polymarket_client import PolymarketClient
+from monitoring.polymarket_client import PolymarketClient
 
 load_dotenv()
 

@@ -1,7 +1,7 @@
 from typing import List, Dict
 import time
-from database import Database
-from polymarket_client import PolymarketClient
+from .database import Database
+from .polymarket_client import PolymarketClient
 
 
 class TraderAnalyzer:

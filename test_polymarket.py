@@ -6,7 +6,7 @@ Test script to debug Polymarket API connectivity and market fetching.
 import os
 import requests
 from dotenv import load_dotenv
-from polymarket_client import PolymarketClient
+from monitoring.polymarket_client import PolymarketClient
 
 # Load environment variables
 load_dotenv()
