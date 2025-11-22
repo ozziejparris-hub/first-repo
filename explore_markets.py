@@ -8,7 +8,7 @@ import os
 import json
 from collections import Counter
 from dotenv import load_dotenv
-from polymarket_client import PolymarketClient
+from monitoring.polymarket_client import PolymarketClient
 
 load_dotenv()
 

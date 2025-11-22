@@ -6,7 +6,7 @@ Debug script to test different approaches for fetching trades from Polymarket.
 import os
 import requests
 from dotenv import load_dotenv
-from polymarket_client import PolymarketClient
+from monitoring.polymarket_client import PolymarketClient
 
 load_dotenv()
 

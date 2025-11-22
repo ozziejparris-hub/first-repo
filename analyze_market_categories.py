@@ -5,7 +5,7 @@ Analyze what market types we're actually getting to improve filtering.
 
 import os
 from dotenv import load_dotenv
-from polymarket_client import PolymarketClient
+from monitoring.polymarket_client import PolymarketClient
 from collections import Counter
 
 load_dotenv()

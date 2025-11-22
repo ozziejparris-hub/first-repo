@@ -9,7 +9,7 @@ import asyncio
 import requests
 from dotenv import load_dotenv
 from pydantic_ai import Agent
-from monitor import main as run_monitor
+from .monitor import main as run_monitor
 
 # Load environment variables from .env
 load_dotenv()

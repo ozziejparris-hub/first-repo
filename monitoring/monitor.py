@@ -3,10 +3,10 @@ import re
 import time
 from datetime import datetime
 from typing import Optional, Dict
-from database import Database
-from polymarket_client import PolymarketClient
-from telegram_bot import TelegramNotifier
-from trader_analyzer import TraderAnalyzer
+from .database import Database
+from .polymarket_client import PolymarketClient
+from .telegram_bot import TelegramNotifier
+from .trader_analyzer import TraderAnalyzer
 
 # AI Filtering Configuration
 AI_FILTERING_ENABLED = True  # Toggle AI filtering on/off
