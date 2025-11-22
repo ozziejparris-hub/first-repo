@@ -1,5 +1,128 @@
 # Polymarket Trader Analysis Tools
 
+## Analysis Scheduler (Unified Orchestrator)
+
+### Overview
+The analysis scheduler orchestrates all 8 analysis tools in coordinated phases with data sufficiency checks and graceful degradation. This is your main entry point for running comprehensive analysis.
+
+### Quick Start
+
+**Check if you have enough data** (run this first):
+```bash
+python analysis/analysis_scheduler.py --mode check
+```
+
+**Run full analysis** (when you have sufficient data):
+```bash
+python analysis/analysis_scheduler.py --mode full
+```
+
+**Quick update** (incremental changes only):
+```bash
+python analysis/analysis_scheduler.py --mode quick
+```
+
+### Execution Phases
+
+The scheduler runs in 4 coordinated phases:
+
+**Phase 0: Data Sufficiency Check**
+- Checks resolved markets (need 10+)
+- Checks active traders (need 20+)
+- Checks total trades (need 100+)
+- Gracefully skips phases if insufficient
+
+**Phase 1: Independent Analysis** (always runs)
+- Trading Behavior Analysis
+- Correlation Matrix
+
+**Phase 2: Performance-Based** (needs resolved markets)
+- Trader Performance Analysis
+- Weighted Consensus System
+- Trader Specialization Analysis
+
+**Phase 3: Integration Analysis** (needs Phase 1 & 2)
+- Copy Trade Detector
+- Market Confidence Meter
+- Consensus Divergence Detector
+
+**Phase 4: Unified Reporting** (always runs)
+- Generates master report
+- Saves top opportunities
+- Creates trader rankings
+
+### Data Requirements
+
+**Minimum Thresholds:**
+- Resolved Markets: 10+ (for ELO/win rates)
+- Active Traders: 20+ (for correlations)
+- Total Trades: 100+ (for patterns)
+- Shared Markets: 5+ (for correlation)
+
+**Recommended:**
+- Resolved Markets: 20+ (better accuracy)
+- Active Traders: 30+ (richer network)
+- Total Trades: 500+ (clear patterns)
+
+### Reports Generated
+
+Unified reports saved to `reports/` directory:
+1. `unified_analysis_YYYYMMDD.txt` - Master report with all insights
+2. `top_opportunities_YYYYMMDD.txt` - High-confidence actionable signals
+
+Plus individual tool reports from each analysis tool.
+
+### Usage Examples
+
+```bash
+# Check current data status (run weekly)
+python analysis/analysis_scheduler.py --mode check
+
+# Force run even without sufficient data (testing)
+python analysis/analysis_scheduler.py --mode full --force
+
+# Run without Telegram alerts
+python analysis/analysis_scheduler.py --mode full --no-alerts
+
+# Use custom database path
+python analysis/analysis_scheduler.py --mode full --db-path /path/to/db
+```
+
+### Expected Output (Insufficient Data)
+
+```
+======================================================================
+  PHASE 0: DATA SUFFICIENCY CHECK
+======================================================================
+
+📊 CURRENT DATA STATUS:
+   Resolved Markets: 0 / 12 total
+   Active Traders: 8
+   Total Trades: 45
+   Shared Markets: 3
+   Avg Trades/Trader: 5.6
+
+⚠️  INSUFFICIENT DATA FOR FULL ANALYSIS
+
+❌ Missing Requirements:
+   • Need 10+ resolved markets (currently: 0)
+   • Need 20+ active traders (currently: 8)
+   • Need 100+ total trades (currently: 45)
+
+💡 Recommendations:
+   ✓ Continue monitoring for 1-2 weeks
+   ✓ Wait for markets to resolve
+   ✓ Run weekly: python analysis/analysis_scheduler.py --mode check
+
+📌 Limited analysis will be performed with available data.
+```
+
+---
+
+## Individual Analysis Tools
+
+The following tools can be run individually or are automatically orchestrated by the scheduler:
+
 ## 1. Correlation Matrix Analysis
 
 ### Overview
