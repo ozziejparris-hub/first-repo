@@ -1,7 +1,7 @@
 from typing import List, Dict
 import time
-from .database import Database
-from .polymarket_client import PolymarketClient
+from monitoring.database import Database
+from polymarket_client import PolymarketClient
 
 
 class TraderAnalyzer:
@@ -63,6 +63,11 @@ class TraderAnalyzer:
         print("Fetching geopolitics markets...")
         markets = self.polymarket.get_markets(category="Geopolitics")
         print(f"Found {len(markets)} geopolitics markets")
+
+        # Store market information from the markets we discovered
+        print("Storing market information...")
+        for market in markets:
+            self.db.store_market_dict(market)
 
         print("Extracting active traders from markets...")
         traders = self.polymarket.get_active_traders_from_markets(markets)

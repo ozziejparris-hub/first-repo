@@ -1,4 +1,6 @@
 @echo off
-cd C:\Users\Oscar\Projects\first-repo
-call .venv\Scripts\activate
-python monitoring\main.py
+echo Starting Polymarket Tracker...
+cd /d %~dp0
+call .venv\Scripts\activate.bat
+python -m monitoring.main
+pause

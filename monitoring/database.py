@@ -317,3 +317,100 @@ class Database:
 
         conn.close()
         return traders
+
+    def market_exists(self, market_id: str) -> bool:
+        """Check if a market already exists in the database."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT 1 FROM markets WHERE market_id = ? LIMIT 1", (market_id,))
+        exists = cursor.fetchone() is not None
+
+        conn.close()
+        return exists
+
+    def store_market_from_trade(self, trade: Dict):
+        """
+        Store market information extracted from a trade.
+
+        Handles different market_id field names: 'market_id', 'id', 'conditionId', 'asset_id'
+        """
+        # Extract market_id from various possible field names
+        market_id = (trade.get('market_id') or
+                    trade.get('conditionId') or
+                    trade.get('market') or
+                    trade.get('id') or
+                    trade.get('asset_id'))
+
+        if not market_id:
+            return  # Can't store without market_id
+
+        # Check if market already exists
+        if self.market_exists(market_id):
+            return  # Already stored
+
+        # Extract market information from trade
+        title = trade.get('title') or trade.get('market_title') or 'Unknown Market'
+        category = trade.get('category') or trade.get('market_category') or 'Unknown'
+
+        # Store the market
+        self.update_market(
+            market_id=market_id,
+            title=title,
+            category=category,
+            end_date=None,
+            resolved=False,
+            winning_outcome=None
+        )
+
+        print(f"[DATABASE] Stored new market: {market_id[:10]}... - {title[:50]}")
+
+    def store_market_dict(self, market: Dict):
+        """
+        Store market information from a market dictionary (from get_markets()).
+
+        Handles different market_id field names and extracts all available metadata.
+        """
+        # Extract market_id from various possible field names
+        market_id = (market.get('conditionId') or
+                    market.get('market_id') or
+                    market.get('id') or
+                    market.get('condition_id'))
+
+        if not market_id:
+            return  # Can't store without market_id
+
+        # Check if market already exists
+        if self.market_exists(market_id):
+            return  # Already stored
+
+        # Extract market information
+        title = market.get('question') or market.get('title') or 'Unknown Market'
+        category = market.get('category') or 'Unknown'
+
+        # Extract end date if available
+        end_date = None
+        end_date_raw = market.get('endDate') or market.get('end_date')
+        if end_date_raw:
+            try:
+                if isinstance(end_date_raw, (int, float)):
+                    end_date = datetime.fromtimestamp(end_date_raw)
+                else:
+                    end_date = datetime.fromisoformat(str(end_date_raw).replace('Z', '+00:00'))
+            except:
+                pass
+
+        # Check if market is already resolved
+        resolved = market.get('closed', False) or market.get('archived', False)
+
+        # Store the market
+        self.update_market(
+            market_id=market_id,
+            title=title,
+            category=category,
+            end_date=end_date,
+            resolved=resolved,
+            winning_outcome=None
+        )
+
+        print(f"[DATABASE] Stored new market: {market_id[:10]}... - {title[:50]}")

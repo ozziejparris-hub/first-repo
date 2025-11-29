@@ -289,6 +289,13 @@ class PolymarketClient:
             print(f"Error fetching market details for {market_id}: {e}")
             return None
 
+    def get_market(self, market_id: str) -> Optional[Dict]:
+        """
+        Get market information by market_id.
+        Alias for get_market_details() for consistency.
+        """
+        return self.get_market_details(market_id)
+
     def analyze_trader_performance(self, trader_address: str) -> Dict:
         """
         Analyze a trader's performance based on their trade history.

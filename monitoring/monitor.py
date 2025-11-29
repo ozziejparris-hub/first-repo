@@ -272,17 +272,6 @@ class PolymarketMonitor:
                     if marker in team_part:
                         return True
 
-<<<<<<< HEAD:monitoring/monitor.py
-        # ===== PATTERN: STOCK MARKET (keep policy) =====
-        stock_keywords = ['s&p 500', 'sp500', 'dow jones', 'nasdaq', 'stock market']
-        policy_context = ['fed', 'ecb', 'interest rate', 'central bank']
-        has_policy = any(word in title_lower for word in policy_context)
-
-        if not has_policy and any(keyword in title_lower for keyword in stock_keywords):
-            return True  # EXCLUDE: Stock market
-
-        return False  # PASS: Keep this market - it's valuable geopolitics/economics
-=======
         # ===== VAGUE SPORTS MATCH DETECTION =====
         # Short, context-free "Will X win?" = likely sports
         # These lack the specificity of geopolitics ("Will X win the presidential election?")
@@ -326,7 +315,6 @@ class PolymarketMonitor:
                 return True  # EXCLUDE match with specific date
 
         return False
->>>>>>> 03b5dbd7bb892902b9c848b69955eaa8a51694c4:monitor.py
 
     async def _should_exclude_market(self, market_title: str) -> bool:
         """
@@ -441,6 +429,9 @@ class PolymarketMonitor:
                     timestamp = datetime.fromisoformat(str(timestamp_raw).replace('Z', '+00:00'))
             except:
                 timestamp = datetime.now()
+
+            # Store market information if we haven't seen it before
+            self.db.store_market_from_trade(trade)
 
             # Try to add trade to database
             is_new = self.db.add_trade(
