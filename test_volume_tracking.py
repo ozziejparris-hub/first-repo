@@ -5,9 +5,9 @@ Test the complete flow with volume-based trader identification.
 
 import os
 from dotenv import load_dotenv
-from monitoring.polymarket_client import PolymarketClient
+from polymarket_client import PolymarketClient
 from monitoring.database import Database
-from monitoring.trader_analyzer import TraderAnalyzer
+from trader_analyzer import TraderAnalyzer
 
 load_dotenv()
 
