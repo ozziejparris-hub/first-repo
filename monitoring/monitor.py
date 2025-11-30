@@ -518,12 +518,28 @@ class PolymarketMonitor:
 
                 # Check for market resolutions (every 10 cycles)
                 if cycle_count % 10 == 0:
-                    print("\n🎯 Checking for resolved markets...")
+                    print("\n🎯 Periodic resolution check (cycle #{})...".format(cycle_count))
+
+                    # Get statistics before resolution check
+                    conn = self.db.get_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT COUNT(*) FROM markets")
+                    total_markets = cursor.fetchone()[0]
+                    cursor.execute("SELECT COUNT(*) FROM markets WHERE resolved = 1")
+                    resolved_count = cursor.fetchone()[0]
+                    conn.close()
+
+                    print(f"[MONITOR] Current DB state: {total_markets} total markets, {resolved_count} resolved")
+
                     newly_resolved = self.analyzer.check_market_resolutions()
+
                     if newly_resolved > 0:
+                        print(f"[MONITOR] 🎉 {newly_resolved} new resolution(s) found!")
                         await self.telegram.send_message(
                             f"✅ {newly_resolved} market(s) resolved! Win rate data updated."
                         )
+                    else:
+                        print(f"[MONITOR] No new resolutions found (markets are long-dated)")
 
                 print(f"\n✅ Cycle complete. Next check in {self.check_interval // 60} minutes.")
 
