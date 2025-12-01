@@ -122,6 +122,15 @@ class PolymarketMonitor:
             'solana', 'sol', 'dogecoin', 'doge', 'cardano', 'ada',
             'price above', 'price below', 'up or down', 'dip to $',
 
+            # CRYPTO AIRDROPS & TOKEN LAUNCHES
+            'fdv above', 'fdv >', 'fdv>', 'market cap >', 'market cap>',
+            'one day after launch', 'day after launch', '1 day after launch',
+            'airdrop', 'token launch', 'token airdrop',
+
+            # GOLD PRICE PREDICTIONS
+            'gold close between', 'gold price', 'gold hits', 'gold hit', 'gold reaches',
+            'gold above', 'gold below', 'gold closes', 'price of gold',
+
             # STOCKS - Major tickers and patterns
             'nvda', 'nvidia', 'tsla', 'tesla', 'aapl', 'apple',
             'msft', 'microsoft', 'googl', 'google', 'amzn', 'amazon',
@@ -132,6 +141,13 @@ class PolymarketMonitor:
             # SPORTS BETTING - Critical patterns
             'spread:', 'o/u ', 'over/under', 'moneyline',
             '(-', '(+',  # Point spreads like "Bills (-5.5)"
+            'touchdown', 'anytime touchdown', 'first touchdown',
+
+            # SPORTS LEAGUES & CHAMPIONSHIPS
+            'nfl', 'nba', 'mlb', 'nhl', 'mls',
+            'premier league', 'champions league',
+            'super bowl', 'world series', 'stanley cup',
+            'win the championship', 'make the playoffs',
 
             # SOCCER/FOOTBALL - Major teams
             'barcelona', 'manchester', 'real madrid', 'bayern',
@@ -145,16 +161,35 @@ class PolymarketMonitor:
             'ohio state', 'georgia tech', 'alabama', 'michigan',
 
             # TRADITIONAL SPORTS - Teams and keywords
-            'nfl', 'nba', 'mlb', 'nhl', 'super bowl',
             'championship', 'playoff', 'vs.', 'game', 'match',
             'warriors', 'thunder', 'lakers', 'celtics', 'cowboys',
             'patriots', 'bills', 'chiefs', 'bengals',
             'maple leafs', 'bruins',
 
-            # ENTERTAINMENT
+            # ENTERTAINMENT - AWARDS & NOMINATIONS
+            'academy award', 'oscar', 'oscars', 'grammy', 'grammys',
+            'emmy', 'emmys', 'tony awards', 'golden globe', 'bafta',
+            'cannes', 'sundance',
+            'nominated for best', 'win best actor', 'win best actress',
+            'win best director', 'win best picture', 'win best film',
+            'best supporting actor', 'best supporting actress',
+            'best documentary', 'best animated', 'best song',
+            'best film editing',
+
+            # ENTERTAINMENT - MUSIC
+            'songwriter of the year', 'album of the year', 'record of the year',
+            'most streamed', 'streamed on spotify', 'spotify',
+
+            # ENTERTAINMENT - MEDIA & STREAMING
+            'movie', 'film', 'documentary', 'box office', 'opening weekend',
+            'streamer of the year', 'twitch', 'kai cenat',
+
+            # ENTERTAINMENT - BEAUTY PAGEANTS
             'miss universe', 'miss world', 'beauty pageant',
             'venezuela', 'thailand', 'canada',  # Common Miss Universe countries
-            'album', 'movie', 'taylor swift',
+
+            # ENTERTAINMENT - MISC
+            'album', 'taylor swift',
 
             # WEATHER
             'temperature', 'highest temperature', 'weather',
@@ -214,32 +249,45 @@ class PolymarketMonitor:
         # Check if any exclusion keyword is in the title
         for keyword in exclusion_keywords:
             if keyword in title_lower:
+                # Log which keyword triggered the exclusion
+                print(f"[FILTER] Matched keyword: '{keyword}'")
                 return True
 
         # REGEX PATTERN DETECTION - Catches patterns that keywords might miss
 
         # PATTERN: Spread betting (captures any point spread like "(-5.5)")
         if re.search(r'spread:.*\(-?\d+\.?\d*\)', title_lower):
+            print(f"[FILTER] Matched pattern: sports spread betting")
             return True  # EXCLUDE sports spread betting
 
         # PATTERN: Over/Under betting (captures "O/U 61.5")
         if re.search(r'o/u\s+\d+\.?\d*', title_lower):
+            print(f"[FILTER] Matched pattern: over/under betting")
             return True  # EXCLUDE over/under bets
 
         # PATTERN: Stock price ranges "$XXX-$YYY"
         if re.search(r'close at \$\d+-\$\d+', title_lower):
+            print(f"[FILTER] Matched pattern: stock price range")
             return True  # EXCLUDE stock price predictions
+
+        # PATTERN: Gold price ranges "$X-$Y" (e.g., "gold close between $3500 and $3600")
+        if re.search(r'gold.*\$\d+.*and.*\$\d+', title_lower):
+            print(f"[FILTER] Matched pattern: gold price range")
+            return True  # EXCLUDE gold price predictions
 
         # PATTERN: "Will [Team] win on [Date]" - Soccer/sports matches
         if re.search(r'will \w+ win on 20\d{2}-\d{2}-\d{2}', title_lower):
+            print(f"[FILTER] Matched pattern: sports match with date")
             return True  # EXCLUDE soccer/sports matches
 
         # PATTERN: Beauty pageants (Miss Universe, Miss World, etc.)
         if 'miss universe' in title_lower or 'miss world' in title_lower:
+            print(f"[FILTER] Matched pattern: beauty pageant")
             return True  # EXCLUDE beauty pageants
 
         # PATTERN: "#1 searched" or "#1 app" rankings
         if '#1' in title_lower and any(x in title_lower for x in ['searched', 'app', 'free app']):
+            print(f"[FILTER] Matched pattern: ranking/popularity")
             return True  # EXCLUDE ranking markets
 
         # ESPORTS PATTERN DETECTION: "Will [Team] win the [Tournament]?"
