@@ -182,15 +182,16 @@ class Database:
     def update_market(self, market_id: str, title: str, category: str,
                      end_date: Optional[datetime] = None, resolved: bool = False,
                      winning_outcome: Optional[str] = None,
-                     resolution_date: Optional[datetime] = None):
+                     resolution_date: Optional[datetime] = None,
+                     condition_id: Optional[str] = None):
         """Add or update market information."""
         conn = self.get_connection()
         cursor = conn.cursor()
 
         cursor.execute("""
             INSERT INTO markets (market_id, title, category, end_date, resolved,
-                               winning_outcome, resolution_date, last_checked)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                               winning_outcome, resolution_date, last_checked, condition_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(market_id) DO UPDATE SET
                 title = excluded.title,
                 category = excluded.category,
@@ -198,9 +199,10 @@ class Database:
                 resolved = excluded.resolved,
                 winning_outcome = excluded.winning_outcome,
                 resolution_date = excluded.resolution_date,
-                last_checked = excluded.last_checked
+                last_checked = excluded.last_checked,
+                condition_id = COALESCE(excluded.condition_id, condition_id)
         """, (market_id, title, category, end_date, resolved, winning_outcome,
-              resolution_date, datetime.now()))
+              resolution_date, datetime.now(), condition_id))
 
         conn.commit()
         conn.close()
@@ -319,11 +321,22 @@ class Database:
         return traders
 
     def market_exists(self, market_id: str) -> bool:
-        """Check if a market already exists in the database."""
+        """Check if a market already exists in the database by market_id."""
         conn = self.get_connection()
         cursor = conn.cursor()
 
         cursor.execute("SELECT 1 FROM markets WHERE market_id = ? LIMIT 1", (market_id,))
+        exists = cursor.fetchone() is not None
+
+        conn.close()
+        return exists
+
+    def market_exists_by_condition_id(self, condition_id: str) -> bool:
+        """Check if a market already exists in the database by condition_id."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT 1 FROM markets WHERE condition_id = ? LIMIT 1", (condition_id,))
         exists = cursor.fetchone() is not None
 
         conn.close()
@@ -370,18 +383,28 @@ class Database:
         Store market information from a market dictionary (from get_markets()).
 
         Handles different market_id field names and extracts all available metadata.
+
+        IMPORTANT: Polymarket uses TWO ID types:
+        - 'id' field: Used for /markets/{id} API endpoint (e.g., "21742")
+        - 'conditionId': Used for matching trades (e.g., "0x1b6f76e5b858...")
         """
-        # Extract market_id from various possible field names
-        market_id = (market.get('conditionId') or
-                    market.get('market_id') or
-                    market.get('id') or
-                    market.get('condition_id'))
+        # Extract the API-compatible ID (for /markets/{id} endpoint)
+        # Priority: 'id' field first, then fall back to conditionId
+        api_id = market.get('id')  # This is what /markets/{id} expects
 
-        if not market_id:
-            return  # Can't store without market_id
+        # Extract the conditionId (for matching with trades)
+        condition_id = market.get('conditionId')
 
-        # Check if market already exists
-        if self.market_exists(market_id):
+        # We need at least one ID
+        if not api_id and not condition_id:
+            return  # Can't store without any ID
+
+        # Use api_id as primary market_id (for API calls)
+        # Fall back to condition_id if api_id not available
+        market_id = api_id or condition_id
+
+        # Check if market already exists (check by either ID)
+        if self.market_exists(market_id) or (condition_id and self.market_exists_by_condition_id(condition_id)):
             return  # Already stored
 
         # Extract market information
@@ -403,14 +426,15 @@ class Database:
         # Check if market is already resolved
         resolved = market.get('closed', False) or market.get('archived', False)
 
-        # Store the market
+        # Store the market with BOTH IDs
         self.update_market(
-            market_id=market_id,
+            market_id=market_id,  # API-compatible ID for resolution checking
             title=title,
             category=category,
             end_date=end_date,
             resolved=resolved,
-            winning_outcome=None
+            winning_outcome=None,
+            condition_id=condition_id  # For matching with trades
         )
 
         print(f"[DATABASE] Stored new market: {market_id[:10]}... - {title[:50]}")
