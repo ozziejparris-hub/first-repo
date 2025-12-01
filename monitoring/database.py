@@ -251,7 +251,11 @@ class Database:
         return markets
 
     def get_unresolved_markets(self) -> List[Dict]:
-        """Get all unresolved markets that we're tracking."""
+        """Get all unresolved markets that we're tracking.
+
+        NOTE: Joins on condition_id because trades table uses conditionId in market_id field,
+        while markets table now uses API-compatible ID in market_id field.
+        """
         conn = self.get_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -259,7 +263,7 @@ class Database:
         cursor.execute("""
             SELECT DISTINCT m.market_id, m.title, m.category, m.end_date, m.last_checked
             FROM markets m
-            INNER JOIN trades t ON m.market_id = t.market_id
+            INNER JOIN trades t ON m.condition_id = t.market_id
             WHERE (m.resolved = 0 OR m.resolved IS NULL)
             ORDER BY m.last_checked ASC
         """)
