@@ -9,3 +9,9 @@ python-telegram-bot>=20.7
 
 # Optional: for better async support
 aiohttp>=3.9.0
+
+# Analysis dependencies
+pandas>=2.0.0
+numpy>=1.24.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
