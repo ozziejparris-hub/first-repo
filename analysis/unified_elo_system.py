@@ -21,10 +21,14 @@ import sqlite3
 import requests
 import os
 import math
+import csv
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
 from collections import defaultdict, Counter
 import time
+
+# Import behavioral analysis
+from trading_behavior_analysis import TradingBehaviorAnalyzer
 
 
 # Market category keywords for auto-categorization
@@ -303,6 +307,11 @@ class UnifiedELOSystem:
         self.market_categories = {}  # market_id -> category
         self.specialist_cache = {}  # trader_address -> specialist data
 
+        # Behavioral analysis integration
+        self.behavior_analyzer = TradingBehaviorAnalyzer(db_path=self.db_path)
+        self.behavior_cache = {}  # trader_address -> behavioral metrics
+        self.behavior_cache_timestamp = None
+
     def get_db_connection(self):
         """Get read-only database connection."""
         conn = sqlite3.connect(f"file:{self.db_path}?mode=ro", uri=True)
@@ -565,9 +574,364 @@ class UnifiedELOSystem:
                 print(f"  {category}: {category_updates[category]} rating updates")
             print()
 
+    # ==================== BEHAVIORAL MODIFIERS ====================
+
+    def _load_behavioral_data(self, force_refresh: bool = False):
+        """
+        Load behavioral data for all traders (with caching).
+
+        Behavioral data is cached for 24 hours to avoid repeated expensive analysis.
+
+        Args:
+            force_refresh: Force reload even if cache is valid
+
+        Returns:
+            Dict mapping trader_address to behavioral metrics
+        """
+        # Check if cache is stale (>24 hours old)
+        cache_age = None
+        if self.behavior_cache_timestamp:
+            cache_age = (datetime.now() - self.behavior_cache_timestamp).total_seconds()
+
+        if force_refresh or self.behavior_cache_timestamp is None or cache_age > 86400:
+            print("[BEHAVIORAL] Loading trader behavioral data...")
+            try:
+                behavior_metrics = self.behavior_analyzer.analyze_all_traders(days_filter=None)
+                self.behavior_cache = behavior_metrics
+                self.behavior_cache_timestamp = datetime.now()
+                print(f"[BEHAVIORAL] Loaded data for {len(behavior_metrics)} traders")
+            except Exception as e:
+                print(f"[BEHAVIORAL] WARNING: Failed to load behavioral data: {e}")
+                print("[BEHAVIORAL] Continuing with neutral behavioral multipliers")
+                self.behavior_cache = {}
+        else:
+            print(f"[BEHAVIORAL] Using cached behavioral data (age: {cache_age/3600:.1f} hours)")
+
+        return self.behavior_cache
+
+    def calculate_consistency_modifier(self, trader_address: str) -> float:
+        """
+        Calculate consistency modifier based on bet size consistency.
+
+        Consistent traders are more reliable - their ELO represents true skill
+        rather than lucky variance.
+
+        Args:
+            trader_address: Trader's address
+
+        Returns:
+            Multiplier (0.92-1.10) based on consistency
+            - 1.10: Very Consistent (disciplined, reliable)
+            - 1.05: Moderately Consistent (mostly consistent)
+            - 0.98: Variable (some inconsistency)
+            - 0.92: Highly Variable (chaotic, less reliable)
+            - 1.00: Unknown/Insufficient data
+
+        Examples:
+            Very Consistent trader (CV < 30%) → 1.10x
+            Highly Variable trader (CV > 100%) → 0.92x
+        """
+        behavior_data = self._load_behavioral_data()
+
+        if trader_address not in behavior_data:
+            return 1.0
+
+        trader_behavior = behavior_data[trader_address]
+        consistency = trader_behavior.get('bet_size_consistency', 'N/A')
+        cv = trader_behavior.get('coefficient_of_variation', 0)
+
+        # Base modifier from consistency classification
+        if consistency == "Very Consistent":
+            modifier = 1.10
+        elif consistency == "Moderately Consistent":
+            modifier = 1.05
+        elif consistency == "Variable":
+            modifier = 0.98
+        elif consistency == "Highly Variable":
+            modifier = 0.92
+        else:
+            modifier = 1.00
+
+        # Apply CV-based adjustments
+        if cv > 0:
+            if cv < 20:  # Extremely tight betting
+                modifier *= 1.03
+            elif cv > 150:  # Extremely erratic
+                modifier *= 0.97
+
+        return modifier
+
+    def calculate_diversification_modifier(self, trader_address: str) -> float:
+        """
+        Calculate diversification modifier based on market spread.
+
+        Well-diversified traders are less vulnerable to category-specific luck
+        and demonstrate broader skill.
+
+        Args:
+            trader_address: Trader's address
+
+        Returns:
+            Multiplier (0.93-1.08) based on diversification
+            - 1.08: Excellent diversification (≥70%)
+            - 1.05: Good diversification (60-69%)
+            - 1.02: Moderate diversification (40-59%)
+            - 1.00: Neutral (30-39%)
+            - 0.97: Concentrated (20-29%)
+            - 0.93: Very concentrated (<20%, vulnerable to luck)
+            - 1.00: Unknown
+
+        Examples:
+            Well diversified (75% unique markets) → 1.08x
+            Highly concentrated (15% unique markets) → 0.93x
+        """
+        behavior_data = self._load_behavioral_data()
+
+        if trader_address not in behavior_data:
+            return 1.0
+
+        trader_behavior = behavior_data[trader_address]
+        div_score = trader_behavior.get('diversification_score', 0)
+        concentration = trader_behavior.get('market_concentration', 'N/A')
+
+        # Base modifier from diversification score
+        if div_score >= 70:
+            modifier = 1.08
+        elif div_score >= 60:
+            modifier = 1.05
+        elif div_score >= 40:
+            modifier = 1.02
+        elif div_score >= 30:
+            modifier = 1.00
+        elif div_score >= 20:
+            modifier = 0.97
+        else:
+            modifier = 0.93
+
+        # Apply concentration-based adjustments
+        if concentration == "Well Diversified":
+            modifier *= 1.02
+        elif concentration == "Highly Concentrated":
+            modifier *= 0.98
+
+        return modifier
+
+    def calculate_trading_style_modifier(self, trader_address: str) -> float:
+        """
+        Calculate trading style modifier based on behavioral classification.
+
+        Different trading styles indicate different levels of sophistication
+        and engagement with the platform.
+
+        Args:
+            trader_address: Trader's address
+
+        Returns:
+            Multiplier (0.92-1.12) based on trading style
+            - 1.12: Power User (sophisticated, high engagement)
+            - 1.08: Active Trader (active, engaged)
+            - 1.06: High Volume Specialist (focused, disciplined)
+            - 1.05: Market Specialist (niche expertise)
+            - 1.03: Strategic Explorer (thoughtful diversification)
+            - 1.02: Cautious Diversifier (risk-aware)
+            - 1.00: General Trader (neutral)
+            - 0.98: Big Better (higher variance, possible overconfidence)
+            - 0.96: Micro Trader (limited capital, less conviction)
+            - 0.94: Weekend Warrior (casual, less engaged)
+            - 0.92: Casual Trader (low engagement)
+            - 1.00: Unknown
+
+        Examples:
+            Power User → 1.12x
+            Casual Trader → 0.92x
+        """
+        behavior_data = self._load_behavioral_data()
+
+        if trader_address not in behavior_data:
+            return 1.0
+
+        trader_behavior = behavior_data[trader_address]
+        style = trader_behavior.get('trading_style', 'Unknown')
+
+        style_modifiers = {
+            "Power User": 1.12,
+            "Active Trader": 1.08,
+            "High Volume Specialist": 1.06,
+            "Market Specialist": 1.05,
+            "Strategic Explorer": 1.03,
+            "Cautious Diversifier": 1.02,
+            "General Trader": 1.00,
+            "Big Better": 0.98,
+            "Micro Trader": 0.96,
+            "Weekend Warrior": 0.94,
+            "Casual Trader": 0.92,
+        }
+
+        return style_modifiers.get(style, 1.00)
+
+    def calculate_activity_modifier(self, trader_address: str) -> float:
+        """
+        Calculate activity modifier based on trading frequency and patterns.
+
+        More engaged traders with consistent activity demonstrate commitment
+        and are less likely to be lucky flukes.
+
+        Args:
+            trader_address: Trader's address
+
+        Returns:
+            Multiplier (0.97-1.06) based on activity
+            - 1.06: High frequency + high diversification (sophisticated active)
+            - 1.02: Medium frequency (engaged, moderate activity)
+            - 1.00: Low frequency (neutral)
+            - 0.98: High frequency + low diversification (churning same markets)
+            - 0.97: Very low frequency (insufficient data/engagement)
+            - 1.00: Unknown
+
+        Additional bonuses/penalties:
+            - +1.03x: Consistent presence (active >70% of trading days)
+            - 0.98x: Sporadic activity (active <30% of trading days)
+
+        Examples:
+            5 trades/day with 65% diversification → 1.06x
+            0.3 trades/day → 0.97x
+        """
+        behavior_data = self._load_behavioral_data()
+
+        if trader_address not in behavior_data:
+            return 1.0
+
+        trader_behavior = behavior_data[trader_address]
+        trades_per_day = trader_behavior.get('trades_per_day', 0)
+        div_score = trader_behavior.get('diversification_score', 0)
+        active_days = trader_behavior.get('active_days', 0)
+        trading_days = trader_behavior.get('trading_days', 1)
+
+        # Base modifier from frequency
+        if trades_per_day >= 5:
+            # High frequency - check diversification
+            if div_score >= 60:
+                modifier = 1.06  # Sophisticated active trader
+            else:
+                modifier = 0.98  # Churning same markets
+        elif trades_per_day >= 1:
+            modifier = 1.02  # Engaged, moderate activity
+        elif trades_per_day >= 0.5:
+            modifier = 1.00  # Low but reasonable frequency
+        else:
+            modifier = 0.97  # Very low frequency
+
+        # Apply activity consistency adjustment
+        if trading_days > 0:
+            activity_ratio = active_days / trading_days
+            if activity_ratio > 0.7:
+                modifier *= 1.03  # Consistent presence
+            elif activity_ratio < 0.3:
+                modifier *= 0.98  # Sporadic, bursty
+
+        return modifier
+
+    def calculate_behavioral_multiplier(self, trader_address: str) -> Dict:
+        """
+        Calculate combined behavioral multiplier from all factors.
+
+        This is the main method for getting behavioral adjustments. It combines
+        consistency, diversification, trading style, and activity into a single
+        multiplier that adjusts ELO ratings.
+
+        Args:
+            trader_address: Trader's address
+
+        Returns:
+            Dict with:
+                - consistency: float (0.92-1.10)
+                - diversification: float (0.93-1.08)
+                - trading_style: float (0.92-1.12)
+                - activity: float (0.97-1.06)
+                - combined_multiplier: float (0.80-1.40, clamped)
+                - breakdown: str (human-readable explanation)
+
+        Examples:
+            Power User with Very Consistent bets and Good Diversification:
+            {
+                'consistency': 1.10,
+                'diversification': 1.05,
+                'trading_style': 1.12,
+                'activity': 1.02,
+                'combined_multiplier': 1.31,
+                'breakdown': 'Consistency: 1.10x (Very Consistent) | ...'
+            }
+        """
+        # Calculate all individual modifiers
+        consistency = self.calculate_consistency_modifier(trader_address)
+        diversification = self.calculate_diversification_modifier(trader_address)
+        style = self.calculate_trading_style_modifier(trader_address)
+        activity = self.calculate_activity_modifier(trader_address)
+
+        # Combine by multiplication
+        combined = consistency * diversification * style * activity
+
+        # Clamp to [0.80, 1.40] range (max ±40% adjustment)
+        combined = max(0.80, min(1.40, combined))
+
+        # Get style name for breakdown
+        behavior_data = self._load_behavioral_data()
+        trader_behavior = behavior_data.get(trader_address, {})
+        style_name = trader_behavior.get('trading_style', 'Unknown')
+        consistency_name = trader_behavior.get('bet_size_consistency', 'Unknown')
+
+        # Generate breakdown string
+        breakdown = (
+            f"Consistency: {consistency:.2f}x ({consistency_name}) | "
+            f"Diversification: {diversification:.2f}x | "
+            f"Style: {style:.2f}x ({style_name}) | "
+            f"Activity: {activity:.2f}x | "
+            f"TOTAL: {combined:.2f}x"
+        )
+
+        return {
+            'consistency': consistency,
+            'diversification': diversification,
+            'trading_style': style,
+            'activity': activity,
+            'combined_multiplier': combined,
+            'breakdown': breakdown
+        }
+
+    def get_behavioral_weighted_elo(self, trader_address: str, category: str = None) -> float:
+        """
+        Get ELO rating adjusted by behavioral multipliers.
+
+        Args:
+            trader_address: Trader's address
+            category: Specific category (None = global ELO)
+
+        Returns:
+            Adjusted ELO rating
+
+        Examples:
+            Base ELO: 1600
+            Behavioral multiplier: 1.25
+            Adjusted ELO: 2000
+        """
+        # Get base ELO
+        if category:
+            base_elo = self.get_trader_category_elo(trader_address, category)
+        else:
+            base_elo = self.get_trader_global_elo(trader_address)
+
+        # Get behavioral multiplier
+        behavior_data = self.calculate_behavioral_multiplier(trader_address)
+        multiplier = behavior_data['combined_multiplier']
+
+        # Apply multiplier
+        adjusted_elo = base_elo * multiplier
+
+        return adjusted_elo
+
     # ==================== INTEGRATION METHODS ====================
 
-    def get_trader_global_elo(self, trader_address: str) -> float:
+    def get_trader_global_elo(self, trader_address: str, apply_behavioral: bool = False) -> float:
         """
         Get trader's global ELO rating (weighted average across all categories).
 
@@ -576,13 +940,25 @@ class UnifiedELOSystem:
 
         Args:
             trader_address: Trader's address
+            apply_behavioral: If True, apply behavioral multipliers to adjust ELO
 
         Returns:
-            Global ELO rating (weighted average)
-        """
-        return self.elo_system.get_overall_elo(trader_address)
+            Global ELO rating (weighted average), optionally adjusted by behavioral factors
 
-    def get_trader_category_elo(self, trader_address: str, category: str) -> float:
+        Examples:
+            Base ELO: system.get_trader_global_elo(trader)
+            Adjusted ELO: system.get_trader_global_elo(trader, apply_behavioral=True)
+        """
+        base_elo = self.elo_system.get_overall_elo(trader_address)
+
+        if apply_behavioral:
+            behavior_data = self.calculate_behavioral_multiplier(trader_address)
+            multiplier = behavior_data['combined_multiplier']
+            return base_elo * multiplier
+
+        return base_elo
+
+    def get_trader_category_elo(self, trader_address: str, category: str, apply_behavioral: bool = False) -> float:
         """
         Get trader's ELO rating for a specific category.
 
@@ -591,11 +967,23 @@ class UnifiedELOSystem:
         Args:
             trader_address: Trader's address
             category: Market category (e.g., 'Elections', 'Crypto')
+            apply_behavioral: If True, apply behavioral multipliers to adjust ELO
 
         Returns:
-            Category-specific ELO rating
+            Category-specific ELO rating, optionally adjusted by behavioral factors
+
+        Examples:
+            Base ELO: system.get_trader_category_elo(trader, 'Elections')
+            Adjusted ELO: system.get_trader_category_elo(trader, 'Elections', apply_behavioral=True)
         """
-        return self.elo_system.get_category_elo(trader_address, category)
+        base_elo = self.elo_system.get_category_elo(trader_address, category)
+
+        if apply_behavioral:
+            behavior_data = self.calculate_behavioral_multiplier(trader_address)
+            multiplier = behavior_data['combined_multiplier']
+            return base_elo * multiplier
+
+        return base_elo
 
     def is_specialist(self, trader_address: str, category: str = None,
                      min_markets: int = 5, min_advantage: float = 100) -> Tuple[bool, float]:
@@ -654,6 +1042,153 @@ class UnifiedELOSystem:
             result = (best_category is not None, best_score)
             self.specialist_cache[cache_key] = result
             return result
+
+    def export_behavioral_analysis(self) -> Dict:
+        """
+        Export behavioral analysis data for all traders.
+
+        Returns:
+            Dict with:
+                - timestamp: Analysis timestamp
+                - total_traders: Total number of traders
+                - traders_with_behavior: Number with behavioral data
+                - avg_*_modifier: Average modifier for each component
+                - top_behavioral_traders: Top 10 by adjusted ELO
+        """
+        print("[BEHAVIORAL] Exporting behavioral analysis...")
+
+        all_traders = self.elo_system.get_all_traders()
+        behavior_data = self._load_behavioral_data()
+
+        # Calculate statistics
+        consistency_mods = []
+        diversification_mods = []
+        style_mods = []
+        activity_mods = []
+
+        trader_adjusted_elos = []
+
+        for trader in all_traders:
+            if trader in behavior_data:
+                behavior_mult = self.calculate_behavioral_multiplier(trader)
+                consistency_mods.append(behavior_mult['consistency'])
+                diversification_mods.append(behavior_mult['diversification'])
+                style_mods.append(behavior_mult['trading_style'])
+                activity_mods.append(behavior_mult['activity'])
+
+                # Calculate adjusted ELO for ranking
+                base_elo = self.get_trader_global_elo(trader)
+                adjusted_elo = base_elo * behavior_mult['combined_multiplier']
+
+                trader_adjusted_elos.append({
+                    'trader': trader,
+                    'base_elo': base_elo,
+                    'behavioral_multiplier': behavior_mult['combined_multiplier'],
+                    'adjusted_elo': adjusted_elo,
+                    'breakdown': behavior_mult['breakdown']
+                })
+
+        # Sort by adjusted ELO
+        trader_adjusted_elos.sort(key=lambda x: x['adjusted_elo'], reverse=True)
+
+        export = {
+            'timestamp': datetime.now().isoformat(),
+            'total_traders': len(all_traders),
+            'traders_with_behavior': len(behavior_data),
+            'avg_consistency_modifier': sum(consistency_mods) / len(consistency_mods) if consistency_mods else 1.0,
+            'avg_diversification_modifier': sum(diversification_mods) / len(diversification_mods) if diversification_mods else 1.0,
+            'avg_style_modifier': sum(style_mods) / len(style_mods) if style_mods else 1.0,
+            'avg_activity_modifier': sum(activity_mods) / len(activity_mods) if activity_mods else 1.0,
+            'top_behavioral_traders': trader_adjusted_elos[:10]
+        }
+
+        print(f"[BEHAVIORAL] Export complete: {export['traders_with_behavior']}/{export['total_traders']} traders with behavioral data")
+
+        return export
+
+    def generate_behavioral_report(self, output_dir: str = 'reports'):
+        """
+        Generate CSV report of behavioral modifiers.
+
+        Creates: reports/behavioral_modifiers_YYYYMMDD.csv
+
+        Args:
+            output_dir: Output directory for reports
+
+        Returns:
+            Path to generated report
+        """
+        print(f"[BEHAVIORAL] Generating behavioral modifiers report...")
+
+        # Create output directory
+        if not os.path.isabs(output_dir):
+            output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), output_dir)
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Get all traders and behavioral data
+        all_traders = self.elo_system.get_all_traders()
+        behavior_data = self._load_behavioral_data()
+
+        # Generate report data
+        report_rows = []
+
+        for trader in all_traders:
+            base_elo = self.get_trader_global_elo(trader)
+
+            if trader in behavior_data:
+                trader_behavior = behavior_data[trader]
+                behavior_mult = self.calculate_behavioral_multiplier(trader)
+
+                adjusted_elo = base_elo * behavior_mult['combined_multiplier']
+
+                report_rows.append({
+                    'trader_address': trader,
+                    'base_global_elo': f"{base_elo:.1f}",
+                    'consistency_modifier': f"{behavior_mult['consistency']:.3f}",
+                    'diversification_modifier': f"{behavior_mult['diversification']:.3f}",
+                    'trading_style_modifier': f"{behavior_mult['trading_style']:.3f}",
+                    'activity_modifier': f"{behavior_mult['activity']:.3f}",
+                    'combined_multiplier': f"{behavior_mult['combined_multiplier']:.3f}",
+                    'adjusted_global_elo': f"{adjusted_elo:.1f}",
+                    'trading_style': trader_behavior.get('trading_style', 'Unknown'),
+                    'bet_consistency': trader_behavior.get('bet_size_consistency', 'Unknown'),
+                    'diversification_score': f"{trader_behavior.get('diversification_score', 0):.1f}",
+                    'trades_per_day': f"{trader_behavior.get('trades_per_day', 0):.2f}"
+                })
+            else:
+                # No behavioral data
+                report_rows.append({
+                    'trader_address': trader,
+                    'base_global_elo': f"{base_elo:.1f}",
+                    'consistency_modifier': '1.000',
+                    'diversification_modifier': '1.000',
+                    'trading_style_modifier': '1.000',
+                    'activity_modifier': '1.000',
+                    'combined_multiplier': '1.000',
+                    'adjusted_global_elo': f"{base_elo:.1f}",
+                    'trading_style': 'Unknown',
+                    'bet_consistency': 'Unknown',
+                    'diversification_score': '0.0',
+                    'trades_per_day': '0.00'
+                })
+
+        # Sort by adjusted ELO (highest first)
+        report_rows.sort(key=lambda x: float(x['adjusted_global_elo']), reverse=True)
+
+        # Write CSV
+        date_str = datetime.now().strftime('%Y%m%d')
+        output_path = os.path.join(output_dir, f'behavioral_modifiers_{date_str}.csv')
+
+        with open(output_path, 'w', newline='', encoding='utf-8', errors='ignore') as f:
+            if report_rows:
+                writer = csv.DictWriter(f, fieldnames=report_rows[0].keys())
+                writer.writeheader()
+                writer.writerows(report_rows)
+
+        print(f"[BEHAVIORAL] Report saved: {output_path}")
+        print(f"[BEHAVIORAL] {len(report_rows)} traders included")
+
+        return output_path
 
     def export_for_integration(self) -> Dict:
         """
@@ -748,6 +1283,30 @@ class UnifiedELOSystem:
                         'category_elo': self.get_trader_category_elo(trader_address, category),
                         'global_elo': self.get_trader_global_elo(trader_address)
                     })
+
+        # Add behavioral modifiers (if available)
+        try:
+            behavior_data = self._load_behavioral_data()
+            behavioral_modifiers = {}
+
+            for trader_address in all_traders:
+                if trader_address in behavior_data:
+                    behavior_mult = self.calculate_behavioral_multiplier(trader_address)
+                    behavioral_modifiers[trader_address] = {
+                        'consistency': behavior_mult['consistency'],
+                        'diversification': behavior_mult['diversification'],
+                        'style': behavior_mult['trading_style'],
+                        'activity': behavior_mult['activity'],
+                        'combined': behavior_mult['combined_multiplier']
+                    }
+
+            export_data['behavioral_modifiers'] = behavioral_modifiers
+            export_data['behavioral_analysis_timestamp'] = datetime.now().isoformat()
+            print(f"[BEHAVIORAL] Included behavioral data for {len(behavioral_modifiers)} traders in export")
+        except Exception as e:
+            print(f"[BEHAVIORAL] WARNING: Could not include behavioral data in export: {e}")
+            export_data['behavioral_modifiers'] = {}
+            export_data['behavioral_analysis_timestamp'] = None
 
         return export_data
 
@@ -877,3 +1436,37 @@ if __name__ == "__main__":
     print(f"Total traders: {export['total_traders']}")
     print(f"Categories tracked: {len(export['categories'])}")
     print(f"Specialists identified: {len(export['specialists'])}")
+
+    # Example 5: Behavioral Analysis Integration
+    print("\n" + "="*70)
+    print("EXAMPLE 5: Behavioral Analysis")
+    print("="*70)
+
+    # Get a trader with behavioral data
+    traders = system.elo_system.get_all_traders()
+    if traders:
+        test_trader = list(traders)[0]
+
+        print(f"\n[TEST] Analyzing trader: {test_trader[:12]}...")
+
+        # Get base ELO
+        base_elo = system.get_trader_global_elo(test_trader)
+        print(f"Base Global ELO: {base_elo:.0f}")
+
+        # Get behavioral multiplier
+        try:
+            behavior_data = system.calculate_behavioral_multiplier(test_trader)
+            print(f"Behavioral Multiplier: {behavior_data['combined_multiplier']:.3f}")
+            print(f"Breakdown: {behavior_data['breakdown']}")
+
+            # Get adjusted ELO
+            adjusted_elo = system.get_trader_global_elo(test_trader, apply_behavioral=True)
+            print(f"Adjusted Global ELO: {adjusted_elo:.0f}")
+            print(f"Change: {adjusted_elo - base_elo:+.0f}")
+
+            # Generate behavioral report
+            print("\n[TEST] Generating behavioral modifiers report...")
+            report_path = system.generate_behavioral_report()
+            print(f"[TEST] Report generated: {report_path}")
+        except Exception as e:
+            print(f"[TEST] Behavioral analysis skipped: {e}")
