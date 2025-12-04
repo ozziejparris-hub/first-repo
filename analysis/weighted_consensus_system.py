@@ -2,6 +2,19 @@
 """
 Weighted Consensus System for Polymarket Predictions
 
+⚠️  DEPRECATED: This module is being replaced by unified_elo_system.py
+
+    The UnifiedELOSystem provides:
+    - Category-specific ELO ratings (more accurate than global ELO)
+    - Specialist detection and boosting
+    - Better integration APIs
+    - Backward compatibility through UnifiedWeightedConsensusWrapper
+
+    Migration path:
+    1. Use UnifiedELOSystem directly for new code
+    2. Existing code will continue to work (maintained for compatibility)
+    3. Plan to migrate to unified_elo_system.py by 2025-Q2
+
 Combines:
 1. ELO Rating System - Rates trader skill based on historical performance
 2. Weighted Majority Algorithm - Aggregates predictions using ELO weights
