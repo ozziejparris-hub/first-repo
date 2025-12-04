@@ -722,7 +722,7 @@ class TraderCorrelationMatrix:
             'independence_scores': independence_scores,
             'avg_correlations': matrix_data['avg_correlations'],
             'timestamp': datetime.now().isoformat(),
-            'total_traders': len(self.traders),
+            'total_traders': len(matrix_data['trader_list']),
             'total_pairs_calculated': len(matrix_data['matrix'])
         }
 
