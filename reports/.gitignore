@@ -62,3 +62,10 @@ htmlcov/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+
+# Analysis Reports (generated data, not source code)
+reports/*.csv
+reports/*.txt
+reports/*.json
+reports/*.png
+reports/*.html
