@@ -1,25 +1,72 @@
-# Environment
+# Environment variables
 .env
-.env.local
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
 
 # Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Database
-*.db
-*.sqlite
-data/*.db
-
-# Reports
-reports/*.csv
-reports/*.json
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+*.log
+logs/
+
+
+# Testing
+.pytest_cache/
+htmlcov/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Analysis Reports (generated data, not source code)
+reports/*.csv
+reports/*.txt
+reports/*.json
+reports/*.png
+reports/*.html
+
+# Claude Code
+.claude/
+settings.local.json
