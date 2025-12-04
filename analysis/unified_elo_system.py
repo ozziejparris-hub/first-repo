@@ -30,6 +30,11 @@ import time
 # Import behavioral analysis
 from trading_behavior_analysis import TradingBehaviorAnalyzer
 
+# Import advanced metrics analyzers
+from calibration_analysis import CalibrationAnalyzer
+from risk_adjusted_returns import RiskAdjustedAnalyzer
+from regret_analysis import RegretAnalyzer
+
 
 # Market category keywords for auto-categorization
 CATEGORY_KEYWORDS = {
@@ -311,6 +316,17 @@ class UnifiedELOSystem:
         self.behavior_analyzer = TradingBehaviorAnalyzer(db_path=self.db_path)
         self.behavior_cache = {}  # trader_address -> behavioral metrics
         self.behavior_cache_timestamp = None
+
+        # Advanced metrics analyzers
+        self.calibration_analyzer = CalibrationAnalyzer(db_path=self.db_path, api_key=self.api_key)
+        self.risk_analyzer = RiskAdjustedAnalyzer(db_path=self.db_path, api_key=self.api_key)
+        self.regret_analyzer = RegretAnalyzer(db_path=self.db_path, api_key=self.api_key)
+
+        # Cache for advanced metrics
+        self.calibration_cache = {}  # trader -> brier_score
+        self.sharpe_cache = {}  # trader -> sharpe_ratio
+        self.regret_cache = {}  # trader -> regret_rate
+        self.advanced_metrics_timestamp = None  # Last cache refresh
 
     def get_db_connection(self):
         """Get read-only database connection."""
@@ -929,9 +945,365 @@ class UnifiedELOSystem:
 
         return adjusted_elo
 
+    # ==================== ADVANCED METRICS (Calibration, Sharpe, Regret) ====================
+
+    def _load_advanced_metrics_data(self, force_refresh: bool = False) -> bool:
+        """
+        Load advanced metrics data for all traders (with caching).
+
+        Calculates:
+        - Calibration (Brier scores) - Forecasting accuracy
+        - Risk-adjusted returns (Sharpe ratios) - Consistency
+        - Regret analysis - Execution quality
+
+        Returns:
+            bool: True if data loaded successfully, False if no resolved markets yet
+        """
+        # Check if cache is stale (>24 hours old)
+        cache_age = None
+        if self.advanced_metrics_timestamp:
+            cache_age = (datetime.now() - self.advanced_metrics_timestamp).total_seconds()
+
+        if force_refresh or self.advanced_metrics_timestamp is None or cache_age > 86400:
+
+            print("[ADVANCED METRICS] Loading calibration, risk-adjusted, and regret data...")
+
+            try:
+                # 1. Load calibration data (Brier scores)
+                print("[CALIBRATION] Calculating Brier scores...")
+                calibration_results = self.calibration_analyzer.analyze_all_traders()
+
+                if calibration_results:
+                    for trader, data in calibration_results.items():
+                        if data.get('total_predictions', 0) >= 5:  # Minimum predictions threshold
+                            self.calibration_cache[trader] = data.get('brier_score', 0.5)
+                    print(f"[CALIBRATION] Loaded {len(self.calibration_cache)} traders with calibration data")
+                else:
+                    print("[CALIBRATION] ⚠️  No resolved markets yet - calibration unavailable")
+
+                # 2. Load risk-adjusted returns (Sharpe ratios)
+                print("[RISK-ADJUSTED] Calculating Sharpe ratios...")
+                risk_results = self.risk_analyzer.analyze_all_traders()
+
+                if risk_results:
+                    for trader, data in risk_results.items():
+                        if data.get('total_trades', 0) >= 10:  # Minimum trades threshold
+                            self.sharpe_cache[trader] = data.get('sharpe_ratio', 0.0)
+                    print(f"[RISK-ADJUSTED] Loaded {len(self.sharpe_cache)} traders with Sharpe ratios")
+                else:
+                    print("[RISK-ADJUSTED] ⚠️  No resolved markets yet - Sharpe ratios unavailable")
+
+                # 3. Load regret analysis (execution quality)
+                print("[REGRET] Calculating regret rates...")
+                regret_results = self.regret_analyzer.analyze_all_traders()
+
+                if regret_results:
+                    for trader, data in regret_results.items():
+                        if data.get('total_trades', 0) >= 10:  # Minimum trades threshold
+                            self.regret_cache[trader] = data.get('regret_rate', 50.0)
+                    print(f"[REGRET] Loaded {len(self.regret_cache)} traders with regret data")
+                else:
+                    print("[REGRET] ⚠️  No resolved markets yet - regret analysis unavailable")
+
+                self.advanced_metrics_timestamp = datetime.now()
+
+                # Return True if we have at least some data
+                has_data = len(self.calibration_cache) > 0 or len(self.sharpe_cache) > 0 or len(self.regret_cache) > 0
+
+                if has_data:
+                    print(f"[ADVANCED METRICS] ✅ Successfully loaded advanced metrics")
+                else:
+                    print(f"[ADVANCED METRICS] ⚠️  No resolved markets - advanced metrics unavailable")
+
+                return has_data
+
+            except Exception as e:
+                print(f"[ADVANCED METRICS] ❌ Error loading data: {e}")
+                print(f"[ADVANCED METRICS] Continuing with neutral modifiers (1.0x)")
+                return False
+        else:
+            print(f"[ADVANCED METRICS] Using cached data (age: {cache_age/3600:.1f} hours)")
+
+        return True  # Cache is fresh
+
+    def get_calibration_weight(self, trader_address: str) -> float:
+        """
+        Calculate calibration-based weight from Brier score.
+
+        Brier score measures forecasting accuracy (0.0 = perfect, 1.0 = worst).
+        Lower Brier = better forecasting = higher weight.
+
+        Weight formula: 2.0 - brier_score (range 0.5-2.0)
+
+        Args:
+            trader_address: Trader's address
+
+        Returns:
+            float: Weight multiplier (0.5-2.0)
+                - Brier 0.00-0.10: 1.90-2.00x (exceptional forecasting)
+                - Brier 0.10-0.20: 1.80-1.90x (excellent forecasting)
+                - Brier 0.20-0.30: 1.70-1.80x (good forecasting)
+                - Brier 0.30-0.40: 1.60-1.70x (above average)
+                - Brier 0.40-0.50: 1.50-1.60x (average)
+                - Brier 0.50-0.60: 1.40-1.50x (below average)
+                - Brier >0.60: 0.50-1.40x (poor forecasting)
+
+        Examples:
+            Brier 0.15 (excellent) → 1.85x weight
+            Brier 0.50 (random guessing) → 1.50x weight
+            Brier 0.80 (poor) → 1.20x weight
+        """
+        # Load data if not cached
+        if not self.calibration_cache and self.advanced_metrics_timestamp is None:
+            self._load_advanced_metrics_data()
+
+        # Get Brier score (default 0.5 = random guessing)
+        brier_score = self.calibration_cache.get(trader_address, 0.5)
+
+        # Calculate weight: 2.0 - brier_score
+        weight = 2.0 - brier_score
+
+        # Clamp to [0.5, 2.0] range
+        weight = max(0.5, min(2.0, weight))
+
+        return weight
+
+    def get_adaptive_k_factor(self, trader_address: str) -> int:
+        """
+        Calculate adaptive K-factor based on Sharpe ratio.
+
+        K-factor controls ELO rating volatility:
+        - Low K = stable ratings (consistent performer, proven skill)
+        - High K = volatile ratings (inconsistent, likely to regress to mean)
+
+        Sharpe ratio measures risk-adjusted returns:
+        - High Sharpe = consistent profits (skill, not luck)
+        - Low Sharpe = volatile profits (luck, high variance)
+
+        Args:
+            trader_address: Trader's address
+
+        Returns:
+            int: K-factor (16-40)
+                - Sharpe >2.5: K=16 (very stable, proven consistency)
+                - Sharpe 2.0-2.5: K=20 (stable, high consistency)
+                - Sharpe 1.5-2.0: K=24 (moderately stable)
+                - Sharpe 1.0-1.5: K=28 (slight stability)
+                - Sharpe 0.5-1.0: K=32 (default, neutral)
+                - Sharpe 0-0.5: K=36 (volatile, likely luck)
+                - Sharpe <0: K=40 (very volatile, poor performance)
+
+        Examples:
+            Sharpe 3.0 (exceptional) → K=16 (very stable)
+            Sharpe 0.8 (average) → K=32 (normal volatility)
+            Sharpe -0.5 (poor) → K=40 (high volatility)
+        """
+        # Load data if not cached
+        if not self.sharpe_cache and self.advanced_metrics_timestamp is None:
+            self._load_advanced_metrics_data()
+
+        # Get Sharpe ratio (default 0.5 = neutral)
+        sharpe_ratio = self.sharpe_cache.get(trader_address, 0.5)
+
+        # Calculate K-factor based on Sharpe
+        if sharpe_ratio >= 2.5:
+            k_factor = 16  # Very stable ratings
+        elif sharpe_ratio >= 2.0:
+            k_factor = 20
+        elif sharpe_ratio >= 1.5:
+            k_factor = 24
+        elif sharpe_ratio >= 1.0:
+            k_factor = 28
+        elif sharpe_ratio >= 0.5:
+            k_factor = 32  # Default
+        elif sharpe_ratio >= 0.0:
+            k_factor = 36
+        else:  # Negative Sharpe
+            k_factor = 40  # Very volatile ratings
+
+        return k_factor
+
+    def get_execution_modifier(self, trader_address: str) -> float:
+        """
+        Calculate execution quality modifier from regret rate.
+
+        Regret rate measures how often trader exits positions early
+        (sells before peak profit or holds losing positions too long).
+
+        Low regret = excellent timing/execution
+        High regret = poor timing/execution
+
+        Args:
+            trader_address: Trader's address
+
+        Returns:
+            float: Execution multiplier (0.90-1.15)
+                - Regret 0-10%: 1.15x (exceptional execution)
+                - Regret 10-20%: 1.10x (excellent execution)
+                - Regret 20-30%: 1.07x (very good execution)
+                - Regret 30-40%: 1.05x (good execution)
+                - Regret 40-50%: 1.02x (above average)
+                - Regret 50-60%: 1.00x (average)
+                - Regret 60-70%: 0.97x (below average)
+                - Regret 70-80%: 0.94x (poor execution)
+                - Regret >80%: 0.90x (very poor execution)
+
+        Examples:
+            Regret 5% (excellent timing) → 1.15x
+            Regret 55% (average) → 1.00x
+            Regret 85% (poor timing) → 0.90x
+        """
+        # Load data if not cached
+        if not self.regret_cache and self.advanced_metrics_timestamp is None:
+            self._load_advanced_metrics_data()
+
+        # Get regret rate (default 50% = average)
+        regret_rate = self.regret_cache.get(trader_address, 50.0)
+
+        # Calculate modifier based on regret rate
+        if regret_rate < 10:
+            modifier = 1.15
+        elif regret_rate < 20:
+            modifier = 1.10
+        elif regret_rate < 30:
+            modifier = 1.07
+        elif regret_rate < 40:
+            modifier = 1.05
+        elif regret_rate < 50:
+            modifier = 1.02
+        elif regret_rate < 60:
+            modifier = 1.00
+        elif regret_rate < 70:
+            modifier = 0.97
+        elif regret_rate < 80:
+            modifier = 0.94
+        else:
+            modifier = 0.90
+
+        return modifier
+
+    def calculate_advanced_metrics_multiplier(self, trader_address: str) -> Dict:
+        """
+        Calculate combined advanced metrics multiplier.
+
+        Combines three dimensions:
+        1. Calibration weight (forecasting accuracy from Brier scores)
+        2. Execution modifier (timing quality from regret analysis)
+        3. K-factor recommendation (consistency from Sharpe ratios)
+
+        Args:
+            trader_address: Trader's address
+
+        Returns:
+            dict: {
+                'calibration_weight': float (0.5-2.0),
+                'execution_modifier': float (0.90-1.15),
+                'k_factor': int (16-40),
+                'combined_multiplier': float (0.45-2.3),
+                'brier_score': float or None,
+                'sharpe_ratio': float or None,
+                'regret_rate': float or None,
+                'breakdown': str (human-readable explanation)
+            }
+
+        Examples:
+            Exceptional trader (Brier 0.15, Regret 8%, Sharpe 2.8):
+                calibration_weight: 1.85x
+                execution_modifier: 1.15x
+                combined_multiplier: 2.13x
+                k_factor: 16
+
+            Average trader (defaults):
+                calibration_weight: 1.50x
+                execution_modifier: 1.00x
+                combined_multiplier: 1.50x
+                k_factor: 32
+        """
+        # Get individual components
+        calibration_weight = self.get_calibration_weight(trader_address)
+        execution_modifier = self.get_execution_modifier(trader_address)
+        k_factor = self.get_adaptive_k_factor(trader_address)
+
+        # Combined multiplier (calibration × execution)
+        combined = calibration_weight * execution_modifier
+
+        # Clamp to reasonable range [0.45, 2.3]
+        combined = max(0.45, min(2.3, combined))
+
+        # Get raw metrics for reporting
+        brier_score = self.calibration_cache.get(trader_address)
+        sharpe_ratio = self.sharpe_cache.get(trader_address)
+        regret_rate = self.regret_cache.get(trader_address)
+
+        # Build breakdown string
+        breakdown_parts = []
+
+        if brier_score is not None:
+            breakdown_parts.append(f"Calibration: {calibration_weight:.2f}x (Brier: {brier_score:.3f})")
+        else:
+            breakdown_parts.append(f"Calibration: {calibration_weight:.2f}x (Default)")
+
+        if regret_rate is not None:
+            breakdown_parts.append(f"Execution: {execution_modifier:.2f}x (Regret: {regret_rate:.1f}%)")
+        else:
+            breakdown_parts.append(f"Execution: {execution_modifier:.2f}x (Default)")
+
+        if sharpe_ratio is not None:
+            breakdown_parts.append(f"K-Factor: {k_factor} (Sharpe: {sharpe_ratio:.2f})")
+        else:
+            breakdown_parts.append(f"K-Factor: {k_factor} (Default)")
+
+        breakdown_parts.append(f"TOTAL: {combined:.2f}x")
+
+        breakdown = " | ".join(breakdown_parts)
+
+        return {
+            'calibration_weight': round(calibration_weight, 3),
+            'execution_modifier': round(execution_modifier, 3),
+            'k_factor': k_factor,
+            'combined_multiplier': round(combined, 3),
+            'brier_score': round(brier_score, 4) if brier_score is not None else None,
+            'sharpe_ratio': round(sharpe_ratio, 3) if sharpe_ratio is not None else None,
+            'regret_rate': round(regret_rate, 2) if regret_rate is not None else None,
+            'breakdown': breakdown
+        }
+
+    def get_advanced_weighted_elo(self, trader_address: str, category: str = None) -> float:
+        """
+        Get ELO rating with advanced metrics weighting applied.
+
+        Applies calibration (forecasting accuracy) and execution (timing quality)
+        multipliers to base ELO rating.
+
+        Args:
+            trader_address: Trader to evaluate
+            category: Specific category (or None for global)
+
+        Returns:
+            float: ELO rating adjusted by advanced metrics
+
+        Examples:
+            Base ELO 1600, advanced multiplier 1.85x → 2960
+            Base ELO 1500, advanced multiplier 0.80x → 1200
+        """
+        # Get base ELO
+        if category:
+            base_elo = self.get_trader_category_elo(trader_address, category)
+        else:
+            base_elo = self.get_trader_global_elo(trader_address)
+
+        # Get advanced metrics multiplier
+        advanced = self.calculate_advanced_metrics_multiplier(trader_address)
+        combined_multiplier = advanced['combined_multiplier']
+
+        # Apply multiplier
+        adjusted_elo = base_elo * combined_multiplier
+
+        return adjusted_elo
+
     # ==================== INTEGRATION METHODS ====================
 
-    def get_trader_global_elo(self, trader_address: str, apply_behavioral: bool = False) -> float:
+    def get_trader_global_elo(self, trader_address: str, apply_behavioral: bool = False, apply_advanced: bool = False) -> float:
         """
         Get trader's global ELO rating (weighted average across all categories).
 
@@ -941,24 +1313,32 @@ class UnifiedELOSystem:
         Args:
             trader_address: Trader's address
             apply_behavioral: If True, apply behavioral multipliers to adjust ELO
+            apply_advanced: If True, apply advanced metrics (calibration, execution, Sharpe)
 
         Returns:
-            Global ELO rating (weighted average), optionally adjusted by behavioral factors
+            Global ELO rating (weighted average), optionally adjusted by behavioral and/or advanced factors
 
         Examples:
             Base ELO: system.get_trader_global_elo(trader)
-            Adjusted ELO: system.get_trader_global_elo(trader, apply_behavioral=True)
+            Behavioral: system.get_trader_global_elo(trader, apply_behavioral=True)
+            Advanced: system.get_trader_global_elo(trader, apply_advanced=True)
+            Both: system.get_trader_global_elo(trader, apply_behavioral=True, apply_advanced=True)
         """
         base_elo = self.elo_system.get_overall_elo(trader_address)
+        adjusted_elo = base_elo
 
         if apply_behavioral:
             behavior_data = self.calculate_behavioral_multiplier(trader_address)
-            multiplier = behavior_data['combined_multiplier']
-            return base_elo * multiplier
+            adjusted_elo *= behavior_data['combined_multiplier']
 
-        return base_elo
+        if apply_advanced:
+            advanced_data = self.calculate_advanced_metrics_multiplier(trader_address)
+            adjusted_elo *= advanced_data['combined_multiplier']
 
-    def get_trader_category_elo(self, trader_address: str, category: str, apply_behavioral: bool = False) -> float:
+        return adjusted_elo
+
+    def get_trader_category_elo(self, trader_address: str, category: str,
+                                apply_behavioral: bool = False, apply_advanced: bool = False) -> float:
         """
         Get trader's ELO rating for a specific category.
 
@@ -968,22 +1348,29 @@ class UnifiedELOSystem:
             trader_address: Trader's address
             category: Market category (e.g., 'Elections', 'Crypto')
             apply_behavioral: If True, apply behavioral multipliers to adjust ELO
+            apply_advanced: If True, apply advanced metrics (calibration, execution, Sharpe)
 
         Returns:
-            Category-specific ELO rating, optionally adjusted by behavioral factors
+            Category-specific ELO rating, optionally adjusted by behavioral and/or advanced factors
 
         Examples:
             Base ELO: system.get_trader_category_elo(trader, 'Elections')
-            Adjusted ELO: system.get_trader_category_elo(trader, 'Elections', apply_behavioral=True)
+            With behavioral: system.get_trader_category_elo(trader, 'Elections', apply_behavioral=True)
+            With advanced: system.get_trader_category_elo(trader, 'Elections', apply_advanced=True)
+            With both: system.get_trader_category_elo(trader, 'Elections', apply_behavioral=True, apply_advanced=True)
         """
         base_elo = self.elo_system.get_category_elo(trader_address, category)
+        adjusted_elo = base_elo
 
         if apply_behavioral:
             behavior_data = self.calculate_behavioral_multiplier(trader_address)
-            multiplier = behavior_data['combined_multiplier']
-            return base_elo * multiplier
+            adjusted_elo *= behavior_data['combined_multiplier']
 
-        return base_elo
+        if apply_advanced:
+            advanced_data = self.calculate_advanced_metrics_multiplier(trader_address)
+            adjusted_elo *= advanced_data['combined_multiplier']
+
+        return adjusted_elo
 
     def is_specialist(self, trader_address: str, category: str = None,
                      min_markets: int = 5, min_advantage: float = 100) -> Tuple[bool, float]:
@@ -1190,6 +1577,220 @@ class UnifiedELOSystem:
 
         return output_path
 
+    def export_advanced_metrics_analysis(self) -> Dict:
+        """
+        Export advanced metrics analysis data for all traders.
+
+        Returns:
+            Dict with:
+                - timestamp: Analysis timestamp
+                - total_traders: Total number of traders
+                - traders_with_metrics: Number with advanced metrics data
+                - avg_calibration_weight: Average calibration weight
+                - avg_execution_modifier: Average execution modifier
+                - avg_k_factor: Average K-factor
+                - avg_brier_score: Average Brier score
+                - avg_sharpe_ratio: Average Sharpe ratio
+                - avg_regret_rate: Average regret rate
+                - top_advanced_traders: Top 10 by adjusted ELO
+        """
+        print("[ADVANCED METRICS] Exporting advanced metrics analysis...")
+
+        all_traders = self.elo_system.get_all_traders()
+
+        # Load advanced metrics
+        metrics_loaded = self._load_advanced_metrics_data()
+
+        if not metrics_loaded:
+            print("[ADVANCED METRICS] Warning: No advanced metrics data available")
+            return {
+                'timestamp': datetime.now().isoformat(),
+                'total_traders': len(all_traders),
+                'traders_with_metrics': 0,
+                'avg_calibration_weight': 1.5,
+                'avg_execution_modifier': 1.0,
+                'avg_k_factor': 32,
+                'avg_brier_score': 0.0,
+                'avg_sharpe_ratio': 0.0,
+                'avg_regret_rate': 0.0,
+                'top_advanced_traders': []
+            }
+
+        # Calculate statistics
+        calibration_weights = []
+        execution_modifiers = []
+        k_factors = []
+        brier_scores = []
+        sharpe_ratios = []
+        regret_rates = []
+
+        trader_adjusted_elos = []
+
+        for trader in all_traders:
+            if trader in self.calibration_cache or trader in self.sharpe_cache or trader in self.regret_cache:
+                advanced_mult = self.calculate_advanced_metrics_multiplier(trader)
+
+                calibration_weights.append(advanced_mult['calibration'])
+                execution_modifiers.append(advanced_mult['execution'])
+                k_factors.append(advanced_mult['k_factor'])
+
+                # Raw metrics
+                brier = self.calibration_cache.get(trader, 0.25)
+                sharpe = self.sharpe_cache.get(trader, 0.0)
+                regret = self.regret_cache.get(trader, 0.0)
+
+                brier_scores.append(brier)
+                sharpe_ratios.append(sharpe)
+                regret_rates.append(regret)
+
+                # Calculate adjusted ELO for ranking
+                base_elo = self.get_trader_global_elo(trader)
+                adjusted_elo = base_elo * advanced_mult['combined_multiplier']
+
+                trader_adjusted_elos.append({
+                    'trader': trader,
+                    'base_elo': base_elo,
+                    'advanced_multiplier': advanced_mult['combined_multiplier'],
+                    'adjusted_elo': adjusted_elo,
+                    'calibration_weight': advanced_mult['calibration'],
+                    'execution_modifier': advanced_mult['execution'],
+                    'k_factor': advanced_mult['k_factor'],
+                    'brier_score': brier,
+                    'sharpe_ratio': sharpe,
+                    'regret_rate': regret,
+                    'breakdown': advanced_mult['breakdown']
+                })
+
+        # Sort by adjusted ELO
+        trader_adjusted_elos.sort(key=lambda x: x['adjusted_elo'], reverse=True)
+
+        export = {
+            'timestamp': datetime.now().isoformat(),
+            'total_traders': len(all_traders),
+            'traders_with_metrics': len(trader_adjusted_elos),
+            'avg_calibration_weight': sum(calibration_weights) / len(calibration_weights) if calibration_weights else 1.5,
+            'avg_execution_modifier': sum(execution_modifiers) / len(execution_modifiers) if execution_modifiers else 1.0,
+            'avg_k_factor': sum(k_factors) / len(k_factors) if k_factors else 32,
+            'avg_brier_score': sum(brier_scores) / len(brier_scores) if brier_scores else 0.0,
+            'avg_sharpe_ratio': sum(sharpe_ratios) / len(sharpe_ratios) if sharpe_ratios else 0.0,
+            'avg_regret_rate': sum(regret_rates) / len(regret_rates) if regret_rates else 0.0,
+            'top_advanced_traders': trader_adjusted_elos[:10]
+        }
+
+        print(f"[ADVANCED METRICS] Export complete: {export['traders_with_metrics']}/{export['total_traders']} traders with advanced metrics")
+
+        return export
+
+    def generate_advanced_metrics_report(self, output_dir: str = 'reports'):
+        """
+        Generate CSV report of advanced metrics modifiers.
+
+        Creates: reports/advanced_metrics_YYYYMMDD.csv
+
+        Columns:
+            - Rank
+            - Trader Address
+            - Base ELO
+            - Calibration Weight (0.5-2.0x)
+            - Brier Score
+            - Execution Modifier (0.90-1.15x)
+            - Regret Rate
+            - K-Factor (16-40)
+            - Sharpe Ratio
+            - Combined Multiplier
+            - Adjusted ELO
+            - ELO Change
+
+        Args:
+            output_dir: Output directory for reports
+
+        Returns:
+            Path to generated report
+        """
+        print(f"[ADVANCED METRICS] Generating advanced metrics report...")
+
+        # Create output directory
+        if not os.path.isabs(output_dir):
+            output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), output_dir)
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Get all traders and advanced metrics
+        all_traders = self.elo_system.get_all_traders()
+        metrics_loaded = self._load_advanced_metrics_data()
+
+        # Generate report data
+        report_rows = []
+
+        for trader in all_traders:
+            base_elo = self.get_trader_global_elo(trader)
+
+            if metrics_loaded and (trader in self.calibration_cache or trader in self.sharpe_cache or trader in self.regret_cache):
+                advanced_mult = self.calculate_advanced_metrics_multiplier(trader)
+
+                # Raw metrics
+                brier = self.calibration_cache.get(trader, 0.25)
+                sharpe = self.sharpe_cache.get(trader, 0.0)
+                regret = self.regret_cache.get(trader, 0.0)
+
+                adjusted_elo = base_elo * advanced_mult['combined_multiplier']
+                elo_change = adjusted_elo - base_elo
+
+                report_rows.append({
+                    'trader_address': trader,
+                    'base_elo': f"{base_elo:.1f}",
+                    'calibration_weight': f"{advanced_mult['calibration']:.3f}",
+                    'brier_score': f"{brier:.4f}",
+                    'execution_modifier': f"{advanced_mult['execution']:.3f}",
+                    'regret_rate': f"{regret:.4f}",
+                    'k_factor': advanced_mult['k_factor'],
+                    'sharpe_ratio': f"{sharpe:.3f}",
+                    'combined_multiplier': f"{advanced_mult['combined_multiplier']:.3f}",
+                    'adjusted_elo': f"{adjusted_elo:.1f}",
+                    'elo_change': f"{elo_change:+.1f}"
+                })
+            else:
+                # No advanced metrics data - neutral defaults
+                report_rows.append({
+                    'trader_address': trader,
+                    'base_elo': f"{base_elo:.1f}",
+                    'calibration_weight': '1.500',
+                    'brier_score': '0.2500',
+                    'execution_modifier': '1.000',
+                    'regret_rate': '0.0000',
+                    'k_factor': 32,
+                    'sharpe_ratio': '0.000',
+                    'combined_multiplier': '1.500',
+                    'adjusted_elo': f"{base_elo * 1.5:.1f}",
+                    'elo_change': f"{base_elo * 0.5:+.1f}"
+                })
+
+        # Sort by adjusted ELO (highest first)
+        report_rows.sort(key=lambda x: float(x['adjusted_elo']), reverse=True)
+
+        # Add rank column
+        for i, row in enumerate(report_rows, 1):
+            row['rank'] = i
+
+        # Reorder columns with rank first
+        column_order = ['rank', 'trader_address', 'base_elo', 'calibration_weight', 'brier_score',
+                       'execution_modifier', 'regret_rate', 'k_factor', 'sharpe_ratio',
+                       'combined_multiplier', 'adjusted_elo', 'elo_change']
+
+        # Write CSV
+        date_str = datetime.now().strftime('%Y%m%d')
+        output_path = os.path.join(output_dir, f'advanced_metrics_{date_str}.csv')
+
+        with open(output_path, 'w', newline='', encoding='utf-8', errors='ignore') as f:
+            if report_rows:
+                writer = csv.DictWriter(f, fieldnames=column_order)
+                writer.writeheader()
+                writer.writerows(report_rows)
+
+        print(f"[ADVANCED METRICS] Report saved: {output_path}")
+        print(f"[ADVANCED METRICS] {len(report_rows)} traders included")
+
+        return output_path
+
     def export_for_integration(self) -> Dict:
         """
         Export all ELO data for integration with other analysis tools.
@@ -1307,6 +1908,43 @@ class UnifiedELOSystem:
             print(f"[BEHAVIORAL] WARNING: Could not include behavioral data in export: {e}")
             export_data['behavioral_modifiers'] = {}
             export_data['behavioral_analysis_timestamp'] = None
+
+        # Add advanced metrics (if available)
+        try:
+            metrics_loaded = self._load_advanced_metrics_data()
+            advanced_metrics = {}
+
+            if metrics_loaded:
+                for trader_address in all_traders:
+                    if trader_address in self.calibration_cache or trader_address in self.sharpe_cache or trader_address in self.regret_cache:
+                        advanced_mult = self.calculate_advanced_metrics_multiplier(trader_address)
+
+                        # Get raw metrics
+                        brier = self.calibration_cache.get(trader_address, 0.25)
+                        sharpe = self.sharpe_cache.get(trader_address, 0.0)
+                        regret = self.regret_cache.get(trader_address, 0.0)
+
+                        advanced_metrics[trader_address] = {
+                            'calibration_weight': advanced_mult['calibration'],
+                            'execution_modifier': advanced_mult['execution'],
+                            'k_factor': advanced_mult['k_factor'],
+                            'combined': advanced_mult['combined_multiplier'],
+                            'brier_score': brier,
+                            'sharpe_ratio': sharpe,
+                            'regret_rate': regret
+                        }
+
+                export_data['advanced_metrics'] = advanced_metrics
+                export_data['advanced_metrics_timestamp'] = datetime.now().isoformat()
+                print(f"[ADVANCED METRICS] Included advanced metrics for {len(advanced_metrics)} traders in export")
+            else:
+                export_data['advanced_metrics'] = {}
+                export_data['advanced_metrics_timestamp'] = None
+                print("[ADVANCED METRICS] No advanced metrics data available for export")
+        except Exception as e:
+            print(f"[ADVANCED METRICS] WARNING: Could not include advanced metrics in export: {e}")
+            export_data['advanced_metrics'] = {}
+            export_data['advanced_metrics_timestamp'] = None
 
         return export_data
 
@@ -1470,3 +2108,53 @@ if __name__ == "__main__":
             print(f"[TEST] Report generated: {report_path}")
         except Exception as e:
             print(f"[TEST] Behavioral analysis skipped: {e}")
+
+    # Example 6: Advanced Metrics Integration
+    print("\n" + "="*70)
+    print("EXAMPLE 6: Advanced Metrics Analysis")
+    print("="*70)
+
+    # Get a trader with advanced metrics
+    traders = system.elo_system.get_all_traders()
+    if traders:
+        test_trader = list(traders)[0]
+
+        print(f"\n[TEST] Analyzing trader: {test_trader[:12]}...")
+
+        # Get base ELO
+        base_elo = system.get_trader_global_elo(test_trader)
+        print(f"Base Global ELO: {base_elo:.0f}")
+
+        # Get advanced metrics multiplier
+        try:
+            advanced_data = system.calculate_advanced_metrics_multiplier(test_trader)
+            print(f"\nAdvanced Metrics Multiplier: {advanced_data['combined_multiplier']:.3f}")
+            print(f"  - Calibration Weight: {advanced_data['calibration']:.3f} (Brier: {advanced_data.get('brier_score', 0):.4f})")
+            print(f"  - Execution Modifier: {advanced_data['execution']:.3f} (Regret: {advanced_data.get('regret_rate', 0):.4f})")
+            print(f"  - K-Factor: {advanced_data['k_factor']} (Sharpe: {advanced_data.get('sharpe_ratio', 0):.3f})")
+            print(f"Breakdown: {advanced_data['breakdown']}")
+
+            # Get adjusted ELO with advanced metrics only
+            adjusted_elo_advanced = system.get_trader_global_elo(test_trader, apply_advanced=True)
+            print(f"\nAdjusted ELO (advanced only): {adjusted_elo_advanced:.0f}")
+            print(f"Change: {adjusted_elo_advanced - base_elo:+.0f}")
+
+            # Get adjusted ELO with both behavioral and advanced
+            adjusted_elo_both = system.get_trader_global_elo(test_trader, apply_behavioral=True, apply_advanced=True)
+            print(f"\nAdjusted ELO (behavioral + advanced): {adjusted_elo_both:.0f}")
+            print(f"Total Change: {adjusted_elo_both - base_elo:+.0f}")
+
+            # Generate advanced metrics report
+            print("\n[TEST] Generating advanced metrics report...")
+            report_path = system.generate_advanced_metrics_report()
+            print(f"[TEST] Report generated: {report_path}")
+
+            # Export advanced metrics analysis
+            print("\n[TEST] Exporting advanced metrics analysis...")
+            export_advanced = system.export_advanced_metrics_analysis()
+            print(f"[TEST] Traders with metrics: {export_advanced['traders_with_metrics']}/{export_advanced['total_traders']}")
+            print(f"[TEST] Avg Calibration Weight: {export_advanced['avg_calibration_weight']:.3f}")
+            print(f"[TEST] Avg Execution Modifier: {export_advanced['avg_execution_modifier']:.3f}")
+            print(f"[TEST] Avg K-Factor: {export_advanced['avg_k_factor']:.1f}")
+        except Exception as e:
+            print(f"[TEST] Advanced metrics analysis skipped: {e}")
