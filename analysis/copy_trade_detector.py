@@ -51,6 +51,7 @@ class CopyTradeDetector:
         self.trader_trades_cache = {}
         self.copy_scores_cache = {}
         self.max_cache_age = timedelta(hours=max_cache_age_hours)
+        self.correlation_analyzer = None  # May be None if loaded from cache
 
         # Try to load cached correlation results
         reports_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'reports')
@@ -80,6 +81,8 @@ class CopyTradeDetector:
             self.correlation_analyzer = TraderCorrelationMatrix(db_path)
             corr_data = self.correlation_analyzer.export_for_integration()
 
+        # Store correlation data for later use (classify_trader, etc)
+        self.corr_data = corr_data
         # Store high correlation pairs
         self.high_corr_pairs = corr_data['high_correlation_pairs']
         print(f"✓ Initialized with {len(self.high_corr_pairs)} high-correlation pairs to analyze")
@@ -417,8 +420,7 @@ class CopyTradeDetector:
         leader_score = min(100, (follower_count / 20.0) * 100)  # Scale to 0-100
 
         # Get independence score from correlation matrix
-        corr_data = self.correlation_analyzer.export_for_integration()
-        independence_score = corr_data['independence_scores'].get(trader_address, 50)
+        independence_score = self.corr_data['independence_scores'].get(trader_address, 50)
 
         # Calculate average reaction time if follower
         avg_reaction = 0.0
