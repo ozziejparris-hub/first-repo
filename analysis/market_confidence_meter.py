@@ -410,7 +410,7 @@ class MarketConfidenceMeter:
 
     def _generate_confidence_csv(self, markets: List[Dict], output_path: str):
         """Generate main confidence scores CSV."""
-        with open(output_path, 'w', newline='') as f:
+        with open(output_path, 'w', newline='', encoding='utf-8', errors='ignore') as f:
             writer = csv.writer(f)
             writer.writerow([
                 'Market Title',
@@ -453,7 +453,7 @@ class MarketConfidenceMeter:
 
     def _generate_high_confidence_csv(self, markets: List[Dict], output_path: str):
         """Generate high confidence signals CSV."""
-        with open(output_path, 'w', newline='') as f:
+        with open(output_path, 'w', newline='', encoding='utf-8', errors='ignore') as f:
             writer = csv.writer(f)
             writer.writerow([
                 'Rank',
@@ -489,7 +489,7 @@ class MarketConfidenceMeter:
 
     def _generate_summary_txt(self, markets: List[Dict], output_path: str):
         """Generate confidence summary text report."""
-        with open(output_path, 'w') as f:
+        with open(output_path, 'w', encoding='utf-8', errors='ignore') as f:
             f.write("="*70 + "\n")
             f.write("MARKET CONFIDENCE METER - SUMMARY REPORT\n")
             f.write("="*70 + "\n\n")
@@ -547,7 +547,7 @@ class MarketConfidenceMeter:
 
     def _generate_quality_csv(self, markets: List[Dict], output_path: str):
         """Generate signal quality report CSV."""
-        with open(output_path, 'w', newline='') as f:
+        with open(output_path, 'w', newline='', encoding='utf-8', errors='ignore') as f:
             writer = csv.writer(f)
             writer.writerow([
                 'Market Title',
