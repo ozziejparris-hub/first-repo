@@ -144,17 +144,32 @@ class MarketConfidenceMeter:
                 'recommendation': 'AVOID - Insufficient data'
             }
 
-        # Extract data
+        # Extract category from database
+        category = 'Other'
+        conn = self.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT market_category
+            FROM trades
+            WHERE market_id = ?
+            LIMIT 1
+        """, (market_id,))
+        row = cursor.fetchone()
+        if row and row['market_category']:
+            category = row['market_category']
+        conn.close()
+
+        # Extract prediction data
         if consensus_pred:
-            category = 'Other'
             predicted_outcome = consensus_pred.get('predicted_outcome', 'Unknown')
             consensus_confidence = consensus_pred.get('confidence', 0)
         elif specialist_pred:
-            category = specialist_pred.get('category', 'Other')
+            # Use specialist category if database lookup failed
+            if category == 'Other':
+                category = specialist_pred.get('category', 'Other')
             predicted_outcome = specialist_pred.get('predicted_outcome', 'Unknown')
             consensus_confidence = 0
         else:
-            category = 'Other'
             predicted_outcome = 'Unknown'
             consensus_confidence = 0
 
