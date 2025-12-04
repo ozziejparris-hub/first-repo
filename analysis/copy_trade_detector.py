@@ -15,6 +15,7 @@ import sys
 import sqlite3
 import argparse
 import statistics
+import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Tuple, Optional
 from collections import defaultdict
@@ -33,30 +34,55 @@ class CopyTradeDetector:
     Uses time-lagged position analysis to identify who copies who.
     """
 
-    def __init__(self, db_path: str = None):
+    def __init__(self, db_path: str = None, max_cache_age_hours: int = 24):
         """
         Initialize with database and correlation matrix integration.
 
         Args:
             db_path: Path to database
+            max_cache_age_hours: Maximum age of cached correlation data (default 24 hours)
         """
         if db_path:
             self.db = Database(db_path)
         else:
             self.db = Database()
 
-        # Initialize correlation matrix analyzer for efficiency
-        self.correlation_analyzer = TraderCorrelationMatrix(db_path)
-
         # Cache for performance
         self.trader_trades_cache = {}
         self.copy_scores_cache = {}
+        self.max_cache_age = timedelta(hours=max_cache_age_hours)
 
-        # Get high correlation pairs as candidates
-        print("[COPY DETECTOR] Loading correlation matrix data...")
-        corr_data = self.correlation_analyzer.export_for_integration()
+        # Try to load cached correlation results
+        reports_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'reports')
+        cache_file = os.path.join(reports_dir, 'correlation_cache.json')
+        corr_data = None
+
+        if os.path.exists(cache_file):
+            # Check cache age
+            cache_time = datetime.fromtimestamp(os.path.getmtime(cache_file))
+            cache_age = datetime.now() - cache_time
+
+            if cache_age < self.max_cache_age:
+                print(f"✓ Loading cached correlation results (age: {cache_age.seconds//3600}h {(cache_age.seconds//60)%60}m)")
+                try:
+                    with open(cache_file, 'r') as f:
+                        corr_data = json.load(f)
+                    print(f"  - {len(corr_data['high_correlation_pairs'])} high-correlation pairs loaded")
+                except Exception as e:
+                    print(f"⚠ Error loading cache: {e}")
+                    corr_data = None
+            else:
+                print(f"⚠ Correlation cache is {cache_age.seconds//3600}h old (max {max_cache_age_hours}h), recalculating...")
+
+        # If no valid cache, calculate fresh
+        if corr_data is None:
+            print("Calculating correlation matrix from scratch...")
+            self.correlation_analyzer = TraderCorrelationMatrix(db_path)
+            corr_data = self.correlation_analyzer.export_for_integration()
+
+        # Store high correlation pairs
         self.high_corr_pairs = corr_data['high_correlation_pairs']
-        print(f"[COPY DETECTOR] Found {len(self.high_corr_pairs)} high correlation pairs to analyze")
+        print(f"✓ Initialized with {len(self.high_corr_pairs)} high-correlation pairs to analyze")
 
     def _get_trader_trades(self, trader_address: str) -> List[Dict]:
         """Get all trades for a trader (with caching)."""
@@ -807,6 +833,10 @@ def main():
                        help='Hours to look back for front-run opportunities')
     parser.add_argument('--db-path', type=str, default=None,
                        help='Path to database file')
+    parser.add_argument('--force-recalc', action='store_true',
+                       help='Force recalculation of correlation matrix (ignore cache)')
+    parser.add_argument('--max-cache-age', type=int, default=24,
+                       help='Maximum cache age in hours (default: 24)')
 
     args = parser.parse_args()
 
@@ -814,8 +844,12 @@ def main():
     print("  COPY TRADE DETECTOR ANALYSIS")
     print("="*70 + "\n")
 
-    # Initialize
-    detector = CopyTradeDetector(db_path=args.db_path)
+    # Initialize with cache settings
+    if args.force_recalc:
+        print("⚠ Force recalculation enabled - ignoring cache\n")
+        detector = CopyTradeDetector(db_path=args.db_path, max_cache_age_hours=0)
+    else:
+        detector = CopyTradeDetector(db_path=args.db_path, max_cache_age_hours=args.max_cache_age)
 
     # Detect relationships
     print("Detecting copy trading relationships...")

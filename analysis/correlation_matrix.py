@@ -13,6 +13,7 @@ import os
 import sys
 import sqlite3
 import argparse
+import json
 from datetime import datetime
 from typing import List, Dict, Tuple, Optional
 from collections import defaultdict
@@ -715,13 +716,29 @@ class TraderCorrelationMatrix:
             for trader in independent
         }
 
-        return {
+        data = {
             'high_correlation_pairs': high_corr_pairs,
             'correlation_clusters': clusters,
             'independence_scores': independence_scores,
             'avg_correlations': matrix_data['avg_correlations'],
-            'matrix': matrix_data['matrix']
+            'timestamp': datetime.now().isoformat(),
+            'total_traders': len(self.traders),
+            'total_pairs_calculated': len(matrix_data['matrix'])
         }
+
+        # Save to JSON for caching
+        reports_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'reports')
+        os.makedirs(reports_dir, exist_ok=True)
+        cache_file = os.path.join(reports_dir, 'correlation_cache.json')
+
+        try:
+            with open(cache_file, 'w') as f:
+                json.dump(data, f, indent=2)
+            print(f"✓ Saved correlation cache to {cache_file}")
+        except Exception as e:
+            print(f"⚠ Warning: Could not save cache: {e}")
+
+        return data
 
 
 def main():
