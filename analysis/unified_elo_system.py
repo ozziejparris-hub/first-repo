@@ -3179,6 +3179,70 @@ class UnifiedELOSystem:
         trader_ratings.sort(key=lambda x: x['elo'], reverse=True)
         return trader_ratings[:limit]
 
+    # ==================== COMPOSITE SKILL SCORE INTEGRATION ====================
+
+    def get_composite_skill_score(self, trader_address: str) -> int:
+        """
+        Get trader's composite skill score (0-100).
+
+        This is a convenience method that uses CompositeSkillScoreSystem.
+
+        Composite score synthesizes all 5 modifier dimensions:
+        1. Category ELO (0-25 points)
+        2. Forecasting Quality (0-25 points)
+        3. Execution Quality (0-15 points)
+        4. Consistency (0-15 points)
+        5. Behavioral Profile (0-15 points)
+        6. Network Independence (0-10 points)
+        7. Contrarian Bonus (+5 points)
+        8. Copy-Trader Penalty (-20 points)
+
+        Args:
+            trader_address: Trader to evaluate
+
+        Returns:
+            int: Composite score (0-100)
+        """
+        from composite_skill_score import CompositeSkillScoreSystem
+
+        if not hasattr(self, '_composite_system'):
+            self._composite_system = CompositeSkillScoreSystem(
+                db_path=self.db_path,
+                api_key=self.api_key
+            )
+
+        score_data = self._composite_system.calculate_composite_score(trader_address)
+        return score_data['composite_score']
+
+    def get_trader_tier(self, trader_address: str) -> str:
+        """
+        Get trader's tier classification.
+
+        Tiers:
+        - ELITE (85-100): Top 5%
+        - STRONG (70-84): Top 20%
+        - ABOVE AVERAGE (55-69): Top 40%
+        - AVERAGE (40-54): Middle 40%
+        - BELOW AVERAGE (25-39): Bottom 20%
+        - WEAK/NOISE (0-24): Bottom 5%
+
+        Args:
+            trader_address: Trader to evaluate
+
+        Returns:
+            str: Tier classification
+        """
+        from composite_skill_score import CompositeSkillScoreSystem
+
+        if not hasattr(self, '_composite_system'):
+            self._composite_system = CompositeSkillScoreSystem(
+                db_path=self.db_path,
+                api_key=self.api_key
+            )
+
+        score_data = self._composite_system.calculate_composite_score(trader_address)
+        return score_data['tier']
+
 
 # ==================== BACKWARD COMPATIBILITY ====================
 
