@@ -40,6 +40,9 @@ from regret_analysis import RegretAnalyzer
 from correlation_matrix import TraderCorrelationMatrix
 from copy_trade_detector import CopyTradeDetector
 
+# Import contrarian analysis
+from consensus_divergence_detector import ConsensusDivergenceDetector
+
 
 # Market category keywords for auto-categorization
 CATEGORY_KEYWORDS = {
@@ -343,6 +346,14 @@ class UnifiedELOSystem:
         self.correlation_clusters = []  # List of correlation clusters
         self.avg_correlations = {}  # trader -> avg_correlation with others
         self.network_cache_timestamp = None  # Last cache refresh
+
+        # Contrarian analysis component
+        self.contrarian_detector = ConsensusDivergenceDetector(db_path=self.db_path, api_key=self.api_key)
+
+        # Cache for contrarian data
+        self.contrarian_traders = {}  # trader -> contrarian_metrics
+        self.market_disagreements = {}  # market_id -> disagreement_data
+        self.contrarian_cache_timestamp = None  # Last cache refresh
 
     def get_db_connection(self):
         """Get read-only database connection."""
@@ -1692,7 +1703,8 @@ class UnifiedELOSystem:
     # ==================== INTEGRATION METHODS ====================
 
     def get_trader_global_elo(self, trader_address: str, apply_behavioral: bool = False,
-                              apply_advanced: bool = False, apply_network: bool = False) -> float:
+                              apply_advanced: bool = False, apply_network: bool = False,
+                              apply_contrarian: bool = False, market_id: str = None) -> float:
         """
         Get trader's global ELO rating (weighted average across all categories).
 
@@ -1704,9 +1716,11 @@ class UnifiedELOSystem:
             apply_behavioral: If True, apply behavioral multipliers to adjust ELO
             apply_advanced: If True, apply advanced metrics (calibration, execution, Sharpe)
             apply_network: If True, apply network filtering (independence, copy-trader detection)
+            apply_contrarian: If True, apply contrarian bonus
+            market_id: Market ID for disagreement-adjusted weighting (optional)
 
         Returns:
-            Global ELO rating (weighted average), optionally adjusted by behavioral, advanced, and/or network factors
+            Global ELO rating (weighted average), optionally adjusted by behavioral, advanced, network, and/or contrarian factors
             Returns 0.0 if trader should be excluded (copy-trader)
 
         Examples:
@@ -1714,7 +1728,8 @@ class UnifiedELOSystem:
             Behavioral: system.get_trader_global_elo(trader, apply_behavioral=True)
             Advanced: system.get_trader_global_elo(trader, apply_advanced=True)
             Network: system.get_trader_global_elo(trader, apply_network=True)
-            All: system.get_trader_global_elo(trader, apply_behavioral=True, apply_advanced=True, apply_network=True)
+            Contrarian: system.get_trader_global_elo(trader, apply_contrarian=True)
+            All: system.get_trader_global_elo(trader, apply_behavioral=True, apply_advanced=True, apply_network=True, apply_contrarian=True)
         """
         # Check if should exclude due to copy-trading
         if apply_network:
@@ -1737,11 +1752,16 @@ class UnifiedELOSystem:
             network_data = self.calculate_network_modifier(trader_address)
             adjusted_elo *= network_data['combined_modifier']
 
+        if apply_contrarian:
+            contrarian_data = self.calculate_contrarian_multiplier(trader_address, market_id)
+            adjusted_elo *= contrarian_data['combined_multiplier']
+
         return adjusted_elo
 
     def get_trader_category_elo(self, trader_address: str, category: str,
                                 apply_behavioral: bool = False, apply_advanced: bool = False,
-                                apply_network: bool = False) -> float:
+                                apply_network: bool = False, apply_contrarian: bool = False,
+                                market_id: str = None) -> float:
         """
         Get trader's ELO rating for a specific category.
 
@@ -1753,9 +1773,11 @@ class UnifiedELOSystem:
             apply_behavioral: If True, apply behavioral multipliers to adjust ELO
             apply_advanced: If True, apply advanced metrics (calibration, execution, Sharpe)
             apply_network: If True, apply network filtering (independence, copy-trader detection)
+            apply_contrarian: If True, apply contrarian bonus
+            market_id: Market ID for disagreement-adjusted weighting (optional)
 
         Returns:
-            Category-specific ELO rating, optionally adjusted by behavioral, advanced, and/or network factors
+            Category-specific ELO rating, optionally adjusted by behavioral, advanced, network, and/or contrarian factors
             Returns 0.0 if trader should be excluded (copy-trader)
 
         Examples:
@@ -1763,7 +1785,8 @@ class UnifiedELOSystem:
             With behavioral: system.get_trader_category_elo(trader, 'Elections', apply_behavioral=True)
             With advanced: system.get_trader_category_elo(trader, 'Elections', apply_advanced=True)
             With network: system.get_trader_category_elo(trader, 'Elections', apply_network=True)
-            With all: system.get_trader_category_elo(trader, 'Elections', apply_behavioral=True, apply_advanced=True, apply_network=True)
+            With contrarian: system.get_trader_category_elo(trader, 'Elections', apply_contrarian=True)
+            With all: system.get_trader_category_elo(trader, 'Elections', apply_behavioral=True, apply_advanced=True, apply_network=True, apply_contrarian=True)
         """
         # Check if should exclude due to copy-trading
         if apply_network:
@@ -1785,6 +1808,10 @@ class UnifiedELOSystem:
         if apply_network:
             network_data = self.calculate_network_modifier(trader_address)
             adjusted_elo *= network_data['combined_modifier']
+
+        if apply_contrarian:
+            contrarian_data = self.calculate_contrarian_multiplier(trader_address, market_id)
+            adjusted_elo *= contrarian_data['combined_multiplier']
 
         return adjusted_elo
 
@@ -2043,6 +2070,457 @@ class UnifiedELOSystem:
 
         print(f"[NETWORK] Report saved: {output_path}")
         print(f"[NETWORK] {len(report_rows)} traders included")
+
+        return output_path
+
+    # ==================== CONTRARIAN ANALYSIS INTEGRATION ====================
+
+    def _load_contrarian_data(self, force_refresh: bool = False) -> bool:
+        """
+        Load contrarian analysis data (trader patterns and market disagreements).
+
+        This analysis requires resolved markets to work fully, but can identify
+        contrarian patterns from historical data.
+
+        Args:
+            force_refresh: Force reload even if cache is fresh
+
+        Returns:
+            bool: True if data loaded successfully
+        """
+        # Check if cache is stale (>24 hours old)
+        if force_refresh or self.contrarian_cache_timestamp is None or \
+           (datetime.now() - self.contrarian_cache_timestamp).total_seconds() > 86400:
+
+            print("[CONTRARIAN] Loading contrarian analysis data...")
+
+            try:
+                # 1. Identify contrarian traders
+                print("[CONTRARIAN] Identifying contrarian traders...")
+
+                # Run prerequisite analyses (ELO + specialization) if needed
+                if not hasattr(self.contrarian_detector, 'contrarian_traders') or \
+                   not self.contrarian_detector.contrarian_traders:
+
+                    # Run analyses
+                    self.contrarian_detector.run_prerequisite_analyses()
+                    self.contrarian_detector.contrarian_traders = \
+                        self.contrarian_detector.identify_contrarian_traders()
+
+                self.contrarian_traders = self.contrarian_detector.contrarian_traders
+
+                if self.contrarian_traders:
+                    valuable_count = sum(1 for t in self.contrarian_traders.values()
+                                       if t.get('is_valuable', False))
+                    print(f"[CONTRARIAN] Identified {len(self.contrarian_traders)} traders with contrarian metrics")
+                    print(f"[CONTRARIAN] Found {valuable_count} valuable contrarians")
+                else:
+                    print("[CONTRARIAN] ⚠️  No resolved markets yet - contrarian analysis limited")
+
+                # 2. Analyze market disagreements (if markets exist)
+                print("[CONTRARIAN] Analyzing market disagreements...")
+
+                if not hasattr(self.contrarian_detector, 'market_disagreements') or \
+                   not self.contrarian_detector.market_disagreements:
+                    self.contrarian_detector.analyze_all_markets()
+
+                self.market_disagreements = self.contrarian_detector.market_disagreements
+
+                if self.market_disagreements:
+                    high_disagreement = sum(1 for d in self.market_disagreements.values()
+                                          if d.get('disagreement_score', 0) > 0.6)
+                    print(f"[CONTRARIAN] Analyzed {len(self.market_disagreements)} markets")
+                    print(f"[CONTRARIAN] Found {high_disagreement} high-disagreement markets")
+                else:
+                    print("[CONTRARIAN] ⚠️  No market disagreement data available")
+
+                self.contrarian_cache_timestamp = datetime.now()
+
+                has_data = len(self.contrarian_traders) > 0 or len(self.market_disagreements) > 0
+
+                if has_data:
+                    print("[CONTRARIAN] ✅ Successfully loaded contrarian data")
+                else:
+                    print("[CONTRARIAN] ⚠️  No resolved markets - contrarian bonuses inactive")
+
+                return has_data
+
+            except Exception as e:
+                print(f"[CONTRARIAN] ❌ Error loading data: {e}")
+                print(f"[CONTRARIAN] Continuing with neutral contrarian modifiers (1.0x)")
+                return False
+        else:
+            # Cache is fresh
+            cache_age = (datetime.now() - self.contrarian_cache_timestamp).total_seconds() / 3600
+            print(f"[CONTRARIAN] Using cached contrarian data (age: {cache_age:.1f} hours)")
+
+        return True  # Cache is fresh
+
+    def get_contrarian_modifier(self, trader_address: str) -> float:
+        """
+        Calculate base contrarian modifier for trader.
+
+        Rewards traders who profitably bet against consensus.
+
+        Args:
+            trader_address: Trader to evaluate
+
+        Returns:
+            float: Contrarian multiplier (0.90-1.25)
+                - Consistent Contrarian (high win rate) → 1.20x
+                - Selective Contrarian (picks spots) → 1.15x
+                - Valuable Contrarian (general) → 1.10x
+                - Balanced Trader → 1.00x (neutral)
+                - Herd Follower → 0.95x
+                - Chaos Bettor (contrarian but losing) → 0.90x
+        """
+        # Load data if not cached
+        if not self.contrarian_traders and self.contrarian_cache_timestamp is None:
+            self._load_contrarian_data()
+
+        # Check if trader has contrarian data
+        if trader_address not in self.contrarian_traders:
+            return 1.00  # Neutral (no data)
+
+        trader_data = self.contrarian_traders[trader_address]
+
+        # Get contrarian type
+        contrarian_type = trader_data.get('contrarian_type', 'Balanced Trader')
+        is_valuable = trader_data.get('is_valuable', False)
+        contrarian_win_rate = trader_data.get('contrarian_win_rate', 0.5)
+
+        # Calculate modifier based on type and performance
+        if contrarian_type == "Consistent Contrarian":
+            modifier = 1.20  # Best contrarians
+        elif contrarian_type == "Selective Contrarian":
+            modifier = 1.15  # Picks spots well
+        elif is_valuable:
+            modifier = 1.10  # Generally profitable contrarian
+        elif contrarian_type == "Balanced Trader":
+            modifier = 1.00  # Neutral
+        elif contrarian_type == "Herd Follower":
+            modifier = 0.95  # Follows consensus too much
+        elif contrarian_type == "Chaos Bettor":
+            modifier = 0.90  # Contrarian but losing
+        else:
+            modifier = 1.00  # Default neutral
+
+        # Additional boost for very high contrarian win rate
+        if contrarian_win_rate > 0.7:
+            modifier += 0.05  # Extra bonus for exceptional contrarians
+
+        # Clamp to [0.90, 1.25] range
+        modifier = max(0.90, min(1.25, modifier))
+
+        return modifier
+
+    def is_valuable_contrarian(self, trader_address: str) -> Dict:
+        """
+        Check if trader is identified as valuable contrarian.
+
+        Valuable contrarian criteria:
+        - Contrarian win rate > 60%
+        - Contrarian rate > 30%
+        - ROI > 10%
+
+        Args:
+            trader_address: Trader to evaluate
+
+        Returns:
+            dict: {
+                'is_valuable': bool,
+                'contrarian_type': str,
+                'contrarian_rate': float,
+                'contrarian_win_rate': float,
+                'contrarian_roi': float,
+                'contrarian_bets': int
+            }
+        """
+        # Load data if not cached
+        if not self.contrarian_traders and self.contrarian_cache_timestamp is None:
+            self._load_contrarian_data()
+
+        # Check if trader has contrarian data
+        if trader_address not in self.contrarian_traders:
+            return {
+                'is_valuable': False,
+                'contrarian_type': 'Unknown',
+                'contrarian_rate': 0.0,
+                'contrarian_win_rate': 0.0,
+                'contrarian_roi': 0.0,
+                'contrarian_bets': 0
+            }
+
+        trader_data = self.contrarian_traders[trader_address]
+
+        return {
+            'is_valuable': trader_data.get('is_valuable', False),
+            'contrarian_type': trader_data.get('contrarian_type', 'Unknown'),
+            'contrarian_rate': trader_data.get('contrarian_rate', 0.0),
+            'contrarian_win_rate': trader_data.get('contrarian_win_rate', 0.0),
+            'contrarian_roi': trader_data.get('contrarian_roi', 0.0),
+            'contrarian_bets': trader_data.get('contrarian_bets', 0)
+        }
+
+    def get_disagreement_adjusted_weight(self, trader_address: str, market_id: str) -> float:
+        """
+        Calculate disagreement-adjusted weight for trader on specific market.
+
+        In high-disagreement markets, valuable contrarians get extra weight
+        because they provide unique signal when consensus is uncertain.
+
+        Formula: base_weight × (1 + disagreement_boost)
+
+        Where disagreement_boost = disagreement_score × contrarian_multiplier
+
+        Args:
+            trader_address: Trader to evaluate
+            market_id: Market ID for context
+
+        Returns:
+            float: Disagreement-adjusted multiplier (1.0-1.5x)
+                - High disagreement + valuable contrarian → 1.3-1.5x
+                - High disagreement + regular trader → 1.0-1.1x
+                - Low disagreement (any trader) → 1.0x
+        """
+        # Load data if not cached
+        if not self.market_disagreements and self.contrarian_cache_timestamp is None:
+            self._load_contrarian_data()
+
+        # Check if market has disagreement data
+        if market_id not in self.market_disagreements:
+            return 1.0  # No disagreement data, neutral weight
+
+        disagreement_data = self.market_disagreements[market_id]
+        disagreement_score = disagreement_data.get('disagreement_score', 0.0)
+
+        # Only apply boost in high-disagreement markets (>0.6)
+        if disagreement_score < 0.6:
+            return 1.0  # Low disagreement, no boost
+
+        # Check if trader is valuable contrarian
+        contrarian_data = self.is_valuable_contrarian(trader_address)
+
+        if contrarian_data['is_valuable']:
+            # Valuable contrarians get extra weight in high-disagreement markets
+            # Maximum boost: disagreement_score (0.6-1.0) × 0.5 = 0.3-0.5
+            disagreement_boost = disagreement_score * 0.5
+        else:
+            # Regular traders get minor boost in high-disagreement (uncertainty)
+            disagreement_boost = disagreement_score * 0.1
+
+        # Calculate final multiplier
+        multiplier = 1.0 + disagreement_boost
+
+        # Clamp to [1.0, 1.5] range
+        multiplier = max(1.0, min(1.5, multiplier))
+
+        return multiplier
+
+    def calculate_contrarian_multiplier(self, trader_address: str,
+                                       market_id: str = None) -> Dict:
+        """
+        Calculate combined contrarian multiplier.
+
+        Combines two components:
+        1. Base contrarian modifier (trader-intrinsic)
+        2. Disagreement-adjusted weight (market-context-aware, if market_id provided)
+
+        Args:
+            trader_address: Trader to evaluate
+            market_id: Optional market ID for context-aware weighting
+
+        Returns:
+            dict: {
+                'base_modifier': float (0.90-1.25),
+                'disagreement_adjusted': float (1.0-1.5),
+                'combined_multiplier': float (0.90-1.875),
+                'contrarian_data': dict,
+                'disagreement_score': float or None,
+                'breakdown': str
+            }
+        """
+        # Get base contrarian modifier
+        base_modifier = self.get_contrarian_modifier(trader_address)
+
+        # Get contrarian data
+        contrarian_data = self.is_valuable_contrarian(trader_address)
+
+        # Get disagreement adjustment (if market_id provided)
+        if market_id:
+            disagreement_adjusted = self.get_disagreement_adjusted_weight(trader_address, market_id)
+            disagreement_score = self.market_disagreements.get(market_id, {}).get('disagreement_score')
+        else:
+            disagreement_adjusted = 1.0
+            disagreement_score = None
+
+        # Combined multiplier
+        combined = base_modifier * disagreement_adjusted
+
+        # Clamp to [0.90, 1.875] range
+        combined = max(0.90, min(1.875, combined))
+
+        # Build breakdown string
+        breakdown_parts = []
+
+        if contrarian_data['is_valuable']:
+            breakdown_parts.append(f"Contrarian: {base_modifier:.2f}x ({contrarian_data['contrarian_type']})")
+        else:
+            breakdown_parts.append(f"Contrarian: {base_modifier:.2f}x")
+
+        if market_id and disagreement_score is not None:
+            if disagreement_score > 0.6:
+                breakdown_parts.append(f"Disagreement: {disagreement_adjusted:.2f}x (Score: {disagreement_score:.2f})")
+            else:
+                breakdown_parts.append(f"Disagreement: {disagreement_adjusted:.2f}x (Low)")
+
+        breakdown_parts.append(f"TOTAL: {combined:.2f}x")
+
+        breakdown = " | ".join(breakdown_parts)
+
+        return {
+            'base_modifier': round(base_modifier, 3),
+            'disagreement_adjusted': round(disagreement_adjusted, 3),
+            'combined_multiplier': round(combined, 3),
+            'contrarian_data': contrarian_data,
+            'disagreement_score': disagreement_score,
+            'breakdown': breakdown
+        }
+
+    def export_contrarian_analysis(self) -> Dict:
+        """
+        Export contrarian analysis for all traders.
+
+        Returns comprehensive contrarian data for integration.
+
+        Returns:
+            dict: {
+                'timestamp': str,
+                'total_traders_analyzed': int,
+                'valuable_contrarians': int,
+                'high_disagreement_markets': int,
+                'avg_contrarian_win_rate': float,
+                'top_contrarians': List[dict]
+            }
+        """
+        # Load data if needed
+        self._load_contrarian_data()
+
+        traders_with_contrarian = []
+
+        for trader in self.contrarian_traders.keys():
+            contrarian_data = self.calculate_contrarian_multiplier(trader)
+
+            traders_with_contrarian.append({
+                'trader': trader,
+                'base_modifier': contrarian_data['base_modifier'],
+                'is_valuable': contrarian_data['contrarian_data']['is_valuable'],
+                'contrarian_type': contrarian_data['contrarian_data']['contrarian_type'],
+                'contrarian_win_rate': contrarian_data['contrarian_data']['contrarian_win_rate'],
+                'contrarian_rate': contrarian_data['contrarian_data']['contrarian_rate'],
+                'contrarian_bets': contrarian_data['contrarian_data']['contrarian_bets']
+            })
+
+        # Sort by base_modifier (highest first)
+        traders_with_contrarian.sort(key=lambda x: x['base_modifier'], reverse=True)
+
+        # Calculate statistics
+        valuable_contrarians = [t for t in traders_with_contrarian if t['is_valuable']]
+
+        # Get high-disagreement markets
+        high_disagreement_markets = [
+            m for m, d in self.market_disagreements.items()
+            if d.get('disagreement_score', 0) > 0.6
+        ]
+
+        return {
+            'timestamp': datetime.now().isoformat(),
+            'total_traders_analyzed': len(traders_with_contrarian),
+            'valuable_contrarians': len(valuable_contrarians),
+            'high_disagreement_markets': len(high_disagreement_markets),
+            'avg_contrarian_win_rate': sum(t['contrarian_win_rate'] for t in valuable_contrarians) / len(valuable_contrarians) if valuable_contrarians else 0,
+            'top_contrarians': traders_with_contrarian[:10]
+        }
+
+    def generate_contrarian_report(self, output_dir: str = 'reports') -> str:
+        """
+        Generate CSV report of contrarian analysis.
+
+        Creates: contrarian_analysis_YYYYMMDD.csv
+
+        Columns:
+        - Rank
+        - Trader Address
+        - Contrarian Type
+        - Base Modifier
+        - Is Valuable
+        - Contrarian Rate (%)
+        - Contrarian Win Rate (%)
+        - Contrarian ROI
+        - Contrarian Bets
+        - Consensus Win Rate (%)
+
+        Args:
+            output_dir: Output directory for report
+
+        Returns:
+            str: Path to generated report
+        """
+        print("[CONTRARIAN] Generating contrarian analysis report...")
+
+        # Load data if needed
+        self._load_contrarian_data()
+
+        # Create reports directory if it doesn't exist
+        os.makedirs(output_dir, exist_ok=True)
+
+        report_rows = []
+
+        for trader_address in self.contrarian_traders.keys():
+            contrarian_data = self.calculate_contrarian_multiplier(trader_address)
+
+            trader_info = contrarian_data['contrarian_data']
+
+            # Get consensus win rate if available
+            trader_metrics = self.contrarian_traders[trader_address]
+            consensus_win_rate = trader_metrics.get('consensus_win_rate', 0.0)
+
+            report_rows.append({
+                'trader_address': trader_address,
+                'contrarian_type': trader_info['contrarian_type'],
+                'base_modifier': contrarian_data['base_modifier'],
+                'is_valuable': 'Yes' if trader_info['is_valuable'] else 'No',
+                'contrarian_rate_pct': round(trader_info['contrarian_rate'] * 100, 1),
+                'contrarian_win_rate_pct': round(trader_info['contrarian_win_rate'] * 100, 1),
+                'contrarian_roi': round(trader_info['contrarian_roi'], 3),
+                'contrarian_bets': trader_info['contrarian_bets'],
+                'consensus_win_rate_pct': round(consensus_win_rate * 100, 1)
+            })
+
+        # Sort by base_modifier (highest first)
+        report_rows.sort(key=lambda x: x['base_modifier'], reverse=True)
+
+        # Add rank
+        for i, row in enumerate(report_rows, 1):
+            row['rank'] = i
+
+        # Reorder columns with rank first
+        column_order = ['rank', 'trader_address', 'contrarian_type', 'base_modifier',
+                       'is_valuable', 'contrarian_rate_pct', 'contrarian_win_rate_pct',
+                       'contrarian_roi', 'contrarian_bets', 'consensus_win_rate_pct']
+
+        # Write CSV
+        date_str = datetime.now().strftime('%Y%m%d')
+        output_path = os.path.join(output_dir, f'contrarian_analysis_{date_str}.csv')
+
+        with open(output_path, 'w', newline='', encoding='utf-8', errors='ignore') as f:
+            if report_rows:
+                writer = csv.DictWriter(f, fieldnames=column_order)
+                writer.writeheader()
+                writer.writerows(report_rows)
+
+        print(f"[CONTRARIAN] Report saved: {output_path}")
+        print(f"[CONTRARIAN] {len(report_rows)} traders included")
 
         return output_path
 
@@ -2613,6 +3091,55 @@ class UnifiedELOSystem:
             export_data['excluded_traders'] = []
             export_data['network_analysis_timestamp'] = None
 
+        # Add contrarian analysis (if available)
+        try:
+            contrarian_loaded = self._load_contrarian_data()
+            contrarian_analysis = {}
+            valuable_contrarians = []
+            high_disagreement_markets = []
+
+            if contrarian_loaded:
+                for trader_address in all_traders:
+                    if trader_address in self.contrarian_traders:
+                        contrarian_data = self.calculate_contrarian_multiplier(trader_address)
+
+                        contrarian_analysis[trader_address] = {
+                            'base_modifier': contrarian_data['base_modifier'],
+                            'is_valuable': contrarian_data['contrarian_data']['is_valuable'],
+                            'contrarian_type': contrarian_data['contrarian_data']['contrarian_type'],
+                            'contrarian_win_rate': contrarian_data['contrarian_data']['contrarian_win_rate'],
+                            'contrarian_rate': contrarian_data['contrarian_data']['contrarian_rate']
+                        }
+
+                        # Track valuable contrarians
+                        if contrarian_data['contrarian_data']['is_valuable']:
+                            valuable_contrarians.append(trader_address)
+
+                # Get high-disagreement markets
+                high_disagreement_markets = [
+                    m for m, d in self.market_disagreements.items()
+                    if d.get('disagreement_score', 0) > 0.6
+                ]
+
+                export_data['contrarian_analysis'] = contrarian_analysis
+                export_data['valuable_contrarians'] = valuable_contrarians
+                export_data['high_disagreement_markets'] = high_disagreement_markets
+                export_data['contrarian_analysis_timestamp'] = datetime.now().isoformat()
+                print(f"[CONTRARIAN] Included contrarian analysis for {len(contrarian_analysis)} traders in export")
+                print(f"[CONTRARIAN] {len(valuable_contrarians)} valuable contrarians, {len(high_disagreement_markets)} high-disagreement markets")
+            else:
+                export_data['contrarian_analysis'] = {}
+                export_data['valuable_contrarians'] = []
+                export_data['high_disagreement_markets'] = []
+                export_data['contrarian_analysis_timestamp'] = None
+                print("[CONTRARIAN] No contrarian analysis data available for export")
+        except Exception as e:
+            print(f"[CONTRARIAN] WARNING: Could not include contrarian analysis in export: {e}")
+            export_data['contrarian_analysis'] = {}
+            export_data['valuable_contrarians'] = []
+            export_data['high_disagreement_markets'] = []
+            export_data['contrarian_analysis_timestamp'] = None
+
         return export_data
 
     def get_top_traders(self, category: str = None, limit: int = 10) -> List[Dict]:
@@ -2930,6 +3457,102 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"[TEST] Filtering failed: {e}")
 
+    # Example 8: Contrarian Analysis Integration
     print("\n" + "="*70)
-    print("All examples completed!")
+    print("EXAMPLE 8: Contrarian Analysis (Anti-Consensus Bonus)")
+    print("="*70)
+
+    # Load contrarian data
+    try:
+        has_data = system._load_contrarian_data()
+
+        if has_data and system.contrarian_traders:
+            # Get valuable contrarians
+            valuable = [t for t, d in system.contrarian_traders.items()
+                       if d.get('is_valuable', False)]
+
+            print(f"\n[TEST] Found {len(valuable)} valuable contrarians")
+
+            if valuable:
+                # Test first valuable contrarian
+                test_trader = valuable[0]
+
+                print(f"\n[TEST] Analyzing: {test_trader[:12]}...")
+
+                # Get base ELO
+                base_elo = system.get_trader_global_elo(test_trader)
+                print(f"Base Global ELO: {base_elo:.0f}")
+
+                # Get contrarian data
+                contrarian_data = system.calculate_contrarian_multiplier(test_trader)
+
+                print(f"\nContrarian Analysis:")
+                print(f"  Contrarian Type: {contrarian_data['contrarian_data']['contrarian_type']}")
+                print(f"  Contrarian Win Rate: {contrarian_data['contrarian_data']['contrarian_win_rate']*100:.1f}%")
+                print(f"  Contrarian Rate: {contrarian_data['contrarian_data']['contrarian_rate']*100:.1f}%")
+                print(f"  Base Modifier: {contrarian_data['base_modifier']:.2f}x")
+                print(f"  Is Valuable: {contrarian_data['contrarian_data']['is_valuable']}")
+
+                # Test disagreement-adjusted weighting (if markets available)
+                if system.market_disagreements:
+                    high_disagreement = [m for m, d in system.market_disagreements.items()
+                                       if d.get('disagreement_score', 0) > 0.6]
+
+                    if high_disagreement:
+                        test_market = high_disagreement[0]
+                        contrarian_market = system.calculate_contrarian_multiplier(test_trader, test_market)
+
+                        print(f"\n[TEST] Disagreement-Adjusted Weight (High Disagreement Market):")
+                        print(f"  Market: {test_market[:12]}...")
+                        print(f"  Market Disagreement: {contrarian_market['disagreement_score']:.2f}")
+                        print(f"  Adjusted Multiplier: {contrarian_market['disagreement_adjusted']:.2f}x")
+                        print(f"  Combined: {contrarian_market['combined_multiplier']:.2f}x")
+                        print(f"  Breakdown: {contrarian_market['breakdown']}")
+
+                # Get adjusted ELO with contrarian only
+                adjusted_elo_contrarian = system.get_trader_global_elo(test_trader, apply_contrarian=True)
+                print(f"\nAdjusted ELO (contrarian only): {adjusted_elo_contrarian:.0f}")
+                print(f"Change: {adjusted_elo_contrarian - base_elo:+.0f}")
+
+                # Get fully adjusted ELO (ALL 5 modifiers)
+                full_elo = system.get_trader_global_elo(test_trader,
+                                                         apply_behavioral=True,
+                                                         apply_advanced=True,
+                                                         apply_network=True,
+                                                         apply_contrarian=True)
+
+                print(f"\nFully Adjusted ELO (ALL 5 modifiers): {full_elo:.0f}")
+                print(f"Total Change: {full_elo - base_elo:+.0f}")
+
+                # Generate contrarian report
+                print("\n[TEST] Generating contrarian analysis report...")
+                try:
+                    report_path = system.generate_contrarian_report()
+                    print(f"[TEST] Report generated: {report_path}")
+                except Exception as e:
+                    print(f"[TEST] Report generation failed: {e}")
+
+                # Export contrarian analysis
+                print("\n[TEST] Exporting contrarian analysis...")
+                try:
+                    export_contrarian = system.export_contrarian_analysis()
+                    print(f"[TEST] Total traders analyzed: {export_contrarian['total_traders_analyzed']}")
+                    print(f"[TEST] Valuable contrarians: {export_contrarian['valuable_contrarians']}")
+                    print(f"[TEST] High-disagreement markets: {export_contrarian['high_disagreement_markets']}")
+                    print(f"[TEST] Avg contrarian win rate: {export_contrarian['avg_contrarian_win_rate']*100:.1f}%")
+                except Exception as e:
+                    print(f"[TEST] Export failed: {e}")
+
+            else:
+                print("\n⚠️  No valuable contrarians found in current data")
+
+        else:
+            print("\n⚠️  No resolved markets yet - contrarian analysis limited")
+            print("Contrarian bonuses will activate once markets resolve\n")
+
+    except Exception as e:
+        print(f"\n[TEST] Contrarian integration test failed: {e}")
+
+    print("\n" + "="*70)
+    print("All examples completed! (8 integration layers tested)")
     print("="*70)
