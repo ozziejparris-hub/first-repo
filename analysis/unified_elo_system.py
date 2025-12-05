@@ -22,6 +22,7 @@ import requests
 import os
 import math
 import csv
+import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
 from collections import defaultdict, Counter
@@ -34,6 +35,10 @@ from trading_behavior_analysis import TradingBehaviorAnalyzer
 from calibration_analysis import CalibrationAnalyzer
 from risk_adjusted_returns import RiskAdjustedAnalyzer
 from regret_analysis import RegretAnalyzer
+
+# Import network analysis
+from correlation_matrix import TraderCorrelationMatrix
+from copy_trade_detector import CopyTradeDetector
 
 
 # Market category keywords for auto-categorization
@@ -327,6 +332,17 @@ class UnifiedELOSystem:
         self.sharpe_cache = {}  # trader -> sharpe_ratio
         self.regret_cache = {}  # trader -> regret_rate
         self.advanced_metrics_timestamp = None  # Last cache refresh
+
+        # Network analysis components
+        self.correlation_analyzer = TraderCorrelationMatrix(db_path=self.db_path)
+        self.copy_detector = CopyTradeDetector(db_path=self.db_path)
+
+        # Cache for network data
+        self.independence_scores = {}  # trader -> independence_score (0-100)
+        self.copy_relationships = {}  # trader -> {is_follower, is_leader, leaders, followers}
+        self.correlation_clusters = []  # List of correlation clusters
+        self.avg_correlations = {}  # trader -> avg_correlation with others
+        self.network_cache_timestamp = None  # Last cache refresh
 
     def get_db_connection(self):
         """Get read-only database connection."""
@@ -1301,9 +1317,382 @@ class UnifiedELOSystem:
 
         return adjusted_elo
 
+    # ==================== NETWORK ANALYSIS (Correlation, Copy-Trade Detection) ====================
+
+    def _load_network_data(self, force_refresh: bool = False) -> bool:
+        """
+        Load network analysis data (correlation matrix + copy-trade detection).
+
+        This is an expensive operation, so results are cached for 24 hours.
+
+        Args:
+            force_refresh: Force reload even if cache is valid
+
+        Returns:
+            bool: True if data loaded successfully
+        """
+        # Check if cache is stale (>24 hours old)
+        cache_age = None
+        if self.network_cache_timestamp:
+            cache_age = (datetime.now() - self.network_cache_timestamp).total_seconds()
+
+        if force_refresh or self.network_cache_timestamp is None or cache_age > 86400:
+
+            print("[NETWORK] Loading correlation and copy-trade data...")
+
+            try:
+                # 1. Load correlation data
+                print("[CORRELATION] Building correlation matrix...")
+
+                # Check if correlation cache exists
+                cache_file = os.path.join(os.path.dirname(self.db_path), 'reports', 'correlation_cache.json')
+
+                if os.path.exists(cache_file):
+                    # Load from cache
+                    cache_file_age = (datetime.now() - datetime.fromtimestamp(os.path.getmtime(cache_file))).total_seconds() / 3600
+
+                    if cache_file_age < 24:  # Cache valid for 24 hours
+                        print(f"[CORRELATION] Loading from cache (age: {cache_file_age:.1f} hours)...")
+                        with open(cache_file, 'r') as f:
+                            correlation_data = json.load(f)
+
+                        self.independence_scores = correlation_data.get('independence_scores', {})
+                        self.correlation_clusters = correlation_data.get('correlation_clusters', [])
+                        self.avg_correlations = correlation_data.get('avg_correlations', {})
+
+                        print(f"[CORRELATION] Loaded {len(self.independence_scores)} independence scores from cache")
+                    else:
+                        print(f"[CORRELATION] Cache stale ({cache_file_age:.1f} hours), recalculating...")
+                        correlation_data = self._calculate_correlation_data()
+                else:
+                    print("[CORRELATION] No cache found, calculating fresh data...")
+                    correlation_data = self._calculate_correlation_data()
+
+                # 2. Load copy-trade relationships
+                print("[COPY-TRADE] Detecting copy-trade relationships...")
+
+                # Run copy-trade detection
+                copy_results = self.copy_detector.detect_copy_trading()
+
+                if copy_results:
+                    # Process results into self.copy_relationships
+                    for relationship in copy_results.get('relationships', []):
+                        leader = relationship['leader']
+                        follower = relationship['follower']
+
+                        # Mark follower
+                        if follower not in self.copy_relationships:
+                            self.copy_relationships[follower] = {
+                                'is_follower': True,
+                                'is_leader': False,
+                                'leaders': [],
+                                'followers': [],
+                                'copy_score': 0.0
+                            }
+
+                        self.copy_relationships[follower]['leaders'].append(leader)
+                        self.copy_relationships[follower]['copy_score'] = max(
+                            self.copy_relationships[follower]['copy_score'],
+                            relationship.get('copy_score', 0.0)
+                        )
+
+                        # Mark leader
+                        if leader not in self.copy_relationships:
+                            self.copy_relationships[leader] = {
+                                'is_follower': False,
+                                'is_leader': True,
+                                'leaders': [],
+                                'followers': [],
+                                'copy_score': 0.0
+                            }
+
+                        self.copy_relationships[leader]['followers'].append(follower)
+                        self.copy_relationships[leader]['is_leader'] = True
+
+                    print(f"[COPY-TRADE] Detected {len([t for t, r in self.copy_relationships.items() if r['is_follower']])} followers")
+                    print(f"[COPY-TRADE] Detected {len([t for t, r in self.copy_relationships.items() if r['is_leader']])} leaders")
+                else:
+                    print("[COPY-TRADE] ⚠️  Copy-trade detection returned no results")
+
+                self.network_cache_timestamp = datetime.now()
+
+                print("[NETWORK] ✅ Successfully loaded network data")
+                return True
+
+            except Exception as e:
+                print(f"[NETWORK] ❌ Error loading network data: {e}")
+                print(f"[NETWORK] Continuing with neutral network modifiers")
+                return False
+        else:
+            print(f"[NETWORK] Using cached data (age: {cache_age/3600:.1f} hours)")
+
+        return True  # Cache is fresh
+
+    def _calculate_correlation_data(self) -> Dict:
+        """Calculate correlation matrix and export data."""
+        # This runs the full correlation analysis
+        correlation_data = self.correlation_analyzer.export_for_integration()
+
+        self.independence_scores = correlation_data.get('independence_scores', {})
+        self.correlation_clusters = correlation_data.get('correlation_clusters', [])
+        self.avg_correlations = correlation_data.get('avg_correlations', {})
+
+        print(f"[CORRELATION] Calculated {len(self.independence_scores)} independence scores")
+
+        return correlation_data
+
+    def get_independence_modifier(self, trader_address: str) -> float:
+        """
+        Calculate independence-based modifier from correlation analysis.
+
+        Independence score measures how uncorrelated a trader's decisions
+        are with other traders. High independence = genuine signal.
+
+        Formula: independence_score = (1 - avg_correlation) × 100
+
+        Args:
+            trader_address: Trader's address
+
+        Returns:
+            float: Independence multiplier (0.5-1.25)
+                - Score 90-100: 1.25x (very independent, unique alpha)
+                - Score 80-89: 1.20x (highly independent)
+                - Score 70-79: 1.15x (independent)
+                - Score 60-69: 1.10x (mostly independent)
+                - Score 50-59: 1.05x (somewhat independent)
+                - Score 40-49: 1.00x (neutral)
+                - Score 30-39: 0.90x (some correlation)
+                - Score 20-29: 0.80x (moderate correlation)
+                - Score 10-19: 0.70x (high correlation)
+                - Score 0-9: 0.50x (very high correlation, possible copy-trader)
+        """
+        # Load data if not cached
+        if not self.independence_scores and self.network_cache_timestamp is None:
+            self._load_network_data()
+
+        # Get independence score (default 50 = neutral)
+        independence_score = self.independence_scores.get(trader_address, 50)
+
+        # Calculate modifier based on independence score
+        if independence_score >= 90:
+            modifier = 1.25  # Very independent
+        elif independence_score >= 80:
+            modifier = 1.20
+        elif independence_score >= 70:
+            modifier = 1.15
+        elif independence_score >= 60:
+            modifier = 1.10
+        elif independence_score >= 50:
+            modifier = 1.05
+        elif independence_score >= 40:
+            modifier = 1.00  # Neutral
+        elif independence_score >= 30:
+            modifier = 0.90
+        elif independence_score >= 20:
+            modifier = 0.80
+        elif independence_score >= 10:
+            modifier = 0.70
+        else:  # < 10
+            modifier = 0.50  # Likely copy-trader
+
+        return modifier
+
+    def is_copy_trader(self, trader_address: str) -> Dict:
+        """
+        Check if trader is identified as copy-trader (follower).
+
+        Args:
+            trader_address: Trader to check
+
+        Returns:
+            dict: {
+                'is_follower': bool,
+                'is_leader': bool,
+                'copy_score': float (0-1),
+                'leaders': List[str],
+                'followers': List[str],
+                'should_exclude': bool  # True if follower with high copy_score
+            }
+        """
+        # Load data if not cached
+        if not self.copy_relationships and self.network_cache_timestamp is None:
+            self._load_network_data()
+
+        # Get copy relationship data
+        if trader_address not in self.copy_relationships:
+            # Not identified as copy-trader
+            return {
+                'is_follower': False,
+                'is_leader': False,
+                'copy_score': 0.0,
+                'leaders': [],
+                'followers': [],
+                'should_exclude': False
+            }
+
+        relationship = self.copy_relationships[trader_address]
+
+        # Determine if should exclude from consensus calculations
+        # Exclude if: follower with copy_score > 0.7
+        should_exclude = relationship['is_follower'] and relationship['copy_score'] > 0.7
+
+        return {
+            'is_follower': relationship['is_follower'],
+            'is_leader': relationship['is_leader'],
+            'copy_score': relationship['copy_score'],
+            'leaders': relationship['leaders'],
+            'followers': relationship['followers'],
+            'should_exclude': should_exclude
+        }
+
+    def is_in_suspicious_cluster(self, trader_address: str) -> Dict:
+        """
+        Check if trader is in a suspicious correlation cluster.
+
+        Suspicious clusters have very high avg correlation (>0.8),
+        suggesting coordinated trading or copy networks.
+
+        Args:
+            trader_address: Trader to check
+
+        Returns:
+            dict: {
+                'in_cluster': bool,
+                'cluster_id': int or None,
+                'cluster_type': str or None (SUSPICIOUS, TIGHT, LOOSE),
+                'cluster_size': int or None,
+                'avg_correlation': float or None,
+                'penalty_modifier': float (0.5-1.0)
+            }
+        """
+        # Load data if not cached
+        if not self.correlation_clusters and self.network_cache_timestamp is None:
+            self._load_network_data()
+
+        # Check if trader is in any cluster
+        for cluster in self.correlation_clusters:
+            if trader_address in cluster.get('traders', []):
+                cluster_type = cluster.get('cluster_type', 'LOOSE')
+                avg_corr = cluster.get('avg_correlation', 0.5)
+
+                # Calculate penalty modifier based on cluster type
+                if 'SUSPICIOUS' in cluster_type.upper() or avg_corr >= 0.8:
+                    penalty_modifier = 0.50  # Heavy penalty
+                elif 'TIGHT' in cluster_type.upper() or avg_corr >= 0.7:
+                    penalty_modifier = 0.75  # Moderate penalty
+                else:  # LOOSE
+                    penalty_modifier = 0.90  # Light penalty
+
+                return {
+                    'in_cluster': True,
+                    'cluster_id': cluster.get('cluster_id'),
+                    'cluster_type': cluster_type,
+                    'cluster_size': cluster.get('size', 0),
+                    'avg_correlation': avg_corr,
+                    'penalty_modifier': penalty_modifier
+                }
+
+        # Not in any cluster
+        return {
+            'in_cluster': False,
+            'cluster_id': None,
+            'cluster_type': None,
+            'cluster_size': None,
+            'avg_correlation': None,
+            'penalty_modifier': 1.0  # No penalty
+        }
+
+    def calculate_network_modifier(self, trader_address: str) -> Dict:
+        """
+        Calculate combined network-based modifier.
+
+        Combines three network dimensions:
+        1. Independence score (correlation with others)
+        2. Copy-trader status (follower/leader)
+        3. Cluster membership (suspicious networks)
+
+        Args:
+            trader_address: Trader to evaluate
+
+        Returns:
+            dict: {
+                'independence_modifier': float (0.5-1.25),
+                'independence_score': int (0-100),
+                'copy_trader_status': dict,
+                'cluster_status': dict,
+                'combined_modifier': float (0.0-1.25),
+                'should_exclude': bool,
+                'breakdown': str
+            }
+        """
+        # Get independence modifier
+        independence_modifier = self.get_independence_modifier(trader_address)
+        independence_score = self.independence_scores.get(trader_address, 50)
+
+        # Get copy-trader status
+        copy_status = self.is_copy_trader(trader_address)
+
+        # Get cluster status
+        cluster_status = self.is_in_suspicious_cluster(trader_address)
+
+        # Calculate combined modifier
+        combined = independence_modifier
+
+        # Apply copy-trader penalty
+        if copy_status['is_follower']:
+            if copy_status['copy_score'] > 0.8:
+                combined = 0.0  # Complete exclusion
+            elif copy_status['copy_score'] > 0.7:
+                combined *= 0.25  # Heavy penalty
+            elif copy_status['copy_score'] > 0.6:
+                combined *= 0.50  # Moderate penalty
+            else:
+                combined *= 0.75  # Light penalty
+
+        # Apply cluster penalty (multiplicative)
+        if cluster_status['in_cluster']:
+            combined *= cluster_status['penalty_modifier']
+
+        # Determine if should exclude from calculations
+        should_exclude = copy_status['should_exclude'] or (combined < 0.1)
+
+        # Build breakdown string
+        breakdown_parts = []
+        breakdown_parts.append(f"Independence: {independence_modifier:.2f}x (Score: {independence_score})")
+
+        if copy_status['is_follower']:
+            breakdown_parts.append(f"Copy-Trader: FOLLOWER (Score: {copy_status['copy_score']:.2f})")
+        elif copy_status['is_leader']:
+            breakdown_parts.append(f"Copy-Trader: LEADER ({len(copy_status['followers'])} followers)")
+        else:
+            breakdown_parts.append(f"Copy-Trader: INDEPENDENT")
+
+        if cluster_status['in_cluster']:
+            breakdown_parts.append(f"Cluster: {cluster_status['cluster_type']} (Penalty: {cluster_status['penalty_modifier']:.2f}x)")
+        else:
+            breakdown_parts.append(f"Cluster: NONE")
+
+        if should_exclude:
+            breakdown_parts.append("STATUS: EXCLUDED")
+        else:
+            breakdown_parts.append(f"TOTAL: {combined:.2f}x")
+
+        breakdown = " | ".join(breakdown_parts)
+
+        return {
+            'independence_modifier': round(independence_modifier, 3),
+            'independence_score': independence_score,
+            'copy_trader_status': copy_status,
+            'cluster_status': cluster_status,
+            'combined_modifier': round(combined, 3),
+            'should_exclude': should_exclude,
+            'breakdown': breakdown
+        }
+
     # ==================== INTEGRATION METHODS ====================
 
-    def get_trader_global_elo(self, trader_address: str, apply_behavioral: bool = False, apply_advanced: bool = False) -> float:
+    def get_trader_global_elo(self, trader_address: str, apply_behavioral: bool = False,
+                              apply_advanced: bool = False, apply_network: bool = False) -> float:
         """
         Get trader's global ELO rating (weighted average across all categories).
 
@@ -1314,16 +1703,25 @@ class UnifiedELOSystem:
             trader_address: Trader's address
             apply_behavioral: If True, apply behavioral multipliers to adjust ELO
             apply_advanced: If True, apply advanced metrics (calibration, execution, Sharpe)
+            apply_network: If True, apply network filtering (independence, copy-trader detection)
 
         Returns:
-            Global ELO rating (weighted average), optionally adjusted by behavioral and/or advanced factors
+            Global ELO rating (weighted average), optionally adjusted by behavioral, advanced, and/or network factors
+            Returns 0.0 if trader should be excluded (copy-trader)
 
         Examples:
             Base ELO: system.get_trader_global_elo(trader)
             Behavioral: system.get_trader_global_elo(trader, apply_behavioral=True)
             Advanced: system.get_trader_global_elo(trader, apply_advanced=True)
-            Both: system.get_trader_global_elo(trader, apply_behavioral=True, apply_advanced=True)
+            Network: system.get_trader_global_elo(trader, apply_network=True)
+            All: system.get_trader_global_elo(trader, apply_behavioral=True, apply_advanced=True, apply_network=True)
         """
+        # Check if should exclude due to copy-trading
+        if apply_network:
+            network_data = self.calculate_network_modifier(trader_address)
+            if network_data['should_exclude']:
+                return 0.0  # Exclude from calculations
+
         base_elo = self.elo_system.get_overall_elo(trader_address)
         adjusted_elo = base_elo
 
@@ -1335,10 +1733,15 @@ class UnifiedELOSystem:
             advanced_data = self.calculate_advanced_metrics_multiplier(trader_address)
             adjusted_elo *= advanced_data['combined_multiplier']
 
+        if apply_network:
+            network_data = self.calculate_network_modifier(trader_address)
+            adjusted_elo *= network_data['combined_modifier']
+
         return adjusted_elo
 
     def get_trader_category_elo(self, trader_address: str, category: str,
-                                apply_behavioral: bool = False, apply_advanced: bool = False) -> float:
+                                apply_behavioral: bool = False, apply_advanced: bool = False,
+                                apply_network: bool = False) -> float:
         """
         Get trader's ELO rating for a specific category.
 
@@ -1349,16 +1752,25 @@ class UnifiedELOSystem:
             category: Market category (e.g., 'Elections', 'Crypto')
             apply_behavioral: If True, apply behavioral multipliers to adjust ELO
             apply_advanced: If True, apply advanced metrics (calibration, execution, Sharpe)
+            apply_network: If True, apply network filtering (independence, copy-trader detection)
 
         Returns:
-            Category-specific ELO rating, optionally adjusted by behavioral and/or advanced factors
+            Category-specific ELO rating, optionally adjusted by behavioral, advanced, and/or network factors
+            Returns 0.0 if trader should be excluded (copy-trader)
 
         Examples:
             Base ELO: system.get_trader_category_elo(trader, 'Elections')
             With behavioral: system.get_trader_category_elo(trader, 'Elections', apply_behavioral=True)
             With advanced: system.get_trader_category_elo(trader, 'Elections', apply_advanced=True)
-            With both: system.get_trader_category_elo(trader, 'Elections', apply_behavioral=True, apply_advanced=True)
+            With network: system.get_trader_category_elo(trader, 'Elections', apply_network=True)
+            With all: system.get_trader_category_elo(trader, 'Elections', apply_behavioral=True, apply_advanced=True, apply_network=True)
         """
+        # Check if should exclude due to copy-trading
+        if apply_network:
+            network_data = self.calculate_network_modifier(trader_address)
+            if network_data['should_exclude']:
+                return 0.0  # Exclude from calculations
+
         base_elo = self.elo_system.get_category_elo(trader_address, category)
         adjusted_elo = base_elo
 
@@ -1369,6 +1781,10 @@ class UnifiedELOSystem:
         if apply_advanced:
             advanced_data = self.calculate_advanced_metrics_multiplier(trader_address)
             adjusted_elo *= advanced_data['combined_multiplier']
+
+        if apply_network:
+            network_data = self.calculate_network_modifier(trader_address)
+            adjusted_elo *= network_data['combined_modifier']
 
         return adjusted_elo
 
@@ -1429,6 +1845,206 @@ class UnifiedELOSystem:
             result = (best_category is not None, best_score)
             self.specialist_cache[cache_key] = result
             return result
+
+    def get_filtered_traders_for_consensus(self, category: str = None, min_elo: float = 0) -> List[str]:
+        """
+        Get list of traders suitable for consensus calculation.
+
+        Filters out:
+        - Copy-traders (followers with high copy_score)
+        - Traders in suspicious correlation clusters
+        - Traders below minimum ELO threshold
+
+        Args:
+            category: Filter by category (or None for global)
+            min_elo: Minimum ELO threshold
+
+        Returns:
+            List[str]: Trader addresses suitable for consensus
+        """
+        # Load network data
+        self._load_network_data()
+
+        # Get all traders
+        all_traders = list(self.elo_system.category_elos.keys())
+
+        filtered = []
+
+        for trader in all_traders:
+            # Check network status
+            network_data = self.calculate_network_modifier(trader)
+
+            # Exclude if flagged
+            if network_data['should_exclude']:
+                continue
+
+            # Check ELO threshold
+            if category:
+                elo = self.get_trader_category_elo(trader, category,
+                                                   apply_behavioral=True,
+                                                   apply_advanced=True,
+                                                   apply_network=True)
+            else:
+                elo = self.get_trader_global_elo(trader,
+                                                apply_behavioral=True,
+                                                apply_advanced=True,
+                                                apply_network=True)
+
+            if elo >= min_elo:
+                filtered.append(trader)
+
+        return filtered
+
+    def export_network_analysis(self) -> Dict:
+        """
+        Export network analysis for all traders.
+
+        Returns comprehensive network data for integration.
+        """
+        print("[NETWORK] Exporting network analysis...")
+
+        # Load data if needed
+        self._load_network_data()
+
+        traders_with_network = []
+
+        # Get all traders
+        all_traders = set(self.independence_scores.keys()) | set(self.copy_relationships.keys())
+
+        for trader in all_traders:
+            network_data = self.calculate_network_modifier(trader)
+
+            traders_with_network.append({
+                'trader': trader,
+                'independence_score': network_data['independence_score'],
+                'independence_modifier': network_data['independence_modifier'],
+                'is_follower': network_data['copy_trader_status']['is_follower'],
+                'is_leader': network_data['copy_trader_status']['is_leader'],
+                'copy_score': network_data['copy_trader_status']['copy_score'],
+                'in_cluster': network_data['cluster_status']['in_cluster'],
+                'cluster_type': network_data['cluster_status']['cluster_type'],
+                'combined_modifier': network_data['combined_modifier'],
+                'should_exclude': network_data['should_exclude']
+            })
+
+        # Sort by independence score (highest first)
+        traders_with_network.sort(key=lambda x: x['independence_score'], reverse=True)
+
+        # Calculate statistics
+        followers = [t for t in traders_with_network if t['is_follower']]
+        leaders = [t for t in traders_with_network if t['is_leader']]
+        excluded = [t for t in traders_with_network if t['should_exclude']]
+        suspicious_clusters = [c for c in self.correlation_clusters if 'SUSPICIOUS' in c.get('cluster_type', '')]
+
+        export = {
+            'timestamp': datetime.now().isoformat(),
+            'total_traders_analyzed': len(traders_with_network),
+            'independent_traders': len([t for t in traders_with_network if t['independence_score'] >= 75]),
+            'followers_detected': len(followers),
+            'leaders_detected': len(leaders),
+            'traders_excluded': len(excluded),
+            'suspicious_clusters': len(suspicious_clusters),
+            'avg_independence_score': sum(t['independence_score'] for t in traders_with_network) / len(traders_with_network) if traders_with_network else 0,
+            'top_independent_traders': [t for t in traders_with_network if not t['should_exclude']][:10]
+        }
+
+        print(f"[NETWORK] Export complete: {export['independent_traders']}/{export['total_traders_analyzed']} independent traders")
+        print(f"[NETWORK] Excluded {export['traders_excluded']} copy-traders from consensus")
+
+        return export
+
+    def generate_network_report(self, output_dir: str = 'reports'):
+        """
+        Generate CSV report of network analysis.
+
+        Creates: reports/network_analysis_YYYYMMDD.csv
+
+        Columns:
+            - Rank
+            - Trader Address
+            - Independence Score (0-100)
+            - Independence Modifier
+            - Avg Correlation
+            - Copy Status (Independent/Leader/Follower)
+            - Copy Score
+            - Cluster Type
+            - Network Modifier
+            - Should Exclude
+
+        Args:
+            output_dir: Output directory for reports
+
+        Returns:
+            Path to generated report
+        """
+        print(f"[NETWORK] Generating network analysis report...")
+
+        # Create output directory
+        if not os.path.isabs(output_dir):
+            output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), output_dir)
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Load network data
+        self._load_network_data()
+
+        # Get all traders
+        all_traders = set(self.independence_scores.keys()) | set(self.copy_relationships.keys())
+
+        # Generate report data
+        report_rows = []
+
+        for trader in all_traders:
+            network_data = self.calculate_network_modifier(trader)
+
+            # Determine copy status
+            if network_data['copy_trader_status']['is_follower']:
+                copy_status = 'Follower'
+            elif network_data['copy_trader_status']['is_leader']:
+                copy_status = 'Leader'
+            else:
+                copy_status = 'Independent'
+
+            # Get avg correlation
+            avg_corr = self.avg_correlations.get(trader, 0.0)
+
+            report_rows.append({
+                'trader_address': trader,
+                'independence_score': network_data['independence_score'],
+                'independence_modifier': f"{network_data['independence_modifier']:.3f}",
+                'avg_correlation': f"{avg_corr:.3f}",
+                'copy_status': copy_status,
+                'copy_score': f"{network_data['copy_trader_status']['copy_score']:.3f}",
+                'cluster_type': network_data['cluster_status']['cluster_type'] or 'NONE',
+                'network_modifier': f"{network_data['combined_modifier']:.3f}",
+                'should_exclude': 'YES' if network_data['should_exclude'] else 'NO'
+            })
+
+        # Sort by independence score (highest first)
+        report_rows.sort(key=lambda x: x['independence_score'], reverse=True)
+
+        # Add rank column
+        for i, row in enumerate(report_rows, 1):
+            row['rank'] = i
+
+        # Reorder columns with rank first
+        column_order = ['rank', 'trader_address', 'independence_score', 'independence_modifier',
+                       'avg_correlation', 'copy_status', 'copy_score', 'cluster_type',
+                       'network_modifier', 'should_exclude']
+
+        # Write CSV
+        date_str = datetime.now().strftime('%Y%m%d')
+        output_path = os.path.join(output_dir, f'network_analysis_{date_str}.csv')
+
+        with open(output_path, 'w', newline='', encoding='utf-8', errors='ignore') as f:
+            if report_rows:
+                writer = csv.DictWriter(f, fieldnames=column_order)
+                writer.writeheader()
+                writer.writerows(report_rows)
+
+        print(f"[NETWORK] Report saved: {output_path}")
+        print(f"[NETWORK] {len(report_rows)} traders included")
+
+        return output_path
 
     def export_behavioral_analysis(self) -> Dict:
         """
@@ -1946,6 +2562,57 @@ class UnifiedELOSystem:
             export_data['advanced_metrics'] = {}
             export_data['advanced_metrics_timestamp'] = None
 
+        # Add network analysis (if available)
+        try:
+            network_loaded = self._load_network_data()
+            network_analysis = {}
+            filtered_traders = []
+            excluded_traders = []
+
+            if network_loaded:
+                for trader_address in all_traders:
+                    network_data = self.calculate_network_modifier(trader_address)
+                    copy_status = self.is_copy_trader(trader_address)
+
+                    network_analysis[trader_address] = {
+                        'independence_score': self.independence_scores.get(trader_address, 50.0),
+                        'independence_modifier': network_data['independence_modifier'],
+                        'is_follower': copy_status['is_follower'],
+                        'is_leader': copy_status['is_leader'],
+                        'copy_score': copy_status['copy_score'],
+                        'leaders': copy_status['leaders'],
+                        'followers': copy_status['followers'],
+                        'cluster_penalty': network_data['cluster_penalty'],
+                        'combined_modifier': network_data['combined_modifier'],
+                        'should_exclude': network_data['should_exclude']
+                    }
+
+                    # Track excluded traders
+                    if network_data['should_exclude']:
+                        excluded_traders.append(trader_address)
+
+                # Get filtered traders suitable for consensus
+                filtered_traders = self.get_filtered_traders_for_consensus()
+
+                export_data['network_analysis'] = network_analysis
+                export_data['filtered_traders'] = filtered_traders
+                export_data['excluded_traders'] = excluded_traders
+                export_data['network_analysis_timestamp'] = datetime.now().isoformat()
+                print(f"[NETWORK] Included network analysis for {len(network_analysis)} traders in export")
+                print(f"[NETWORK] {len(filtered_traders)} traders suitable for consensus (excluded {len(excluded_traders)})")
+            else:
+                export_data['network_analysis'] = {}
+                export_data['filtered_traders'] = []
+                export_data['excluded_traders'] = []
+                export_data['network_analysis_timestamp'] = None
+                print("[NETWORK] No network analysis data available for export")
+        except Exception as e:
+            print(f"[NETWORK] WARNING: Could not include network analysis in export: {e}")
+            export_data['network_analysis'] = {}
+            export_data['filtered_traders'] = []
+            export_data['excluded_traders'] = []
+            export_data['network_analysis_timestamp'] = None
+
         return export_data
 
     def get_top_traders(self, category: str = None, limit: int = 10) -> List[Dict]:
@@ -2158,3 +2825,111 @@ if __name__ == "__main__":
             print(f"[TEST] Avg K-Factor: {export_advanced['avg_k_factor']:.1f}")
         except Exception as e:
             print(f"[TEST] Advanced metrics analysis skipped: {e}")
+
+    # Example 7: Network Analysis Integration
+    print("\n" + "="*70)
+    print("EXAMPLE 7: Network Analysis (Copy-Trade Filtering)")
+    print("="*70)
+
+    # Get traders for network analysis
+    traders = system.elo_system.get_all_traders()
+    if traders:
+        # Test network filtering on first 5 traders
+        print(f"\n[TEST] Analyzing network relationships for {min(5, len(traders))} traders...")
+
+        for i, test_trader in enumerate(list(traders)[:5]):
+            print(f"\n--- Trader {i+1}: {test_trader[:12]}... ---")
+
+            # Get base ELO
+            base_elo = system.get_trader_global_elo(test_trader)
+            print(f"Base Global ELO: {base_elo:.0f}")
+
+            # Get network modifier
+            try:
+                network_data = system.calculate_network_modifier(test_trader)
+                print(f"\nNetwork Analysis:")
+                print(f"  - Independence Score: {system.independence_scores.get(test_trader, 50.0):.1f}/100")
+                print(f"  - Independence Modifier: {network_data['independence_modifier']:.3f}")
+
+                # Copy-trade status
+                copy_status = system.is_copy_trader(test_trader)
+                if copy_status['is_follower']:
+                    print(f"  - Copy-Trader (FOLLOWER): Yes (score: {copy_status['copy_score']:.2f})")
+                    print(f"    Leaders: {len(copy_status['leaders'])} traders")
+                elif copy_status['is_leader']:
+                    print(f"  - Copy-Trade Leader: Yes")
+                    print(f"    Followers: {len(copy_status['followers'])} traders")
+                else:
+                    print(f"  - Copy-Trader: No (independent)")
+
+                # Cluster status
+                cluster_info = system.is_in_suspicious_cluster(test_trader)
+                if cluster_info['in_cluster']:
+                    print(f"  - Cluster: {cluster_info['cluster_type']} (penalty: {cluster_info['penalty_modifier']:.2f}x)")
+                else:
+                    print(f"  - Cluster: Not in suspicious cluster")
+
+                print(f"\nCombined Network Modifier: {network_data['combined_modifier']:.3f}")
+                print(f"Should Exclude: {'YES - COPY-TRADER' if network_data['should_exclude'] else 'No'}")
+                print(f"Breakdown: {network_data['breakdown']}")
+
+                # Get adjusted ELO with network filtering
+                adjusted_elo_network = system.get_trader_global_elo(test_trader, apply_network=True)
+                if adjusted_elo_network == 0.0:
+                    print(f"\nAdjusted ELO (with network): 0.0 (EXCLUDED)")
+                else:
+                    print(f"\nAdjusted ELO (with network): {adjusted_elo_network:.0f}")
+                    print(f"Change: {adjusted_elo_network - base_elo:+.0f}")
+
+                # Get fully adjusted ELO (all modifiers)
+                adjusted_elo_all = system.get_trader_global_elo(
+                    test_trader,
+                    apply_behavioral=True,
+                    apply_advanced=True,
+                    apply_network=True
+                )
+                if adjusted_elo_all == 0.0:
+                    print(f"Fully Adjusted ELO (all modifiers): 0.0 (EXCLUDED)")
+                else:
+                    print(f"Fully Adjusted ELO (all modifiers): {adjusted_elo_all:.0f}")
+                    print(f"Total Change: {adjusted_elo_all - base_elo:+.0f}")
+
+            except Exception as e:
+                print(f"[TEST] Network analysis failed for trader: {e}")
+
+        # Generate network analysis report
+        print("\n" + "="*70)
+        print("[TEST] Generating network analysis report...")
+        try:
+            report_path = system.generate_network_report()
+            print(f"[TEST] Report generated: {report_path}")
+        except Exception as e:
+            print(f"[TEST] Report generation failed: {e}")
+
+        # Export network analysis
+        print("\n[TEST] Exporting network analysis...")
+        try:
+            export_network = system.export_network_analysis()
+            print(f"[TEST] Total traders analyzed: {export_network['total_traders_analyzed']}")
+            print(f"[TEST] Independent traders (score >= 75): {export_network['independent_traders']}")
+            print(f"[TEST] Followers detected: {export_network['followers_detected']}")
+            print(f"[TEST] Leaders detected: {export_network['leaders_detected']}")
+            print(f"[TEST] Traders excluded: {export_network['traders_excluded']}")
+            print(f"[TEST] Suspicious clusters: {export_network['suspicious_clusters']}")
+            print(f"[TEST] Avg independence score: {export_network['avg_independence_score']:.1f}")
+        except Exception as e:
+            print(f"[TEST] Network export failed: {e}")
+
+        # Test filtered traders for consensus
+        print("\n[TEST] Getting filtered traders for consensus...")
+        try:
+            filtered_traders = system.get_filtered_traders_for_consensus(min_elo=1600)
+            total_traders = len(system.elo_system.get_all_traders())
+            print(f"[TEST] {len(filtered_traders)}/{total_traders} traders suitable for consensus (min ELO: 1600)")
+            print(f"[TEST] Excluded {total_traders - len(filtered_traders)} copy-traders and low-ELO traders")
+        except Exception as e:
+            print(f"[TEST] Filtering failed: {e}")
+
+    print("\n" + "="*70)
+    print("All examples completed!")
+    print("="*70)
