@@ -174,7 +174,7 @@ class PolymarketMonitor:
             'win best director', 'win best picture', 'win best film',
             'best supporting actor', 'best supporting actress',
             'best documentary', 'best animated', 'best song',
-            'best film editing',
+            'best film editing', 'costume', 'editing',
 
             # ENTERTAINMENT - MUSIC
             'songwriter of the year', 'album of the year', 'record of the year',
