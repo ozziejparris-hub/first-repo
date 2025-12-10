@@ -5,6 +5,11 @@ Market Resolution Checker and Diagnostic Tool
 Comprehensive system for checking and diagnosing market resolution status
 on Polymarket using the UMA Optimistic Oracle process.
 
+Uses official Polymarket Gamma API fields (docs.polymarket.com):
+- umaResolutionStatus: "resolved" when market is resolved via UMA
+- outcomes: JSON string like '["Yes", "No"]'
+- outcomePrices: JSON string like '["1.00", "0.00"]' (winner has price "1")
+
 UMA Resolution Process:
 1. Someone proposes a resolution (posts $750 bond)
 2. 2-hour challenge period begins
@@ -75,25 +80,16 @@ class MarketResolutionChecker:
         print(f"{'='*70}\n")
 
         try:
-            # Try CLOB API first (accepts conditionId)
-            clob_url = f"https://clob.polymarket.com/markets/{market_id}"
-            print(f"API Request (CLOB): {clob_url}")
-            response = self.session.get(clob_url, timeout=10)
+            # Use Gamma API (has complete resolution data)
+            url = f"{self.base_url}/markets/{market_id}"
+            print(f"API Request (Gamma): {url}")
+            response = self.session.get(url, timeout=10)
             print(f"Status Code: {response.status_code}")
 
-            # If CLOB fails, try Gamma API (accepts numeric ID)
             if response.status_code != 200:
-                url = f"{self.base_url}/markets/{market_id}"
-                print(f"[INFO] CLOB failed, trying Gamma API: {url}")
-                response = self.session.get(url, timeout=10)
-                print(f"Status Code: {response.status_code}")
-
-                if response.status_code != 200:
-                    print(f"[ERROR] Error: Both APIs returned errors")
-                    print(f"Response text: {response.text[:200]}")
-                    return None
-            else:
-                print(f"[OK] CLOB API succeeded")
+                print(f"[ERROR] API returned error: {response.status_code}")
+                print(f"Response text: {response.text[:200]}")
+                return None
 
             data = response.json()
 
@@ -118,71 +114,99 @@ class MarketResolutionChecker:
             print(f"   End Date: {safe_str(data.get('endDate', 'N/A'))}")
             print(f"   Resolved At: {safe_str(data.get('resolvedAt', 'N/A'))}")
 
-            # Check outcomes
-            outcomes = data.get('outcomes', [])
-            print(f"\n[OUTCOMES] OUTCOMES ({len(outcomes)} total):")
+            # Check resolution status (official field)
+            uma_status = data.get('umaResolutionStatus', 'N/A')
+            resolved_by = data.get('resolvedBy', 'N/A')
 
-            for idx, outcome in enumerate(outcomes):
-                print(f"\n   Outcome {idx + 1}:")
+            print(f"\n[RESOLUTION STATUS]:")
+            print(f"   UMA Resolution Status: {uma_status}")
+            print(f"   Resolved By: {safe_str(resolved_by, max_len=42)}")
 
-                # Handle both dict and string outcomes
-                if isinstance(outcome, dict):
-                    print(f"      Name: {safe_str(outcome.get('name', 'N/A'))}")
-                    print(f"      Payout Numerator: {outcome.get('payoutNumerator', 'N/A')}")
-                    print(f"      Index: {outcome.get('index', 'N/A')}")
+            # Check outcomes and prices
+            outcomes_raw = data.get('outcomes', '[]')
+            prices_raw = data.get('outcomePrices', '[]')
 
-                    # Check if this is winning outcome
-                    if outcome.get('payoutNumerator') == 1000:
-                        print(f"      [WINNER] WINNING OUTCOME")
-                else:
-                    # Outcome is a string or other type
-                    print(f"      Value: {safe_str(outcome)}")
+            print(f"\n[OUTCOMES]:")
+            print(f"   Raw outcomes: {safe_str(str(outcomes_raw), max_len=100)}")
+            print(f"   Raw prices: {safe_str(str(prices_raw), max_len=100)}")
+
+            # Parse JSON strings
+            try:
+                outcomes = json.loads(outcomes_raw) if isinstance(outcomes_raw, str) else outcomes_raw
+                prices = json.loads(prices_raw) if isinstance(prices_raw, str) else prices_raw
+
+                print(f"   Parsed outcomes: {outcomes}")
+                print(f"   Parsed prices: {prices}")
+
+                # Check for winner
+                if uma_status.lower() == 'resolved' and outcomes and prices:
+                    print(f"\n   [WINNER DETERMINATION]:")
+                    for idx, (outcome, price) in enumerate(zip(outcomes, prices)):
+                        price_float = float(price)
+                        status = " <- WINNER!" if price_float == 1.0 else ""
+                        print(f"      {outcome}: ${price}{status}")
+
+            except (json.JSONDecodeError, ValueError) as e:
+                print(f"   [ERROR] Could not parse outcomes/prices: {e}")
 
             # Check resolution source info
             print(f"\n[INFO] RESOLUTION INFO:")
             print(f"   Resolution Source: {safe_str(data.get('resolutionSource', 'N/A'))}")
             print(f"   Description: {safe_str(data.get('description', 'N/A'), max_len=100)}")
 
-            # Determine actual resolution status
+            # Final determination using official fields
+            uma_status = data.get('umaResolutionStatus', '').lower()
             is_closed = data.get('closed', False)
             is_archived = data.get('archived', False)
-            is_resolved = data.get('resolved', False)
-
-            has_winner = any(isinstance(o, dict) and o.get('payoutNumerator') == 1000 for o in outcomes)
 
             print(f"\n[OK] RESOLUTION DETERMINATION:")
+            print(f"   UMA Resolution Status: {uma_status}")
             print(f"   API says closed: {is_closed}")
             print(f"   API says archived: {is_archived}")
-            print(f"   API says resolved: {is_resolved}")
-            print(f"   Has winning outcome (payoutNumerator=1000): {has_winner}")
 
-            # Final determination
-            if has_winner and (is_closed or is_archived or is_resolved):
-                winning_outcome = next((o for o in outcomes if isinstance(o, dict) and o.get('payoutNumerator') == 1000), None)
-                print(f"\n[RESOLVED] MARKET IS RESOLVED")
-                if winning_outcome:
-                    print(f"   Winning Outcome: {safe_str(winning_outcome.get('name', 'Unknown'))}")
+            if uma_status == 'resolved':
+                # Parse outcomes and prices to find winner
+                try:
+                    outcomes_raw = data.get('outcomes', '[]')
+                    prices_raw = data.get('outcomePrices', '[]')
+                    outcomes = json.loads(outcomes_raw) if isinstance(outcomes_raw, str) else outcomes_raw
+                    prices = json.loads(prices_raw) if isinstance(prices_raw, str) else prices_raw
+
+                    winning_outcome = None
+                    for idx, price in enumerate(prices):
+                        if float(price) == 1.0:
+                            winning_outcome = outcomes[idx]
+                            break
+
+                    print(f"\n[RESOLVED] MARKET IS RESOLVED")
+                    print(f"   Winning Outcome: {winning_outcome or 'Unknown'}")
                     return {
                         'resolved': True,
-                        'winning_outcome': winning_outcome.get('name', 'Unknown'),
-                        'resolution_date': data.get('resolvedAt') or data.get('endDate'),
+                        'winning_outcome': winning_outcome,
                         'data': data
                     }
-                else:
+                except Exception as e:
+                    print(f"   [ERROR] Could not determine winner: {e}")
                     return {
                         'resolved': True,
-                        'winning_outcome': 'Unknown',
-                        'resolution_date': data.get('resolvedAt') or data.get('endDate'),
+                        'winning_outcome': 'unknown',
                         'data': data
                     }
-            else:
+
+            elif is_closed or is_archived:
                 print(f"\n[PENDING] MARKET NOT YET RESOLVED")
-                if is_closed:
-                    print(f"   Note: Market is closed but may still be in UMA challenge/dispute period")
+                print(f"   Note: Market is closed but may still be in UMA challenge/dispute period")
                 return {
                     'resolved': False,
-                    'closed': is_closed,
-                    'archived': is_archived,
+                    'status': 'closed_pending',
+                    'data': data
+                }
+            else:
+                print(f"\n[PENDING] MARKET NOT YET RESOLVED")
+                print(f"   Market is still active/trading")
+                return {
+                    'resolved': False,
+                    'status': 'active',
                     'data': data
                 }
 
@@ -194,84 +218,107 @@ class MarketResolutionChecker:
 
     def get_market_resolution(self, market_id: str) -> Optional[Dict]:
         """
-        Get market resolution status from Polymarket API.
+        Get market resolution status using official Gamma API fields.
 
-        Uses improved logic that checks multiple indicators.
-        Handles both conditionId (hex string) and numeric ID.
-
-        Args:
-            market_id: Market ID to check (conditionId or numeric ID)
+        Uses documented fields from docs.polymarket.com:
+        - umaResolutionStatus: "resolved" when market is resolved
+        - outcomes: JSON string like '["Yes", "No"]'
+        - outcomePrices: JSON string like '["1.00", "0.00"]'
 
         Returns:
-            dict with:
-            - resolved: bool (True if market has finalized outcome)
+            Dict with:
+            - resolved: bool
             - winning_outcome: str (if resolved)
-            - resolution_date: datetime (if resolved)
-            - status: str (open/closed/resolved)
+            - resolution_date: str (if resolved)
+            - status: str ('resolved', 'closed_pending', 'active')
         """
         try:
-            # Try CLOB API first (accepts conditionId)
-            clob_url = f"https://clob.polymarket.com/markets/{market_id}"
-            response = self.session.get(clob_url, timeout=10)
+            # Use Gamma API (has complete resolution data)
+            url = f"{self.base_url}/markets/{market_id}"
+            response = self.session.get(url, timeout=10)
 
-            # If CLOB fails, try Gamma API (accepts numeric ID)
             if response.status_code != 200:
-                url = f"{self.base_url}/markets/{market_id}"
-                response = self.session.get(url, timeout=10)
-
-                if response.status_code != 200:
-                    return {"resolved": False, "status": "error", "error_code": response.status_code}
+                return {
+                    "resolved": False,
+                    "status": "error",
+                    "error_code": response.status_code
+                }
 
             data = response.json()
 
-            # Check multiple indicators of resolution
+            # Check official resolution status field
+            uma_status = data.get('umaResolutionStatus', '').lower()
+            is_resolved = uma_status == 'resolved'
+
+            if is_resolved:
+                # Parse outcomes and prices (both are JSON strings)
+                outcomes_raw = data.get('outcomes', '[]')
+                prices_raw = data.get('outcomePrices', '[]')
+
+                try:
+                    outcomes = json.loads(outcomes_raw) if isinstance(outcomes_raw, str) else outcomes_raw
+                    prices = json.loads(prices_raw) if isinstance(prices_raw, str) else prices_raw
+
+                    # Find winning outcome (price = 1.0)
+                    winning_outcome = None
+                    for idx, price in enumerate(prices):
+                        if float(price) == 1.0:
+                            winning_outcome = outcomes[idx].lower()
+                            break
+
+                    if not winning_outcome and outcomes:
+                        # Fallback: if no price is 1.0, something's wrong
+                        # Log warning but still mark as resolved
+                        print(f"[WARNING] Market {market_id} resolved but no winning price found")
+                        print(f"Prices: {prices}, Outcomes: {outcomes}")
+                        winning_outcome = "unknown"
+
+                    return {
+                        "resolved": True,
+                        "winning_outcome": winning_outcome or "unknown",
+                        "resolution_date": data.get('closedTime') or data.get('updatedAt'),
+                        "status": "resolved",
+                        "market_data": data
+                    }
+
+                except (json.JSONDecodeError, ValueError, IndexError) as e:
+                    print(f"[ERROR] Failed to parse outcomes/prices for {market_id}: {e}")
+                    return {
+                        "resolved": True,  # Still mark as resolved
+                        "winning_outcome": "unknown",
+                        "resolution_date": data.get('closedTime'),
+                        "status": "resolved",
+                        "error": str(e)
+                    }
+
+            # Check if closed but not yet resolved
             is_closed = data.get('closed', False)
             is_archived = data.get('archived', False)
-            is_resolved = data.get('resolved', False)  # Some APIs have this field
 
-            # Most reliable: check if any outcome has payoutNumerator = 1000
-            outcomes = data.get('outcomes', [])
-            winning_outcome = None
-
-            for outcome in outcomes:
-                # Handle both dict and string outcomes
-                if isinstance(outcome, dict):
-                    if outcome.get('payoutNumerator') == 1000:
-                        winning_outcome = outcome.get('name', '').lower()
-                        break
-
-            # Market is resolved if:
-            # 1. Has winning outcome (payoutNumerator = 1000), AND
-            # 2. Is closed OR archived OR marked as resolved
-            if winning_outcome and (is_closed or is_archived or is_resolved):
-                return {
-                    "resolved": True,
-                    "winning_outcome": winning_outcome,
-                    "resolution_date": data.get('resolvedAt') or data.get('endDate'),
-                    "status": "resolved",
-                    "market_data": data
-                }
-
-            # Market is closed but not yet resolved (might be in UMA challenge period)
-            elif is_closed:
+            if is_closed or is_archived:
                 return {
                     "resolved": False,
                     "status": "closed_pending",
-                    "note": "Market closed but may be in UMA challenge/dispute period",
-                    "market_data": data
+                    "note": "Market closed but awaiting UMA resolution",
+                    "closed": is_closed,
+                    "archived": is_archived
                 }
 
             # Market is still active
-            else:
-                return {
-                    "resolved": False,
-                    "status": "active",
-                    "market_data": data
-                }
+            return {
+                "resolved": False,
+                "status": "active"
+            }
 
         except Exception as e:
-            print(f"Error fetching market {market_id}: {e}")
-            return {"resolved": False, "status": "error", "error": str(e)}
+            print(f"[ERROR] Exception fetching market {market_id}: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                "resolved": False,
+                "status": "error",
+                "error": str(e)
+            }
 
     def test_known_resolved_market(self):
         """

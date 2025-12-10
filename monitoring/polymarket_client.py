@@ -275,26 +275,25 @@ class PolymarketClient:
 
     def get_market_details(self, market_id: str) -> Optional[Dict]:
         """
-        Get detailed information about a specific market.
-        Handles both conditionId (hex string) and numeric ID.
+        Get market details from Gamma API (complete resolution data).
+
+        Args:
+            market_id: Market ID (numeric or conditionId)
+
+        Returns:
+            Market data dict or None if error
         """
         try:
-            # Try CLOB API first (accepts conditionId)
-            clob_url = f"https://clob.polymarket.com/markets/{market_id}"
-            response = self.session.get(clob_url, timeout=30)
+            url = f"{self.base_url}/markets/{market_id}"
+            response = self.session.get(url, timeout=10)
 
-            # If CLOB fails, try Gamma API (accepts numeric ID)
-            if response.status_code != 200:
-                url = f"{self.base_url}/markets/{market_id}"
-                response = self.session.get(url, timeout=30)
-
-                if response.status_code != 200:
-                    return None
-
-            return response.json()
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return None
 
         except Exception as e:
-            print(f"Error fetching market details for {market_id}: {e}")
+            print(f"Error fetching market {market_id}: {e}")
             return None
 
     def get_market(self, market_id: str) -> Optional[Dict]:
