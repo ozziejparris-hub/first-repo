@@ -274,14 +274,22 @@ class PolymarketClient:
             return []
 
     def get_market_details(self, market_id: str) -> Optional[Dict]:
-        """Get detailed information about a specific market."""
+        """
+        Get detailed information about a specific market.
+        Handles both conditionId (hex string) and numeric ID.
+        """
         try:
-            url = f"{self.base_url}/markets/{market_id}"
+            # Try CLOB API first (accepts conditionId)
+            clob_url = f"https://clob.polymarket.com/markets/{market_id}"
+            response = self.session.get(clob_url, timeout=30)
 
-            response = self.session.get(url, timeout=30)
-
+            # If CLOB fails, try Gamma API (accepts numeric ID)
             if response.status_code != 200:
-                return None
+                url = f"{self.base_url}/markets/{market_id}"
+                response = self.session.get(url, timeout=30)
+
+                if response.status_code != 200:
+                    return None
 
             return response.json()
 
