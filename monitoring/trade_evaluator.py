@@ -150,13 +150,15 @@ class TradeEvaluator:
         }
 
         for i, market in enumerate(resolved_markets, 1):
-            market_id = market['market_id']
+            # CRITICAL: Use condition_id for matching trades
+            # trades.market_id stores conditionId format (0x...)
+            market_id = market.get('condition_id') or market.get('market_id')
             winning_outcome = market.get('winning_outcome')
 
-            if not winning_outcome:
+            if not winning_outcome or not market_id:
                 continue
 
-            # Evaluate this market's trades
+            # Evaluate this market's trades using condition_id
             result = self.evaluate_market_trades(
                 market_id,
                 winning_outcome,
