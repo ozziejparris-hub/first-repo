@@ -2,6 +2,8 @@ from typing import List, Dict
 import time
 from .database import Database
 from .polymarket_client import PolymarketClient
+from .trader_statistics import TraderStatisticsCalculator
+from .trade_evaluator import TradeEvaluator
 
 
 class TraderAnalyzer:
@@ -227,5 +229,33 @@ class TraderAnalyzer:
             print(f"[RESOLUTION] ℹ️  No resolved markets found this check (normal if markets are long-dated)")
 
         print("="*70 + "\n")
+
+        # After finding resolved markets, evaluate trades and update trader statistics
+        if newly_resolved > 0:
+            print("\n" + "="*70)
+            print("[POST-RESOLUTION] Evaluating trades and updating trader statistics...")
+            print("="*70 + "\n")
+
+            # Step 1: Evaluate trades for newly resolved markets
+            evaluator = TradeEvaluator(self.db, self.polymarket)
+            eval_results = evaluator.batch_evaluate_resolved_markets(verbose=True)
+
+            print(f"\n[POST-RESOLUTION] Trade evaluation complete:")
+            print(f"  Trades evaluated: {eval_results['total_trades']}")
+            print(f"  Won: {eval_results['won']}")
+            print(f"  Lost: {eval_results['lost']}")
+
+            # Step 2: Recalculate trader statistics based on new results
+            if eval_results['total_trades'] > 0:
+                print(f"\n[POST-RESOLUTION] Recalculating trader statistics...")
+                stats_calculator = TraderStatisticsCalculator(self.db)
+                stats_summary = stats_calculator.recalculate_all_flagged_traders(verbose=True)
+
+                print(f"[POST-RESOLUTION] Statistics update complete:")
+                print(f"  Traders updated: {stats_summary['traders_updated']}")
+                if stats_summary['traders_with_minimum'] > 0:
+                    print(f"  Average win rate: {stats_summary['average_win_rate']:.2f}%")
+
+            print("="*70 + "\n")
 
         return newly_resolved
