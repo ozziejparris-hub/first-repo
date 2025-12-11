@@ -488,9 +488,13 @@ class MarketResolutionChecker:
                     pass
                 print(f"Winner: {safe_winner}")
 
-    def run_full_resolution_check(self) -> int:
+    def run_full_resolution_check(self, smart_mode: bool = True) -> int:
         """
         Run comprehensive resolution check on all unresolved markets.
+
+        Args:
+            smart_mode: If True, only check markets past their end date + 2 hours.
+                       If False, check all unresolved markets (slower).
 
         Returns:
             int: Number of newly resolved markets found
@@ -502,26 +506,74 @@ class MarketResolutionChecker:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("""
-            SELECT market_id, title, api_id
-            FROM markets
-            WHERE (resolved = 0 OR resolved IS NULL)
-            ORDER BY last_checked ASC
-        """)
+        # Build query based on mode
+        if smart_mode:
+            print("\n[SMART MODE] Only checking markets past end date + 2 hours")
+            query = """
+                SELECT market_id, title, api_id, end_date
+                FROM markets
+                WHERE (resolved = 0 OR resolved IS NULL)
+                  AND end_date IS NOT NULL
+                  AND datetime(end_date) < datetime('now', '-2 hours')
+                ORDER BY last_checked ASC
+            """
+        else:
+            print("\n[FULL MODE] Checking all unresolved markets")
+            query = """
+                SELECT market_id, title, api_id, end_date
+                FROM markets
+                WHERE (resolved = 0 OR resolved IS NULL)
+                ORDER BY last_checked ASC
+            """
 
+        cursor.execute(query)
         markets = cursor.fetchall()
         conn.close()
 
-        print(f"\nChecking {len(markets)} unresolved markets...")
+        if len(markets) == 0:
+            print("\n[OK] No markets need checking!")
+            return 0
+
+        # Time estimation
+        estimated_seconds = len(markets) * 0.2
+        estimated_minutes = estimated_seconds / 60
+        estimated_hours = estimated_minutes / 60
+
+        print(f"\nFound {len(markets)} markets to check")
+        if estimated_hours >= 1:
+            print(f"Estimated time: {estimated_hours:.1f} hours")
+        elif estimated_minutes >= 1:
+            print(f"Estimated time: {estimated_minutes:.1f} minutes")
+        else:
+            print(f"Estimated time: {estimated_seconds:.0f} seconds")
 
         newly_resolved = 0
         closed_pending = 0
         still_active = 0
         errors = 0
 
-        for idx, (market_id, title, api_id) in enumerate(markets, 1):
+        start_time = time.time()
+
+        for idx, (market_id, title, api_id, end_date) in enumerate(markets, 1):
             if idx % 10 == 0 or idx == 1:
-                print(f"\nProgress: {idx}/{len(markets)}")
+                # Calculate progress
+                elapsed = time.time() - start_time
+                if idx > 1:
+                    rate = elapsed / (idx - 1)
+                    remaining = (len(markets) - idx) * rate
+                    eta_minutes = remaining / 60
+                    eta_hours = eta_minutes / 60
+
+                    if eta_hours >= 1:
+                        eta_str = f"{eta_hours:.1f}h"
+                    elif eta_minutes >= 1:
+                        eta_str = f"{eta_minutes:.1f}m"
+                    else:
+                        eta_str = f"{remaining:.0f}s"
+
+                    print(f"\nProgress: {idx}/{len(markets)} (ETA: {eta_str})")
+                else:
+                    print(f"\nProgress: {idx}/{len(markets)}")
 
             try:
                 result = self.get_market_resolution(market_id, api_id)
@@ -590,6 +642,9 @@ class MarketResolutionChecker:
                 print(f"\n[ERROR] Exception checking {market_id}: {e}")
                 errors += 1
 
+        elapsed_total = time.time() - start_time
+        elapsed_minutes = elapsed_total / 60
+
         print(f"\n{'='*70}")
         print("RESOLUTION CHECK COMPLETE")
         print(f"{'='*70}")
@@ -599,6 +654,7 @@ class MarketResolutionChecker:
         print(f"   Still active: {still_active}")
         print(f"   Errors: {errors}")
         print(f"   Total checked: {len(markets)}")
+        print(f"\n[TIME] Elapsed: {elapsed_minutes:.1f} minutes")
 
         return newly_resolved
 
@@ -643,6 +699,17 @@ def main():
         help='Run full resolution check on all unresolved markets'
     )
     parser.add_argument(
+        '--smart',
+        action='store_true',
+        default=True,
+        help='Smart mode: only check markets past end date + 2 hours (default)'
+    )
+    parser.add_argument(
+        '--full',
+        action='store_true',
+        help='Full mode: check ALL unresolved markets (overrides --smart)'
+    )
+    parser.add_argument(
         '--sample',
         type=int,
         default=5,
@@ -664,7 +731,9 @@ def main():
 
     elif args.check:
         # Run full resolution check
-        checker.run_full_resolution_check()
+        # Use smart mode by default, unless --full is specified
+        smart_mode = not args.full
+        checker.run_full_resolution_check(smart_mode=smart_mode)
 
     else:
         # Default: run diagnostics
