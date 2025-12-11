@@ -97,10 +97,20 @@ class FastResolutionChecker:
                     break
 
                 # Filter for truly resolved markets
+                # Resolution is indicated by outcomePrices having a winner (price >= 0.99)
                 for market in data:
-                    uma_status = market.get('umaResolutionStatus', '').lower()
-                    if uma_status == 'resolved':
-                        resolved_markets.append(market)
+                    try:
+                        prices_raw = market.get('outcomePrices', '[]')
+                        prices = json.loads(prices_raw) if isinstance(prices_raw, str) else prices_raw
+
+                        # Check if any outcome has winning price
+                        has_winner = any(float(p) >= 0.99 for p in prices if p)
+
+                        if has_winner:
+                            resolved_markets.append(market)
+                    except:
+                        # Skip markets with parsing errors
+                        continue
 
                 offset += batch_size
 
@@ -110,6 +120,12 @@ class FastResolutionChecker:
                 # Stop if we hit limit
                 if limit and len(resolved_markets) >= limit:
                     resolved_markets = resolved_markets[:limit]
+                    break
+
+                # Safety limit: stop after fetching 10,000 closed markets
+                # (prevents infinite loops and excessive API calls)
+                if offset >= 10000:
+                    print(f"\n   [INFO] Reached safety limit of 10,000 closed markets")
                     break
 
             except Exception as e:
@@ -141,9 +157,9 @@ class FastResolutionChecker:
             outcomes = json.loads(outcomes_raw) if isinstance(outcomes_raw, str) else outcomes_raw
             prices = json.loads(prices_raw) if isinstance(prices_raw, str) else prices_raw
 
-            # Find winner (price = 1.0)
+            # Find winner (price >= 0.99, allowing for floating point imprecision)
             for idx, price in enumerate(prices):
-                if float(price) == 1.0:
+                if float(price) >= 0.99:
                     return outcomes[idx]
 
             return None
@@ -202,32 +218,44 @@ class FastResolutionChecker:
         already_resolved = 0
         not_found = 0
 
-        for market_id, condition_id, api_id in unresolved_db_markets:
-            # Try to find market in resolved list
-            market_data = None
+        # More efficient: iterate through API markets and look them up in DB
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
 
-            # Try api_id first (more reliable)
-            if api_id and api_id in api_lookup:
-                market_data = api_lookup[api_id]
-            # Fall back to condition_id
-            elif condition_id and condition_id in condition_lookup:
-                market_data = condition_lookup[condition_id]
-            # Fall back to market_id
-            elif market_id in condition_lookup:
-                market_data = condition_lookup[market_id]
-            elif market_id in api_lookup:
-                market_data = api_lookup[market_id]
+        for idx, market_data in enumerate(resolved_markets, 1):
+            try:
+                condition_id = market_data.get('conditionId')
+                api_id = str(market_data.get('id', ''))
 
-            if market_data:
+                if not condition_id and not api_id:
+                    not_found += 1
+                    continue
+
+                # Try to find market in database (multiple strategies)
+                cursor.execute("""
+                    SELECT market_id, resolved FROM markets
+                    WHERE api_id = ? OR market_id = ? OR condition_id = ?
+                    LIMIT 1
+                """, (api_id, condition_id, condition_id))
+
+                result = cursor.fetchone()
+
+                if not result:
+                    not_found += 1
+                    continue
+
+                market_id, is_resolved = result
+
+                if is_resolved:
+                    already_resolved += 1
+                    continue
+
                 # Extract winner
                 winner = self.extract_winner(market_data)
 
                 if winner:
                     if not test_mode:
                         # Update database
-                        conn = sqlite3.connect(self.db_path)
-                        cursor = conn.cursor()
-
                         cursor.execute("""
                             UPDATE markets
                             SET resolved = 1,
@@ -238,7 +266,6 @@ class FastResolutionChecker:
                         """, (winner, datetime.now(), datetime.now(), market_id))
 
                         conn.commit()
-                        conn.close()
 
                     updated += 1
 
@@ -251,24 +278,28 @@ class FastResolutionChecker:
                             pass
                         print(f"   [OK] Updated: {title}")
                         print(f"        Winner: {winner}")
-            else:
-                not_found += 1
+
+            except Exception as e:
+                print(f"\n[ERROR] Error processing market {idx}: {e}")
+                continue
 
             # Progress update
-            if (updated + not_found) % 100 == 0:
-                print(f"   Processed {updated + not_found}/{len(unresolved_db_markets)}...", end='\r')
+            if idx % 100 == 0 or idx == len(resolved_markets):
+                print(f"   Processed {idx}/{len(resolved_markets)} | Updated: {updated} | Not found: {not_found}     ", end='\r')
 
-        print(f"   Processed {len(unresolved_db_markets)}/{len(unresolved_db_markets)}             \n")
+        print()  # New line after progress
+        conn.close()
 
         self.stats['markets_updated'] = updated
-        self.stats['total_markets_in_db'] = len(unresolved_db_markets)
+        self.stats['markets_already_resolved'] = already_resolved
 
         print("="*70)
         print("BATCH UPDATE COMPLETE")
         print("="*70)
-        print(f"\nTotal unresolved markets in DB: {len(unresolved_db_markets)}")
+        print(f"\nResolved markets from API: {len(resolved_markets)}")
         print(f"[OK] Markets updated: {updated}")
-        print(f"Markets not found in resolved list: {not_found}")
+        print(f"Already resolved: {already_resolved}")
+        print(f"Not found in database: {not_found}")
         print(f"API requests made: {self.stats['api_requests']}")
 
         if test_mode:
