@@ -442,3 +442,91 @@ class Database:
         )
 
         print(f"[DATABASE] Stored new market: {market_id[:10]}... - {title[:50]}")
+
+    def migrate_add_api_id_column(self):
+        """
+        Add api_id column to store numeric market IDs for Gamma API.
+
+        This enables resolution checking for markets stored with conditionId.
+        Migration is idempotent (safe to run multiple times).
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            # Check if column already exists
+            cursor.execute("PRAGMA table_info(markets)")
+            columns = [col[1] for col in cursor.fetchall()]
+
+            if 'api_id' not in columns:
+                print("Adding api_id column to markets table...")
+                cursor.execute("ALTER TABLE markets ADD COLUMN api_id TEXT")
+
+                # Create index for faster lookups
+                cursor.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_markets_api_id
+                    ON markets(api_id)
+                """)
+
+                conn.commit()
+                print("[OK] Added api_id column and index")
+            else:
+                print("[OK] api_id column already exists")
+
+        except Exception as e:
+            print(f"[ERROR] Migration failed: {e}")
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+    def update_market_api_id(self, market_id: str, api_id: str):
+        """
+        Update the api_id for a market.
+
+        Args:
+            market_id: Current market_id (likely conditionId)
+            api_id: Numeric API ID to store
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("""
+                UPDATE markets
+                SET api_id = ?
+                WHERE market_id = ?
+            """, (api_id, market_id))
+
+            conn.commit()
+
+        except Exception as e:
+            print(f"Error updating api_id for {market_id}: {e}")
+            conn.rollback()
+        finally:
+            conn.close()
+
+    def get_markets_needing_api_id(self, limit: int = None):
+        """
+        Get markets that don't have an api_id yet.
+
+        Returns:
+            List of (market_id, title, condition_id) tuples
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        query = """
+            SELECT market_id, title, condition_id
+            FROM markets
+            WHERE api_id IS NULL OR api_id = ''
+        """
+
+        if limit:
+            query += f" LIMIT {limit}"
+
+        cursor.execute(query)
+        results = cursor.fetchall()
+        conn.close()
+
+        return results

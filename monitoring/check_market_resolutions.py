@@ -216,7 +216,7 @@ class MarketResolutionChecker:
             traceback.print_exc()
             return None
 
-    def get_market_resolution(self, market_id: str) -> Optional[Dict]:
+    def get_market_resolution(self, market_id: str, api_id: str = None) -> Optional[Dict]:
         """
         Get market resolution status using official Gamma API fields.
 
@@ -225,6 +225,10 @@ class MarketResolutionChecker:
         - outcomes: JSON string like '["Yes", "No"]'
         - outcomePrices: JSON string like '["1.00", "0.00"]'
 
+        Args:
+            market_id: Market ID from database (may be conditionId)
+            api_id: Numeric API ID (preferred if available)
+
         Returns:
             Dict with:
             - resolved: bool
@@ -232,9 +236,12 @@ class MarketResolutionChecker:
             - resolution_date: str (if resolved)
             - status: str ('resolved', 'closed_pending', 'active')
         """
+        # Prefer api_id if provided, otherwise use market_id
+        id_to_use = api_id if api_id else market_id
+
         try:
             # Use Gamma API (has complete resolution data)
-            url = f"{self.base_url}/markets/{market_id}"
+            url = f"{self.base_url}/markets/{id_to_use}"
             response = self.session.get(url, timeout=10)
 
             if response.status_code != 200:
@@ -496,7 +503,7 @@ class MarketResolutionChecker:
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT market_id, title
+            SELECT market_id, title, api_id
             FROM markets
             WHERE (resolved = 0 OR resolved IS NULL)
             ORDER BY last_checked ASC
@@ -512,12 +519,12 @@ class MarketResolutionChecker:
         still_active = 0
         errors = 0
 
-        for idx, (market_id, title) in enumerate(markets, 1):
+        for idx, (market_id, title, api_id) in enumerate(markets, 1):
             if idx % 10 == 0 or idx == 1:
                 print(f"\nProgress: {idx}/{len(markets)}")
 
             try:
-                result = self.get_market_resolution(market_id)
+                result = self.get_market_resolution(market_id, api_id)
 
                 if result['status'] == 'resolved':
                     safe_title = title[:50] if title else 'Unknown'
