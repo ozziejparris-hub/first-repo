@@ -70,3 +70,7 @@ reports/*.html
 # Claude Code
 .claude/
 settings.local.json
+
+data/backups/
+*.json
+data/*.db
