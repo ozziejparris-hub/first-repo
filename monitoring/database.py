@@ -119,18 +119,23 @@ class Database:
 
     def add_trade(self, trade_id: str, trader_address: str, market_id: str,
                   market_title: str, market_category: str, outcome: str,
-                  shares: float, price: float, side: str, timestamp: datetime):
+                  shares: float, price: float, side: str, timestamp: datetime,
+                  outcome_bet: str = None):
         """Add a new trade to the database."""
         conn = self.get_connection()
         cursor = conn.cursor()
 
+        # Use outcome if outcome_bet not provided
+        if outcome_bet is None:
+            outcome_bet = outcome
+
         try:
             cursor.execute("""
                 INSERT INTO trades (trade_id, trader_address, market_id, market_title,
-                                  market_category, outcome, shares, price, side, timestamp)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                  market_category, outcome, shares, price, side, timestamp, outcome_bet)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (trade_id, trader_address, market_id, market_title, market_category,
-                  outcome, shares, price, side, timestamp))
+                  outcome, shares, price, side, timestamp, outcome_bet))
 
             conn.commit()
             return True
@@ -251,7 +256,10 @@ class Database:
         return markets
 
     def get_unresolved_markets(self) -> List[Dict]:
-        """Get all unresolved markets that we're tracking.
+        """
+        Get unresolved markets that have trades from flagged traders.
+
+        This ensures we only check resolutions for markets we actually care about.
 
         NOTE: Joins on condition_id because trades table uses conditionId in market_id field,
         while markets table now uses API-compatible ID in market_id field.
@@ -261,10 +269,18 @@ class Database:
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT DISTINCT m.market_id, m.title, m.category, m.end_date, m.last_checked
+            SELECT DISTINCT
+                m.market_id,
+                m.api_id,
+                m.title,
+                m.category,
+                m.end_date,
+                m.last_checked
             FROM markets m
             INNER JOIN trades t ON m.condition_id = t.market_id
-            WHERE (m.resolved = 0 OR m.resolved IS NULL)
+            INNER JOIN traders tr ON t.trader_address = tr.address
+            WHERE tr.is_flagged = 1
+            AND (m.resolved = 0 OR m.resolved IS NULL)
             ORDER BY m.last_checked ASC
         """)
 
@@ -272,6 +288,72 @@ class Database:
         conn.close()
 
         return markets
+
+    def get_trades_for_market(self, market_id: str) -> List[Dict]:
+        """Get all trades for a specific market."""
+        conn = self.get_connection()
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT *
+            FROM trades
+            WHERE market_id = ?
+        """, (market_id,))
+
+        trades = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+
+        return trades
+
+    def get_resolved_trades_for_trader(self, trader_address: str) -> List[Dict]:
+        """Get only trades that have been evaluated (won/lost)."""
+        conn = self.get_connection()
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT *
+            FROM trades
+            WHERE trader_address = ?
+            AND trade_result IN ('won', 'lost')
+        """, (trader_address,))
+
+        trades = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+
+        return trades
+
+    def update_trade_result(self, trade_id: str, result: str):
+        """Update the trade_result field for a trade."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE trades
+            SET trade_result = ?
+            WHERE trade_id = ?
+        """, (result, trade_id))
+
+        conn.commit()
+        conn.close()
+
+    def get_markets_with_trades(self) -> List[str]:
+        """Get list of market_ids that have trades from flagged traders."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT DISTINCT t.market_id
+            FROM trades t
+            INNER JOIN traders tr ON t.trader_address = tr.address
+            WHERE tr.is_flagged = 1
+        """)
+
+        market_ids = [row[0] for row in cursor.fetchall()]
+        conn.close()
+
+        return market_ids
 
     def get_trader_stats(self, address: str) -> Optional[Dict]:
         """Get statistics for a specific trader."""
