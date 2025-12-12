@@ -28,7 +28,7 @@ project_root = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(project_root, 'analysis'))
 
 from unified_elo_system import UnifiedELOSystem
-from position_tracker import PositionTracker
+from monitoring.position_tracker import PositionTracker
 
 
 class UnifiedELOMonitoringBridge:
@@ -106,7 +106,7 @@ class UnifiedELOMonitoringBridge:
     def _get_position_tracker(self) -> PositionTracker:
         """Get or create PositionTracker instance."""
         if self._position_tracker is None:
-            self._position_tracker = PositionTracker(db=self.db)
+            self._position_tracker = PositionTracker(database=self.db)
         return self._position_tracker
 
     def update_positions_for_traders(self, trader_addresses: List[str],
