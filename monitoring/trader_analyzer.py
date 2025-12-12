@@ -256,6 +256,48 @@ class TraderAnalyzer:
                 if stats_summary['traders_with_minimum'] > 0:
                     print(f"  Average win rate: {stats_summary['average_win_rate']:.2f}%")
 
+                # Step 3: Update positions and ELO ratings for affected traders
+                try:
+                    from .elo_bridge import UnifiedELOMonitoringBridge
+
+                    print(f"\n[POST-RESOLUTION] Updating positions and ELO ratings...")
+
+                    # Get traders with recently evaluated trades
+                    affected_traders = self.db.get_traders_with_recent_evaluated_trades(hours=24)
+
+                    if affected_traders:
+                        print(f"  Found {len(affected_traders)} traders with recently evaluated trades")
+
+                        # Initialize ELO bridge
+                        elo_bridge = UnifiedELOMonitoringBridge(self.db)
+
+                        # Update positions first (ensures P&L is current)
+                        position_results = elo_bridge.update_positions_for_traders(
+                            affected_traders,
+                            verbose=False
+                        )
+
+                        print(f"  Position update: {position_results['total_positions_closed']} closed, "
+                              f"{position_results['total_positions_created']} created")
+
+                        # Quick ELO update (4/6 dimensions for speed)
+                        elo_results = elo_bridge.quick_elo_update_for_traders(
+                            affected_traders,
+                            verbose=False
+                        )
+
+                        print(f"  ELO update: {elo_results['traders_updated']} traders updated "
+                              f"(avg: {elo_results['avg_elo']:.1f})")
+
+                        if elo_results['top_traders']:
+                            top = elo_results['top_traders'][0]
+                            print(f"  Top trader: {top['address'][:10]}... "
+                                  f"(ELO: {top['comprehensive_elo']:.1f})")
+
+                except Exception as e:
+                    # ELO integration failure should not stop monitoring
+                    print(f"  [WARN] ELO update failed (continuing): {str(e)}")
+
             print("="*70 + "\n")
 
         return newly_resolved

@@ -612,3 +612,33 @@ class Database:
         conn.close()
 
         return results
+
+    def get_traders_with_recent_evaluated_trades(self, hours: int = 24) -> List[str]:
+        """
+        Get list of trader addresses who have had trades evaluated recently.
+
+        This is used to determine which traders need ELO updates after market resolutions.
+
+        Args:
+            hours: Look back window in hours (default: 24)
+
+        Returns:
+            List of trader addresses with recently evaluated trades
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT DISTINCT t.trader_address
+            FROM trades t
+            INNER JOIN markets m ON t.market_id = m.condition_id
+            WHERE m.resolved = 1
+            AND m.resolution_date IS NOT NULL
+            AND datetime(m.resolution_date) >= datetime('now', '-' || ? || ' hours')
+            AND t.trade_result IN ('won', 'lost')
+        """, (hours,))
+
+        traders = [row[0] for row in cursor.fetchall()]
+        conn.close()
+
+        return traders

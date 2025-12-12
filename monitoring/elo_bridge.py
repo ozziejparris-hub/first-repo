@@ -1,0 +1,664 @@
+#!/usr/bin/env python3
+"""
+ELO Bridge for Monitoring System
+
+This module bridges the monitoring system (monitoring/*.py) with the
+unified ELO system (analysis/unified_elo_system.py) to enable automatic,
+continuous ELO updates when markets resolve.
+
+TWO-TIERED APPROACH:
+1. Quick Updates (monitoring cycles): Base ELO + P&L + cached modifiers (4/6 dimensions)
+2. Full Recalculation (daily): All 6 dimensions including Network + Contrarian
+
+INTEGRATION POINT:
+Called from trader_analyzer.py after trade evaluation to update ELO ratings
+for traders whose trades were just evaluated.
+
+Author: Monitoring → ELO Integration (Phase 2)
+"""
+
+import sys
+import os
+from typing import List, Dict, Optional
+from datetime import datetime, timedelta
+import time
+
+# Add analysis directory to path for unified_elo_system import
+project_root = os.path.dirname(os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(project_root, 'analysis'))
+
+from unified_elo_system import UnifiedELOSystem
+from position_tracker import PositionTracker
+
+
+class UnifiedELOMonitoringBridge:
+    """
+    Bridge class connecting monitoring system to unified ELO system.
+
+    Responsibilities:
+    - Update positions for traders after trade evaluation
+    - Quick ELO updates during monitoring cycles (4/6 dimensions)
+    - Full ELO recalculation for periodic deep analysis (6/6 dimensions)
+    - Store updated ELO ratings in database
+
+    Performance Targets:
+    - Quick update: <10 seconds for 50-100 traders
+    - Full recalculation: <5 minutes for all traders
+    """
+
+    def __init__(self, db=None, db_path: str = None):
+        """
+        Initialize ELO bridge.
+
+        Args:
+            db: Existing Database instance (optional)
+            db_path: Path to database (optional, uses default if not provided)
+        """
+        # Import Database here to avoid circular imports
+        from .database import Database
+
+        self.db = db or Database(db_path)
+
+        # Cache for UnifiedELOSystem (expensive to initialize)
+        self._elo_system = None
+        self._elo_system_last_init = None
+        self._elo_cache_ttl = timedelta(hours=24)  # Reinitialize daily
+
+        # Cache for PositionTracker
+        self._position_tracker = None
+
+        # Performance tracking
+        self._last_quick_update_duration = None
+        self._last_full_update_duration = None
+
+    def _get_elo_system(self, force_refresh: bool = False) -> UnifiedELOSystem:
+        """
+        Get or create UnifiedELOSystem instance with caching.
+
+        Args:
+            force_refresh: Force re-initialization even if cache valid
+
+        Returns:
+            UnifiedELOSystem instance
+        """
+        now = datetime.now()
+
+        # Check if we need to refresh
+        needs_refresh = (
+            force_refresh or
+            self._elo_system is None or
+            self._elo_system_last_init is None or
+            (now - self._elo_system_last_init) > self._elo_cache_ttl
+        )
+
+        if needs_refresh:
+            print(f"[ELO_BRIDGE] Initializing UnifiedELOSystem...")
+            start = time.time()
+
+            self._elo_system = UnifiedELOSystem()
+            self._elo_system_last_init = now
+
+            elapsed = time.time() - start
+            print(f"[ELO_BRIDGE] UnifiedELOSystem initialized in {elapsed:.2f}s")
+
+        return self._elo_system
+
+    def _get_position_tracker(self) -> PositionTracker:
+        """Get or create PositionTracker instance."""
+        if self._position_tracker is None:
+            self._position_tracker = PositionTracker(db=self.db)
+        return self._position_tracker
+
+    def update_positions_for_traders(self, trader_addresses: List[str],
+                                     verbose: bool = False) -> Dict:
+        """
+        Update positions for specific traders.
+
+        This should be called BEFORE ELO update to ensure P&L data is current.
+
+        Args:
+            trader_addresses: List of trader addresses to update
+            verbose: Print detailed progress
+
+        Returns:
+            Dictionary with update results:
+            {
+                'traders_processed': int,
+                'total_positions_created': int,
+                'total_positions_closed': int,
+                'errors': List[str],
+                'duration_seconds': float
+            }
+        """
+        start_time = time.time()
+
+        if verbose:
+            print(f"\n[ELO_BRIDGE] Updating positions for {len(trader_addresses)} traders...")
+
+        tracker = self._get_position_tracker()
+
+        total_positions_created = 0
+        total_positions_closed = 0
+        errors = []
+
+        for i, trader_address in enumerate(trader_addresses):
+            try:
+                # Match trades to positions
+                positions = tracker.match_trades_for_trader(trader_address)
+
+                if positions:
+                    # Store positions in database
+                    tracker.store_positions(positions, trader_address)
+
+                    # Count new vs closed
+                    closed = sum(1 for p in positions if p.get('status') == 'closed')
+                    opened = len(positions) - closed
+
+                    total_positions_created += opened
+                    total_positions_closed += closed
+
+                    if verbose and (opened > 0 or closed > 0):
+                        print(f"  [{i+1}/{len(trader_addresses)}] {trader_address[:10]}... "
+                              f"→ {opened} open, {closed} closed")
+
+            except Exception as e:
+                error_msg = f"Position update failed for {trader_address}: {str(e)}"
+                errors.append(error_msg)
+                if verbose:
+                    print(f"  [ERROR] {error_msg}")
+
+        duration = time.time() - start_time
+
+        result = {
+            'traders_processed': len(trader_addresses),
+            'total_positions_created': total_positions_created,
+            'total_positions_closed': total_positions_closed,
+            'errors': errors,
+            'duration_seconds': duration
+        }
+
+        if verbose:
+            print(f"[ELO_BRIDGE] Position update complete: "
+                  f"{total_positions_created} opened, {total_positions_closed} closed "
+                  f"in {duration:.2f}s")
+
+        return result
+
+    def quick_elo_update_for_traders(self, trader_addresses: List[str],
+                                     verbose: bool = False,
+                                     force_refresh: bool = False) -> Dict:
+        """
+        Quick ELO update for specific traders (4/6 dimensions).
+
+        Used during monitoring cycles. Updates:
+        1. Base category ELO (resolution-based) ✓
+        2. Behavioral modifiers (cached, 24h TTL) ✓
+        3. Advanced metrics (cached, 24h TTL) ✓
+        4. P&L modifiers (fresh calculation) ✓
+
+        Skips:
+        5. Network analysis (expensive) ✗
+        6. Contrarian analysis (expensive) ✗
+
+        Args:
+            trader_addresses: List of trader addresses to update
+            verbose: Print detailed progress
+            force_refresh: Force ELO system re-initialization
+
+        Returns:
+            Dictionary with update results:
+            {
+                'traders_updated': int,
+                'traders_failed': int,
+                'avg_elo': float,
+                'top_traders': List[Dict],
+                'errors': List[str],
+                'duration_seconds': float
+            }
+        """
+        start_time = time.time()
+
+        if verbose:
+            print(f"\n[ELO_BRIDGE] Quick ELO update for {len(trader_addresses)} traders...")
+
+        # Get ELO system
+        elo_system = self._get_elo_system(force_refresh=force_refresh)
+
+        # Calculate base ELO for all traders first
+        if verbose:
+            print("[ELO_BRIDGE] Recalculating base ELO ratings...")
+
+        try:
+            elo_system.calculate_elo_ratings()
+        except Exception as e:
+            return {
+                'traders_updated': 0,
+                'traders_failed': len(trader_addresses),
+                'errors': [f"Base ELO calculation failed: {str(e)}"],
+                'duration_seconds': time.time() - start_time
+            }
+
+        # Update ELO for each trader
+        traders_updated = 0
+        traders_failed = 0
+        errors = []
+        elo_values = []
+
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+
+        for i, trader_address in enumerate(trader_addresses):
+            try:
+                # Get comprehensive ELO with quick modifiers
+                # (behavioral and advanced use 24h cache, P&L is fresh)
+                comprehensive_elo = elo_system.get_trader_global_elo(
+                    trader_address,
+                    apply_behavioral=True,  # Cached
+                    apply_advanced=True,     # Cached
+                    apply_network=False,     # Skip (expensive)
+                    apply_contrarian=False,  # Skip (expensive)
+                    apply_pnl=True          # Fresh calculation
+                )
+
+                # Get base category ELO
+                base_category_elo = elo_system.get_base_elo(trader_address)
+
+                # Get component modifiers for storage
+                behavioral_data = elo_system.calculate_behavioral_multiplier(trader_address)
+                advanced_data = elo_system.calculate_advanced_multiplier(trader_address)
+                pnl_data = elo_system.calculate_pnl_multiplier(trader_address)
+
+                behavioral_modifier = behavioral_data['combined_multiplier']
+                advanced_modifier = advanced_data['combined_multiplier']
+                pnl_modifier = pnl_data['combined_multiplier']
+
+                # Store in database
+                cursor.execute("""
+                    UPDATE traders
+                    SET comprehensive_elo = ?,
+                        base_category_elo = ?,
+                        behavioral_modifier = ?,
+                        advanced_modifier = ?,
+                        pnl_modifier = ?,
+                        elo_last_updated = ?
+                    WHERE address = ?
+                """, (
+                    comprehensive_elo,
+                    base_category_elo,
+                    behavioral_modifier,
+                    advanced_modifier,
+                    pnl_modifier,
+                    datetime.now(),
+                    trader_address
+                ))
+
+                traders_updated += 1
+                elo_values.append(comprehensive_elo)
+
+                if verbose and (i + 1) % 10 == 0:
+                    print(f"  [{i+1}/{len(trader_addresses)}] Updated")
+
+            except Exception as e:
+                traders_failed += 1
+                error_msg = f"ELO update failed for {trader_address}: {str(e)}"
+                errors.append(error_msg)
+                if verbose:
+                    print(f"  [ERROR] {error_msg}")
+
+        conn.commit()
+        conn.close()
+
+        duration = time.time() - start_time
+        self._last_quick_update_duration = duration
+
+        # Get top traders
+        top_traders = self._get_top_traders_from_db(limit=10)
+
+        result = {
+            'traders_updated': traders_updated,
+            'traders_failed': traders_failed,
+            'avg_elo': sum(elo_values) / len(elo_values) if elo_values else 0,
+            'top_traders': top_traders,
+            'errors': errors,
+            'duration_seconds': duration
+        }
+
+        if verbose:
+            print(f"[ELO_BRIDGE] Quick ELO update complete: "
+                  f"{traders_updated} updated, {traders_failed} failed "
+                  f"in {duration:.2f}s")
+
+        return result
+
+    def full_elo_recalculation(self, verbose: bool = False,
+                              force_refresh: bool = True) -> Dict:
+        """
+        Full ELO recalculation for ALL traders (6/6 dimensions).
+
+        Used for periodic deep analysis (daily). Updates:
+        1. Base category ELO (resolution-based) ✓
+        2. Behavioral modifiers (fresh calculation) ✓
+        3. Advanced metrics (fresh calculation) ✓
+        4. Network analysis (fresh calculation) ✓
+        5. Contrarian analysis (fresh calculation) ✓
+        6. P&L modifiers (fresh calculation) ✓
+
+        Args:
+            verbose: Print detailed progress
+            force_refresh: Force ELO system re-initialization (default: True)
+
+        Returns:
+            Dictionary with update results:
+            {
+                'traders_updated': int,
+                'traders_failed': int,
+                'avg_elo': float,
+                'top_traders': List[Dict],
+                'errors': List[str],
+                'duration_seconds': float
+            }
+        """
+        start_time = time.time()
+
+        if verbose:
+            print(f"\n[ELO_BRIDGE] Starting FULL ELO recalculation (6/6 dimensions)...")
+
+        # Get ELO system (force refresh to clear caches)
+        elo_system = self._get_elo_system(force_refresh=force_refresh)
+
+        # Calculate base ELO for all traders
+        if verbose:
+            print("[ELO_BRIDGE] Recalculating base ELO ratings...")
+
+        try:
+            elo_system.calculate_elo_ratings()
+        except Exception as e:
+            return {
+                'traders_updated': 0,
+                'traders_failed': 0,
+                'errors': [f"Base ELO calculation failed: {str(e)}"],
+                'duration_seconds': time.time() - start_time
+            }
+
+        # Get all flagged traders
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT address FROM traders WHERE is_flagged = 1")
+        trader_addresses = [row[0] for row in cursor.fetchall()]
+
+        if verbose:
+            print(f"[ELO_BRIDGE] Updating {len(trader_addresses)} traders...")
+
+        # Update ELO for each trader
+        traders_updated = 0
+        traders_failed = 0
+        errors = []
+        elo_values = []
+
+        for i, trader_address in enumerate(trader_addresses):
+            try:
+                # Get comprehensive ELO with ALL modifiers
+                comprehensive_elo = elo_system.get_trader_global_elo(
+                    trader_address,
+                    apply_behavioral=True,  # Fresh calculation
+                    apply_advanced=True,     # Fresh calculation
+                    apply_network=True,      # Fresh calculation (expensive)
+                    apply_contrarian=True,   # Fresh calculation (expensive)
+                    apply_pnl=True          # Fresh calculation
+                )
+
+                # Get base category ELO
+                base_category_elo = elo_system.get_base_elo(trader_address)
+
+                # Get component modifiers for storage
+                behavioral_data = elo_system.calculate_behavioral_multiplier(trader_address)
+                advanced_data = elo_system.calculate_advanced_multiplier(trader_address)
+                pnl_data = elo_system.calculate_pnl_multiplier(trader_address)
+
+                behavioral_modifier = behavioral_data['combined_multiplier']
+                advanced_modifier = advanced_data['combined_multiplier']
+                pnl_modifier = pnl_data['combined_multiplier']
+
+                # Store in database
+                cursor.execute("""
+                    UPDATE traders
+                    SET comprehensive_elo = ?,
+                        base_category_elo = ?,
+                        behavioral_modifier = ?,
+                        advanced_modifier = ?,
+                        pnl_modifier = ?,
+                        elo_last_updated = ?
+                    WHERE address = ?
+                """, (
+                    comprehensive_elo,
+                    base_category_elo,
+                    behavioral_modifier,
+                    advanced_modifier,
+                    pnl_modifier,
+                    datetime.now(),
+                    trader_address
+                ))
+
+                traders_updated += 1
+                elo_values.append(comprehensive_elo)
+
+                if verbose and (i + 1) % 50 == 0:
+                    print(f"  [{i+1}/{len(trader_addresses)}] Updated")
+
+            except Exception as e:
+                traders_failed += 1
+                error_msg = f"ELO update failed for {trader_address}: {str(e)}"
+                errors.append(error_msg)
+                if verbose:
+                    print(f"  [ERROR] {error_msg}")
+
+        conn.commit()
+        conn.close()
+
+        duration = time.time() - start_time
+        self._last_full_update_duration = duration
+
+        # Get top traders
+        top_traders = self._get_top_traders_from_db(limit=10)
+
+        result = {
+            'traders_updated': traders_updated,
+            'traders_failed': traders_failed,
+            'avg_elo': sum(elo_values) / len(elo_values) if elo_values else 0,
+            'top_traders': top_traders,
+            'errors': errors,
+            'duration_seconds': duration
+        }
+
+        if verbose:
+            print(f"[ELO_BRIDGE] Full ELO recalculation complete: "
+                  f"{traders_updated} updated, {traders_failed} failed "
+                  f"in {duration:.2f}s ({duration/60:.1f} min)")
+
+        return result
+
+    def get_trader_ranking(self, limit: int = 100,
+                          min_elo: float = 0.0) -> List[Dict]:
+        """
+        Get trader ranking by comprehensive ELO.
+
+        Args:
+            limit: Maximum number of traders to return
+            min_elo: Minimum ELO threshold
+
+        Returns:
+            List of trader dictionaries sorted by comprehensive ELO (descending)
+        """
+        return self._get_top_traders_from_db(limit=limit, min_elo=min_elo)
+
+    def _get_top_traders_from_db(self, limit: int = 10,
+                                  min_elo: float = 0.0) -> List[Dict]:
+        """
+        Get top traders from database by comprehensive ELO.
+
+        Args:
+            limit: Maximum number of traders to return
+            min_elo: Minimum ELO threshold
+
+        Returns:
+            List of trader dictionaries with ELO data
+        """
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                address,
+                comprehensive_elo,
+                base_category_elo,
+                behavioral_modifier,
+                advanced_modifier,
+                pnl_modifier,
+                elo_last_updated,
+                total_trades,
+                win_rate
+            FROM traders
+            WHERE comprehensive_elo IS NOT NULL
+            AND comprehensive_elo >= ?
+            ORDER BY comprehensive_elo DESC
+            LIMIT ?
+        """, (min_elo, limit))
+
+        traders = []
+        for row in cursor.fetchall():
+            traders.append({
+                'address': row[0],
+                'comprehensive_elo': row[1],
+                'base_category_elo': row[2],
+                'behavioral_modifier': row[3],
+                'advanced_modifier': row[4],
+                'pnl_modifier': row[5],
+                'elo_last_updated': row[6],
+                'total_trades': row[7],
+                'win_rate': row[8]
+            })
+
+        conn.close()
+        return traders
+
+    def get_performance_stats(self) -> Dict:
+        """
+        Get performance statistics for the bridge.
+
+        Returns:
+            Dictionary with performance metrics
+        """
+        return {
+            'last_quick_update_duration': self._last_quick_update_duration,
+            'last_full_update_duration': self._last_full_update_duration,
+            'elo_system_cached': self._elo_system is not None,
+            'elo_system_age_hours': (
+                (datetime.now() - self._elo_system_last_init).total_seconds() / 3600
+                if self._elo_system_last_init else None
+            )
+        }
+
+
+# CLI for testing and standalone usage
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="ELO Bridge - Monitoring → Unified ELO Integration")
+    parser.add_argument('--quick-update', action='store_true',
+                       help='Run quick ELO update for recently evaluated traders')
+    parser.add_argument('--full-recalc', action='store_true',
+                       help='Run full ELO recalculation for all traders (6/6 dimensions)')
+    parser.add_argument('--update-positions', action='store_true',
+                       help='Update positions for recently evaluated traders')
+    parser.add_argument('--top', type=int, default=20,
+                       help='Show top N traders (default: 20)')
+    parser.add_argument('--verbose', '-v', action='store_true',
+                       help='Verbose output')
+
+    args = parser.parse_args()
+
+    bridge = UnifiedELOMonitoringBridge()
+
+    if args.update_positions:
+        print("=" * 70)
+        print("  POSITION UPDATE")
+        print("=" * 70)
+
+        # Get traders with recent evaluated trades
+        traders = bridge.db.get_traders_with_recent_evaluated_trades(hours=24)
+        print(f"\nFound {len(traders)} traders with recently evaluated trades")
+
+        if traders:
+            result = bridge.update_positions_for_traders(traders, verbose=args.verbose)
+            print(f"\nResults:")
+            print(f"  Traders processed: {result['traders_processed']}")
+            print(f"  Positions created: {result['total_positions_created']}")
+            print(f"  Positions closed: {result['total_positions_closed']}")
+            print(f"  Duration: {result['duration_seconds']:.2f}s")
+
+    elif args.quick_update:
+        print("=" * 70)
+        print("  QUICK ELO UPDATE (4/6 dimensions)")
+        print("=" * 70)
+
+        # Get traders with recent evaluated trades
+        traders = bridge.db.get_traders_with_recent_evaluated_trades(hours=24)
+        print(f"\nFound {len(traders)} traders with recently evaluated trades")
+
+        if traders:
+            result = bridge.quick_elo_update_for_traders(traders, verbose=args.verbose)
+            print(f"\nResults:")
+            print(f"  Traders updated: {result['traders_updated']}")
+            print(f"  Traders failed: {result['traders_failed']}")
+            print(f"  Average ELO: {result['avg_elo']:.1f}")
+            print(f"  Duration: {result['duration_seconds']:.2f}s")
+
+            if result['top_traders']:
+                print(f"\nTop {len(result['top_traders'])} Traders:")
+                for i, trader in enumerate(result['top_traders'][:10], 1):
+                    print(f"  {i}. {trader['address'][:10]}... "
+                          f"ELO: {trader['comprehensive_elo']:.1f} "
+                          f"(base: {trader['base_category_elo']:.1f})")
+
+    elif args.full_recalc:
+        print("=" * 70)
+        print("  FULL ELO RECALCULATION (6/6 dimensions)")
+        print("=" * 70)
+
+        result = bridge.full_elo_recalculation(verbose=args.verbose)
+        print(f"\nResults:")
+        print(f"  Traders updated: {result['traders_updated']}")
+        print(f"  Traders failed: {result['traders_failed']}")
+        print(f"  Average ELO: {result['avg_elo']:.1f}")
+        print(f"  Duration: {result['duration_seconds']:.2f}s ({result['duration_seconds']/60:.1f} min)")
+
+        if result['top_traders']:
+            print(f"\nTop {len(result['top_traders'])} Traders:")
+            for i, trader in enumerate(result['top_traders'][:20], 1):
+                print(f"  {i:2d}. {trader['address'][:10]}... "
+                      f"ELO: {trader['comprehensive_elo']:7.1f} "
+                      f"(base: {trader['base_category_elo']:6.1f}, "
+                      f"WR: {trader['win_rate']*100:5.1f}%)")
+
+    else:
+        # Default: Show top traders
+        print("=" * 70)
+        print(f"  TOP {args.top} TRADERS BY COMPREHENSIVE ELO")
+        print("=" * 70)
+
+        top_traders = bridge.get_trader_ranking(limit=args.top)
+
+        if top_traders:
+            print(f"\nRank | Address    | Comp ELO | Base ELO | Modifiers (B/A/P) | Trades | Win Rate")
+            print("-" * 90)
+            for i, trader in enumerate(top_traders, 1):
+                print(f"{i:4d} | {trader['address'][:10]} | "
+                      f"{trader['comprehensive_elo']:8.1f} | "
+                      f"{trader['base_category_elo']:8.1f} | "
+                      f"{trader['behavioral_modifier']:.2f}/{trader['advanced_modifier']:.2f}/{trader['pnl_modifier']:.2f} | "
+                      f"{trader['total_trades']:6d} | "
+                      f"{trader['win_rate']*100:5.1f}%")
+        else:
+            print("\nNo traders with ELO ratings found.")
+            print("Run --full-recalc to calculate ELO ratings.")
