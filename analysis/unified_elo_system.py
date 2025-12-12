@@ -326,9 +326,9 @@ class UnifiedELOSystem:
         self.behavior_cache_timestamp = None
 
         # Advanced metrics analyzers
-        self.calibration_analyzer = CalibrationAnalyzer(db_path=self.db_path, api_key=self.api_key)
-        self.risk_analyzer = RiskAdjustedAnalyzer(db_path=self.db_path, api_key=self.api_key)
-        self.regret_analyzer = RegretAnalyzer(db_path=self.db_path, api_key=self.api_key)
+        self.calibration_analyzer = CalibrationAnalyzer(db_path=self.db_path)
+        self.risk_analyzer = RiskAdjustedAnalyzer(db_path=self.db_path)
+        self.regret_analyzer = RegretAnalyzer(db_path=self.db_path)
 
         # Cache for advanced metrics
         self.calibration_cache = {}  # trader -> brier_score
@@ -1704,7 +1704,8 @@ class UnifiedELOSystem:
 
     def get_trader_global_elo(self, trader_address: str, apply_behavioral: bool = False,
                               apply_advanced: bool = False, apply_network: bool = False,
-                              apply_contrarian: bool = False, market_id: str = None) -> float:
+                              apply_contrarian: bool = False, apply_pnl: bool = False,
+                              market_id: str = None) -> float:
         """
         Get trader's global ELO rating (weighted average across all categories).
 
@@ -1717,10 +1718,11 @@ class UnifiedELOSystem:
             apply_advanced: If True, apply advanced metrics (calibration, execution, Sharpe)
             apply_network: If True, apply network filtering (independence, copy-trader detection)
             apply_contrarian: If True, apply contrarian bonus
+            apply_pnl: If True, apply P&L/position tracking modifier (trading skill)
             market_id: Market ID for disagreement-adjusted weighting (optional)
 
         Returns:
-            Global ELO rating (weighted average), optionally adjusted by behavioral, advanced, network, and/or contrarian factors
+            Global ELO rating (weighted average), optionally adjusted by behavioral, advanced, network, contrarian, and/or P&L factors
             Returns 0.0 if trader should be excluded (copy-trader)
 
         Examples:
@@ -1729,7 +1731,9 @@ class UnifiedELOSystem:
             Advanced: system.get_trader_global_elo(trader, apply_advanced=True)
             Network: system.get_trader_global_elo(trader, apply_network=True)
             Contrarian: system.get_trader_global_elo(trader, apply_contrarian=True)
-            All: system.get_trader_global_elo(trader, apply_behavioral=True, apply_advanced=True, apply_network=True, apply_contrarian=True)
+            P&L: system.get_trader_global_elo(trader, apply_pnl=True)
+            All 6 dimensions: system.get_trader_global_elo(trader, apply_behavioral=True, apply_advanced=True,
+                                                            apply_network=True, apply_contrarian=True, apply_pnl=True)
         """
         # Check if should exclude due to copy-trading
         if apply_network:
@@ -1756,11 +1760,16 @@ class UnifiedELOSystem:
             contrarian_data = self.calculate_contrarian_multiplier(trader_address, market_id)
             adjusted_elo *= contrarian_data['combined_multiplier']
 
+        if apply_pnl:
+            pnl_data = self.calculate_pnl_multiplier(trader_address)
+            adjusted_elo *= pnl_data['combined_multiplier']
+
         return adjusted_elo
 
     def get_trader_category_elo(self, trader_address: str, category: str,
                                 apply_behavioral: bool = False, apply_advanced: bool = False,
                                 apply_network: bool = False, apply_contrarian: bool = False,
+                                apply_pnl: bool = False,
                                 market_id: str = None) -> float:
         """
         Get trader's ELO rating for a specific category.
@@ -1774,10 +1783,11 @@ class UnifiedELOSystem:
             apply_advanced: If True, apply advanced metrics (calibration, execution, Sharpe)
             apply_network: If True, apply network filtering (independence, copy-trader detection)
             apply_contrarian: If True, apply contrarian bonus
+            apply_pnl: If True, apply P&L/position tracking multiplier (realized profits, ROI, position quality)
             market_id: Market ID for disagreement-adjusted weighting (optional)
 
         Returns:
-            Category-specific ELO rating, optionally adjusted by behavioral, advanced, network, and/or contrarian factors
+            Category-specific ELO rating, optionally adjusted by behavioral, advanced, network, contrarian, and/or P&L factors
             Returns 0.0 if trader should be excluded (copy-trader)
 
         Examples:
@@ -1786,7 +1796,8 @@ class UnifiedELOSystem:
             With advanced: system.get_trader_category_elo(trader, 'Elections', apply_advanced=True)
             With network: system.get_trader_category_elo(trader, 'Elections', apply_network=True)
             With contrarian: system.get_trader_category_elo(trader, 'Elections', apply_contrarian=True)
-            With all: system.get_trader_category_elo(trader, 'Elections', apply_behavioral=True, apply_advanced=True, apply_network=True, apply_contrarian=True)
+            With P&L: system.get_trader_category_elo(trader, 'Elections', apply_pnl=True)
+            With all 6 dimensions: system.get_trader_category_elo(trader, 'Elections', apply_behavioral=True, apply_advanced=True, apply_network=True, apply_contrarian=True, apply_pnl=True)
         """
         # Check if should exclude due to copy-trading
         if apply_network:
@@ -1812,6 +1823,10 @@ class UnifiedELOSystem:
         if apply_contrarian:
             contrarian_data = self.calculate_contrarian_multiplier(trader_address, market_id)
             adjusted_elo *= contrarian_data['combined_multiplier']
+
+        if apply_pnl:
+            pnl_data = self.calculate_pnl_multiplier(trader_address)
+            adjusted_elo *= pnl_data['combined_multiplier']
 
         return adjusted_elo
 
@@ -2524,6 +2539,179 @@ class UnifiedELOSystem:
 
         return output_path
 
+    def export_pnl_analysis(self) -> Dict:
+        """
+        Export P&L analysis data for all traders.
+
+        Returns:
+            Dict with:
+                - timestamp: Analysis timestamp
+                - total_traders: Total number of traders
+                - traders_with_pnl: Number with P&L data (closed positions)
+                - total_realized_pnl: Total P&L across all traders
+                - avg_roi: Average ROI across all closed positions
+                - avg_profit_modifier: Average profit modifier
+                - avg_roi_modifier: Average ROI modifier
+                - avg_quality_modifier: Average quality modifier
+                - profitable_traders: Number of traders with positive P&L
+                - top_pnl_traders: Top 10 by adjusted ELO
+        """
+        print("[P&L] Exporting P&L analysis...")
+
+        # Load P&L data
+        self._load_pnl_data()
+
+        all_traders = self.elo_system.get_all_traders()
+
+        # Calculate statistics
+        profit_mods = []
+        roi_mods = []
+        quality_mods = []
+
+        trader_adjusted_elos = []
+        total_pnl = 0.0
+        total_roi = 0.0
+        closed_positions_total = 0
+        profitable_traders = 0
+
+        for trader in all_traders:
+            if trader in self.pnl_cache:
+                pnl_mult = self.calculate_pnl_multiplier(trader)
+                profit_mods.append(pnl_mult['profit_modifier'])
+                roi_mods.append(pnl_mult['roi_modifier'])
+                quality_mods.append(pnl_mult['quality_modifier'])
+
+                # Calculate adjusted ELO for ranking
+                base_elo = self.get_trader_global_elo(trader)
+                adjusted_elo = base_elo * pnl_mult['combined_multiplier']
+
+                trader_adjusted_elos.append({
+                    'trader': trader,
+                    'base_elo': base_elo,
+                    'pnl_multiplier': pnl_mult['combined_multiplier'],
+                    'adjusted_elo': adjusted_elo,
+                    'realized_pnl': pnl_mult['raw_metrics']['realized_pnl'],
+                    'avg_roi': pnl_mult['raw_metrics']['avg_roi'],
+                    'closed_positions': pnl_mult['raw_metrics']['closed_positions'],
+                    'breakdown': pnl_mult['breakdown']
+                })
+
+                # Aggregate stats
+                total_pnl += pnl_mult['raw_metrics']['realized_pnl']
+                total_roi += pnl_mult['raw_metrics']['avg_roi']
+                closed_positions_total += pnl_mult['raw_metrics']['closed_positions']
+
+                if pnl_mult['raw_metrics']['realized_pnl'] > 0:
+                    profitable_traders += 1
+
+        # Sort by adjusted ELO
+        trader_adjusted_elos.sort(key=lambda x: x['adjusted_elo'], reverse=True)
+
+        export = {
+            'timestamp': datetime.now().isoformat(),
+            'total_traders': len(all_traders),
+            'traders_with_pnl': len(self.pnl_cache),
+            'total_realized_pnl': total_pnl,
+            'avg_roi': total_roi / len(self.pnl_cache) if self.pnl_cache else 0.0,
+            'avg_profit_modifier': sum(profit_mods) / len(profit_mods) if profit_mods else 1.0,
+            'avg_roi_modifier': sum(roi_mods) / len(roi_mods) if roi_mods else 1.0,
+            'avg_quality_modifier': sum(quality_mods) / len(quality_mods) if quality_mods else 1.0,
+            'profitable_traders': profitable_traders,
+            'top_pnl_traders': trader_adjusted_elos[:10]
+        }
+
+        print(f"[P&L] Export complete: {export['traders_with_pnl']}/{export['total_traders']} traders with P&L data")
+
+        return export
+
+    def generate_pnl_report(self, output_dir: str = 'reports'):
+        """
+        Generate CSV report of P&L modifiers.
+
+        Creates: reports/pnl_modifiers_YYYYMMDD.csv
+
+        Args:
+            output_dir: Output directory for reports
+
+        Returns:
+            Path to generated report
+        """
+        print(f"[P&L] Generating P&L modifiers report...")
+
+        # Create output directory
+        if not os.path.isabs(output_dir):
+            output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), output_dir)
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Load P&L data
+        self._load_pnl_data()
+
+        # Get all traders
+        all_traders = self.elo_system.get_all_traders()
+
+        # Generate report data
+        report_rows = []
+
+        for trader in all_traders:
+            base_elo = self.get_trader_global_elo(trader)
+
+            if trader in self.pnl_cache:
+                pnl_stats = self.pnl_cache[trader]
+                pnl_mult = self.calculate_pnl_multiplier(trader)
+
+                adjusted_elo = base_elo * pnl_mult['combined_multiplier']
+
+                report_rows.append({
+                    'trader_address': trader,
+                    'base_global_elo': f"{base_elo:.1f}",
+                    'profit_modifier': f"{pnl_mult['profit_modifier']:.3f}",
+                    'roi_modifier': f"{pnl_mult['roi_modifier']:.3f}",
+                    'quality_modifier': f"{pnl_mult['quality_modifier']:.3f}",
+                    'confidence': f"{pnl_mult['confidence']:.3f}",
+                    'combined_multiplier': f"{pnl_mult['combined_multiplier']:.3f}",
+                    'adjusted_global_elo': f"{adjusted_elo:.1f}",
+                    'realized_pnl': f"{pnl_stats['realized_pnl']:.2f}",
+                    'avg_roi': f"{pnl_stats['avg_roi']:.2f}",
+                    'closed_positions': pnl_stats['closed_positions'],
+                    'open_positions': pnl_stats['open_positions'],
+                    'profitable_rate': f"{pnl_stats.get('profitable_rate', 0):.2f}"
+                })
+            else:
+                # No P&L data
+                report_rows.append({
+                    'trader_address': trader,
+                    'base_global_elo': f"{base_elo:.1f}",
+                    'profit_modifier': '1.000',
+                    'roi_modifier': '1.000',
+                    'quality_modifier': '1.000',
+                    'confidence': '1.000',
+                    'combined_multiplier': '1.000',
+                    'adjusted_global_elo': f"{base_elo:.1f}",
+                    'realized_pnl': '0.00',
+                    'avg_roi': '0.00',
+                    'closed_positions': 0,
+                    'open_positions': 0,
+                    'profitable_rate': '0.00'
+                })
+
+        # Sort by adjusted ELO (highest first)
+        report_rows.sort(key=lambda x: float(x['adjusted_global_elo']), reverse=True)
+
+        # Write CSV
+        date_str = datetime.now().strftime('%Y%m%d')
+        output_path = os.path.join(output_dir, f'pnl_modifiers_{date_str}.csv')
+
+        with open(output_path, 'w', newline='', encoding='utf-8', errors='ignore') as f:
+            if report_rows:
+                writer = csv.DictWriter(f, fieldnames=report_rows[0].keys())
+                writer.writeheader()
+                writer.writerows(report_rows)
+
+        print(f"[P&L] Report saved: {output_path}")
+        print(f"[P&L] {len(report_rows)} traders included")
+
+        return output_path
+
     def export_behavioral_analysis(self) -> Dict:
         """
         Export behavioral analysis data for all traders.
@@ -3140,6 +3328,57 @@ class UnifiedELOSystem:
             export_data['high_disagreement_markets'] = []
             export_data['contrarian_analysis_timestamp'] = None
 
+        # Add P&L analysis (if available)
+        try:
+            pnl_loaded = self._load_pnl_data()
+            pnl_analysis = {}
+            high_profit_traders = []
+            high_roi_traders = []
+
+            if pnl_loaded:
+                for trader_address in all_traders:
+                    if trader_address in self.pnl_cache:
+                        pnl_data = self.calculate_pnl_multiplier(trader_address)
+
+                        pnl_analysis[trader_address] = {
+                            'profit_modifier': pnl_data['profit_modifier'],
+                            'roi_modifier': pnl_data['roi_modifier'],
+                            'quality_modifier': pnl_data['quality_modifier'],
+                            'confidence': pnl_data['confidence'],
+                            'combined_multiplier': pnl_data['combined_multiplier'],
+                            'realized_pnl': pnl_data['raw_metrics']['realized_pnl'],
+                            'avg_roi': pnl_data['raw_metrics']['avg_roi'],
+                            'closed_positions': pnl_data['raw_metrics']['closed_positions'],
+                            'profitable_rate': pnl_data['raw_metrics'].get('profitable_rate', 0.0)
+                        }
+
+                        # Track high-profit traders (>$100 realized)
+                        if pnl_data['raw_metrics']['realized_pnl'] >= 100:
+                            high_profit_traders.append(trader_address)
+
+                        # Track high-ROI traders (>50% avg ROI with 5+ positions)
+                        if pnl_data['raw_metrics']['avg_roi'] >= 50 and pnl_data['raw_metrics']['closed_positions'] >= 5:
+                            high_roi_traders.append(trader_address)
+
+                export_data['pnl_analysis'] = pnl_analysis
+                export_data['high_profit_traders'] = high_profit_traders
+                export_data['high_roi_traders'] = high_roi_traders
+                export_data['pnl_analysis_timestamp'] = datetime.now().isoformat()
+                print(f"[P&L] Included P&L analysis for {len(pnl_analysis)} traders in export")
+                print(f"[P&L] {len(high_profit_traders)} high-profit traders, {len(high_roi_traders)} high-ROI traders")
+            else:
+                export_data['pnl_analysis'] = {}
+                export_data['high_profit_traders'] = []
+                export_data['high_roi_traders'] = []
+                export_data['pnl_analysis_timestamp'] = None
+                print("[P&L] No P&L analysis data available for export")
+        except Exception as e:
+            print(f"[P&L] WARNING: Could not include P&L analysis in export: {e}")
+            export_data['pnl_analysis'] = {}
+            export_data['high_profit_traders'] = []
+            export_data['high_roi_traders'] = []
+            export_data['pnl_analysis_timestamp'] = None
+
         return export_data
 
     def get_top_traders(self, category: str = None, limit: int = 10) -> List[Dict]:
@@ -3178,6 +3417,308 @@ class UnifiedELOSystem:
 
         trader_ratings.sort(key=lambda x: x['elo'], reverse=True)
         return trader_ratings[:limit]
+
+    # ==================== P&L / POSITION TRACKING INTEGRATION ====================
+
+    def _load_pnl_data(self, force_refresh: bool = False) -> bool:
+        """
+        Load P&L data from position tracker (with caching).
+
+        P&L data is cached for 24 hours to avoid repeated queries.
+
+        Args:
+            force_refresh: Force reload even if cache is valid
+
+        Returns:
+            bool: True if data loaded successfully
+        """
+        # Check if cache is stale (>24 hours old)
+        cache_age = None
+        if hasattr(self, 'pnl_cache_timestamp') and self.pnl_cache_timestamp:
+            cache_age = (datetime.now() - self.pnl_cache_timestamp).total_seconds()
+
+        if force_refresh or not hasattr(self, 'pnl_cache_timestamp') or \
+           self.pnl_cache_timestamp is None or cache_age > 86400:
+
+            print("[P&L] Loading position tracking data...")
+
+            try:
+                # Import position tracker
+                import sys
+                import os
+                sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+                from monitoring.position_tracker import PositionTracker
+                from monitoring.database import Database as MonitoringDatabase
+
+                # Initialize tracker
+                tracker = PositionTracker(MonitoringDatabase(db_path=self.db_path))
+
+                # Cache for all traders
+                self.pnl_cache = {}  # trader -> {realized_pnl, avg_roi, etc}
+
+                # Get all flagged traders
+                conn = self.get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute("SELECT address FROM traders WHERE is_flagged = 1")
+                traders = [row[0] for row in cursor.fetchall()]
+                conn.close()
+
+                print(f"[P&L] Loading data for {len(traders)} traders...")
+
+                # Load P&L for each trader
+                loaded_count = 0
+                for trader in traders:
+                    try:
+                        pnl_stats = tracker.calculate_trader_pnl(trader)
+
+                        # Only cache if trader has positions
+                        if pnl_stats['closed_positions'] > 0 or pnl_stats['open_positions'] > 0:
+                            self.pnl_cache[trader] = {
+                                'realized_pnl': pnl_stats['realized_pnl'],
+                                'avg_roi': pnl_stats['avg_roi'],
+                                'closed_positions': pnl_stats['closed_positions'],
+                                'open_positions': pnl_stats['open_positions'],
+                                'total_invested': pnl_stats['total_invested'],
+                                'profitable_rate': pnl_stats['profitable_rate']
+                            }
+                            loaded_count += 1
+                    except Exception as e:
+                        # Skip traders with no P&L data
+                        continue
+
+                self.pnl_cache_timestamp = datetime.now()
+
+                print(f"[P&L] Loaded data for {loaded_count} traders with P&L history")
+                return loaded_count > 0
+
+            except Exception as e:
+                print(f"[P&L] ERROR: Failed to load P&L data: {e}")
+                print(f"[P&L] Continuing with neutral P&L modifiers (1.0x)")
+                self.pnl_cache = {}
+                self.pnl_cache_timestamp = datetime.now()
+                return False
+        else:
+            print(f"[P&L] Using cached data (age: {cache_age/3600:.1f} hours)")
+            return len(self.pnl_cache) > 0
+
+    def calculate_profit_modifier(self, realized_pnl: float) -> float:
+        """
+        Calculate profit-based modifier from realized P&L.
+
+        Args:
+            realized_pnl: Total realized profit/loss
+
+        Returns:
+            float: Multiplier (0.85-1.20)
+                - $500+: 1.20x (exceptional)
+                - $250-499: 1.15x (strong)
+                - $100-249: 1.10x (good)
+                - $50-99: 1.05x (modest)
+                - $10-49: 1.00x (neutral)
+                - $0-9: 0.95x (minimal)
+                - Negative: 0.85-0.95x (losses)
+        """
+        if realized_pnl >= 500:
+            return 1.20
+        elif realized_pnl >= 250:
+            return 1.15
+        elif realized_pnl >= 100:
+            return 1.10
+        elif realized_pnl >= 50:
+            return 1.05
+        elif realized_pnl >= 10:
+            return 1.00
+        elif realized_pnl >= 0:
+            return 0.95
+        else:
+            # Negative P&L: scale from 0.85 to 0.95
+            # -$100 or worse = 0.85x
+            return max(0.85, 0.95 + (realized_pnl / 100) * 0.10)
+
+    def calculate_roi_modifier(self, avg_roi: float) -> float:
+        """
+        Calculate ROI-based modifier from average return.
+
+        Args:
+            avg_roi: Average ROI percentage
+
+        Returns:
+            float: Multiplier (0.90-1.15)
+                - >50%: 1.15x (exceptional)
+                - 30-50%: 1.10x (strong)
+                - 20-30%: 1.07x (good)
+                - 10-20%: 1.05x (above average)
+                - 0-10%: 1.00x (neutral)
+                - -10-0%: 0.95x (slight losses)
+                - <-10%: 0.90x (poor)
+        """
+        if avg_roi > 50:
+            return 1.15
+        elif avg_roi > 30:
+            return 1.10
+        elif avg_roi > 20:
+            return 1.07
+        elif avg_roi > 10:
+            return 1.05
+        elif avg_roi > 0:
+            return 1.00
+        elif avg_roi > -10:
+            return 0.95
+        else:
+            return 0.90
+
+    def calculate_position_quality_modifier(self, profitable_rate: float) -> float:
+        """
+        Calculate position quality modifier from profitable rate.
+
+        Args:
+            profitable_rate: Fraction of closed positions that were profitable (0-1)
+
+        Returns:
+            float: Multiplier (0.95-1.10)
+                - >70%: 1.10x (very selective)
+                - 60-70%: 1.07x (good selection)
+                - 50-60%: 1.05x (slightly profitable)
+                - 40-50%: 1.00x (neutral)
+                - 30-40%: 0.97x (more losers)
+                - <30%: 0.95x (poor selection)
+        """
+        if profitable_rate > 0.70:
+            return 1.10
+        elif profitable_rate > 0.60:
+            return 1.07
+        elif profitable_rate > 0.50:
+            return 1.05
+        elif profitable_rate > 0.40:
+            return 1.00
+        elif profitable_rate > 0.30:
+            return 0.97
+        else:
+            return 0.95
+
+    def calculate_pnl_confidence(self, closed_positions: int) -> float:
+        """
+        Calculate confidence multiplier based on sample size.
+
+        Args:
+            closed_positions: Number of closed positions
+
+        Returns:
+            float: Confidence (0.50-1.00)
+                - 30+: 1.00 (full confidence)
+                - 20-29: 0.90
+                - 10-19: 0.75
+                - 5-9: 0.60
+                - <5: 0.50
+        """
+        if closed_positions >= 30:
+            return 1.00
+        elif closed_positions >= 20:
+            return 0.90
+        elif closed_positions >= 10:
+            return 0.75
+        elif closed_positions >= 5:
+            return 0.60
+        else:
+            return 0.50
+
+    def calculate_pnl_multiplier(self, trader_address: str) -> Dict:
+        """
+        Calculate combined P&L/position tracking multiplier.
+
+        Combines three P&L dimensions:
+        1. Profit score (absolute $ made)
+        2. ROI score (percentage returns)
+        3. Position quality (profitable rate)
+
+        Adjusted by sample size confidence.
+
+        Args:
+            trader_address: Trader to evaluate
+
+        Returns:
+            dict: {
+                'profit_modifier': float (0.85-1.20),
+                'roi_modifier': float (0.90-1.15),
+                'quality_modifier': float (0.95-1.10),
+                'confidence': float (0.50-1.00),
+                'combined_multiplier': float (0.70-1.40),
+                'raw_metrics': dict,
+                'breakdown': str
+            }
+        """
+        # Load data if not cached
+        if not hasattr(self, 'pnl_cache'):
+            self._load_pnl_data()
+
+        # Get trader P&L data
+        if trader_address not in self.pnl_cache:
+            # No P&L data - return neutral defaults
+            return {
+                'profit_modifier': 1.00,
+                'roi_modifier': 1.00,
+                'quality_modifier': 1.00,
+                'confidence': 0.50,
+                'combined_multiplier': 1.00,
+                'raw_metrics': {
+                    'realized_pnl': 0.0,
+                    'avg_roi': 0.0,
+                    'profitable_rate': 0.0,
+                    'closed_positions': 0,
+                    'open_positions': 0,
+                    'total_invested': 0.0
+                },
+                'breakdown': 'P&L: 1.00x (No Data)'
+            }
+
+        pnl_data = self.pnl_cache[trader_address]
+
+        # Extract metrics
+        realized_pnl = pnl_data['realized_pnl']
+        avg_roi = pnl_data['avg_roi']
+        profitable_rate = pnl_data['profitable_rate']
+        closed_positions = pnl_data['closed_positions']
+
+        # Calculate component modifiers
+        profit_modifier = self.calculate_profit_modifier(realized_pnl)
+        roi_modifier = self.calculate_roi_modifier(avg_roi)
+        quality_modifier = self.calculate_position_quality_modifier(profitable_rate)
+
+        # Calculate confidence
+        confidence = self.calculate_pnl_confidence(closed_positions)
+
+        # Combined multiplier (multiplicative with confidence)
+        combined = profit_modifier * roi_modifier * quality_modifier * confidence
+
+        # Clamp to reasonable range
+        combined = max(0.70, min(1.40, combined))
+
+        # Build breakdown string
+        breakdown_parts = []
+        breakdown_parts.append(f"Profit: {profit_modifier:.2f}x (${realized_pnl:,.2f})")
+        breakdown_parts.append(f"ROI: {roi_modifier:.2f}x ({avg_roi:.1f}%)")
+        breakdown_parts.append(f"Quality: {quality_modifier:.2f}x ({profitable_rate*100:.1f}% profitable)")
+        breakdown_parts.append(f"Confidence: {confidence:.2f} ({closed_positions} closed)")
+        breakdown_parts.append(f"TOTAL: {combined:.2f}x")
+
+        breakdown = " | ".join(breakdown_parts)
+
+        return {
+            'profit_modifier': round(profit_modifier, 3),
+            'roi_modifier': round(roi_modifier, 3),
+            'quality_modifier': round(quality_modifier, 3),
+            'confidence': round(confidence, 3),
+            'combined_multiplier': round(combined, 3),
+            'raw_metrics': {
+                'realized_pnl': round(realized_pnl, 2),
+                'avg_roi': round(avg_roi, 2),
+                'profitable_rate': round(profitable_rate, 3),
+                'closed_positions': closed_positions,
+                'open_positions': pnl_data['open_positions'],
+                'total_invested': round(pnl_data['total_invested'], 2)
+            },
+            'breakdown': breakdown
+        }
 
     # ==================== COMPOSITE SKILL SCORE INTEGRATION ====================
 
@@ -3617,6 +4158,93 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n[TEST] Contrarian integration test failed: {e}")
 
+    # Example 9: P&L / Position Tracking Integration
     print("\n" + "="*70)
-    print("All examples completed! (8 integration layers tested)")
+    print("EXAMPLE 9: P&L / Position Tracking Analysis")
+    print("="*70)
+
+    # Load P&L data
+    try:
+        has_data = system._load_pnl_data()
+
+        if has_data and system.pnl_cache:
+            # Get traders with P&L data
+            traders_with_pnl = list(system.pnl_cache.keys())
+
+            print(f"\n[TEST] Found {len(traders_with_pnl)} traders with P&L data")
+
+            if traders_with_pnl:
+                # Test first trader with P&L data
+                test_trader = traders_with_pnl[0]
+
+                print(f"\n[TEST] Analyzing: {test_trader[:12]}...")
+
+                # Get base ELO
+                base_elo = system.get_trader_global_elo(test_trader)
+                print(f"Base Global ELO: {base_elo:.0f}")
+
+                # Get P&L data
+                pnl_data = system.calculate_pnl_multiplier(test_trader)
+
+                print(f"\nP&L Analysis:")
+                print(f"  Realized P&L: ${pnl_data['raw_metrics']['realized_pnl']:.2f}")
+                print(f"  Average ROI: {pnl_data['raw_metrics']['avg_roi']:.1f}%")
+                print(f"  Closed Positions: {pnl_data['raw_metrics']['closed_positions']}")
+                print(f"  Profitable Rate: {pnl_data['raw_metrics'].get('profitable_rate', 0)*100:.1f}%")
+                print(f"\nModifiers:")
+                print(f"  Profit Modifier: {pnl_data['profit_modifier']:.3f}x")
+                print(f"  ROI Modifier: {pnl_data['roi_modifier']:.3f}x")
+                print(f"  Quality Modifier: {pnl_data['quality_modifier']:.3f}x")
+                print(f"  Confidence: {pnl_data['confidence']:.3f}")
+                print(f"  Combined Multiplier: {pnl_data['combined_multiplier']:.3f}x")
+                print(f"  Breakdown: {pnl_data['breakdown']}")
+
+                # Get adjusted ELO with P&L only
+                adjusted_elo_pnl = system.get_trader_global_elo(test_trader, apply_pnl=True)
+                print(f"\nAdjusted ELO (P&L only): {adjusted_elo_pnl:.0f}")
+                print(f"Change: {adjusted_elo_pnl - base_elo:+.0f}")
+
+                # Get fully adjusted ELO (ALL 6 modifiers)
+                full_elo = system.get_trader_global_elo(test_trader,
+                                                         apply_behavioral=True,
+                                                         apply_advanced=True,
+                                                         apply_network=True,
+                                                         apply_contrarian=True,
+                                                         apply_pnl=True)
+
+                print(f"\nFully Adjusted ELO (ALL 6 modifiers): {full_elo:.0f}")
+                print(f"Total Change: {full_elo - base_elo:+.0f}")
+
+                # Generate P&L report
+                print("\n[TEST] Generating P&L modifiers report...")
+                try:
+                    report_path = system.generate_pnl_report()
+                    print(f"[TEST] Report generated: {report_path}")
+                except Exception as e:
+                    print(f"[TEST] Report generation failed: {e}")
+
+                # Export P&L analysis
+                print("\n[TEST] Exporting P&L analysis...")
+                try:
+                    export_pnl = system.export_pnl_analysis()
+                    print(f"[TEST] Total traders analyzed: {export_pnl['total_traders']}")
+                    print(f"[TEST] Traders with P&L: {export_pnl['traders_with_pnl']}")
+                    print(f"[TEST] Total realized P&L: ${export_pnl['total_realized_pnl']:.2f}")
+                    print(f"[TEST] Avg ROI: {export_pnl['avg_roi']:.1f}%")
+                    print(f"[TEST] Profitable traders: {export_pnl['profitable_traders']}")
+                except Exception as e:
+                    print(f"[TEST] Export failed: {e}")
+
+            else:
+                print("\n⚠️  No traders with P&L data found")
+
+        else:
+            print("\n⚠️  No positions yet - P&L analysis unavailable")
+            print("P&L tracking will activate once traders close positions\n")
+
+    except Exception as e:
+        print(f"\n[TEST] P&L integration test failed: {e}")
+
+    print("\n" + "="*70)
+    print("All examples completed! (6 integration dimensions tested)")
     print("="*70)

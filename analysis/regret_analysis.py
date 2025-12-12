@@ -31,7 +31,8 @@ import seaborn as sns
 # Configure console encoding for Windows
 if sys.platform == 'win32':
     import codecs
-    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'ignore')
+    if hasattr(sys.stdout, 'buffer'):
+        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'ignore')
 
 # Configure logging
 logging.basicConfig(
