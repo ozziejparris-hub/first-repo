@@ -3,10 +3,14 @@ Trader Statistics Calculator - Updates trader win rates based on resolved trades
 
 This module bridges monitoring and analysis by calculating real win rates
 from resolved trades and updating the database.
+
+UPDATED: Now also calculates P&L from position matching (early exits).
+Combines BOTH resolution-based (prediction accuracy) AND P&L-based (trading skill) metrics.
 """
 
 from typing import Dict, List
 from .database import Database
+from .position_tracker import PositionTracker
 
 
 class TraderStatisticsCalculator:
@@ -22,6 +26,7 @@ class TraderStatisticsCalculator:
         """
         self.db = database
         self.min_resolved_trades = min_resolved_trades
+        self.position_tracker = PositionTracker(database)
 
     def calculate_trader_win_rate(self, trader_address: str) -> Dict:
         """
@@ -207,3 +212,125 @@ class TraderStatisticsCalculator:
             summary += f"  [Need {self.min_resolved_trades - stats['resolved_trades']} more resolved trades for reliable stats]\n"
 
         return summary
+
+    def calculate_comprehensive_stats(self, trader_address: str) -> Dict:
+        """
+        Calculate BOTH resolution-based AND P&L-based statistics.
+
+        This gives a holistic view combining:
+        1. Predictive accuracy (holds to resolution, correct outcome)
+        2. Trading skill (exits early, captures profit)
+
+        Returns:
+            {
+                'resolution_based': {...},  # Win rate from resolved trades
+                'pnl_based': {...},         # P&L from position matching
+                'combined': {...}           # Combined metrics
+            }
+        """
+        # Resolution-based stats (prediction accuracy)
+        resolution_stats = self.calculate_trader_win_rate(trader_address)
+
+        # P&L-based stats (trading skill)
+        pnl_stats = self.position_tracker.calculate_trader_pnl(trader_address)
+
+        return {
+            # Resolution-based (prediction accuracy)
+            'resolution_based': {
+                'win_rate': resolution_stats.get('win_rate', 0),
+                'resolved_trades': resolution_stats.get('resolved_trades', 0),
+                'won_trades': resolution_stats.get('won_trades', 0),
+                'lost_trades': resolution_stats.get('lost_trades', 0),
+                'has_minimum': resolution_stats.get('has_minimum', False)
+            },
+
+            # P&L-based (trading skill)
+            'pnl_based': {
+                'realized_pnl': pnl_stats['realized_pnl'],
+                'avg_roi': pnl_stats['avg_roi'],
+                'closed_positions': pnl_stats['closed_positions'],
+                'open_positions': pnl_stats['open_positions'],
+                'total_invested': pnl_stats['total_invested'],
+                'profitable_rate': pnl_stats['profitable_rate']
+            },
+
+            # Combined metrics
+            'combined': {
+                'total_profit': pnl_stats['realized_pnl'],
+                'avg_return': pnl_stats['avg_roi'],
+                'prediction_accuracy': resolution_stats.get('win_rate', 0),
+                'sample_size': {
+                    'resolved_trades': resolution_stats.get('resolved_trades', 0),
+                    'closed_positions': pnl_stats['closed_positions']
+                }
+            }
+        }
+
+    def update_trader_comprehensive_stats(self, trader_address: str, verbose: bool = False):
+        """
+        Update database with BOTH resolution and P&L stats.
+
+        This replaces update_trader_win_rate() with a comprehensive version
+        that includes position-based P&L metrics.
+
+        Args:
+            trader_address: Trader's wallet address
+            verbose: Print detailed logs
+
+        Returns:
+            True if update was performed
+        """
+        stats = self.calculate_comprehensive_stats(trader_address)
+
+        # Get existing trader data
+        existing = self.db.get_trader_stats(trader_address)
+        if not existing:
+            if verbose:
+                print(f"[STATS] Trader {trader_address[:10]}... not found in database")
+            return False
+
+        # Update database with both resolution and P&L stats
+        self.db.add_or_update_trader(
+            address=trader_address,
+            total_trades=existing['total_trades'],
+            successful_trades=stats['resolution_based']['won_trades'],
+            win_rate=stats['resolution_based']['win_rate'],
+            total_volume=existing['total_volume'],
+            is_flagged=existing['is_flagged']
+        )
+
+        # Update P&L fields separately
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE traders
+            SET
+                realized_pnl = ?,
+                avg_roi = ?,
+                total_invested = ?,
+                closed_positions = ?,
+                open_positions = ?,
+                last_updated = CURRENT_TIMESTAMP
+            WHERE address = ?
+        """, (
+            stats['pnl_based']['realized_pnl'],
+            stats['pnl_based']['avg_roi'],
+            stats['pnl_based']['total_invested'],
+            stats['pnl_based']['closed_positions'],
+            stats['pnl_based']['open_positions'],
+            trader_address
+        ))
+
+        conn.commit()
+        conn.close()
+
+        if verbose:
+            print(f"[STATS] {trader_address[:10]}...")
+            print(f"  Resolution: Win Rate: {stats['resolution_based']['win_rate']:.1f}% | "
+                  f"Resolved: {stats['resolution_based']['resolved_trades']}")
+            print(f"  P&L: ${stats['pnl_based']['realized_pnl']:,.2f} | "
+                  f"ROI: {stats['pnl_based']['avg_roi']:.1f}% | "
+                  f"Positions: {stats['pnl_based']['closed_positions']} closed")
+
+        return True
