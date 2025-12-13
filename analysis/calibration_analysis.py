@@ -476,6 +476,56 @@ class CalibrationAnalyzer:
 
         return df
 
+    def analyze_all_traders(self) -> Dict[str, Dict]:
+        """
+        Analyze calibration for all traders.
+
+        Returns dict mapping trader addresses to their calibration metrics.
+        Used by unified ELO system for Advanced Metrics dimension.
+
+        Returns:
+            Dict[str, Dict]: Maps trader_address -> {
+                'brier_score': float,
+                'expected_calibration_error': float,
+                'num_predictions': int,
+                'confidence_bias': float
+            }
+        """
+        # Ensure connection is established
+        if self.conn is None:
+            self.conn = sqlite3.connect(self.db_path)
+            self.conn.row_factory = sqlite3.Row
+
+        cursor = self.conn.cursor()
+
+        # Get all traders with resolved trades
+        cursor.execute("""
+            SELECT DISTINCT t.trader_address
+            FROM trades t
+            INNER JOIN markets m ON t.market_id = m.condition_id
+            WHERE m.resolved = 1
+                AND m.winning_outcome IS NOT NULL
+                AND m.winning_outcome != ''
+        """)
+
+        all_traders = [row[0] for row in cursor.fetchall()]
+
+        results = {}
+        for trader in all_traders:
+            metrics = self.calculate_trader_calibration(trader)
+            if metrics:
+                results[trader] = {
+                    'brier_score': metrics.brier_score,
+                    'expected_calibration_error': metrics.expected_calibration_error,
+                    'num_predictions': metrics.num_predictions,
+                    'confidence_bias': metrics.confidence_bias,
+                    'avg_predicted_prob': metrics.avg_predicted_prob,
+                    'avg_actual_prob': metrics.avg_actual_prob
+                }
+
+        logger.info(f"Analyzed calibration for {len(results)} traders")
+        return results
+
 
 class CalibrationVisualizer:
     """Handles visualization of calibration analysis results."""
