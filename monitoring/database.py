@@ -642,3 +642,133 @@ class Database:
         conn.close()
 
         return traders
+
+    def get_top_traders_by_elo(self, limit: int = 10, min_elo: float = 0) -> List[Dict]:
+        """
+        Get top traders ranked by comprehensive ELO.
+
+        Args:
+            limit: Number of traders to return
+            min_elo: Minimum ELO threshold
+
+        Returns:
+            List of dicts with trader data and rank
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                address,
+                comprehensive_elo,
+                base_category_elo,
+                win_rate,
+                realized_pnl,
+                avg_roi,
+                total_trades,
+                closed_positions,
+                behavioral_modifier,
+                advanced_modifier,
+                pnl_modifier,
+                elo_last_updated
+            FROM traders
+            WHERE is_flagged = 1
+            AND comprehensive_elo IS NOT NULL
+            AND comprehensive_elo >= ?
+            ORDER BY comprehensive_elo DESC
+            LIMIT ?
+        """, (min_elo, limit))
+
+        traders = []
+        for i, row in enumerate(cursor.fetchall(), 1):
+            traders.append({
+                'rank': i,
+                'address': row[0],
+                'comprehensive_elo': row[1],
+                'base_category_elo': row[2],
+                'win_rate': row[3] or 0,
+                'realized_pnl': row[4] or 0,
+                'avg_roi': row[5] or 0,
+                'total_trades': row[6] or 0,
+                'closed_positions': row[7] or 0,
+                'behavioral_modifier': row[8] or 1.0,
+                'advanced_modifier': row[9] or 1.0,
+                'pnl_modifier': row[10] or 1.0,
+                'elo_last_updated': row[11]
+            })
+
+        conn.close()
+        return traders
+
+    def get_trader_rank(self, trader_address: str) -> Optional[Dict]:
+        """
+        Get specific trader's rank and details.
+
+        Returns:
+            Dict with rank, elo, and other stats, or None if not found
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        # Get trader's ELO
+        cursor.execute("""
+            SELECT comprehensive_elo
+            FROM traders
+            WHERE address = ?
+        """, (trader_address,))
+
+        result = cursor.fetchone()
+        if not result or result[0] is None:
+            conn.close()
+            return None
+
+        trader_elo = result[0]
+
+        # Count how many traders have higher ELO
+        cursor.execute("""
+            SELECT COUNT(*) + 1
+            FROM traders
+            WHERE is_flagged = 1
+            AND comprehensive_elo > ?
+        """, (trader_elo,))
+
+        rank = cursor.fetchone()[0]
+
+        # Get trader details
+        cursor.execute("""
+            SELECT
+                address,
+                comprehensive_elo,
+                base_category_elo,
+                win_rate,
+                realized_pnl,
+                avg_roi,
+                total_trades
+            FROM traders
+            WHERE address = ?
+        """, (trader_address,))
+
+        row = cursor.fetchone()
+        conn.close()
+
+        return {
+            'rank': rank,
+            'address': row[0],
+            'comprehensive_elo': row[1],
+            'base_category_elo': row[2],
+            'win_rate': row[3] or 0,
+            'realized_pnl': row[4] or 0,
+            'avg_roi': row[5] or 0,
+            'total_trades': row[6] or 0
+        }
+
+    def get_elite_traders(self, min_elo: float = 1800) -> List[Dict]:
+        """Get all traders above ELO threshold."""
+        return self.get_top_traders_by_elo(limit=1000, min_elo=min_elo)
+
+    def is_elite_trader(self, trader_address: str, min_elo: float = 1800) -> bool:
+        """Check if trader is in elite tier."""
+        rank_data = self.get_trader_rank(trader_address)
+        if not rank_data:
+            return False
+        return rank_data['comprehensive_elo'] >= min_elo
