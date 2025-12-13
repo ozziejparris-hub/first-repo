@@ -772,3 +772,49 @@ class Database:
         if not rank_data:
             return False
         return rank_data['comprehensive_elo'] >= min_elo
+
+    def get_trader_win_streak(self, trader_address: str, min_streak: int = 3) -> Optional[Dict]:
+        """
+        Get trader's current win streak.
+
+        Args:
+            trader_address: Trader address
+            min_streak: Minimum streak to return
+
+        Returns:
+            Dict with streak info or None
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        # Get recent trades in reverse chronological order
+        cursor.execute("""
+            SELECT trade_result
+            FROM trades
+            WHERE trader_address = ?
+            AND trade_result IS NOT NULL
+            ORDER BY last_updated DESC
+            LIMIT 20
+        """, (trader_address,))
+
+        results = [row[0] for row in cursor.fetchall()]
+        conn.close()
+
+        if not results:
+            return None
+
+        # Count consecutive wins from most recent
+        streak = 0
+        for result in results:
+            if result == 'won':
+                streak += 1
+            else:
+                break
+
+        if streak >= min_streak:
+            return {
+                'streak': streak,
+                'recent_results': results[:10]
+            }
+
+        return None

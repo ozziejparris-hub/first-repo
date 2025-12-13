@@ -35,6 +35,27 @@ class PolymarketMonitor:
         # Set stop callback
         self.telegram.set_stop_callback(self.request_stop)
 
+        # Initialize Telegram ELO Bot for betting intelligence
+        self.elo_bot = None
+        self.elo_scheduler = None
+        try:
+            from .telegram_elo_bot import ELOTelegramBot
+            from .telegram_scheduler import TelegramScheduler
+
+            self.elo_bot = ELOTelegramBot(
+                token=telegram_token,
+                chat_id=telegram_chat_id,
+                database=self.db
+            )
+
+            self.elo_scheduler = TelegramScheduler(self.elo_bot, self.db)
+
+            print("[MONITOR] ✅ ELO Telegram bot initialized")
+        except Exception as e:
+            print(f"[MONITOR] ⚠️ Warning: Could not initialize ELO bot: {e}")
+            self.elo_bot = None
+            self.elo_scheduler = None
+
     def request_stop(self):
         """Request the monitor to stop."""
         print("🛑 Stop requested via Telegram")
@@ -498,6 +519,47 @@ class PolymarketMonitor:
             if is_new:
                 new_trades_count += 1
                 print(f"📝 NEW: {trader_address[:10]}... traded {shares:.1f} @ ${price:.3f} in {market_title[:30]}...")
+
+                # ============================================================
+                # BETTING INTELLIGENCE ALERTS
+                # ============================================================
+                if self.elo_bot:
+                    try:
+                        # Check if elite trader (top 10)
+                        rank_data = self.db.get_trader_rank(trader_address)
+
+                        if rank_data and rank_data['rank'] <= 10:
+                            # Send elite trader alert
+                            trade_data = {
+                                'market_title': market_title,
+                                'outcome': outcome,
+                                'shares': shares,
+                                'price': price,
+                                'side': side,
+                                'timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                            }
+
+                            await self.elo_bot.send_elite_trader_alert(
+                                trader_address,
+                                trade_data
+                            )
+                            print(f"[BETTING INTEL] 🚨 Elite alert sent for Rank #{rank_data['rank']}")
+
+                            # Check for large position
+                            await self.elo_bot.send_large_position_alert(trader_address, trade_data)
+
+                            # Check for contrarian signal (need market consensus)
+                            # Market consensus = current price
+                            market_consensus = price if outcome.upper() == 'YES' else (1 - price)
+                            await self.elo_bot.send_contrarian_alert(trader_address, trade_data, market_consensus)
+
+                            # Check for win streak
+                            streak_data = self.db.get_trader_win_streak(trader_address, min_streak=3)
+                            if streak_data:
+                                await self.elo_bot.send_win_streak_alert(trader_address, streak_data)
+
+                    except Exception as e:
+                        print(f"[BETTING INTEL] Warning: Alert failed: {e}")
             else:
                 duplicate_count += 1
 
@@ -612,6 +674,26 @@ class PolymarketMonitor:
         await self.telegram.initialize()
         await self.telegram.start_polling()
 
+        # Initialize and start ELO bot with betting intelligence
+        if self.elo_bot:
+            try:
+                await self.elo_bot.initialize()
+
+                # Schedule daily leaderboard (9 AM)
+                self.elo_scheduler.schedule_daily_leaderboard(hour=9, minute=0)
+                self.elo_scheduler.start()
+
+                print("[MONITOR] ✅ ELO bot active - Daily leaderboard scheduled for 9 AM")
+                print("[MONITOR] 🎯 Betting intelligence features enabled:")
+                print("[MONITOR]    - Elite trader alerts (top 10)")
+                print("[MONITOR]    - Market momentum tracking")
+                print("[MONITOR]    - Contrarian signal detection")
+                print("[MONITOR]    - Large position alerts")
+                print("[MONITOR]    - Win streak notifications")
+            except Exception as e:
+                print(f"[MONITOR] ⚠️ Warning: ELO bot initialization failed: {e}")
+                self.elo_bot = None
+
         # Send startup message
         await self.telegram.send_message(
             "🚀 <b>Polymarket Monitor Started!</b>\n\n"
@@ -629,6 +711,21 @@ class PolymarketMonitor:
         """Stop the monitoring service gracefully."""
         print("🛑 Stopping Polymarket Monitor...")
         self.is_running = False
+
+        # Stop ELO bot and scheduler
+        if self.elo_scheduler:
+            try:
+                self.elo_scheduler.stop()
+                print("[MONITOR] ✅ ELO scheduler stopped")
+            except Exception as e:
+                print(f"[MONITOR] Warning: ELO scheduler stop failed: {e}")
+
+        if self.elo_bot:
+            try:
+                await self.elo_bot.stop()
+                print("[MONITOR] ✅ ELO bot stopped")
+            except Exception as e:
+                print(f"[MONITOR] Warning: ELO bot stop failed: {e}")
 
         await self.telegram.send_message("👋 Polymarket Monitor stopped.")
         await self.telegram.stop()

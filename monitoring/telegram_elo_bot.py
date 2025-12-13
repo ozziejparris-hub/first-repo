@@ -304,3 +304,170 @@ class ELOTelegramBot:
             )
         except Exception as e:
             print(f"[ELO_BOT] Error sending message: {e}")
+
+    # ============================================================
+    # BETTING INTELLIGENCE FEATURES
+    # ============================================================
+
+    async def send_market_momentum_alert(self, market_id: str, market_title: str, traders: List[Dict]):
+        """
+        Alert when multiple elite traders bet on same market.
+
+        Args:
+            market_id: Market identifier
+            market_title: Market title
+            traders: List of elite traders who bet on this market
+        """
+        if len(traders) < 2:
+            return  # Need at least 2 elite traders for momentum
+
+        message = "🔥 <b>MARKET MOMENTUM ALERT</b>\n\n"
+        message += f"<b>Market:</b> {market_title[:80]}...\n\n"
+        message += f"<b>{len(traders)} ELITE TRADERS</b> just bet on this market:\n\n"
+
+        # Show consensus
+        yes_votes = sum(1 for t in traders if t.get('outcome', '').upper() == 'YES')
+        no_votes = len(traders) - yes_votes
+
+        for trader in traders[:5]:  # Top 5
+            rank = trader.get('rank', '?')
+            elo = trader.get('elo', 0)
+            outcome = trader.get('outcome', 'UNKNOWN')
+
+            emoji = "✅" if outcome.upper() == "YES" else "❌"
+            message += f"{emoji} Rank #{rank} (ELO {elo:.0f}) → <b>{outcome}</b>\n"
+
+        if len(traders) > 5:
+            message += f"\n... and {len(traders) - 5} more\n"
+
+        # Consensus
+        message += f"\n📊 <b>Consensus:</b>\n"
+        message += f"   YES: {yes_votes} | NO: {no_votes}\n"
+
+        if yes_votes == len(traders):
+            message += "\n💡 <b>STRONG SIGNAL:</b> All elite traders agree on YES"
+        elif no_votes == len(traders):
+            message += "\n💡 <b>STRONG SIGNAL:</b> All elite traders agree on NO"
+        elif abs(yes_votes - no_votes) <= 1:
+            message += "\n⚠️ <b>SPLIT DECISION:</b> Elite traders divided"
+
+        await self.send_message(message, parse_mode='HTML')
+
+    async def send_contrarian_alert(self, trader_address: str, trade_data: Dict, market_consensus: float):
+        """
+        Alert when elite trader takes contrarian position.
+
+        Args:
+            trader_address: Trader address
+            trade_data: Trade information
+            market_consensus: Market probability (0-1)
+        """
+        rank_data = self.db.get_trader_rank(trader_address)
+        if not rank_data or rank_data.get('rank', 999) > 10:
+            return
+
+        outcome = trade_data.get('outcome', '').upper()
+        price = trade_data.get('price', 0)
+
+        # Determine if contrarian
+        is_contrarian = False
+        signal = ""
+        if outcome == 'YES' and market_consensus < 0.3:
+            is_contrarian = True
+            signal = f"betting YES when market says only {market_consensus:.0%} chance"
+        elif outcome == 'NO' and market_consensus > 0.7:
+            is_contrarian = True
+            signal = f"betting NO when market says {market_consensus:.0%} chance YES"
+
+        if not is_contrarian:
+            return
+
+        message = "🎯 <b>CONTRARIAN SIGNAL</b>\n\n"
+        message += f"<b>Elite Trader #{rank_data['rank']}</b> (ELO {rank_data['comprehensive_elo']:.0f})\n"
+        message += f"is going AGAINST the crowd!\n\n"
+
+        message += f"📊 <b>Market:</b> {trade_data.get('market_title', 'Unknown')[:80]}...\n"
+        message += f"💰 <b>Consensus:</b> {market_consensus:.0%} YES\n"
+        message += f"🎲 <b>Their Bet:</b> <b>{outcome}</b> @ ${price:.3f}\n\n"
+
+        message += f"💡 This trader {signal}\n"
+        message += f"Win Rate: {rank_data.get('win_rate', 0) * 100:.1f}% | ROI: {rank_data.get('avg_roi', 0) * 100:.1f}%\n"
+
+        await self.send_message(message, parse_mode='HTML')
+
+    async def send_large_position_alert(self, trader_address: str, trade_data: Dict):
+        """
+        Alert when elite trader makes unusually large bet.
+
+        Args:
+            trader_address: Trader address
+            trade_data: Trade with 'investment' field
+        """
+        rank_data = self.db.get_trader_rank(trader_address)
+        if not rank_data or rank_data.get('rank', 999) > 10:
+            return
+
+        investment = trade_data.get('shares', 0) * trade_data.get('price', 0)
+
+        # Get trader's average investment
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT AVG(shares * price) as avg_investment
+            FROM trades
+            WHERE trader_address = ?
+            AND shares > 0
+        """, (trader_address,))
+
+        result = cursor.fetchone()
+        avg_investment = result[0] if result and result[0] else 0
+        conn.close()
+
+        # Alert if 3x+ larger than average
+        if avg_investment == 0 or investment < avg_investment * 3:
+            return
+
+        multiplier = investment / avg_investment
+
+        message = "💰 <b>LARGE POSITION ALERT</b>\n\n"
+        message += f"<b>Elite Trader #{rank_data['rank']}</b> (ELO {rank_data['comprehensive_elo']:.0f})\n"
+        message += f"just made a BIG bet!\n\n"
+
+        message += f"📊 <b>Investment:</b> ${investment:.2f}\n"
+        message += f"📈 <b>vs Average:</b> ${avg_investment:.2f}\n"
+        message += f"🔥 <b>Size:</b> {multiplier:.1f}x their usual bet\n\n"
+
+        message += f"<b>Market:</b> {trade_data.get('market_title', 'Unknown')[:80]}...\n"
+        message += f"<b>Position:</b> <b>{trade_data.get('outcome', 'UNKNOWN')}</b>\n\n"
+
+        message += f"💡 This trader is showing high conviction!\n"
+
+        await self.send_message(message, parse_mode='HTML')
+
+    async def send_win_streak_alert(self, trader_address: str, streak_data: Dict):
+        """Alert when elite trader is on a win streak."""
+
+        rank_data = self.db.get_trader_rank(trader_address)
+        if not rank_data or rank_data.get('rank', 999) > 10:
+            return
+
+        streak = streak_data.get('streak', 0)
+
+        message = f"🔥 <b>HOT STREAK ALERT</b>\n\n"
+        message += f"<b>Elite Trader #{rank_data['rank']}</b> (ELO {rank_data['comprehensive_elo']:.0f})\n"
+        message += f"is on a <b>{streak}-trade WIN STREAK!</b>\n\n"
+
+        message += f"Recent trades: "
+        for i, result in enumerate(streak_data.get('recent_results', [])[:10]):
+            emoji = "✅" if result == 'won' else "❌"
+            message += emoji
+            if i == streak - 1:
+                message += " | "
+
+        message += f"\n\nWin Rate: {rank_data.get('win_rate', 0) * 100:.1f}%\n"
+        message += f"P&L: ${rank_data.get('realized_pnl', 0):.2f}\n\n"
+
+        message += "💡 This trader is in the zone! Watch their next moves closely.\n"
+
+        await self.send_message(message, parse_mode='HTML')
