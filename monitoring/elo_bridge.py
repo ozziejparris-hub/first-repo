@@ -64,6 +64,10 @@ class UnifiedELOMonitoringBridge:
         self._elo_system_last_init = None
         self._elo_cache_ttl = timedelta(hours=24)  # Reinitialize daily
 
+        # Cache for base ELO calculations (expensive market resolution checks)
+        self._base_elo_last_calculated = None
+        self._base_elo_cache_ttl = timedelta(hours=1)  # Recalculate hourly
+
         # Cache for PositionTracker
         self._position_tracker = None
 
@@ -378,20 +382,35 @@ class UnifiedELOMonitoringBridge:
         # Get ELO system
         elo_system = self._get_elo_system(force_refresh=force_refresh)
 
-        # Calculate base ELO for all traders first
-        if verbose:
-            print("[ELO_BRIDGE] Recalculating base ELO ratings...")
+        # Check if we need to recalculate base ELO ratings
+        now = datetime.now()
+        needs_base_elo_recalc = (
+            force_refresh or
+            self._base_elo_last_calculated is None or
+            (now - self._base_elo_last_calculated) > self._base_elo_cache_ttl
+        )
 
-        try:
-            elo_system.calculate_elo_ratings()
-        except Exception as e:
-            return {
-                'traders_updated': 0,
-                'traders_failed': len(trader_addresses),
-                'errors': [f"Base ELO calculation failed: {str(e)}"],
-                'duration_seconds': time.time() - start_time,
-                'chunks_processed': 0
-            }
+        if needs_base_elo_recalc:
+            # Calculate base ELO for all traders (expensive: ~200s for 1,946 markets)
+            if verbose:
+                print("[ELO_BRIDGE] Recalculating base ELO ratings (this may take a few minutes)...")
+
+            try:
+                elo_system.calculate_elo_ratings(verbose=verbose)
+                self._base_elo_last_calculated = now
+            except Exception as e:
+                return {
+                    'traders_updated': 0,
+                    'traders_failed': len(trader_addresses),
+                    'errors': [f"Base ELO calculation failed: {str(e)}"],
+                    'duration_seconds': time.time() - start_time,
+                    'chunks_processed': 0
+                }
+        else:
+            # Use cached base ELO ratings (significant speedup!)
+            if verbose:
+                age_minutes = int((now - self._base_elo_last_calculated).total_seconds() / 60)
+                print(f"[ELO_BRIDGE] Using cached base ELO ratings (age: {age_minutes}m, refreshes every {int(self._base_elo_cache_ttl.total_seconds() / 60)}m)")
 
         # BATCH PROCESSING: Split into chunks for optimal performance
         chunks = self._chunk_list(trader_addresses, chunk_size)
