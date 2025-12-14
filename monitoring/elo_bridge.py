@@ -184,9 +184,149 @@ class UnifiedELOMonitoringBridge:
 
         return result
 
+    # ============================================================
+    # BATCH PROCESSING OPTIMIZATION METHODS
+    # ============================================================
+
+    def _chunk_list(self, lst: List, chunk_size: int = 50) -> List[List]:
+        """
+        Split list into chunks of specified size.
+
+        Args:
+            lst: List to split
+            chunk_size: Maximum size of each chunk
+
+        Returns:
+            List of lists (chunks)
+        """
+        return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]
+
+    def _batch_store_elo_results(self, elo_results: Dict[str, Dict]) -> int:
+        """
+        Store ELO results for multiple traders in a single transaction.
+
+        This is a major performance optimization - instead of committing after
+        each trader update, we batch all updates into a single transaction.
+
+        Args:
+            elo_results: Dict mapping trader_address -> ELO data
+
+        Returns:
+            Number of traders successfully updated
+        """
+        if not elo_results:
+            return 0
+
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+
+        # Prepare batch update data
+        updates = []
+        for trader_address, elo_data in elo_results.items():
+            updates.append((
+                elo_data['comprehensive_elo'],
+                elo_data['base_category_elo'],
+                elo_data['behavioral_modifier'],
+                elo_data['advanced_modifier'],
+                elo_data['pnl_modifier'],
+                datetime.now().isoformat(),
+                trader_address
+            ))
+
+        # Batch update (SINGLE TRANSACTION - major speedup)
+        cursor.executemany("""
+            UPDATE traders
+            SET
+                comprehensive_elo = ?,
+                base_category_elo = ?,
+                behavioral_modifier = ?,
+                advanced_modifier = ?,
+                pnl_modifier = ?,
+                elo_last_updated = ?
+            WHERE address = ?
+        """, updates)
+
+        conn.commit()
+        updated_count = len(updates)
+        conn.close()
+
+        return updated_count
+
+    def _process_trader_chunk(self, elo_system, trader_addresses: List[str],
+                              verbose: bool = False) -> Dict:
+        """
+        Process a chunk of traders with optimized batch operations.
+
+        Args:
+            elo_system: UnifiedELOSystem instance
+            trader_addresses: List of trader addresses (typically 50 or less)
+            verbose: Print progress
+
+        Returns:
+            Dict with updated/failed counts and results
+        """
+        elo_results = {}
+        errors = []
+        elo_values = []
+
+        for i, trader_address in enumerate(trader_addresses):
+            try:
+                # Get comprehensive ELO with quick modifiers
+                comprehensive_elo = elo_system.get_trader_global_elo(
+                    trader_address,
+                    apply_behavioral=True,  # Cached
+                    apply_advanced=True,     # Cached
+                    apply_network=False,     # Skip (expensive)
+                    apply_contrarian=False,  # Skip (expensive)
+                    apply_pnl=True          # Fresh calculation
+                )
+
+                # Get base category ELO (without any modifiers)
+                base_category_elo = elo_system.get_trader_global_elo(trader_address)
+
+                # Get component modifiers for storage
+                behavioral_data = elo_system.calculate_behavioral_multiplier(trader_address)
+                advanced_data = elo_system.calculate_advanced_metrics_multiplier(trader_address)
+                pnl_data = elo_system.calculate_pnl_multiplier(trader_address)
+
+                behavioral_modifier = behavioral_data['combined_multiplier']
+                advanced_modifier = advanced_data['combined_multiplier']
+                pnl_modifier = pnl_data['combined_multiplier']
+
+                # Store in results dict (will be batch-written later)
+                elo_results[trader_address] = {
+                    'comprehensive_elo': comprehensive_elo,
+                    'base_category_elo': base_category_elo,
+                    'behavioral_modifier': behavioral_modifier,
+                    'advanced_modifier': advanced_modifier,
+                    'pnl_modifier': pnl_modifier
+                }
+
+                elo_values.append(comprehensive_elo)
+
+                if verbose and (i + 1) % 10 == 0:
+                    print(f"  [{i+1}/{len(trader_addresses)}] Processed")
+
+            except Exception as e:
+                error_msg = f"ELO calculation failed for {trader_address}: {str(e)}"
+                errors.append(error_msg)
+                if verbose:
+                    print(f"  [ERROR] {error_msg}")
+
+        # Batch store all results (SINGLE DATABASE TRANSACTION)
+        updated_count = self._batch_store_elo_results(elo_results)
+
+        return {
+            'updated': updated_count,
+            'failed': len(trader_addresses) - updated_count,
+            'errors': errors,
+            'elo_values': elo_values
+        }
+
     def quick_elo_update_for_traders(self, trader_addresses: List[str],
                                      verbose: bool = False,
-                                     force_refresh: bool = False) -> Dict:
+                                     force_refresh: bool = False,
+                                     chunk_size: int = 50) -> Dict:
         """
         Quick ELO update for specific traders (4/6 dimensions).
 
@@ -204,6 +344,7 @@ class UnifiedELOMonitoringBridge:
             trader_addresses: List of trader addresses to update
             verbose: Print detailed progress
             force_refresh: Force ELO system re-initialization
+            chunk_size: Number of traders to process per batch (default: 50)
 
         Returns:
             Dictionary with update results:
@@ -213,13 +354,26 @@ class UnifiedELOMonitoringBridge:
                 'avg_elo': float,
                 'top_traders': List[Dict],
                 'errors': List[str],
-                'duration_seconds': float
+                'duration_seconds': float,
+                'chunks_processed': int
             }
         """
         start_time = time.time()
 
+        if not trader_addresses:
+            return {
+                'traders_updated': 0,
+                'traders_failed': 0,
+                'avg_elo': 0,
+                'top_traders': [],
+                'errors': [],
+                'duration_seconds': 0,
+                'chunks_processed': 0
+            }
+
         if verbose:
             print(f"\n[ELO_BRIDGE] Quick ELO update for {len(trader_addresses)} traders...")
+            print(f"[ELO_BRIDGE] Using batch processing (chunk size: {chunk_size})")
 
         # Get ELO system
         elo_system = self._get_elo_system(force_refresh=force_refresh)
@@ -235,78 +389,35 @@ class UnifiedELOMonitoringBridge:
                 'traders_updated': 0,
                 'traders_failed': len(trader_addresses),
                 'errors': [f"Base ELO calculation failed: {str(e)}"],
-                'duration_seconds': time.time() - start_time
+                'duration_seconds': time.time() - start_time,
+                'chunks_processed': 0
             }
 
-        # Update ELO for each trader
+        # BATCH PROCESSING: Split into chunks for optimal performance
+        chunks = self._chunk_list(trader_addresses, chunk_size)
+
         traders_updated = 0
         traders_failed = 0
-        errors = []
+        all_errors = []
         elo_values = []
 
-        conn = self.db.get_connection()
-        cursor = conn.cursor()
+        for i, chunk in enumerate(chunks, 1):
+            if verbose:
+                print(f"[ELO_BRIDGE] Processing chunk {i}/{len(chunks)} ({len(chunk)} traders)...")
 
-        for i, trader_address in enumerate(trader_addresses):
             try:
-                # Get comprehensive ELO with quick modifiers
-                # (behavioral and advanced use 24h cache, P&L is fresh)
-                comprehensive_elo = elo_system.get_trader_global_elo(
-                    trader_address,
-                    apply_behavioral=True,  # Cached
-                    apply_advanced=True,     # Cached
-                    apply_network=False,     # Skip (expensive)
-                    apply_contrarian=False,  # Skip (expensive)
-                    apply_pnl=True          # Fresh calculation
-                )
+                # Process this chunk with batch operations
+                chunk_results = self._process_trader_chunk(elo_system, chunk, verbose)
 
-                # Get base category ELO
-                base_category_elo = elo_system.get_base_elo(trader_address)
-
-                # Get component modifiers for storage
-                behavioral_data = elo_system.calculate_behavioral_multiplier(trader_address)
-                advanced_data = elo_system.calculate_advanced_multiplier(trader_address)
-                pnl_data = elo_system.calculate_pnl_multiplier(trader_address)
-
-                behavioral_modifier = behavioral_data['combined_multiplier']
-                advanced_modifier = advanced_data['combined_multiplier']
-                pnl_modifier = pnl_data['combined_multiplier']
-
-                # Store in database
-                cursor.execute("""
-                    UPDATE traders
-                    SET comprehensive_elo = ?,
-                        base_category_elo = ?,
-                        behavioral_modifier = ?,
-                        advanced_modifier = ?,
-                        pnl_modifier = ?,
-                        elo_last_updated = ?
-                    WHERE address = ?
-                """, (
-                    comprehensive_elo,
-                    base_category_elo,
-                    behavioral_modifier,
-                    advanced_modifier,
-                    pnl_modifier,
-                    datetime.now(),
-                    trader_address
-                ))
-
-                traders_updated += 1
-                elo_values.append(comprehensive_elo)
-
-                if verbose and (i + 1) % 10 == 0:
-                    print(f"  [{i+1}/{len(trader_addresses)}] Updated")
+                traders_updated += chunk_results['updated']
+                traders_failed += chunk_results['failed']
+                all_errors.extend(chunk_results['errors'])
+                elo_values.extend(chunk_results['elo_values'])
 
             except Exception as e:
-                traders_failed += 1
-                error_msg = f"ELO update failed for {trader_address}: {str(e)}"
-                errors.append(error_msg)
-                if verbose:
-                    print(f"  [ERROR] {error_msg}")
-
-        conn.commit()
-        conn.close()
+                print(f"[ELO_BRIDGE] Error processing chunk {i}: {e}")
+                traders_failed += len(chunk)
+                all_errors.append(f"Chunk {i} failed: {str(e)}")
 
         duration = time.time() - start_time
         self._last_quick_update_duration = duration
@@ -319,14 +430,20 @@ class UnifiedELOMonitoringBridge:
             'traders_failed': traders_failed,
             'avg_elo': sum(elo_values) / len(elo_values) if elo_values else 0,
             'top_traders': top_traders,
-            'errors': errors,
-            'duration_seconds': duration
+            'errors': all_errors,
+            'duration_seconds': duration,
+            'chunks_processed': len(chunks)
         }
 
         if verbose:
             print(f"[ELO_BRIDGE] Quick ELO update complete: "
                   f"{traders_updated} updated, {traders_failed} failed "
-                  f"in {duration:.2f}s")
+                  f"in {duration:.2f}s ({len(chunks)} chunks)")
+            if elo_values:
+                per_trader = duration / len(trader_addresses)
+                throughput = len(trader_addresses) / duration
+                print(f"[ELO_BRIDGE] Performance: {per_trader:.3f}s per trader, "
+                      f"{throughput:.1f} traders/second")
 
         return result
 
@@ -408,12 +525,12 @@ class UnifiedELOMonitoringBridge:
                     apply_pnl=True          # Fresh calculation
                 )
 
-                # Get base category ELO
-                base_category_elo = elo_system.get_base_elo(trader_address)
+                # Get base category ELO (without any modifiers)
+                base_category_elo = elo_system.get_trader_global_elo(trader_address)
 
                 # Get component modifiers for storage
                 behavioral_data = elo_system.calculate_behavioral_multiplier(trader_address)
-                advanced_data = elo_system.calculate_advanced_multiplier(trader_address)
+                advanced_data = elo_system.calculate_advanced_metrics_multiplier(trader_address)
                 pnl_data = elo_system.calculate_pnl_multiplier(trader_address)
 
                 behavioral_modifier = behavioral_data['combined_multiplier']
