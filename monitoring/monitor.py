@@ -185,7 +185,7 @@ class PolymarketMonitor:
             'championship', 'playoff', 'vs.', 'game', 'match',
             'warriors', 'thunder', 'lakers', 'celtics', 'cowboys',
             'patriots', 'bills', 'chiefs', 'bengals',
-            'maple leafs', 'bruins',
+            'maple leafs', 'bruins', 'atp', 
 
             # ENTERTAINMENT - AWARDS & NOMINATIONS
             'academy award', 'oscar', 'oscars', 'grammy', 'grammys',
