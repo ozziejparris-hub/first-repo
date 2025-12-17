@@ -1,10 +1,12 @@
 @echo off
 echo Starting System Health Observer...
 
-REM Wait 30 seconds for monitoring to start (if starting both)
-timeout /t 30 /nobreak
+REM Change to project directory (IMPORTANT for Task Scheduler)
+cd /d C:\Users\Oscar\Projects\first-repo
 
-REM Run observer (will auto-detect or prompt)
+REM Remove timeout (Task Scheduler's 2-minute delay handles this)
+
+REM Run observer (will auto-detect)
 python scripts\run_system_observer.py
 
 pause
