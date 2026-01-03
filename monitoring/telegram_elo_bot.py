@@ -37,18 +37,31 @@ class ELOTelegramBot:
         self.elite_threshold = 1800  # ELO threshold for elite traders
         self.top_n_elite = 10        # Top N traders for trade alerts
 
-    async def initialize(self):
-        """Initialize the bot application."""
-        self.app = Application.builder().token(self.token).build()
-        self.bot = self.app.bot
+    async def initialize(self, send_only: bool = False):
+        """
+        Initialize the bot application.
 
-        # Register command handlers
-        self.app.add_handler(CommandHandler("leaderboard", self.cmd_leaderboard))
-        self.app.add_handler(CommandHandler("rank", self.cmd_rank))
-        self.app.add_handler(CommandHandler("elite", self.cmd_elite))
-        self.app.add_handler(CommandHandler("stats", self.cmd_stats))
+        Args:
+            send_only: If True, only initialize bot for sending messages (no polling/commands)
+        """
+        if send_only:
+            # Send-only mode: Just create a Bot instance, no Application/polling
+            from telegram import Bot
+            self.bot = Bot(token=self.token)
+            self.app = None
+            print("[ELO_BOT] Telegram bot initialized (send-only mode, no polling)")
+        else:
+            # Full mode: Application with command handlers and polling
+            self.app = Application.builder().token(self.token).build()
+            self.bot = self.app.bot
 
-        print("[ELO_BOT] Telegram bot initialized with ELO features")
+            # Register command handlers
+            self.app.add_handler(CommandHandler("leaderboard", self.cmd_leaderboard))
+            self.app.add_handler(CommandHandler("rank", self.cmd_rank))
+            self.app.add_handler(CommandHandler("elite", self.cmd_elite))
+            self.app.add_handler(CommandHandler("stats", self.cmd_stats))
+
+            print("[ELO_BOT] Telegram bot initialized with ELO features (full mode)")
 
     async def start_polling(self):
         """Start polling for commands."""
@@ -58,13 +71,15 @@ class ELOTelegramBot:
         print("[ELO_BOT] Started polling for commands")
 
     async def stop(self):
-        """Stop the bot."""
+        """Stop the bot and cleanup resources."""
         if self.app:
             # Only stop updater if it was started
             if self.app.updater and self.app.updater.running:
                 await self.app.updater.stop()
             await self.app.stop()
             await self.app.shutdown()
+        # Note: In send-only mode (self.app is None), no cleanup needed
+        # The simple Bot instance has no active connections to close
 
     # ============================================================
     # DAILY LEADERBOARD

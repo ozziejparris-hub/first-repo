@@ -36,11 +36,11 @@ class PolymarketMonitor:
         self.telegram.set_stop_callback(self.request_stop)
 
         # Initialize Telegram ELO Bot for betting intelligence
+        # NOTE: ELO bot uses send-only mode (no polling) to avoid conflicts
         self.elo_bot = None
         self.elo_scheduler = None
         try:
             from .telegram_elo_bot import ELOTelegramBot
-            from .telegram_scheduler import TelegramScheduler
 
             self.elo_bot = ELOTelegramBot(
                 token=telegram_token,
@@ -48,9 +48,17 @@ class PolymarketMonitor:
                 database=self.db
             )
 
-            self.elo_scheduler = TelegramScheduler(self.elo_bot, self.db)
+            # NOTE: Scheduler disabled - user ditching Task Scheduler
+            # Daily leaderboards can be sent manually or via simple loop if needed
+            # from .telegram_scheduler import TelegramScheduler
+            # self.elo_scheduler = TelegramScheduler(self.elo_bot, self.db)
 
-            print("[MONITOR] ✅ ELO Telegram bot initialized")
+            print("[MONITOR] ✅ ELO Telegram bot initialized (send-only mode)")
+        except ImportError as e:
+            # APScheduler not installed - that's OK, scheduler is disabled anyway
+            print(f"[MONITOR] ℹ️ Info: ELO bot scheduler dependencies not available: {e}")
+            print("[MONITOR] ℹ️ ELO bot will work without scheduling (send-only mode)")
+            self.elo_bot = None
         except Exception as e:
             print(f"[MONITOR] ⚠️ Warning: Could not initialize ELO bot: {e}")
             self.elo_bot = None
@@ -674,22 +682,27 @@ class PolymarketMonitor:
         await self.telegram.initialize()
         await self.telegram.start_polling()
 
-        # Initialize and start ELO bot with betting intelligence
+        # Initialize ELO bot for betting intelligence (send-only mode)
         if self.elo_bot:
             try:
-                await self.elo_bot.initialize()
+                # Initialize in send-only mode to avoid Telegram polling conflicts
+                # Only the main TelegramNotifier polls for /stop commands
+                await self.elo_bot.initialize(send_only=True)
 
-                # Schedule daily leaderboard (9 AM)
-                self.elo_scheduler.schedule_daily_leaderboard(hour=9, minute=0)
-                self.elo_scheduler.start()
+                # NOTE: Scheduler disabled - user ditching Task Scheduler
+                # Daily leaderboards disabled for now (can be re-enabled with simple loop if needed)
+                # if self.elo_scheduler:
+                #     self.elo_scheduler.schedule_daily_leaderboard(hour=9, minute=0)
+                #     self.elo_scheduler.start()
 
-                print("[MONITOR] ✅ ELO bot active - Daily leaderboard scheduled for 9 AM")
+                print("[MONITOR] ✅ ELO bot active (send-only mode, no polling conflicts)")
                 print("[MONITOR] 🎯 Betting intelligence features enabled:")
                 print("[MONITOR]    - Elite trader alerts (top 10)")
                 print("[MONITOR]    - Market momentum tracking")
                 print("[MONITOR]    - Contrarian signal detection")
                 print("[MONITOR]    - Large position alerts")
                 print("[MONITOR]    - Win streak notifications")
+                print("[MONITOR] ℹ️ Daily leaderboard scheduling disabled (no APScheduler)")
             except Exception as e:
                 print(f"[MONITOR] ⚠️ Warning: ELO bot initialization failed: {e}")
                 self.elo_bot = None
