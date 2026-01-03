@@ -678,15 +678,14 @@ class PolymarketMonitor:
         print("🚀 Starting Polymarket Monitor...")
         self.is_running = True
 
-        # Initialize Telegram bot
-        await self.telegram.initialize()
-        await self.telegram.start_polling()
+        # Initialize Telegram bot in send-only mode (no polling = no conflicts)
+        # User running manually, doesn't need /stop command via Telegram
+        await self.telegram.initialize(send_only=True)
 
-        # Initialize ELO bot for betting intelligence (send-only mode)
+        # Initialize ELO bot for betting intelligence (also send-only mode)
         if self.elo_bot:
             try:
-                # Initialize in send-only mode to avoid Telegram polling conflicts
-                # Only the main TelegramNotifier polls for /stop commands
+                # Both bots in send-only mode = no polling conflicts
                 await self.elo_bot.initialize(send_only=True)
 
                 # NOTE: Scheduler disabled - user ditching Task Scheduler
@@ -711,7 +710,7 @@ class PolymarketMonitor:
         await self.telegram.send_message(
             "🚀 <b>Polymarket Monitor Started!</b>\n\n"
             "Monitoring geopolitical markets for successful trader activity.\n\n"
-            "Use /stop to stop the service remotely."
+            "Press Ctrl+C to stop the service."
         )
 
         # Perform initial scan

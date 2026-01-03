@@ -30,13 +30,16 @@ class TelegramNotifier:
             print("⚠️ Chat ID not configured. Cannot send message.")
             return
 
+        # Get the bot instance (works in both send-only and full mode)
+        bot = self.bot if hasattr(self, 'bot') else self.application.bot
+
         # Telegram max message length is 4096 characters
         MAX_LENGTH = 4000  # Leave some margin
 
         try:
             if len(message) <= MAX_LENGTH:
                 # Message is short enough, send as-is
-                await self.application.bot.send_message(
+                await bot.send_message(
                     chat_id=self.chat_id,
                     text=message,
                     parse_mode='HTML'
@@ -63,7 +66,7 @@ class TelegramNotifier:
                         header = f"[Part {i}/{len(parts)}]\n\n"
                         part = header + part
 
-                    await self.application.bot.send_message(
+                    await bot.send_message(
                         chat_id=self.chat_id,
                         text=part,
                         parse_mode='HTML'
@@ -185,21 +188,38 @@ class TelegramNotifier:
         """Set a callback function to be called when stop command is received."""
         self.on_stop_callback = callback
 
-    async def initialize(self):
-        """Initialize the bot application."""
-        self.application = Application.builder().token(self.bot_token).build()
+    async def initialize(self, send_only: bool = False):
+        """
+        Initialize the bot application.
 
-        # Add command handlers
-        self.application.add_handler(CommandHandler("start", self.start_command))
-        self.application.add_handler(CommandHandler("status", self.status_command))
-        self.application.add_handler(CommandHandler("stop", self.stop_command))
-        self.application.add_handler(CommandHandler("traders", self.traders_command))
+        Args:
+            send_only: If True, only initialize bot for sending messages (no polling/commands)
+        """
+        if send_only:
+            # Send-only mode: Just create a Bot instance, no Application/polling
+            from telegram import Bot
 
-        # Initialize the application
-        await self.application.initialize()
-        await self.application.start()
+            # Create simple bot for sending only
+            self.bot = Bot(token=self.bot_token)
+            self.application = None
 
-        print("✅ Telegram bot initialized")
+            print("✅ Telegram bot initialized (send-only mode, no polling)")
+        else:
+            # Full mode: Application with command handlers and polling
+            self.application = Application.builder().token(self.bot_token).build()
+            self.bot = self.application.bot
+
+            # Add command handlers
+            self.application.add_handler(CommandHandler("start", self.start_command))
+            self.application.add_handler(CommandHandler("status", self.status_command))
+            self.application.add_handler(CommandHandler("stop", self.stop_command))
+            self.application.add_handler(CommandHandler("traders", self.traders_command))
+
+            # Initialize the application
+            await self.application.initialize()
+            await self.application.start()
+
+            print("✅ Telegram bot initialized (full mode with commands)")
 
     async def start_polling(self):
         """Start polling for updates in the background."""
@@ -213,10 +233,14 @@ class TelegramNotifier:
     async def stop(self):
         """Stop the bot gracefully."""
         if self.application:
-            await self.application.updater.stop()
+            # Full mode: stop updater, application, and shutdown
+            if self.application.updater and self.application.updater.running:
+                await self.application.updater.stop()
             await self.application.stop()
             await self.application.shutdown()
             print("✅ Telegram bot stopped")
+        # Note: In send-only mode (self.application is None), no cleanup needed
+        # The simple Bot instance has no active connections to close
 
     def check_should_stop(self) -> bool:
         """Check if stop command was received."""

@@ -42,37 +42,49 @@ User is running monitoring manually (not via Task Scheduler), so:
 
 ## Solutions Implemented
 
-### Solution 1: Send-Only Mode for ELO Bot
+### Solution 1: Send-Only Mode for BOTH Bots
 
-Modified [telegram_elo_bot.py](monitoring/telegram_elo_bot.py#L40-L64) to support two modes:
+Modified both [telegram_bot.py](monitoring/telegram_bot.py#L188-L219) (TelegramNotifier) and [telegram_elo_bot.py](monitoring/telegram_elo_bot.py#L40-L64) to support send-only mode:
 
 **Send-Only Mode** (`send_only=True`):
 ```python
 from telegram import Bot
 self.bot = Bot(token=self.token)  # Simple bot, no polling
-self.app = None
+self.application = None
 ```
 
-**Full Mode** (`send_only=False`):
+**Why send-only for both?**
+- User runs monitoring manually (no need for `/stop` command)
+- Only SEND notifications to Telegram
+- Don't RECEIVE commands from Telegram
+- **Zero polling = zero conflicts**
+
+### Solution 2: Zero Polling Architecture
+
+Updated [monitor.py](monitoring/monitor.py#L681-L689) to initialize BOTH bots in send-only mode:
+
 ```python
-self.app = Application.builder().token(self.token).build()  # With command handlers
-self.bot = self.app.bot
-# Register /leaderboard, /rank, /elite, /stats commands
-```
+# Main bot - send-only (no polling)
+await self.telegram.initialize(send_only=True)
 
-### Solution 2: Single Bot Polling Architecture
-
-Updated [monitor.py](monitoring/monitor.py#L685-L708) to initialize ELO bot in send-only mode:
-
-```python
+# ELO bot - also send-only (no polling)
 await self.elo_bot.initialize(send_only=True)
 ```
 
+**Removed polling call**:
+```python
+# OLD (REMOVED):
+# await self.telegram.start_polling()  ← This caused conflicts!
+
+# NEW: No polling at all
+```
+
 **Result**:
-- ✅ Only `TelegramNotifier` polls for updates (handles `/stop` command)
-- ✅ `ELOTelegramBot` only sends messages (no polling)
-- ✅ No duplicate `getUpdates` requests
-- ✅ No Telegram conflicts
+- ✅ ZERO bots poll for updates
+- ✅ Both bots only SEND messages
+- ✅ No `getUpdates` requests at all
+- ✅ No Telegram conflicts possible
+- ✅ User controls monitoring manually (Ctrl+C to stop)
 
 ### Solution 3: APScheduler Made Optional
 
@@ -133,9 +145,10 @@ if self.elo_bot:
 
 | File | Lines Modified | Changes |
 |------|---------------|---------|
+| [monitoring/telegram_bot.py](monitoring/telegram_bot.py) | 27-77, 188-243 | Added `send_only` mode to TelegramNotifier, updated `send_message()` |
 | [monitoring/telegram_elo_bot.py](monitoring/telegram_elo_bot.py) | 40-82 | Added `send_only` parameter to `initialize()`, cleanup comments |
 | [monitoring/monitor.py](monitoring/monitor.py) | 38-65 | Disabled scheduler, added APScheduler error handling |
-| [monitoring/monitor.py](monitoring/monitor.py) | 685-708 | Initialize ELO bot in send-only mode |
+| [monitoring/monitor.py](monitoring/monitor.py) | 681-689 | Initialize BOTH bots in send-only mode, removed `start_polling()` |
 
 ## Files Created
 
@@ -166,14 +179,15 @@ if self.elo_bot:
 ```
 ┌─────────────────────────┐       ┌──────────────────┐
 │  TelegramNotifier       │       │  Telegram API    │
-│  (polling for updates)  │──────>│  (Token)         │──> ✅ /stop command works
+│  (send-only, no polling)│──────>│  (Token)         │──> ✅ Notifications work
 └─────────────────────────┘       └──────────────────┘
                                            ^
 ┌─────────────────────────┐                │
 │  ELOTelegramBot         │                │
-│  (send-only, no polling)│────────────────┘──> ✅ Elite trader alerts work
+│  (send-only, no polling)│────────────────┘──> ✅ ELO alerts work
 └─────────────────────────┘
-                                   No conflict - only one poller!
+                                   No polling = NO CONFLICTS!
+                                   Both bots only SEND messages
 ```
 
 ## Verification

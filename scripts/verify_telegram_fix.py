@@ -48,12 +48,30 @@ def main():
 
     all_passed = True
 
-    # Check 1: telegram_elo_bot.py has send_only parameter
-    print("1. Checking telegram_elo_bot.py for send-only mode support...")
+    # Check 1: Both bot files have send_only parameter
+    print("1. Checking telegram_bot.py (TelegramNotifier) for send-only mode...")
+    all_passed &= check_file_content(
+        "monitoring/telegram_bot.py",
+        "async def initialize(self, send_only: bool = False):",
+        "   Send-only parameter exists in TelegramNotifier"
+    )
+    all_passed &= check_file_content(
+        "monitoring/telegram_bot.py",
+        "if send_only:",
+        "   Send-only mode implementation exists"
+    )
+    all_passed &= check_file_content(
+        "monitoring/telegram_bot.py",
+        "self.bot = Bot(token=self.bot_token)",
+        "   Simple Bot creation for send-only mode"
+    )
+    print()
+
+    print("1b. Checking telegram_elo_bot.py for send-only mode support...")
     all_passed &= check_file_content(
         "monitoring/telegram_elo_bot.py",
         "async def initialize(self, send_only: bool = False):",
-        "   Send-only parameter exists in initialize()"
+        "   Send-only parameter exists in ELO bot"
     )
     all_passed &= check_file_content(
         "monitoring/telegram_elo_bot.py",
@@ -67,8 +85,13 @@ def main():
     )
     print()
 
-    # Check 2: monitor.py initializes bot in send-only mode
+    # Check 2: monitor.py initializes BOTH bots in send-only mode
     print("2. Checking monitor.py for send-only initialization...")
+    all_passed &= check_file_content(
+        "monitoring/monitor.py",
+        "await self.telegram.initialize(send_only=True)",
+        "   Main TelegramNotifier initialized in send-only mode"
+    )
     all_passed &= check_file_content(
         "monitoring/monitor.py",
         "await self.elo_bot.initialize(send_only=True)",
@@ -81,8 +104,19 @@ def main():
     )
     print()
 
-    # Check 3: Scheduler code is commented out
-    print("3. Checking monitor.py for disabled scheduler...")
+    # Check 3: NO polling in monitor.py
+    print("3. Checking monitor.py does NOT call start_polling...")
+    with open("monitoring/monitor.py", 'r', encoding='utf-8') as f:
+        content = f.read()
+        if "start_polling" not in content:
+            print("✅    No start_polling() calls found (good!)")
+        else:
+            print("❌    Found start_polling() call - this will cause conflicts!")
+            all_passed = False
+    print()
+
+    # Check 4: Scheduler code is commented out
+    print("4. Checking monitor.py for disabled scheduler...")
     all_passed &= check_file_content(
         "monitoring/monitor.py",
         "# from .telegram_scheduler import TelegramScheduler",
@@ -95,8 +129,8 @@ def main():
     )
     print()
 
-    # Check 4: Error handling for missing APScheduler
-    print("4. Checking monitor.py for APScheduler error handling...")
+    # Check 5: Error handling for missing APScheduler
+    print("5. Checking monitor.py for APScheduler error handling...")
     all_passed &= check_file_content(
         "monitoring/monitor.py",
         "except ImportError as e:",
@@ -109,8 +143,8 @@ def main():
     )
     print()
 
-    # Check 5: Cleanup handlers
-    print("5. Checking cleanup handlers...")
+    # Check 6: Cleanup handlers
+    print("6. Checking cleanup handlers...")
     all_passed &= check_file_content(
         "monitoring/monitor.py",
         "await self.elo_bot.stop()",
