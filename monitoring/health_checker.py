@@ -572,7 +572,7 @@ class HealthChecker:
         try:
             # Try to import market filter - may not exist as standalone module
             try:
-                from monitoring.market_filter import filter_geopolitical_markets
+                from monitoring.market_filter import filter_geopolitical_markets # type: ignore
                 import_ok = True
                 has_module = True
             except ImportError:
