@@ -75,3 +75,4 @@ settings.local.json
 data/backups/
 *.json
 data/*.db
+data/polymarket_tracker.db-journal

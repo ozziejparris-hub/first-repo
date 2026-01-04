@@ -204,6 +204,7 @@ class PolymarketMonitor:
             'best supporting actor', 'best supporting actress',
             'best documentary', 'best animated', 'best song',
             'best film editing', 'costume', 'editing', 'gross', 'grossing',
+            'season',
 
             # ENTERTAINMENT - MUSIC
             'songwriter of the year', 'album of the year', 'record of the year',

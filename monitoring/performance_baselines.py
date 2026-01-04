@@ -45,9 +45,13 @@ class PerformanceBaselines:
         # Ensure directory exists
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
-        # Connect to database
-        self.conn = sqlite3.connect(db_path)
+        # Connect to database with WAL mode for better concurrency
+        self.conn = sqlite3.connect(db_path, timeout=30.0)
         self.conn.row_factory = sqlite3.Row
+
+        # Enable WAL mode
+        self.conn.execute('PRAGMA journal_mode=WAL')
+        self.conn.execute('PRAGMA busy_timeout=30000')
 
         # Create tables
         self._create_tables()

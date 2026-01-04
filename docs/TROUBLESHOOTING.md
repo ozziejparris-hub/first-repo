@@ -55,9 +55,11 @@ python scripts/test_telegram_bot_integration.py
 
 ### "Database is locked"
 
-**Cause:** Multiple monitoring instances running
+**Status:** ✅ FIXED (2026-01-04) - WAL mode enabled + retry logic added
 
-**Solution:**
+**If it still occurs:**
+
+**Temporary solution:**
 ```bash
 # Kill all instances
 taskkill /F /IM python.exe  # Windows
@@ -66,6 +68,13 @@ pkill -f "monitoring.main"  # Linux/Mac
 # Start only one
 python -m monitoring.main
 ```
+
+**Permanent fix (already applied):**
+- WAL mode enabled for concurrent access
+- 30-second timeout on all connections
+- Automatic retry logic on write operations
+
+**See:** [DATABASE_CONCURRENCY_FIX.md](DATABASE_CONCURRENCY_FIX.md) for technical details
 
 ### "No such table: traders"
 

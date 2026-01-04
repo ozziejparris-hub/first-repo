@@ -1,8 +1,29 @@
 import sqlite3
 import os
+import time
 from datetime import datetime
 from typing import List, Dict, Optional
 import json
+from functools import wraps
+
+
+def retry_on_locked(max_retries=3, delay=1):
+    """Retry database operations on lock errors."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except sqlite3.OperationalError as e:
+                    if 'locked' in str(e).lower() and attempt < max_retries - 1:
+                        time.sleep(delay * (attempt + 1))  # Exponential backoff
+                        print(f"[DATABASE] Database locked, retrying... (attempt {attempt + 1}/{max_retries})")
+                        continue
+                    raise
+            return None
+        return wrapper
+    return decorator
 
 
 class Database:
@@ -16,8 +37,18 @@ class Database:
         self.init_database()
 
     def get_connection(self):
-        """Get database connection."""
-        return sqlite3.connect(self.db_path)
+        """
+        Get database connection with WAL mode enabled for better concurrency.
+
+        WAL (Write-Ahead Logging) allows multiple readers and one writer simultaneously,
+        reducing "database is locked" errors.
+        """
+        conn = sqlite3.connect(self.db_path, timeout=30.0)
+        # Enable WAL mode for better concurrency (allows multiple readers + 1 writer)
+        conn.execute('PRAGMA journal_mode=WAL')
+        # Set busy timeout to 30 seconds
+        conn.execute('PRAGMA busy_timeout=30000')
+        return conn
 
     def init_database(self):
         """Initialize database schema."""
@@ -82,6 +113,7 @@ class Database:
         conn.commit()
         conn.close()
 
+    @retry_on_locked(max_retries=3, delay=1)
     def add_or_update_trader(self, address: str, total_trades: int,
                             successful_trades: int, win_rate: float,
                             total_volume: float = 0.0, is_flagged: bool = False):
@@ -117,6 +149,7 @@ class Database:
         conn.close()
         return traders
 
+    @retry_on_locked(max_retries=3, delay=1)
     def add_trade(self, trade_id: str, trader_address: str, market_id: str,
                   market_title: str, market_category: str, outcome: str,
                   shares: float, price: float, side: str, timestamp: datetime,
@@ -212,6 +245,7 @@ class Database:
         conn.commit()
         conn.close()
 
+    @retry_on_locked(max_retries=3, delay=1)
     def update_market_resolution(self, market_id: str, winning_outcome: str):
         """
         Update market with resolution information.
@@ -324,6 +358,7 @@ class Database:
 
         return trades
 
+    @retry_on_locked(max_retries=3, delay=1)
     def update_trade_result(self, trade_id: str, result: str):
         """Update the trade_result field for a trade."""
         conn = self.get_connection()
