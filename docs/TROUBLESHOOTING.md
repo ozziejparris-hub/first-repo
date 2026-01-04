@@ -55,11 +55,18 @@ python scripts/test_telegram_bot_integration.py
 
 ### "Database is locked"
 
-**Status:** ✅ FIXED (2026-01-04) - WAL mode enabled + retry logic added
+**Status:** ✅ FIXED (2026-01-04) - Complete fix applied (Phase 1 + Phase 2)
+
+**Root cause:** `performance_baselines.py` held persistent connection that was never closed
 
 **If it still occurs:**
 
-**Temporary solution:**
+**1. Run diagnostic:**
+```bash
+python scripts/diagnose_database_locks.py
+```
+
+**2. Temporary solution:**
 ```bash
 # Kill all instances
 taskkill /F /IM python.exe  # Windows
@@ -69,12 +76,21 @@ pkill -f "monitoring.main"  # Linux/Mac
 python -m monitoring.main
 ```
 
-**Permanent fix (already applied):**
-- WAL mode enabled for concurrent access
-- 30-second timeout on all connections
-- Automatic retry logic on write operations
+**3. Emergency unlock (all processes must be stopped!):**
+```bash
+python scripts/force_unlock_database.py
+```
 
-**See:** [DATABASE_CONCURRENCY_FIX.md](DATABASE_CONCURRENCY_FIX.md) for technical details
+**Permanent fixes (already applied):**
+- **Phase 1:** WAL mode enabled for concurrent access
+- **Phase 1:** 30-second timeout on all connections
+- **Phase 1:** Automatic retry logic on write operations
+- **Phase 2:** Fixed persistent connection in `performance_baselines.py`
+- **Phase 2:** Added automatic cleanup via `__del__()`
+
+**See:**
+- [DATABASE_CONCURRENCY_FIX.md](DATABASE_CONCURRENCY_FIX.md) - Phase 1 technical details
+- [DATABASE_LOCK_DEEP_FIX.md](DATABASE_LOCK_DEEP_FIX.md) - Phase 2 root cause fix
 
 ### "No such table: traders"
 

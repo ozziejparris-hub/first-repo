@@ -17,6 +17,7 @@ import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 from collections import defaultdict
+from contextlib import contextmanager
 import math
 
 
@@ -45,20 +46,48 @@ class PerformanceBaselines:
         # Ensure directory exists
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
-        # Connect to database with WAL mode for better concurrency
-        self.conn = sqlite3.connect(db_path, timeout=30.0)
-        self.conn.row_factory = sqlite3.Row
+        # Initialize database (no persistent connection)
+        self._init_database()
 
-        # Enable WAL mode
-        self.conn.execute('PRAGMA journal_mode=WAL')
-        self.conn.execute('PRAGMA busy_timeout=30000')
+    @property
+    def conn(self):
+        """
+        Get database connection (lazy property).
 
-        # Create tables
-        self._create_tables()
+        IMPORTANT: Connection is reused for performance but must be closed
+        when done with PerformanceBaselines instance via close() method.
+        """
+        if not hasattr(self, '_conn') or self._conn is None:
+            self._conn = sqlite3.connect(self.db_path, timeout=30.0)
+            self._conn.row_factory = sqlite3.Row
+            self._conn.execute('PRAGMA journal_mode=WAL')
+            self._conn.execute('PRAGMA busy_timeout=30000')
+        return self._conn
 
-    def _create_tables(self):
+    def _get_connection(self):
+        """
+        Get a database connection with proper settings.
+
+        Returns connection that should be closed after use.
+        """
+        conn = sqlite3.connect(self.db_path, timeout=30.0)
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA journal_mode=WAL')
+        conn.execute('PRAGMA busy_timeout=30000')
+        return conn
+
+    def _init_database(self):
+        """Initialize database schema."""
+        conn = self._get_connection()
+        try:
+            self._create_tables_with_conn(conn)
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _create_tables_with_conn(self, conn):
         """Create database tables for baselines."""
-        cursor = self.conn.cursor()
+        cursor = conn.cursor()
 
         # Observations table (raw data points)
         cursor.execute("""
@@ -398,5 +427,13 @@ class PerformanceBaselines:
 
     def close(self):
         """Close database connection."""
-        if self.conn:
-            self.conn.close()
+        if hasattr(self, '_conn') and self._conn is not None:
+            try:
+                self._conn.close()
+            except:
+                pass
+            self._conn = None
+
+    def __del__(self):
+        """Cleanup connection on deletion."""
+        self.close()
