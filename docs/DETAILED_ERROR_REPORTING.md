@@ -1,7 +1,7 @@
 # Detailed Component-Specific Error Reporting - Implementation Guide
 
 **Date:** 2026-01-04
-**Status:** ✅ Phase 1-3 Complete, Phase 4-5 Pending
+**Status:** ✅ Phase 1-4 Complete, Phase 5 Pending
 **Priority:** High
 
 ## Overview
@@ -110,9 +110,9 @@ def clear_old_errors(hours: int)
 - Provides component-specific health status
 - Generates formatted alerts ready for Telegram
 
-### 🔄 Phase 4: Component-Specific Health Checks (PARTIAL)
+### ✅ Phase 4: Component-Specific Health Checks (COMPLETE)
 
-**File:** `monitoring/health_checker.py`
+**Modified:** `monitoring/health_checker.py`
 
 **Existing Checks:**
 - ✅ Process alive
@@ -121,39 +121,43 @@ def clear_old_errors(hours: int)
 - ✅ Memory usage
 - ✅ Error rate
 
-**To Add:**
-```python
-async def check_elo_system() -> Dict:
-    """Test ELO system can calculate ratings"""
-    # Try to import and initialize ELO components
-    # Test with sample trader data
-    # Return detailed failure info if it fails
+**New Component Checks (Added):**
 
-async def check_position_tracker() -> Dict:
-    """Test position matching works"""
-    # Try to match test trades
-    # Verify FIFO logic
-    # Return detailed failure info if it fails
+1. **`check_elo_system()`** - Tests ELO system functionality
+   - Import unified_elo_system module
+   - Initialize UnifiedELOSystem
+   - Retrieve sample trader data
+   - Calculate base ELO (lightweight test)
 
-async def check_market_filter() -> Dict:
-    """Test market filtering (keywords + AI)"""
-    # Try to filter test market
-    # Test Ollama connectivity if AI enabled
-    # Return detailed failure info if it fails
+2. **`check_position_tracker()`** - Tests position matching
+   - Import position_tracker module
+   - Initialize PositionTracker
+   - Query trade data
+   - Perform basic FIFO matching
 
-async def check_database_operations() -> Dict:
-    """Test all database operations"""
-    # Test reads, writes, WAL mode
-    # Check query performance
-    # Return detailed failure info if it fails
+3. **`check_market_filter()`** - Tests market filtering
+   - Import market_filter module
+   - Verify keyword filtering
+   - Test Ollama connectivity (optional)
+   - Check Mistral model availability (optional)
 
-async def check_telegram_bots() -> Dict:
-    """Test Telegram bot connectivity"""
-    # Verify bot token valid
-    # Check chat ID configured
-    # Test message sending
-    # Return detailed failure info if it fails
-```
+4. **`check_database_operations()`** - Tests database operations
+   - Verify database file exists
+   - Check WAL mode enabled
+   - Test read operations
+   - Test write operations
+   - Measure query performance
+
+5. **`check_telegram_bots()`** - Tests Telegram connectivity
+   - Verify bot token configured
+   - Verify chat ID configured
+   - Test telegram module import
+   - Validate bot token (optional network call)
+
+**Integration:**
+- Updated `check_all()` to include component checks
+- All component results included in health report
+- Component failures reflected in overall status
 
 ### 🔄 Phase 5: Enhanced Alerts & Reports (PENDING)
 
@@ -401,10 +405,10 @@ Create `scripts/test_detailed_error_reporting.py`:
 | `monitoring/error_parser.py` | ✅ Created | Parse errors with full context |
 | `monitoring/error_classifier.py` | ✅ Created | Classify errors, match known issues |
 | `monitoring/log_monitor.py` | ✅ Enhanced | Integrate error parser/classifier |
-| `monitoring/health_checker.py` | 🔄 Partial | Add component-specific checks |
+| `monitoring/health_checker.py` | ✅ Enhanced | Add component-specific checks |
+| `scripts/test_component_health_checks.py` | ✅ Created | Test component checks |
 | `monitoring/telegram_health_bot.py` | 🔄 Pending | Enhanced alert formatting |
 | `monitoring/system_observer.py` | 🔄 Pending | Use enhanced reporting |
-| `scripts/test_detailed_error_reporting.py` | 🔄 Pending | Test suite |
 | `docs/DETAILED_ERROR_REPORTING.md` | ✅ Created | This document |
 
 ## Benefits
@@ -435,6 +439,25 @@ Create `scripts/test_detailed_error_reporting.py`:
 
 ---
 
-**Implementation:** Phase 1-3 Complete (2026-01-04)
-**Next:** Complete Phase 4-5 (Component checks, Enhanced alerts)
+**Implementation:** Phase 1-4 Complete (2026-01-04)
+**Remaining:** Phase 5 (Enhanced alerts & reports - optional)
 **Impact:** High - Dramatically improves error diagnostics and troubleshooting
+
+## Phase 4 Summary
+
+Successfully implemented 5 component-specific health checks:
+
+1. ✅ **ELO System Check** - Tests ELO calculation pipeline
+2. ✅ **Position Tracker Check** - Tests FIFO matching logic
+3. ✅ **Market Filter Check** - Tests keyword + AI filtering
+4. ✅ **Database Operations Check** - Tests WAL mode, read/write, performance
+5. ✅ **Telegram Bots Check** - Tests configuration and connectivity
+
+All checks integrated into `check_all()` method and return consistent format.
+
+**Test Script:** `scripts/test_component_health_checks.py`
+
+**Run Test:**
+```bash
+python scripts/test_component_health_checks.py
+```

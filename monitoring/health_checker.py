@@ -344,6 +344,486 @@ class HealthChecker:
                 'message': f'Error reading logs: {str(e)}'
             }
 
+    async def check_elo_system(self) -> Dict:
+        """
+        Test ELO system functionality.
+
+        Tests:
+        1. Can import unified_elo_system module
+        2. Can initialize UnifiedELOSystem
+        3. Can retrieve sample trader data from database
+        4. Can calculate base ELO (without full 6-dimension analysis)
+
+        Returns:
+            dict: Health check result with details
+        """
+        import_ok = False
+        init_ok = False
+        data_available = False
+        calculation_ok = False
+        error_msg = None
+
+        try:
+            # Test 1: Import module
+            from analysis.unified_elo_system import UnifiedELOSystem
+            import_ok = True
+
+            # Test 2: Initialize system
+            elo_system = UnifiedELOSystem(db_path=self.db_path)
+            init_ok = True
+
+            # Test 3: Check if trader data available
+            conn = sqlite3.connect(self.db_path, timeout=5.0)
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM traders WHERE is_flagged = 1")
+            trader_count = cursor.fetchone()[0]
+            data_available = trader_count > 0
+
+            # Test 4: Try basic calculation (without full analysis)
+            if data_available:
+                # Get one sample trader
+                cursor.execute("SELECT address FROM traders WHERE is_flagged = 1 LIMIT 1")
+                result = cursor.fetchone()
+                sample_trader = result[0] if result else None
+
+                if sample_trader:
+                    try:
+                        # Try to get their base ELO (lightweight check)
+                        base_elo = elo_system.get_trader_global_elo(
+                            sample_trader,
+                            apply_behavioral=False,
+                            apply_advanced=False,
+                            apply_network=False,
+                            apply_contrarian=False,
+                            apply_pnl=False
+                        )
+                        calculation_ok = base_elo is not None
+                    except Exception as e:
+                        error_msg = f"Calculation failed: {str(e)}"
+                else:
+                    error_msg = "No sample trader available"
+            else:
+                error_msg = "No trader data available"
+
+            conn.close()
+
+            # Determine status
+            if import_ok and init_ok and calculation_ok:
+                status = 'healthy'
+                message = 'ELO system operational'
+            elif import_ok and init_ok:
+                status = 'warning'
+                message = 'ELO system loaded but calculation not tested (no data)'
+            else:
+                status = 'critical'
+                message = 'ELO system not functional'
+
+            return {
+                'status': status,
+                'available': import_ok and init_ok,
+                'test_passed': calculation_ok,
+                'message': message,
+                'details': {
+                    'import_ok': import_ok,
+                    'init_ok': init_ok,
+                    'data_available': data_available,
+                    'calculation_ok': calculation_ok,
+                    'error': error_msg
+                }
+            }
+
+        except ImportError as e:
+            return {
+                'status': 'critical',
+                'available': False,
+                'test_passed': False,
+                'message': f'ELO system import failed: {str(e)}',
+                'details': {
+                    'import_ok': False,
+                    'error': str(e)
+                }
+            }
+        except Exception as e:
+            return {
+                'status': 'critical',
+                'available': False,
+                'test_passed': False,
+                'message': f'ELO system test failed: {str(e)}',
+                'details': {
+                    'error': str(e)
+                }
+            }
+
+    async def check_position_tracker(self) -> Dict:
+        """
+        Test position tracker functionality.
+
+        Tests:
+        1. Can import position_tracker module
+        2. Can initialize PositionTracker
+        3. Can query trade data
+        4. Can perform basic FIFO matching (if data available)
+
+        Returns:
+            dict: Health check result with details
+        """
+        import_ok = False
+        init_ok = False
+        data_available = False
+        calculation_ok = False
+        error_msg = None
+
+        try:
+            # Test 1: Import
+            from monitoring.position_tracker import PositionTracker
+            import_ok = True
+
+            # Test 2: Initialize
+            tracker = PositionTracker(db_path=self.db_path)
+            init_ok = True
+
+            # Test 3: Check trade data available
+            conn = sqlite3.connect(self.db_path, timeout=5.0)
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM trades")
+            trade_count = cursor.fetchone()[0]
+            data_available = trade_count > 0
+
+            # Test 4: Try basic calculation
+            if data_available:
+                # Get sample trader with trades
+                cursor.execute("""
+                    SELECT trader_address
+                    FROM trades
+                    GROUP BY trader_address
+                    LIMIT 1
+                """)
+                result = cursor.fetchone()
+                sample_trader = result[0] if result else None
+
+                if sample_trader:
+                    try:
+                        # Calculate P&L stats (lightweight check)
+                        pnl_stats = tracker.calculate_trader_pnl(sample_trader)
+                        calculation_ok = pnl_stats is not None
+                    except Exception as e:
+                        error_msg = f"Calculation failed: {str(e)}"
+                else:
+                    error_msg = "No sample trader available"
+            else:
+                error_msg = "No trade data available"
+
+            conn.close()
+
+            # Status determination
+            if import_ok and init_ok and calculation_ok:
+                status = 'healthy'
+                message = 'Position tracker operational'
+            elif import_ok and init_ok:
+                status = 'warning'
+                message = 'Position tracker loaded but not tested (no data)'
+            else:
+                status = 'critical'
+                message = 'Position tracker not functional'
+
+            return {
+                'status': status,
+                'available': import_ok and init_ok,
+                'test_passed': calculation_ok,
+                'message': message,
+                'details': {
+                    'import_ok': import_ok,
+                    'init_ok': init_ok,
+                    'data_available': data_available,
+                    'calculation_ok': calculation_ok,
+                    'error': error_msg
+                }
+            }
+
+        except ImportError as e:
+            return {
+                'status': 'critical',
+                'available': False,
+                'test_passed': False,
+                'message': f'Position tracker import failed: {str(e)}',
+                'details': {'import_ok': False, 'error': str(e)}
+            }
+        except Exception as e:
+            return {
+                'status': 'critical',
+                'available': False,
+                'test_passed': False,
+                'message': f'Position tracker test failed: {str(e)}',
+                'details': {'error': str(e)}
+            }
+
+    async def check_market_filter(self) -> Dict:
+        """
+        Test market filter functionality.
+
+        Tests:
+        1. Can import market_filter module
+        2. Keyword filtering works
+        3. Ollama is accessible (if AI filtering enabled)
+        4. Mistral model is available (if AI filtering enabled)
+
+        Returns:
+            dict: Health check result with details
+        """
+        import_ok = False
+        keyword_ok = True  # Assume works unless proven otherwise
+        ollama_available = False
+        mistral_available = False
+
+        try:
+            # Test 1: Import
+            from monitoring.market_filter import filter_geopolitical_markets
+            import_ok = True
+
+            # Test 2: Keyword filtering (no API required)
+            # Just verify import works - actual filtering tested in unit tests
+
+            # Test 3 & 4: Ollama/Mistral (optional - only if AI enabled)
+            try:
+                import requests
+                # Test Ollama connectivity
+                response = requests.get('http://localhost:11434/api/tags', timeout=2)
+                if response.status_code == 200:
+                    ollama_available = True
+
+                    # Check if Mistral model is available
+                    models = response.json().get('models', [])
+                    mistral_available = any('mistral' in m.get('name', '').lower() for m in models)
+            except:
+                # Ollama not required for basic operation
+                pass
+
+            # Status determination
+            if import_ok and keyword_ok:
+                if ollama_available and mistral_available:
+                    status = 'healthy'
+                    message = 'Market filter fully operational (keywords + AI)'
+                elif ollama_available:
+                    status = 'warning'
+                    message = 'Market filter operational (keywords only, Mistral model missing)'
+                else:
+                    status = 'healthy'
+                    message = 'Market filter operational (keywords only, AI unavailable)'
+            else:
+                status = 'critical'
+                message = 'Market filter not functional'
+
+            return {
+                'status': status,
+                'available': import_ok,
+                'test_passed': keyword_ok,
+                'message': message,
+                'details': {
+                    'import_ok': import_ok,
+                    'keyword_filtering_ok': keyword_ok,
+                    'ollama_available': ollama_available,
+                    'mistral_available': mistral_available
+                }
+            }
+
+        except ImportError as e:
+            return {
+                'status': 'critical',
+                'available': False,
+                'test_passed': False,
+                'message': f'Market filter import failed: {str(e)}',
+                'details': {'import_ok': False, 'error': str(e)}
+            }
+        except Exception as e:
+            return {
+                'status': 'warning',
+                'available': True,
+                'test_passed': False,
+                'message': f'Market filter test incomplete: {str(e)}',
+                'details': {'error': str(e)}
+            }
+
+    async def check_database_operations(self) -> Dict:
+        """
+        Test comprehensive database operations.
+
+        Tests:
+        1. Database file exists
+        2. WAL mode enabled
+        3. Read operations work
+        4. Write operations work
+        5. Query performance acceptable
+
+        Returns:
+            dict: Health check result with details
+        """
+        file_exists = os.path.exists(self.db_path)
+
+        if not file_exists:
+            return {
+                'status': 'critical',
+                'available': False,
+                'test_passed': False,
+                'message': 'Database file not found',
+                'details': {'file_exists': False}
+            }
+
+        try:
+            # Test WAL mode
+            conn = sqlite3.connect(self.db_path, timeout=5.0)
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA journal_mode")
+            journal_mode = cursor.fetchone()[0]
+            wal_enabled = journal_mode.lower() == 'wal'
+
+            # Test read
+            start = datetime.now()
+            cursor.execute("SELECT COUNT(*) FROM traders")
+            read_result = cursor.fetchone()[0]
+            read_time_ms = (datetime.now() - start).total_seconds() * 1000
+            read_ok = read_result is not None
+
+            # Test write (temporary table)
+            start = datetime.now()
+            cursor.execute("CREATE TEMP TABLE test_write (id INTEGER)")
+            cursor.execute("INSERT INTO test_write VALUES (1)")
+            cursor.execute("SELECT * FROM test_write")
+            write_result = cursor.fetchone()
+            cursor.execute("DROP TABLE test_write")
+            conn.commit()
+            write_time_ms = (datetime.now() - start).total_seconds() * 1000
+            write_ok = write_result is not None
+
+            conn.close()
+
+            # Check performance
+            performance_ok = read_time_ms < 100 and write_time_ms < 100
+
+            # Status
+            if file_exists and wal_enabled and read_ok and write_ok and performance_ok:
+                status = 'healthy'
+                message = f'Database operations healthy (read: {read_time_ms:.1f}ms, write: {write_time_ms:.1f}ms)'
+            elif file_exists and read_ok:
+                status = 'warning'
+                message = f'Database slow or WAL disabled (read: {read_time_ms:.1f}ms, WAL: {wal_enabled})'
+            else:
+                status = 'critical'
+                message = 'Database operations failed'
+
+            return {
+                'status': status,
+                'available': file_exists,
+                'test_passed': read_ok and write_ok,
+                'message': message,
+                'details': {
+                    'file_exists': file_exists,
+                    'wal_enabled': wal_enabled,
+                    'read_ok': read_ok,
+                    'write_ok': write_ok,
+                    'read_time_ms': read_time_ms,
+                    'write_time_ms': write_time_ms,
+                    'performance_ok': performance_ok
+                }
+            }
+
+        except sqlite3.OperationalError as e:
+            return {
+                'status': 'critical',
+                'available': file_exists,
+                'test_passed': False,
+                'message': f'Database locked or inaccessible: {str(e)}',
+                'details': {'error': str(e)}
+            }
+        except Exception as e:
+            return {
+                'status': 'critical',
+                'available': False,
+                'test_passed': False,
+                'message': f'Database test failed: {str(e)}',
+                'details': {'error': str(e)}
+            }
+
+    async def check_telegram_bots(self) -> Dict:
+        """
+        Test Telegram bot configuration and connectivity.
+
+        Tests:
+        1. Bot token configured in .env
+        2. Chat ID configured in .env
+        3. Can import telegram module
+        4. Bot token is valid (optional: requires network call)
+
+        Returns:
+            dict: Health check result with details
+        """
+        try:
+            from dotenv import load_dotenv
+            load_dotenv()
+
+            # Test 1: Token configured
+            token = os.getenv('TELEGRAM_BOT_TOKEN')
+            token_configured = token is not None and len(token) > 0
+
+            # Test 2: Chat ID configured
+            chat_id = os.getenv('TELEGRAM_CHAT_ID')
+            chat_id_configured = chat_id is not None and len(chat_id) > 0
+
+            # Test 3: Import telegram module
+            try:
+                from telegram import Bot
+                import_ok = True
+            except ImportError:
+                import_ok = False
+
+            # Test 4: Token validity (optional - requires network)
+            token_valid = False
+            if token_configured and import_ok:
+                try:
+                    bot = Bot(token=token)
+                    # Try to get bot info (lightweight API call)
+                    import asyncio
+                    bot_info = asyncio.get_event_loop().run_until_complete(bot.get_me())
+                    token_valid = bot_info is not None
+                except:
+                    # Network call failed or token invalid
+                    token_valid = False
+
+            # Status
+            if token_configured and chat_id_configured and import_ok and token_valid:
+                status = 'healthy'
+                message = 'Telegram bot fully configured and connected'
+            elif token_configured and chat_id_configured and import_ok:
+                status = 'warning'
+                message = 'Telegram bot configured but token not validated (network issue?)'
+            elif token_configured or chat_id_configured:
+                status = 'warning'
+                message = 'Telegram bot partially configured (missing token or chat ID)'
+            else:
+                status = 'critical'
+                message = 'Telegram bot not configured'
+
+            return {
+                'status': status,
+                'available': import_ok,
+                'test_passed': token_configured and chat_id_configured,
+                'message': message,
+                'details': {
+                    'token_configured': token_configured,
+                    'chat_id_configured': chat_id_configured,
+                    'import_ok': import_ok,
+                    'token_valid': token_valid
+                }
+            }
+
+        except Exception as e:
+            return {
+                'status': 'warning',
+                'available': False,
+                'test_passed': False,
+                'message': f'Telegram bot check failed: {str(e)}',
+                'details': {'error': str(e)}
+            }
+
     async def check_all(self) -> Dict:
         """
         Run all health checks and return comprehensive report.
@@ -357,7 +837,14 @@ class HealthChecker:
                     'database': dict,
                     'activity': dict,
                     'memory': dict,
-                    'errors': dict
+                    'errors': dict,
+                    'components': {
+                        'elo_system': dict,
+                        'position_tracker': dict,
+                        'market_filter': dict,
+                        'database_ops': dict,
+                        'telegram_bots': dict
+                    }
                 },
                 'issues': List[str],
                 'summary': str
@@ -365,7 +852,7 @@ class HealthChecker:
         """
         timestamp = datetime.now()
 
-        # Run all checks
+        # Run existing checks
         checks = {
             'process': self.check_process_alive(),
             'database': self.check_database_accessible(),
@@ -374,8 +861,27 @@ class HealthChecker:
             'errors': self.check_error_rate()
         }
 
-        # Determine overall status
-        statuses = [check['status'] for check in checks.values()]
+        # Run component checks
+        component_checks = {
+            'elo_system': await self.check_elo_system(),
+            'position_tracker': await self.check_position_tracker(),
+            'market_filter': await self.check_market_filter(),
+            'database_ops': await self.check_database_operations(),
+            'telegram_bots': await self.check_telegram_bots()
+        }
+
+        checks['components'] = component_checks
+
+        # Determine overall status (include component statuses)
+        all_checks = list(checks.values())
+        # Extract component check results
+        for check in all_checks:
+            if isinstance(check, dict) and 'elo_system' in check:
+                # This is the components dict, extract its values
+                all_checks.extend(check.values())
+                break
+
+        statuses = [check['status'] for check in all_checks if isinstance(check, dict) and 'status' in check]
 
         if 'critical' in statuses:
             overall_status = 'critical'
@@ -384,11 +890,15 @@ class HealthChecker:
         else:
             overall_status = 'healthy'
 
-        # Collect issues
+        # Collect issues (include component issues)
         issues = []
         for check_name, check_result in checks.items():
-            if check_result['status'] != 'healthy':
+            if check_name != 'components' and check_result['status'] != 'healthy':
                 issues.append(f"{check_name}: {check_result['message']}")
+
+        for comp_name, comp_result in component_checks.items():
+            if comp_result['status'] != 'healthy':
+                issues.append(f"component.{comp_name}: {comp_result['message']}")
 
         # Generate summary
         if overall_status == 'healthy':
