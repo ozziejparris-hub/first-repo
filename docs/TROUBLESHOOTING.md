@@ -312,6 +312,29 @@ python scripts/test_polymarket.py  # ✅ New
 - Check `data/` directory exists
 - Database should auto-create on first run
 
+### No logs/monitoring.log file
+
+**Status:** ✅ FIXED (2026-01-04) - Logging now properly configured
+
+**Symptom:** Observer can't find logs/monitoring.log
+
+**Solution (already applied):**
+- Logging configured in [monitoring/main.py](../monitoring/main.py)
+- Writes to both `logs/monitoring.log` (file) and console
+- logs/ directory auto-created on startup
+- All print() statements replaced with logger calls
+
+**Verify:**
+```bash
+python scripts/test_logging.py
+```
+
+**Expected output:**
+```
+✅ Logging is properly configured!
+Checks passed: 8/8
+```
+
 ## Still Having Issues?
 
 ### Diagnostic Scripts
