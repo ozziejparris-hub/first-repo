@@ -252,6 +252,28 @@ pip install -r requirements.txt
 python scripts/run_system_observer.py
 ```
 
+### Observer can't find monitoring process
+
+**Status:** ✅ FIXED (2026-01-04) - Auto-detection now works
+
+**Symptom:** "No monitoring process found" despite monitoring running
+
+**Solution (already applied):**
+- Observer now auto-detects `python -m monitoring.main`
+- Also detects `python -m monitoring.monitor` and `python monitor.py`
+- Uses case-insensitive matching for Windows compatibility
+- No `--pid` argument needed!
+
+**Just run:**
+```bash
+python scripts/run_system_observer.py
+```
+
+**If still not found:**
+1. Verify monitoring is running: `tasklist | findstr python` (Windows)
+2. Check command matches expected pattern
+3. Run with explicit PID: `python scripts/run_system_observer.py --pid 12345`
+
 ### AI analysis not working
 
 **Cause:** Ollama not running or model not available

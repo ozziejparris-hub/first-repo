@@ -306,19 +306,39 @@ def find_monitoring_process() -> Optional[int]:
     Try to find the monitoring process PID.
 
     Looks for processes running:
-    - python monitor.py
+    - python -m monitoring.main
     - python -m monitoring.monitor
+    - python monitor.py
+    - python monitoring/monitor.py
 
     Returns:
         int: PID if found, None otherwise
     """
     for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
         try:
+            # Skip non-Python processes
+            if proc.info['name'] not in ['python.exe', 'python', 'py.exe']:
+                continue
+
             cmdline = proc.info.get('cmdline', [])
-            if cmdline:
-                cmdline_str = ' '.join(cmdline)
-                if 'monitor.py' in cmdline_str or 'monitoring.monitor' in cmdline_str:
-                    return proc.info['pid']
+            if not cmdline:
+                continue
+
+            # Join and check patterns (case-insensitive for Windows compatibility)
+            cmdline_str = ' '.join(str(c) for c in cmdline).lower()
+
+            # Patterns for monitoring process
+            patterns = [
+                'monitoring.main',      # python -m monitoring.main (most common)
+                'monitoring.monitor',   # python -m monitoring.monitor
+                'monitor.py',           # python monitor.py or monitoring/monitor.py
+                'polymarket',           # any polymarket monitoring script
+            ]
+
+            if any(pattern in cmdline_str for pattern in patterns):
+                print(f"[OBSERVER] Found monitoring process: PID={proc.info['pid']}, cmd={' '.join(cmdline[:3])}")
+                return proc.info['pid']
+
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
 
