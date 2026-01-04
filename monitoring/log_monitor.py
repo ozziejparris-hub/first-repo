@@ -8,7 +8,7 @@ Monitors log files in real-time (like tail -f) and detects:
 - Performance issues
 - Known issues (correlation matrix, ELO failures, etc.)
 
-Provides error detection and analysis capabilities.
+Provides error detection and analysis capabilities with detailed context parsing.
 """
 
 import os
@@ -17,6 +17,10 @@ import time
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Generator
 from collections import deque, defaultdict
+
+# Import our enhanced error analysis modules
+from .error_parser import ErrorParser, ErrorDetail
+from .error_classifier import ErrorClassifier
 
 
 class LogMonitor:
@@ -41,6 +45,10 @@ class LogMonitor:
         self.last_position = 0
         self.error_history = deque(maxlen=1000)  # Last 1000 errors
         self.pattern_counts = defaultdict(int)
+
+        # Initialize enhanced error analysis
+        self.error_parser = ErrorParser()
+        self.error_classifier = ErrorClassifier()
 
         # Error patterns to detect
         self.error_patterns = {
@@ -348,3 +356,137 @@ class LogMonitor:
             'known_issues': known_issues_found,
             'message': message
         }
+
+    def parse_detailed_error(self, line: str) -> Optional[ErrorDetail]:
+        """
+        Parse log line with full context extraction.
+
+        Args:
+            line: Log line to parse
+
+        Returns:
+            ErrorDetail if error found, None otherwise
+        """
+        error = self.error_parser.parse_log_line(line)
+        if error:
+            # Add to parser's history for grouping
+            self.error_parser.add_error(error)
+        return error
+
+    def get_detailed_error_summary(self, minutes: int = 60) -> Dict:
+        """
+        Get detailed error summary with component breakdown.
+
+        Args:
+            minutes: Time window in minutes
+
+        Returns:
+            Detailed summary dict
+        """
+        # Get summary from error parser
+        summary = self.error_parser.get_error_summary(minutes)
+
+        # Add classification for top errors
+        classified_errors = []
+        for sig, error_data in summary.get('top_errors', []):
+            # Reconstruct ErrorDetail for classification
+            error = ErrorDetail(
+                timestamp=error_data['first_seen'],
+                level='ERROR',
+                component=error_data['component'],
+                function=error_data['function'],
+                error_type=error_data['error_type'],
+                message=error_data['message']
+            )
+
+            classification = self.error_classifier.classify_error(error)
+            classified_errors.append({
+                'error': error_data,
+                'classification': classification
+            })
+
+        summary['classified_errors'] = classified_errors
+        return summary
+
+    def get_component_health(self, minutes: int = 60) -> Dict:
+        """
+        Get health status by component.
+
+        Args:
+            minutes: Time window in minutes
+
+        Returns:
+            Dict mapping component to health status
+        """
+        errors_by_component = self.error_parser.get_errors_by_component(minutes)
+
+        component_health = {}
+        for component, errors in errors_by_component.items():
+            error_count = len(errors)
+
+            # Determine health status
+            if error_count == 0:
+                status = 'healthy'
+            elif error_count < 3:
+                status = 'warning'
+            else:
+                status = 'critical'
+
+            component_health[component] = {
+                'status': status,
+                'error_count': error_count,
+                'errors': errors[:5]  # Top 5 errors
+            }
+
+        return component_health
+
+    def get_formatted_error_alerts(self, minutes: int = 10) -> List[str]:
+        """
+        Get formatted error alerts for recent errors.
+
+        Args:
+            minutes: Time window in minutes
+
+        Returns:
+            List of formatted alert strings
+        """
+        recent_errors = self.error_parser.get_recent_errors(minutes)
+        alerts = []
+
+        # Group by signature to avoid duplicate alerts
+        seen_signatures = set()
+
+        for error in recent_errors:
+            signature = error.signature
+
+            # Skip if we've already alerted on this error
+            if signature in seen_signatures:
+                continue
+
+            seen_signatures.add(signature)
+
+            # Classify error
+            classification = self.error_classifier.classify_error(error)
+
+            # Format alert
+            alert = self.error_classifier.format_error_alert(error, classification)
+            alerts.append(alert)
+
+        return alerts
+
+    def clear_old_errors(self, hours: int = 24):
+        """
+        Clear old errors from history.
+
+        Args:
+            hours: Age threshold in hours
+        """
+        # Clear from error parser
+        self.error_parser.clear_old_errors(hours)
+
+        # Clear from old error_history
+        cutoff = datetime.now() - timedelta(hours=hours)
+        self.error_history = deque(
+            (e for e in self.error_history if e['timestamp'] >= cutoff),
+            maxlen=1000
+        )
