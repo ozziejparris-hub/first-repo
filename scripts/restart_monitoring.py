@@ -107,18 +107,17 @@ def start_monitoring():
     cmd = [sys.executable, '-m', 'monitoring.main']
 
     try:
-        # Start in background (detached)
         if sys.platform == 'win32':
-            # Windows: Use CREATE_NEW_CONSOLE to detach
-            DETACHED_PROCESS = 0x00000008
-            CREATE_NEW_CONSOLE = 0x00000010
+            # Windows: Simple background start using CREATE_NO_WINDOW
+            CREATE_NO_WINDOW = 0x08000000
 
             process = subprocess.Popen(
                 cmd,
                 cwd=str(project_root),
-                creationflags=DETACHED_PROCESS | CREATE_NEW_CONSOLE,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
+                creationflags=CREATE_NO_WINDOW,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                stdin=subprocess.DEVNULL
             )
         else:
             # Unix: Use nohup
@@ -127,6 +126,7 @@ def start_monitoring():
                 cwd=str(project_root),
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
                 start_new_session=True
             )
 
@@ -134,15 +134,27 @@ def start_monitoring():
 
         # Wait a moment and verify it's still running
         time.sleep(3)
-        if psutil.pid_exists(process.pid):
-            print(f"  ✅ Monitoring is running successfully")
-            return process.pid
-        else:
-            print(f"  ❌ Monitoring process died immediately after start")
-            return None
+
+        try:
+            # Check if process is still alive
+            if process.poll() is None:  # None means still running
+                print(f"  ✅ Monitoring is running successfully")
+                return process.pid
+            else:
+                # Process died, get error output
+                stdout, stderr = process.communicate()
+                print(f"  ❌ Monitoring process died immediately after start")
+                if stderr:
+                    print(f"  Error output: {stderr.decode('utf-8', errors='replace')[:500]}")
+                return None
+        except Exception as e:
+            print(f"  ⚠️  Could not verify process status: {e}")
+            return process.pid  # Return anyway, might be running
 
     except Exception as e:
         print(f"  ❌ Failed to start monitoring: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 

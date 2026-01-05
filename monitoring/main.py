@@ -5,12 +5,19 @@ Monitors geopolitical prediction markets and tracks successful traders.
 """
 
 import os
+import sys
 import asyncio
 import requests
 import logging
 from dotenv import load_dotenv
 from pydantic_ai import Agent
 from .monitor import main as run_monitor
+
+# Fix Windows console encoding to handle Unicode
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # Create logs directory if it doesn't exist
 os.makedirs('logs', exist_ok=True)
@@ -20,7 +27,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('logs/monitoring.log'),
+        logging.FileHandler('logs/monitoring.log', encoding='utf-8'),
         logging.StreamHandler()  # Also print to console
     ]
 )
@@ -50,13 +57,13 @@ def validate_environment():
         missing.append("TELEGRAM_BOT_TOKEN")
 
     if missing:
-        logger.error("❌ Missing required environment variables:")
+        logger.error("[ERROR] Missing required environment variables:")
         for var in missing:
             logger.error(f"   - {var}")
         logger.error("\nPlease check your .env file.")
         return False
 
-    logger.info("✅ Environment variables loaded successfully.")
+    logger.info("[OK] Environment variables loaded successfully.")
     return True
 
 
@@ -99,7 +106,7 @@ def initialize_pydantic_agent():
 async def start_monitoring():
     """Start the monitoring service."""
     logger.info("="*70)
-    logger.info("  🎯 Polymarket Trader Tracker")
+    logger.info("  Polymarket Trader Tracker")
     logger.info("="*70)
     logger.info("")
 
@@ -108,17 +115,17 @@ async def start_monitoring():
         return
 
     # Initialize Pydantic AI agent with comprehensive checks
-    logger.info("\n🤖 Initializing Pydantic AI agent...")
+    logger.info("\nInitializing Pydantic AI agent...")
 
     # Check if Ollama is running
     if not check_ollama_running():
-        logger.warning("⚠️ Ollama is not running or not accessible.")
+        logger.warning("[WARNING] Ollama is not running or not accessible.")
         logger.warning("   To use AI features, start Ollama with: ollama serve")
         logger.warning("   Continuing without AI agent (monitoring will still work)...\n")
         agent = None
     # Check if Mistral model is available
     elif not check_mistral_model_available():
-        logger.warning("⚠️ Mistral model not found in Ollama.")
+        logger.warning("[WARNING] Mistral model not found in Ollama.")
         logger.warning("   To use AI features, download with: ollama pull mistral")
         logger.warning("   Continuing without AI agent (monitoring will still work)...\n")
         agent = None
@@ -146,42 +153,42 @@ async def start_monitoring():
                 # Fallback: try string conversion
                 message = str(response)
 
-            logger.info(f"\n✅ AI Agent: {message}\n")
+            logger.info(f"\n[OK] AI Agent: {message}\n")
 
         except AttributeError as e:
             # Debug information for attribute errors
             logger.debug(f"[DEBUG] Response type: {type(response)}")
             logger.debug(f"[DEBUG] Available attributes: {[attr for attr in dir(response) if not attr.startswith('_')]}")
-            logger.warning(f"⚠️ Warning: Could not access agent response: {e}")
+            logger.warning(f"[WARNING] Could not access agent response: {e}")
             logger.warning("Continuing without AI agent (monitoring will still work)...\n")
             agent = None
 
         except Exception as e:
-            logger.warning(f"⚠️ Warning: Could not connect to Ollama Mistral model: {e}")
+            logger.warning(f"[WARNING] Could not connect to Ollama Mistral model: {e}")
             logger.warning("Continuing without AI agent (monitoring will still work)...\n")
             agent = None
 
     # Start the monitoring service
-    logger.info("🚀 Starting monitoring service...")
-    logger.info(f"📊 Target: Geopolitical markets on Polymarket")
-    logger.info(f"🎯 Criteria: Min $10k volume, Min 50 trades")
-    logger.info(f"⏰ Check interval: Every 15 minutes")
-    logger.info(f"💬 Telegram: Bundled notifications with 5min rate limit")
+    logger.info("Starting monitoring service...")
+    logger.info(f"Target: Geopolitical markets on Polymarket")
+    logger.info(f"Criteria: Min $10k volume, Min 50 trades")
+    logger.info(f"Check interval: Every 15 minutes")
+    logger.info(f"Telegram: Bundled notifications with 5min rate limit")
     if agent:
-        logger.info(f"🤖 AI Agent: Enabled (Mistral via Ollama)")
-        logger.info(f"🧠 AI Filtering: Hybrid mode (keywords + AI for ambiguous cases)")
+        logger.info(f"AI Agent: Enabled (Mistral via Ollama)")
+        logger.info(f"AI Filtering: Hybrid mode (keywords + AI for ambiguous cases)")
     else:
-        logger.info(f"🤖 AI Agent: Disabled (keywords only)")
+        logger.info(f"AI Agent: Disabled (keywords only)")
     logger.info("")
 
     try:
         await run_monitor(POLYMARKET_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, ai_agent=agent)
     except KeyboardInterrupt:
-        logger.info("\n\n⚠️ Received shutdown signal...")
+        logger.info("\n\n[SHUTDOWN] Received shutdown signal...")
     except Exception as e:
-        logger.error(f"\n\n❌ Fatal error: {e}")
+        logger.error(f"\n\n[ERROR] Fatal error: {e}")
     finally:
-        logger.info("\n👋 Shutting down gracefully...")
+        logger.info("\nShutting down gracefully...")
 
 
 def main():
@@ -190,7 +197,7 @@ def main():
     try:
         asyncio.run(start_monitoring())
     except KeyboardInterrupt:
-        logger.info("\n\n✅ Shutdown complete.")
+        logger.info("\n\n[OK] Shutdown complete.")
 
 
 if __name__ == "__main__":

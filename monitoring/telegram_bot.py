@@ -27,7 +27,7 @@ class TelegramNotifier:
     async def send_message(self, message: str):
         """Send a message to the configured chat, splitting if too long."""
         if not self.chat_id:
-            print("⚠️ Chat ID not configured. Cannot send message.")
+            print("[WARNING] Chat ID not configured. Cannot send message.")
             return
 
         # Get the bot instance (works in both send-only and full mode)
@@ -203,7 +203,7 @@ class TelegramNotifier:
             self.bot = Bot(token=self.bot_token)
             self.application = None
 
-            print("✅ Telegram bot initialized (send-only mode, no polling)")
+            print("[OK] Telegram bot initialized (send-only mode, no polling)")
         else:
             # Full mode: Application with command handlers and polling
             self.application = Application.builder().token(self.bot_token).build()
@@ -219,7 +219,7 @@ class TelegramNotifier:
             await self.application.initialize()
             await self.application.start()
 
-            print("✅ Telegram bot initialized (full mode with commands)")
+            print("[OK] Telegram bot initialized (full mode with commands)")
 
     async def start_polling(self):
         """Start polling for updates in the background."""
@@ -238,7 +238,7 @@ class TelegramNotifier:
                 await self.application.updater.stop()
             await self.application.stop()
             await self.application.shutdown()
-            print("✅ Telegram bot stopped")
+            print("[OK] Telegram bot stopped")
         # Note: In send-only mode (self.application is None), no cleanup needed
         # The simple Bot instance has no active connections to close
 
