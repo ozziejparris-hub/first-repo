@@ -663,8 +663,23 @@ class PolymarketMonitor:
                 print(f"\n[OK] Cycle complete. Next check in {self.check_interval // 60} minutes.")
 
             except Exception as e:
+                import traceback
+                import logging
+
+                # Get full traceback
+                error_traceback = traceback.format_exc()
+
+                # Log to console and file
                 print(f"[ERROR] Error in monitoring cycle: {e}")
-                await self.telegram.send_message(f"⚠️ Error in monitoring: {str(e)}")
+                print(f"[ERROR] Full traceback:\n{error_traceback}")
+
+                # Log to monitoring.log
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error in monitoring cycle: {e}")
+                logger.error(f"Full traceback:\n{error_traceback}")
+
+                # Send brief error to Telegram
+                await self.telegram.send_message(f"[WARNING] Error in monitoring: {str(e)}")
 
             # Wait for next cycle or until stop is requested
             for _ in range(self.check_interval):
