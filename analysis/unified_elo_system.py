@@ -29,19 +29,19 @@ from collections import defaultdict, Counter
 import time
 
 # Import behavioral analysis
-from trading_behavior_analysis import TradingBehaviorAnalyzer
+from analysis.trading_behavior_analysis import TradingBehaviorAnalyzer
 
 # Import advanced metrics analyzers
-from calibration_analysis import CalibrationAnalyzer
-from risk_adjusted_returns import RiskAdjustedAnalyzer
-from regret_analysis import RegretAnalyzer
+from analysis.calibration_analysis import CalibrationAnalyzer
+from analysis.risk_adjusted_returns import RiskAdjustedAnalyzer
+from analysis.regret_analysis import RegretAnalyzer
 
 # Import network analysis
-from correlation_matrix import TraderCorrelationMatrix
-from copy_trade_detector import CopyTradeDetector
+from analysis.correlation_matrix import TraderCorrelationMatrix
+from analysis.copy_trade_detector import CopyTradeDetector
 
 # Import contrarian analysis
-from consensus_divergence_detector import ConsensusDivergenceDetector
+from analysis.consensus_divergence_detector import ConsensusDivergenceDetector
 
 
 # Market category keywords for auto-categorization
