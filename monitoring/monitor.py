@@ -279,8 +279,11 @@ class PolymarketMonitor:
         # Check if any exclusion keyword is in the title
         for keyword in exclusion_keywords:
             if keyword in title_lower:
-                # Log which keyword triggered the exclusion
-                print(f"[FILTER] Matched keyword: '{keyword}'")
+                # Log which keyword triggered the exclusion (use safe encoding for Windows)
+                try:
+                    print(f"[FILTER] Matched keyword: '{keyword}'")
+                except (OSError, UnicodeEncodeError):
+                    pass  # Skip print if encoding fails
                 return True
 
         # REGEX PATTERN DETECTION - Catches patterns that keywords might miss
@@ -405,7 +408,10 @@ class PolymarketMonitor:
         """
         # LAYER 1: Fast keyword filtering (existing comprehensive patterns)
         if self._keyword_exclusion_check(market_title):
-            print(f"[KEYWORD FILTER] [EXCLUDED] Excluding: {market_title[:50]}...")
+            try:
+                print(f"[KEYWORD FILTER] [EXCLUDED] Excluding: {market_title[:50]}...")
+            except (OSError, UnicodeEncodeError):
+                pass  # Skip print if encoding fails
             return True  # EXCLUDE via keywords
 
         # FAST PATH: Strong geopolitics signals skip AI (performance optimization)
@@ -527,7 +533,10 @@ class PolymarketMonitor:
 
             if is_new:
                 new_trades_count += 1
-                print(f"NEW: {trader_address[:10]}... traded {shares:.1f} @ ${price:.3f} in {market_title[:30]}...")
+                try:
+                    print(f"NEW: {trader_address[:10]}... traded {shares:.1f} @ ${price:.3f} in {market_title[:30]}...")
+                except (OSError, UnicodeEncodeError):
+                    print(f"NEW: {trader_address[:10]}... traded {shares:.1f} @ ${price:.3f}")
 
                 # ============================================================
                 # BETTING INTELLIGENCE ALERTS
@@ -582,7 +591,10 @@ class PolymarketMonitor:
         if not unnotified_trades:
             return
 
-        print(f"Processing {len(unnotified_trades)} trade notifications...")
+        try:
+            print(f"Processing {len(unnotified_trades)} trade notifications...")
+        except (OSError, UnicodeEncodeError):
+            print(f"Processing trade notifications...")
 
         # Bundle trades by trader
         trades_by_trader = {}
