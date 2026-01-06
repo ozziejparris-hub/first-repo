@@ -155,9 +155,13 @@ class SystemObserver:
 
     async def _log_monitor_loop(self):
         """
-        Log monitoring loop - continuous monitoring.
+        Log monitoring loop - continuous monitoring with enhanced error detection.
         """
         print("[OBSERVER] Log monitor loop started")
+
+        # Buffer for collecting multi-line errors
+        error_buffer = []
+        buffer_timeout = None
 
         while self.running:
             try:
@@ -166,15 +170,29 @@ class SystemObserver:
                     if not self.running:
                         break
 
-                    # Check for errors
-                    error = self.log_monitor.detect_errors(line)
-                    if error:
+                    # Try to parse detailed error
+                    detailed_error = self.log_monitor.parse_detailed_error(line)
+                    if detailed_error:
                         self.error_count += 1
-                        print(f"[OBSERVER] Error detected: {error['type']}")
+                        print(f"[OBSERVER] Detailed error detected: {detailed_error.error_type or 'Unknown'}")
 
-                        # Send alert for critical errors
-                        if error['severity'] == 'critical':
-                            await self.telegram.send_error_alert(error)
+                        # Send detailed alert for all errors
+                        await self.telegram.send_detailed_error_alert(detailed_error)
+
+                        # Keep track of [Errno 22] specifically
+                        if '[Errno 22]' in detailed_error.message:
+                            print(f"[OBSERVER] ⚠️ [Errno 22] detected - Console encoding error")
+
+                    else:
+                        # Fallback to old error detection
+                        error = self.log_monitor.detect_errors(line)
+                        if error:
+                            self.error_count += 1
+                            print(f"[OBSERVER] Error detected: {error['type']}")
+
+                            # Send alert for critical errors
+                            if error['severity'] == 'critical':
+                                await self.telegram.send_error_alert(error)
 
                     # Check for known issues
                     issue = self.log_monitor.detect_known_issues(line)
@@ -231,7 +249,7 @@ class SystemObserver:
 
     async def _collect_metrics(self) -> Dict:
         """
-        Collect system metrics for reporting.
+        Collect system metrics for reporting with detailed error breakdown.
 
         Returns:
             dict: Metrics data
@@ -251,11 +269,37 @@ class SystemObserver:
             except:
                 pass
 
-        # Get error summary from log monitor
-        error_summary = self.log_monitor.get_error_summary(minutes=60)
+        # Get detailed error summary from log monitor
+        error_summary = self.log_monitor.get_detailed_error_summary(minutes=60)
+        basic_error_summary = self.log_monitor.get_error_summary(minutes=60)
+
+        # Count [Errno 22] occurrences specifically
+        errno_22_count = 0
+        recent_errors = self.log_monitor.error_parser.get_recent_errors(minutes=60)
+        for error in recent_errors:
+            if '[Errno 22]' in error.message or 'Invalid argument' in error.message:
+                errno_22_count += 1
+
+        # Get latest error
+        latest_error = None
+        if recent_errors:
+            latest = recent_errors[-1]
+            latest_error = {
+                'error_type': latest.error_type or 'Unknown',
+                'timestamp': latest.timestamp.strftime('%H:%M:%S'),
+                'message': latest.message[:100]
+            }
+
+        # Build error details dict
+        error_details = {
+            'by_type': basic_error_summary.get('by_type', {}),
+            'by_component': error_summary.get('by_component', {}),
+            'latest_error': latest_error,
+            'errno_22_count': errno_22_count
+        }
 
         # Determine performance status
-        error_rate = error_summary['errors_per_hour']
+        error_rate = basic_error_summary['errors_per_hour']
         if error_rate < 10:
             performance = 'good'
         elif error_rate < 30:
@@ -267,7 +311,8 @@ class SystemObserver:
             'health_status': health['status'],
             'uptime_hours': uptime_hours,
             'memory_mb': memory_mb,
-            'error_count': error_summary['total_errors'],
+            'error_count': error_summary.get('total_errors', 0),
+            'error_details': error_details,
             'performance': performance,
             'activity': {
                 # These would be populated from actual monitoring data

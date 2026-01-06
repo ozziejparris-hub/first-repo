@@ -14,6 +14,25 @@ AI_FILTERING_ENABLED = True  # Toggle AI filtering on/off
 AI_FILTER_MODE = "hybrid"  # Options: "keywords_only", "hybrid", "ai_only"
 
 
+def safe_print(message: str, fallback: str = None):
+    """
+    Safe print that handles Windows console encoding errors.
+
+    Args:
+        message: The message to print
+        fallback: Optional fallback message if printing fails
+    """
+    try:
+        print(message)
+    except (OSError, UnicodeEncodeError):
+        if fallback:
+            try:
+                print(fallback)
+            except (OSError, UnicodeEncodeError):
+                pass  # Give up if even fallback fails
+        # Silently skip if no fallback or fallback also fails
+
+
 class PolymarketMonitor:
     """Main monitoring service that coordinates all components."""
 
@@ -53,20 +72,20 @@ class PolymarketMonitor:
             # from .telegram_scheduler import TelegramScheduler
             # self.elo_scheduler = TelegramScheduler(self.elo_bot, self.db)
 
-            print("[MONITOR] [OK] ELO Telegram bot initialized (send-only mode)")
+            safe_print("[MONITOR] [OK] ELO Telegram bot initialized (send-only mode)")
         except ImportError as e:
             # APScheduler not installed - that's OK, scheduler is disabled anyway
-            print(f"[MONITOR] [INFO] Info: ELO bot scheduler dependencies not available: {e}")
-            print("[MONITOR] [INFO] ELO bot will work without scheduling (send-only mode)")
+            safe_print(f"[MONITOR] [INFO] Info: ELO bot scheduler dependencies not available: {e}")
+            safe_print("[MONITOR] [INFO] ELO bot will work without scheduling (send-only mode)")
             self.elo_bot = None
         except Exception as e:
-            print(f"[MONITOR] [WARNING] Warning: Could not initialize ELO bot: {e}")
+            safe_print(f"[MONITOR] [WARNING] Warning: Could not initialize ELO bot: {e}")
             self.elo_bot = None
             self.elo_scheduler = None
 
     def request_stop(self):
         """Request the monitor to stop."""
-        print("[STOP] Stop requested via Telegram")
+        safe_print("[STOP] Stop requested via Telegram")
         self.is_running = False
 
     async def _ai_categorization_check(self, market_title: str) -> bool:
@@ -114,19 +133,19 @@ class PolymarketMonitor:
             # Check if AI says to exclude
             should_exclude = False
             if 'EXCLUDE' in response_text.upper():
-                print(f"[AI FILTER] [EXCLUDED] Excluding: {market_title[:50]}... (AI classified as non-geopolitics)")
+                safe_print(f"[AI FILTER] [EXCLUDED] Excluding: {market_title[:50]}... (AI classified as non-geopolitics)", "[AI FILTER] [EXCLUDED] Excluding market (AI classified as non-geopolitics)")
                 should_exclude = True
             elif 'KEEP' in response_text.upper():
-                print(f"[AI FILTER] Keeping: {market_title[:50]}... (AI classified as geopolitics)")
+                safe_print(f"[AI FILTER] Keeping: {market_title[:50]}... (AI classified as geopolitics)", "[AI FILTER] Keeping market (AI classified as geopolitics)")
                 should_exclude = False
             else:
                 # If AI response unclear, check for category keywords
                 exclude_categories = ['SPORTS', 'CRYPTO', 'STOCKS', 'ENTERTAINMENT', 'OTHER', 'WEATHER']
                 if any(cat in response_text.upper() for cat in exclude_categories):
-                    print(f"[AI FILTER] [EXCLUDED] Excluding: {market_title[:50]}... (AI: {response_text.strip()})")
+                    safe_print(f"[AI FILTER] [EXCLUDED] Excluding: {market_title[:50]}... (AI: {response_text.strip()})", f"[AI FILTER] [EXCLUDED] Excluding market (AI: {response_text.strip()})")
                     should_exclude = True
                 else:
-                    print(f"[AI FILTER] Keeping: {market_title[:50]}... (AI: {response_text.strip()})")
+                    safe_print(f"[AI FILTER] Keeping: {market_title[:50]}... (AI: {response_text.strip()})", f"[AI FILTER] Keeping market (AI: {response_text.strip()})")
                     should_exclude = False
 
             # Cache the result
@@ -134,8 +153,8 @@ class PolymarketMonitor:
             return should_exclude
 
         except Exception as e:
-            print(f"[AI FILTER] [WARNING] AI categorization failed: {e}")
-            print(f"[AI FILTER] → Defaulting to INCLUDE (conservative): {market_title[:50]}...")
+            safe_print(f"[AI FILTER] [WARNING] AI categorization failed: {e}")
+            safe_print(f"[AI FILTER] → Defaulting to INCLUDE (conservative): {market_title[:50]}...", "[AI FILTER] → Defaulting to INCLUDE (conservative)")
             return False  # Default to INCLUDE if AI fails
 
     def _keyword_exclusion_check(self, market_title: str) -> bool:
@@ -290,37 +309,37 @@ class PolymarketMonitor:
 
         # PATTERN: Spread betting (captures any point spread like "(-5.5)")
         if re.search(r'spread:.*\(-?\d+\.?\d*\)', title_lower):
-            print(f"[FILTER] Matched pattern: sports spread betting")
+            safe_print(f"[FILTER] Matched pattern: sports spread betting")
             return True  # EXCLUDE sports spread betting
 
         # PATTERN: Over/Under betting (captures "O/U 61.5")
         if re.search(r'o/u\s+\d+\.?\d*', title_lower):
-            print(f"[FILTER] Matched pattern: over/under betting")
+            safe_print(f"[FILTER] Matched pattern: over/under betting")
             return True  # EXCLUDE over/under bets
 
         # PATTERN: Stock price ranges "$XXX-$YYY"
         if re.search(r'close at \$\d+-\$\d+', title_lower):
-            print(f"[FILTER] Matched pattern: stock price range")
+            safe_print(f"[FILTER] Matched pattern: stock price range")
             return True  # EXCLUDE stock price predictions
 
         # PATTERN: Gold price ranges "$X-$Y" (e.g., "gold close between $3500 and $3600")
         if re.search(r'gold.*\$\d+.*and.*\$\d+', title_lower):
-            print(f"[FILTER] Matched pattern: gold price range")
+            safe_print(f"[FILTER] Matched pattern: gold price range")
             return True  # EXCLUDE gold price predictions
 
         # PATTERN: "Will [Team] win on [Date]" - Soccer/sports matches
         if re.search(r'will \w+ win on 20\d{2}-\d{2}-\d{2}', title_lower):
-            print(f"[FILTER] Matched pattern: sports match with date")
+            safe_print(f"[FILTER] Matched pattern: sports match with date")
             return True  # EXCLUDE soccer/sports matches
 
         # PATTERN: Beauty pageants (Miss Universe, Miss World, etc.)
         if 'miss universe' in title_lower or 'miss world' in title_lower:
-            print(f"[FILTER] Matched pattern: beauty pageant")
+            safe_print(f"[FILTER] Matched pattern: beauty pageant")
             return True  # EXCLUDE beauty pageants
 
         # PATTERN: "#1 searched" or "#1 app" rankings
         if '#1' in title_lower and any(x in title_lower for x in ['searched', 'app', 'free app']):
-            print(f"[FILTER] Matched pattern: ranking/popularity")
+            safe_print(f"[FILTER] Matched pattern: ranking/popularity")
             return True  # EXCLUDE ranking markets
 
         # ESPORTS PATTERN DETECTION: "Will [Team] win the [Tournament]?"
@@ -424,21 +443,21 @@ class PolymarketMonitor:
         ]
 
         if any(signal in market_title.lower() for signal in geopolitics_signals):
-            print(f"[FAST PATH] Strong geopolitics signal: {market_title[:50]}...")
+            safe_print(f"[FAST PATH] Strong geopolitics signal: {market_title[:50]}...", "[FAST PATH] Strong geopolitics signal")
             return False  # INCLUDE without AI check
 
         # LAYER 2: AI categorization for ambiguous cases
         if AI_FILTERING_ENABLED and AI_FILTER_MODE in ["hybrid", "ai_only"] and self.ai_agent:
-            print(f"[AI PATH] Checking ambiguous market: {market_title[:50]}...")
+            safe_print(f"[AI PATH] Checking ambiguous market: {market_title[:50]}...", "[AI PATH] Checking ambiguous market")
             return await self._ai_categorization_check(market_title)
 
         # FALLBACK: Conservative default (include if uncertain)
-        print(f"[DEFAULT] No match, including: {market_title[:50]}...")
+        safe_print(f"[DEFAULT] No match, including: {market_title[:50]}...", "[DEFAULT] No match, including market")
         return False
 
     async def initial_scan(self):
         """Perform initial scan to identify successful traders."""
-        print("Starting initial scan for successful traders...")
+        safe_print("Starting initial scan for successful traders...")
         await self.telegram.send_message("🔍 Starting initial trader scan...")
 
         newly_flagged = self.analyzer.scan_for_successful_traders()
@@ -450,24 +469,24 @@ class PolymarketMonitor:
             f"{summary}"
         )
 
-        print(f"[OK] Initial scan complete. Flagged {newly_flagged} traders.")
+        safe_print(f"[OK] Initial scan complete. Flagged {newly_flagged} traders.")
 
     async def check_for_new_trades(self):
         """Check for new trades from flagged traders."""
         flagged_traders = self.db.get_flagged_traders()
 
         if not flagged_traders:
-            print("No flagged traders to monitor yet.")
+            safe_print("No flagged traders to monitor yet.")
             return 0
 
-        print(f"Monitoring {len(flagged_traders)} flagged traders...")
+        safe_print(f"Monitoring {len(flagged_traders)} flagged traders...")
 
         # Strategy: Fetch all recent trades and filter for our flagged traders
         # This is more efficient than calling get_trader_history() for each trader
-        print("Fetching recent trades from Polymarket...")
+        safe_print("Fetching recent trades from Polymarket...")
         all_recent_trades = self.polymarket.get_market_trades(market_id=None, limit=500)
 
-        print(f"[OK] Fetched {len(all_recent_trades)} recent trades")
+        safe_print(f"[OK] Fetched {len(all_recent_trades)} recent trades")
 
         # Convert flagged traders to a set for fast lookup
         flagged_set = set(flagged_traders)
@@ -479,7 +498,7 @@ class PolymarketMonitor:
             if trader in flagged_set:
                 relevant_trades.append((trader, trade))
 
-        print(f"Found {len(relevant_trades)} trades from flagged traders")
+        safe_print(f"Found {len(relevant_trades)} trades from flagged traders")
 
         new_trades_count = 0
         duplicate_count = 0
@@ -489,7 +508,7 @@ class PolymarketMonitor:
             # Extract trade information
             trade_id = trade.get('transactionHash') or trade.get('id')
             if not trade_id:
-                print(f"[WARNING] Trade missing ID, skipping...")
+                safe_print(f"[WARNING] Trade missing ID, skipping...")
                 continue
 
             market_id = trade.get('conditionId') or trade.get('market')
@@ -561,7 +580,7 @@ class PolymarketMonitor:
                                 trader_address,
                                 trade_data
                             )
-                            print(f"[BETTING INTEL] Elite alert sent for Rank #{rank_data['rank']}")
+                            safe_print(f"[BETTING INTEL] Elite alert sent for Rank #{rank_data['rank']}")
 
                             # Check for large position
                             await self.elo_bot.send_large_position_alert(trader_address, trade_data)
@@ -581,7 +600,7 @@ class PolymarketMonitor:
             else:
                 duplicate_count += 1
 
-        print(f"[OK] New trades: {new_trades_count} | Already seen: {duplicate_count} | Excluded (crypto/sports): {excluded_count}")
+        safe_print(f"[OK] New trades: {new_trades_count} | Already seen: {duplicate_count} | Excluded (crypto/sports): {excluded_count}")
         return new_trades_count
 
     async def notify_new_trades(self):
@@ -611,7 +630,7 @@ class PolymarketMonitor:
             if stats:
                 trader_stats_map[trader] = stats
 
-        print(f"Bundled into {len(trades_by_trader)} traders")
+        safe_print(f"Bundled into {len(trades_by_trader)} traders")
 
         # Send bundled notifications
         await self.telegram.send_bundled_trade_alerts(trades_by_trader, trader_stats_map)
@@ -626,9 +645,9 @@ class PolymarketMonitor:
 
         while self.is_running:
             cycle_count += 1
-            print(f"\n{'='*60}")
-            print(f"Monitoring Cycle #{cycle_count} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            print(f"{'='*60}")
+            safe_print(f"\n{'='*60}")
+            safe_print(f"Monitoring Cycle #{cycle_count} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            safe_print(f"{'='*60}")
 
             try:
                 # Check for new trades
@@ -640,7 +659,7 @@ class PolymarketMonitor:
 
                 # Periodically re-scan for new successful traders (every 10 cycles)
                 if cycle_count % 10 == 0:
-                    print("\nPerforming periodic trader re-scan...")
+                    safe_print("\nPerforming periodic trader re-scan...")
                     newly_flagged = self.analyzer.scan_for_successful_traders()
                     if newly_flagged > 0:
                         await self.telegram.send_message(
@@ -649,7 +668,7 @@ class PolymarketMonitor:
 
                 # Check for market resolutions (every 10 cycles)
                 if cycle_count % 10 == 0:
-                    print("\nPeriodic resolution check (cycle #{})...".format(cycle_count))
+                    safe_print("\nPeriodic resolution check (cycle #{})...".format(cycle_count))
 
                     # Get statistics before resolution check
                     conn = self.db.get_connection()
@@ -660,19 +679,19 @@ class PolymarketMonitor:
                     resolved_count = cursor.fetchone()[0]
                     conn.close()
 
-                    print(f"[MONITOR] Current DB state: {total_markets} total markets, {resolved_count} resolved")
+                    safe_print(f"[MONITOR] Current DB state: {total_markets} total markets, {resolved_count} resolved")
 
                     newly_resolved = self.analyzer.check_market_resolutions()
 
                     if newly_resolved > 0:
-                        print(f"[MONITOR] {newly_resolved} new resolution(s) found!")
+                        safe_print(f"[MONITOR] {newly_resolved} new resolution(s) found!")
                         await self.telegram.send_message(
                             f"✅ {newly_resolved} market(s) resolved! Win rate data updated."
                         )
                     else:
-                        print(f"[MONITOR] No new resolutions found (markets are long-dated)")
+                        safe_print(f"[MONITOR] No new resolutions found (markets are long-dated)")
 
-                print(f"\n[OK] Cycle complete. Next check in {self.check_interval // 60} minutes.")
+                safe_print(f"\n[OK] Cycle complete. Next check in {self.check_interval // 60} minutes.")
 
             except Exception as e:
                 import traceback
@@ -682,8 +701,8 @@ class PolymarketMonitor:
                 error_traceback = traceback.format_exc()
 
                 # Log to console and file
-                print(f"[ERROR] Error in monitoring cycle: {e}")
-                print(f"[ERROR] Full traceback:\n{error_traceback}")
+                safe_print(f"[ERROR] Error in monitoring cycle: {e}")
+                safe_print(f"[ERROR] Full traceback:\n{error_traceback}")
 
                 # Log to monitoring.log
                 logger = logging.getLogger(__name__)
@@ -699,11 +718,11 @@ class PolymarketMonitor:
                     break
                 await asyncio.sleep(1)
 
-        print("\n[STOP] Monitoring loop stopped")
+        safe_print("\n[STOP] Monitoring loop stopped")
 
     async def start(self):
         """Start the monitoring service."""
-        print("Starting Polymarket Monitor...")
+        safe_print("Starting Polymarket Monitor...")
         self.is_running = True
 
         # Initialize Telegram bot in send-only mode (no polling = no conflicts)
@@ -722,16 +741,16 @@ class PolymarketMonitor:
                 #     self.elo_scheduler.schedule_daily_leaderboard(hour=9, minute=0)
                 #     self.elo_scheduler.start()
 
-                print("[MONITOR] [OK] ELO bot active (send-only mode, no polling conflicts)")
-                print("[MONITOR] Betting intelligence features enabled:")
-                print("[MONITOR]    - Elite trader alerts (top 10)")
-                print("[MONITOR]    - Market momentum tracking")
-                print("[MONITOR]    - Contrarian signal detection")
-                print("[MONITOR]    - Large position alerts")
-                print("[MONITOR]    - Win streak notifications")
-                print("[MONITOR] [INFO] Daily leaderboard scheduling disabled (no APScheduler)")
+                safe_print("[MONITOR] [OK] ELO bot active (send-only mode, no polling conflicts)")
+                safe_print("[MONITOR] Betting intelligence features enabled:")
+                safe_print("[MONITOR]    - Elite trader alerts (top 10)")
+                safe_print("[MONITOR]    - Market momentum tracking")
+                safe_print("[MONITOR]    - Contrarian signal detection")
+                safe_print("[MONITOR]    - Large position alerts")
+                safe_print("[MONITOR]    - Win streak notifications")
+                safe_print("[MONITOR] [INFO] Daily leaderboard scheduling disabled (no APScheduler)")
             except Exception as e:
-                print(f"[MONITOR] [WARNING] Warning: ELO bot initialization failed: {e}")
+                safe_print(f"[MONITOR] [WARNING] Warning: ELO bot initialization failed: {e}")
                 self.elo_bot = None
 
         # Send startup message
@@ -749,28 +768,28 @@ class PolymarketMonitor:
 
     async def stop(self):
         """Stop the monitoring service gracefully."""
-        print("[STOP] Stopping Polymarket Monitor...")
+        safe_print("[STOP] Stopping Polymarket Monitor...")
         self.is_running = False
 
         # Stop ELO bot and scheduler
         if self.elo_scheduler:
             try:
                 self.elo_scheduler.stop()
-                print("[MONITOR] [OK] ELO scheduler stopped")
+                safe_print("[MONITOR] [OK] ELO scheduler stopped")
             except Exception as e:
-                print(f"[MONITOR] Warning: ELO scheduler stop failed: {e}")
+                safe_print(f"[MONITOR] Warning: ELO scheduler stop failed: {e}")
 
         if self.elo_bot:
             try:
                 await self.elo_bot.stop()
-                print("[MONITOR] [OK] ELO bot stopped")
+                safe_print("[MONITOR] [OK] ELO bot stopped")
             except Exception as e:
-                print(f"[MONITOR] Warning: ELO bot stop failed: {e}")
+                safe_print(f"[MONITOR] Warning: ELO bot stop failed: {e}")
 
         await self.telegram.send_message("👋 Polymarket Monitor stopped.")
         await self.telegram.stop()
 
-        print("[OK] Monitor stopped successfully")
+        safe_print("[OK] Monitor stopped successfully")
 
 
 async def main(polymarket_api_key: str, telegram_token: str,
@@ -788,7 +807,7 @@ async def main(polymarket_api_key: str, telegram_token: str,
     try:
         await monitor.start()
     except KeyboardInterrupt:
-        print("\n[WARNING] Keyboard interrupt received")
+        safe_print("\n[WARNING] Keyboard interrupt received")
     finally:
         await monitor.stop()
 
@@ -804,8 +823,8 @@ if __name__ == "__main__":
     TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")  # Optional
 
     if not POLYMARKET_API_KEY or not TELEGRAM_BOT_TOKEN:
-        print("[ERROR] Missing required environment variables!")
-        print("Please ensure POLYMARKET_API_KEY and TELEGRAM_BOT_TOKEN are set in .env")
+        safe_print("[ERROR] Missing required environment variables!")
+        safe_print("Please ensure POLYMARKET_API_KEY and TELEGRAM_BOT_TOKEN are set in .env")
         exit(1)
 
     asyncio.run(main(POLYMARKET_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID))

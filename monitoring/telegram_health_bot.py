@@ -18,6 +18,15 @@ from typing import Dict, List, Optional
 from telegram import Bot
 from telegram.error import TelegramError
 
+# Import error parsing for detailed alerts
+try:
+    from .error_parser import ErrorDetail
+    from .error_classifier import ErrorClassifier
+except ImportError:
+    # Fallback if imports fail
+    ErrorDetail = None
+    ErrorClassifier = None
+
 
 class TelegramHealthBot:
     """
@@ -41,6 +50,9 @@ class TelegramHealthBot:
         self.bot = Bot(token=token)
         self.chat_id = chat_id
         self.last_alert_time = {}  # Rate limiting
+
+        # Initialize error classifier for detailed alerts
+        self.error_classifier = ErrorClassifier() if ErrorClassifier else None
 
     async def send_health_alert(self, health: Dict) -> bool:
         """
@@ -198,7 +210,7 @@ class TelegramHealthBot:
 
     async def send_hourly_report(self, metrics: Dict) -> bool:
         """
-        Send hourly status report.
+        Send hourly status report with detailed error summary.
 
         Args:
             metrics: Metrics dict with system stats
@@ -244,10 +256,29 @@ class TelegramHealthBot:
                 message_parts.append(f"  • API calls: {activity['api_calls']}")
             message_parts.append("")
 
-        # Error summary
+        # Enhanced error summary with details
         error_count = metrics.get('error_count', 0)
+        error_details = metrics.get('error_details', {})
+
         if error_count > 0:
-            message_parts.append(f"Errors: {error_count} (review logs)")
+            message_parts.append(f"⚠️ Errors: {error_count} in last hour")
+
+            # Show error breakdown by type if available
+            if error_details.get('by_type'):
+                message_parts.append("  By type:")
+                for error_type, count in list(error_details['by_type'].items())[:3]:
+                    message_parts.append(f"    • {error_type}: {count}")
+
+            # Show top error if available
+            if error_details.get('latest_error'):
+                latest = error_details['latest_error']
+                message_parts.append(f"  Latest: {latest.get('error_type', 'Unknown')} at {latest.get('timestamp', 'N/A')}")
+
+            # Show if [Errno 22] detected
+            if error_details.get('errno_22_count', 0) > 0:
+                message_parts.append(f"  🔴 [Errno 22]: {error_details['errno_22_count']} occurrences")
+                message_parts.append("    (Console encoding errors - check logs)")
+
         else:
             message_parts.append("Errors: None ✅")
 
@@ -289,6 +320,69 @@ class TelegramHealthBot:
         message = '\n'.join(message_parts)
 
         return await self._send_message(message)
+
+    async def send_detailed_error_alert(self, error: 'ErrorDetail') -> bool:
+        """
+        Send detailed error alert with full context and diagnostic info.
+
+        Args:
+            error: ErrorDetail object from error parser
+
+        Returns:
+            bool: True if sent successfully
+        """
+        # Rate limit: One detailed error alert per error signature per 10 minutes
+        alert_key = f"detailed_{error.signature[:50]}"
+        if not self._should_send_alert(alert_key, minutes=10):
+            return False
+
+        # Use error classifier to format comprehensive alert
+        if self.error_classifier and ErrorDetail:
+            classification = self.error_classifier.classify_error(error)
+            message = self.error_classifier.format_error_alert(error, classification)
+        else:
+            # Fallback to basic formatting
+            message = self._format_basic_error_alert(error)
+
+        return await self._send_message(message)
+
+    def _format_basic_error_alert(self, error: 'ErrorDetail') -> str:
+        """
+        Fallback formatting for detailed errors when classifier not available.
+
+        Args:
+            error: ErrorDetail object
+
+        Returns:
+            Formatted alert string
+        """
+        message_parts = [
+            "🔴 DETAILED ERROR ALERT",
+            ""
+        ]
+
+        if error.component:
+            message_parts.append(f"Component: {error.component}")
+        if error.function:
+            message_parts.append(f"Function: {error.function}()")
+        if error.error_type:
+            message_parts.append(f"Error Type: {error.error_type}")
+
+        message_parts.append("")
+        message_parts.append(f"Message: {error.message[:300]}")
+
+        if error.stack_trace:
+            message_parts.append("")
+            message_parts.append("Stack Trace (top 3):")
+            for line in error.stack_trace[:3]:
+                message_parts.append(f"  {line}")
+
+        message_parts.append("")
+        message_parts.append(f"Time: {error.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
+        if error.occurrences > 1:
+            message_parts.append(f"Occurrences: {error.occurrences}")
+
+        return '\n'.join(message_parts)
 
     async def send_shutdown_notification(self) -> bool:
         """

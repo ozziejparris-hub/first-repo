@@ -136,6 +136,15 @@ KNOWN_ISSUES = [
         fix='Restart monitoring service. Check for memory leaks in long-running processes.',
         docs='docs/TROUBLESHOOTING.md#high-memory-usage'
     ),
+    KnownIssue(
+        name='errno_22_invalid_argument',
+        pattern=re.compile(r'\[Errno 22\] Invalid argument|OSError.*\[Errno 22\]', re.IGNORECASE),
+        component='Console Output',
+        severity='medium',
+        description='Windows console encoding error - Unicode character print failure',
+        fix='This error has been fixed with safe_print() wrapper. If recurring, check for new print() statements without safe_print() in monitor.py. See ERRNO_22_FIX_COMPLETE.md for details.',
+        docs='docs/ERRNO_22_FIX_COMPLETE.md'
+    ),
 ]
 
 
