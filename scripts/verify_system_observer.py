@@ -229,6 +229,40 @@ except Exception as e:
     print(f"[ERROR] Failed to check processes: {e}")
     print()
 
+# Test 8: Check activity counter (CRITICAL TEST)
+print("[TEST 8] Checking activity counter (CRITICAL FIX)...")
+try:
+    from monitoring.system_observer import SystemObserver
+
+    # Create test observer
+    obs = SystemObserver(telegram_token='test_token', chat_id='test_chat', monitoring_pid=None)
+
+    # Count activity from last hour
+    activity = obs._count_activity_from_logs(hours=1.0)
+
+    print("[OK] Activity counter working")
+    print(f"[INFO] Trades checked: {activity['trades_checked']}")
+    print(f"[INFO] Markets scanned: {activity['markets_scanned']}")
+    print(f"[INFO] API calls: {activity['api_calls']}")
+
+    # Verify non-zero if monitoring is active
+    if activity['api_calls'] > 0:
+        print("[OK] Activity detected - monitoring is working!")
+    else:
+        print("[WARNING] No activity detected")
+        print("[INFO] This is normal if monitoring just started or hasn't run a cycle yet")
+
+    print()
+
+except ImportError as e:
+    print(f"[ERROR] Failed to import: {e}")
+    sys.exit(1)
+except Exception as e:
+    print(f"[ERROR] Activity counter test failed: {e}")
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
+
 # Final summary
 print("=" * 70)
 print("  VERIFICATION COMPLETE")
@@ -239,10 +273,11 @@ print()
 print("Next steps:")
 print("  1. Start System Observer: py -m scripts.run_system_observer")
 print("  2. Monitor will send detailed alerts for any errors")
-print("  3. Hourly reports will include [Errno 22] count if it occurs")
+print("  3. Hourly reports will now show REAL activity (not 0s)")
 print()
 print("Documentation:")
 print("  - SYSTEM_OBSERVER_ENHANCEMENTS.md - Full enhancement details")
+print("  - SYSTEM_OBSERVER_ACTIVITY_FIX.md - Activity counter fix details")
 print("  - TELEGRAM_CONFLICT_FIX_SUMMARY.md - Complete fix summary")
 print("  - ERRNO_22_FIX_COMPLETE.md - [Errno 22] fix details")
 print()

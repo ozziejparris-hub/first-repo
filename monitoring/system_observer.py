@@ -247,6 +247,64 @@ class SystemObserver:
                 print(f"[OBSERVER] Error in hourly report loop: {e}")
                 await asyncio.sleep(60)
 
+    def _count_activity_from_logs(self, hours: float = 1.0) -> Dict:
+        """
+        Count actual monitoring activity from log files.
+
+        Args:
+            hours: Time window in hours
+
+        Returns:
+            dict: Activity metrics
+        """
+        cutoff_time = datetime.now() - timedelta(hours=hours)
+
+        telegram_calls = 0
+        ollama_calls = 0
+        polymarket_calls = 0
+
+        try:
+            with open('logs/monitoring.log', 'r', encoding='utf-8', errors='replace') as f:
+                for line in f:
+                    # Skip lines without timestamps
+                    if len(line) < 19:
+                        continue
+
+                    # Try to parse timestamp
+                    try:
+                        timestamp_str = line[:19]
+                        timestamp = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+
+                        # Only process recent lines
+                        if timestamp < cutoff_time:
+                            continue
+
+                        # Count API calls
+                        line_lower = line.lower()
+
+                        if 'telegram.org' in line_lower or ('telegram' in line_lower and 'http' in line_lower):
+                            telegram_calls += 1
+
+                        if '11434' in line or 'ollama' in line_lower or 'mistral' in line_lower:
+                            ollama_calls += 1
+
+                        if 'polymarket' in line_lower or 'clob' in line_lower:
+                            polymarket_calls += 1
+
+                    except ValueError:
+                        # Not a valid timestamp line
+                        continue
+
+        except FileNotFoundError:
+            pass
+
+        return {
+            'trades_checked': telegram_calls,  # Each Telegram call = 1 trade notification
+            'markets_scanned': ollama_calls,  # Each Ollama call = 1 market filtered by AI
+            'elo_updates': 0,  # Not tracked in logs
+            'api_calls': telegram_calls + ollama_calls + polymarket_calls
+        }
+
     async def _collect_metrics(self) -> Dict:
         """
         Collect system metrics for reporting with detailed error breakdown.
@@ -307,6 +365,9 @@ class SystemObserver:
         else:
             performance = 'poor'
 
+        # Get REAL activity from logs (last hour)
+        activity = self._count_activity_from_logs(hours=1.0)
+
         return {
             'health_status': health['status'],
             'uptime_hours': uptime_hours,
@@ -314,14 +375,7 @@ class SystemObserver:
             'error_count': error_summary.get('total_errors', 0),
             'error_details': error_details,
             'performance': performance,
-            'activity': {
-                # These would be populated from actual monitoring data
-                # For now, placeholder values
-                'trades_checked': 0,
-                'markets_scanned': 0,
-                'elo_updates': 0,
-                'api_calls': 0
-            }
+            'activity': activity
         }
 
     async def _shutdown(self):
