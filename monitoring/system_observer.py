@@ -60,6 +60,7 @@ class SystemObserver:
         # State
         self.running = False
         self.start_time = None
+        self.observer_start_time = datetime.now()  # Track when observer started
         self.last_hourly_report = None
         self.check_count = 0
         self.error_count = 0
@@ -173,6 +174,10 @@ class SystemObserver:
                     # Try to parse detailed error
                     detailed_error = self.log_monitor.parse_detailed_error(line)
                     if detailed_error:
+                        # Skip errors from before observer started (old cached errors)
+                        if detailed_error.timestamp < self.observer_start_time:
+                            continue  # Ignore old errors
+
                         self.error_count += 1
                         print(f"[OBSERVER] Detailed error detected: {detailed_error.error_type or 'Unknown'}")
 
@@ -187,6 +192,10 @@ class SystemObserver:
                         # Fallback to old error detection
                         error = self.log_monitor.detect_errors(line)
                         if error:
+                            # Skip errors from before observer started
+                            if error.get('timestamp') and error['timestamp'] < self.observer_start_time:
+                                continue  # Ignore old errors
+
                             self.error_count += 1
                             print(f"[OBSERVER] Error detected: {error['type']}")
 
@@ -197,6 +206,15 @@ class SystemObserver:
                     # Check for known issues
                     issue = self.log_monitor.detect_known_issues(line)
                     if issue:
+                        # Check if issue is from after observer start
+                        if len(line) >= 19:
+                            try:
+                                timestamp = datetime.strptime(line[:19], '%Y-%m-%d %H:%M:%S')
+                                if timestamp < self.observer_start_time:
+                                    continue  # Ignore old issues
+                            except ValueError:
+                                pass  # Can't parse timestamp, allow through
+
                         print(f"[OBSERVER] Known issue detected: {issue['issue_type']}")
                         await self.telegram.send_known_issue_alert(issue)
 
