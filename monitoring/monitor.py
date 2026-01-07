@@ -299,10 +299,7 @@ class PolymarketMonitor:
         for keyword in exclusion_keywords:
             if keyword in title_lower:
                 # Log which keyword triggered the exclusion (use safe encoding for Windows)
-                try:
-                    print(f"[FILTER] Matched keyword: '{keyword}'")
-                except (OSError, UnicodeEncodeError):
-                    pass  # Skip print if encoding fails
+                safe_print(f"[FILTER] Matched keyword: '{keyword}'", fallback="[FILTER] Keyword matched")
                 return True
 
         # REGEX PATTERN DETECTION - Catches patterns that keywords might miss
@@ -427,10 +424,8 @@ class PolymarketMonitor:
         """
         # LAYER 1: Fast keyword filtering (existing comprehensive patterns)
         if self._keyword_exclusion_check(market_title):
-            try:
-                print(f"[KEYWORD FILTER] [EXCLUDED] Excluding: {market_title[:50]}...")
-            except (OSError, UnicodeEncodeError):
-                pass  # Skip print if encoding fails
+            safe_print(f"[KEYWORD FILTER] [EXCLUDED] Excluding: {market_title[:50]}...",
+                      fallback="[KEYWORD FILTER] [EXCLUDED] Market excluded by keyword")
             return True  # EXCLUDE via keywords
 
         # FAST PATH: Strong geopolitics signals skip AI (performance optimization)
@@ -552,10 +547,8 @@ class PolymarketMonitor:
 
             if is_new:
                 new_trades_count += 1
-                try:
-                    print(f"NEW: {trader_address[:10]}... traded {shares:.1f} @ ${price:.3f} in {market_title[:30]}...")
-                except (OSError, UnicodeEncodeError):
-                    print(f"NEW: {trader_address[:10]}... traded {shares:.1f} @ ${price:.3f}")
+                safe_print(f"NEW: {trader_address[:10]}... traded {shares:.1f} @ ${price:.3f} in {market_title[:30]}...",
+                          fallback=f"NEW: {trader_address[:10]}... traded {shares:.1f} @ ${price:.3f}")
 
                 # ============================================================
                 # BETTING INTELLIGENCE ALERTS
@@ -596,7 +589,8 @@ class PolymarketMonitor:
                                 await self.elo_bot.send_win_streak_alert(trader_address, streak_data)
 
                     except Exception as e:
-                        print(f"[BETTING INTEL] Warning: Alert failed: {e}")
+                        safe_print(f"[BETTING INTEL] Warning: Alert failed: {e}",
+                                  fallback="[BETTING INTEL] Warning: Alert failed")
             else:
                 duplicate_count += 1
 
@@ -610,10 +604,8 @@ class PolymarketMonitor:
         if not unnotified_trades:
             return
 
-        try:
-            print(f"Processing {len(unnotified_trades)} trade notifications...")
-        except (OSError, UnicodeEncodeError):
-            print(f"Processing trade notifications...")
+        safe_print(f"Processing {len(unnotified_trades)} trade notifications...",
+                  fallback="Processing trade notifications...")
 
         # Bundle trades by trader
         trades_by_trader = {}
