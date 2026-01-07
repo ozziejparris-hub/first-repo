@@ -9,17 +9,62 @@ import sys
 import asyncio
 import requests
 import logging
+from datetime import datetime
+from pathlib import Path
 from dotenv import load_dotenv
 from pydantic_ai import Agent
 from .monitor import main as run_monitor
 
-# Fix Windows console encoding to handle Unicode
+# ===== PERMANENT [ERRNO 22] FIX - CONSOLE OUTPUT REDIRECT =====
+# Redirect ALL console output to UTF-8 log file to eliminate Windows encoding errors
+# This must happen BEFORE any print statements
 if sys.platform == 'win32':
-    import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    # Create logs directory if it doesn't exist
+    log_dir = Path('logs')
+    log_dir.mkdir(exist_ok=True)
 
-# Create logs directory if it doesn't exist
+    # Console log path
+    console_log_path = log_dir / 'monitoring_console.log'
+
+    try:
+        # Rotate console log if it gets too large (> 10 MB)
+        if console_log_path.exists():
+            size_mb = console_log_path.stat().st_size / (1024 * 1024)
+
+            if size_mb > 10:
+                # Rotate: rename old log with timestamp
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                rotated_path = log_dir / f'monitoring_console_{timestamp}.log'
+                console_log_path.rename(rotated_path)
+                print(f"[CONSOLE] Rotated log file, old log saved as: {rotated_path.name}", file=sys.stderr)
+
+        # Open console log file with UTF-8 encoding (append mode)
+        console_log = open(console_log_path, 'a', encoding='utf-8', buffering=1)
+
+        # Write separator with timestamp
+        console_log.write(f"\n{'='*70}\n")
+        console_log.write(f"Monitoring Started: {datetime.now()}\n")
+        console_log.write(f"{'='*70}\n\n")
+        console_log.flush()
+
+        # Redirect stdout and stderr to log file
+        sys.stdout = console_log
+        sys.stderr = console_log
+
+        print("[CONSOLE] Output redirected to logs/monitoring_console.log")
+        print("[CONSOLE] All print statements will be logged to file (no console output)")
+        print("[CONSOLE] View output: py scripts/view_console.py --follow")
+        print()
+
+    except Exception as e:
+        # If redirect fails, fall back to standard error handling
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+        print(f"[WARNING] Could not redirect console output: {e}")
+        print("[WARNING] Continuing with UTF-8 encoding wrapper (may still have [Errno 22] errors)")
+
+# Create logs directory if it doesn't exist (for other logs)
 os.makedirs('logs', exist_ok=True)
 
 # Configure logging to write to both file and console
