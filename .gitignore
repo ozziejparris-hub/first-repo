@@ -91,3 +91,19 @@ data/polymarket_tracker.db-shm
 *.db-wal
 *.db-shm
 nul
+
+# Database temp files
+*.db-wal
+*.db-shm
+
+# Generated results
+results/
+results/*.csv
+
+# Actual experiment configs (keep templates)
+experiments/*.json
+!experiments/*.json.example
+
+# Research/temporary files
+resolved_market_samples.json
+investigation_findings.json

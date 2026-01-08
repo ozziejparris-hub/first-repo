@@ -330,6 +330,123 @@ class MarketSimulator:
             'trade_result': 'won' if (predicts_correctly and market_outcome) else ('lost' if market_outcome else 'pending')
         }
 
+    def clear_simulation_data(self, verbose: bool = True):
+        """
+        Clear only simulation data (recent traders with low trade counts).
+
+        Keeps production data intact by only removing traders that:
+        - Have < 100 total trades (production traders have 500+)
+        - Were updated recently (within last 7 days)
+
+        This allows re-running simulations without affecting production data.
+        """
+        if verbose:
+            print("[CLEAR] Removing simulation traders...")
+            print("        Criteria: total_trades < 100 AND updated within 7 days")
+            print()
+
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+
+        # First, count how many will be deleted
+        cursor.execute("""
+            SELECT COUNT(*) FROM traders
+            WHERE total_trades < 100
+            AND (
+                elo_last_updated > datetime('now', '-7 days')
+                OR last_updated > datetime('now', '-7 days')
+            )
+        """)
+
+        count_to_delete = cursor.fetchone()[0]
+
+        if verbose and count_to_delete > 0:
+            print(f"        Found {count_to_delete} simulation traders to remove")
+
+            # Show a few examples
+            cursor.execute("""
+                SELECT address, total_trades, last_updated
+                FROM traders
+                WHERE total_trades < 100
+                AND (
+                    elo_last_updated > datetime('now', '-7 days')
+                    OR last_updated > datetime('now', '-7 days')
+                )
+                LIMIT 5
+            """)
+
+            examples = cursor.fetchall()
+            for addr, trades, updated in examples:
+                print(f"          - {addr[:20]}... (trades={trades})")
+
+        # Get trader addresses to delete
+        cursor.execute("""
+            SELECT address FROM traders
+            WHERE total_trades < 100
+            AND (
+                elo_last_updated > datetime('now', '-7 days')
+                OR last_updated > datetime('now', '-7 days')
+            )
+        """)
+
+        trader_addresses = [row[0] for row in cursor.fetchall()]
+
+        if not trader_addresses:
+            if verbose:
+                print("[OK] No simulation traders found to delete")
+            conn.close()
+            return
+
+        # Delete associated trades first (foreign key constraint)
+        placeholders = ','.join('?' * len(trader_addresses))
+        cursor.execute(f"""
+            DELETE FROM trades
+            WHERE trader_address IN ({placeholders})
+        """, trader_addresses)
+
+        trades_deleted = cursor.rowcount
+
+        # Delete positions
+        cursor.execute(f"""
+            DELETE FROM positions
+            WHERE trader_address IN ({placeholders})
+        """, trader_addresses)
+
+        positions_deleted = cursor.rowcount
+
+        # Delete traders
+        cursor.execute(f"""
+            DELETE FROM traders
+            WHERE address IN ({placeholders})
+        """, trader_addresses)
+
+        traders_deleted = cursor.rowcount
+
+        # Also clean up simulation markets (markets with very few trades)
+        cursor.execute("""
+            DELETE FROM markets
+            WHERE market_id IN (
+                SELECT m.market_id
+                FROM markets m
+                LEFT JOIN trades t ON m.market_id = t.market_id
+                WHERE m.last_checked > datetime('now', '-7 days')
+                GROUP BY m.market_id
+                HAVING COUNT(t.trade_id) < 5
+            )
+        """)
+
+        markets_deleted = cursor.rowcount
+
+        conn.commit()
+        conn.close()
+
+        if verbose:
+            print(f"[OK] Deleted {traders_deleted} traders")
+            print(f"     Deleted {trades_deleted} trades")
+            print(f"     Deleted {positions_deleted} positions")
+            print(f"     Deleted {markets_deleted} low-activity markets")
+            print()
+
     def seed_database(self, clear_existing: bool = False):
         """Main seeding logic."""
         verbose = self.config['options'].get('verbose', True)
@@ -662,6 +779,7 @@ Examples:
 
     parser.add_argument('--config', type=str, help='Path to config JSON file')
     parser.add_argument('--clear', action='store_true', help='Clear database before seeding')
+    parser.add_argument('--clear-simulation', action='store_true', help='Clear only simulation data (keep production data)')
     parser.add_argument('--quick', action='store_true', help='Quick mode (50 traders, 20 markets, 500 trades)')
     parser.add_argument('--seed', type=int, help='Random seed for reproducibility')
     parser.add_argument('--quiet', action='store_true', help='Quiet mode (minimal output)')
@@ -686,6 +804,10 @@ Examples:
     # Apply clear flag
     if args.clear:
         sim.config['options']['clear_database'] = True
+
+    # Clear simulation data if requested
+    if args.clear_simulation:
+        sim.clear_simulation_data()
 
     # Run validation only
     if args.validate_only:
