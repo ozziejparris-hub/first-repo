@@ -68,14 +68,26 @@ reports/*.json
 reports/*.png
 reports/*.html
 
+# Generated results and experiments
+results/
+results/*.csv
+
+# Temporary experiment configs (keep .example files)
+experiments/*.json
+!experiments/*.json.example
+
 # Claude Code
 .claude/
 settings.local.json
 
+# Database backups and temp files
 data/backups/
-*.json
 data/*.db
 data/polymarket_tracker.db-journal
 data/polymarket_tracker.db-wal
 data/polymarket_tracker.db-shm
-results/elo_rankings_20260108_230449.csv
+
+# SQLite database temporary files (global pattern)
+*.db-wal
+*.db-shm
+nul
