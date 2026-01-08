@@ -76,3 +76,6 @@ data/backups/
 *.json
 data/*.db
 data/polymarket_tracker.db-journal
+data/polymarket_tracker.db-wal
+data/polymarket_tracker.db-shm
+results/elo_rankings_20260108_230449.csv
