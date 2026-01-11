@@ -175,6 +175,40 @@ py scripts/simulation/compare_systems.py --all --export results/comparison_repor
 - Confusion matrix accuracy
 - Combined score (weighted average)
 
+### run_full_pipeline.py
+One-command orchestrator that runs the complete validation pipeline.
+
+**Usage:**
+```bash
+# Run full pipeline (all 8 stages)
+py scripts/simulation/run_full_pipeline.py
+
+# Quick mode (stages 1-4 only)
+py scripts/simulation/run_full_pipeline.py --quick
+
+# Run specific stages
+py scripts/simulation/run_full_pipeline.py --stages 1 2 3 4
+
+# Custom export directory
+py scripts/simulation/run_full_pipeline.py --export-dir results/my_validation
+```
+
+**Pipeline Stages:**
+1. Data Generation - Seed test data with config
+2. ELO Calculation - Calculate ratings
+3. Validation - Run 5 automated tests
+4. Optimization - Find optimal K-factor
+5. Backtesting - Test trading strategies
+6. Error Analysis - Identify prediction errors
+7. System Comparison - A/B test configurations
+8. Final Report - Generate executive summary
+
+**Outputs:**
+- Individual reports from each stage
+- Aggregated pipeline_summary.json
+- Executive summary with key findings
+- Total runtime and stage timings
+
 ## Workflow
 
 ### Complete ELO Validation Workflow
