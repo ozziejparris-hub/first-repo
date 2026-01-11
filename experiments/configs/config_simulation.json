@@ -1,0 +1,51 @@
+{
+  "seed": 42,
+  "description": "Simulation optimized for ELO validation - HIGH resolution rate",
+
+  "traders": {
+    "total": 100,
+    "distribution": {
+      "elite": 0.05,
+      "good": 0.15,
+      "average": 0.50,
+      "poor": 0.30
+    },
+    "skill_ranges": {
+      "elite": [0.65, 0.80],
+      "good": [0.55, 0.63],
+      "average": [0.47, 0.54],
+      "poor": [0.30, 0.46]
+    },
+    "volume_ranges": {
+      "elite": [10000, 100000],
+      "good": [5000, 50000],
+      "average": [1000, 20000],
+      "poor": [500, 10000]
+    },
+    "trade_frequency": {
+      "elite": [30, 50],
+      "good": [20, 40],
+      "average": [10, 30],
+      "poor": [5, 20]
+    }
+  },
+
+  "markets": {
+    "total": 50,
+    "resolved_ratio": 0.80,
+    "category": "Geopolitics",
+    "days_old_range": [1, 90]
+  },
+
+  "trades": {
+    "total": 2000,
+    "buy_sell_ratio": 0.80,
+    "trades_per_market_range": [20, 50]
+  },
+
+  "options": {
+    "clear_database": false,
+    "validate": true,
+    "verbose": true
+  }
+}

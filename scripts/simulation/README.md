@@ -1,0 +1,120 @@
+# Simulation Framework
+
+Tools for testing and validating the ELO rating system using simulated trader data.
+
+## Scripts
+
+### seed_test_data.py
+Generates realistic test data with skill-based traders.
+
+**Usage:**
+```bash
+# Generate test data from config
+py scripts/simulation/seed_test_data.py experiments/configs/config_simulation.json
+
+# Clear previous simulation data first
+py scripts/simulation/seed_test_data.py experiments/configs/config_simulation.json --clear-simulation
+```
+
+**Features:**
+- Creates traders with known skill levels (elite, good, average, poor)
+- Generates realistic trade volumes and frequencies
+- Creates resolved markets for ELO validation
+- Validates data quality after seeding
+
+### calculate_elo_simple.py
+Calculates ELO ratings using simplified algorithm optimized for simulation data.
+
+**Usage:**
+```bash
+# Calculate ELO and display results
+py scripts/simulation/calculate_elo_simple.py
+
+# Use custom K-factor
+py scripts/simulation/calculate_elo_simple.py --k-factor 24
+
+# Export to CSV
+py scripts/simulation/calculate_elo_simple.py --export-csv results/elo_rankings.csv
+```
+
+**Features:**
+- Simple ELO calculation without expensive modifiers
+- Displays top/bottom 10 traders
+- Analyzes correlation between skill and ELO
+- Exports rankings to CSV
+
+### verify_elo_rankings.py
+Automated validation of ELO system accuracy.
+
+**Usage:**
+```bash
+# Run all validation tests
+py scripts/simulation/verify_elo_rankings.py --simulation-age-days 7
+
+# Use custom threshold
+py scripts/simulation/verify_elo_rankings.py --threshold 0.6
+
+# Export validation report
+py scripts/simulation/verify_elo_rankings.py --export results/validation_report.json
+```
+
+**Validation Tests:**
+1. Elite ranking (>60% win rate in top 20%)
+2. Poor ranking (<45% win rate in bottom 50%)
+3. ELO spread (200-800 points)
+4. Correlation (r >= 0.5)
+5. Bucket separation (monotonic decrease)
+
+### analyze_simulation_correlation.py
+Quick correlation analysis for simulation traders only.
+
+**Usage:**
+```bash
+py scripts/simulation/analyze_simulation_correlation.py
+```
+
+### optimize_parameters.py
+Find optimal K-factor for ELO system.
+
+**Usage:**
+```bash
+# Test K-factors from 16 to 40
+py scripts/simulation/optimize_parameters.py --k-range 16 40
+
+# Optimize for specific metric
+py scripts/simulation/optimize_parameters.py --optimize-for correlation
+
+# Export optimization report
+py scripts/simulation/optimize_parameters.py --export results/optimization_report.json
+```
+
+## Workflow
+
+### Complete ELO Validation Workflow
+
+1. **Generate test data:**
+   ```bash
+   py scripts/simulation/seed_test_data.py experiments/configs/config_simulation.json --clear-simulation
+   ```
+
+2. **Calculate ELO ratings:**
+   ```bash
+   py scripts/simulation/calculate_elo_simple.py --k-factor 24
+   ```
+
+3. **Verify ELO accuracy:**
+   ```bash
+   py scripts/simulation/verify_elo_rankings.py --simulation-age-days 7
+   ```
+
+4. **Optimize parameters:**
+   ```bash
+   py scripts/simulation/optimize_parameters.py --k-range 16 40 --optimize-for combined
+   ```
+
+## Configuration
+
+See [experiments/configs/](../../experiments/configs/) for example configurations:
+- `config_simulation.json` - Production config (80% resolved markets)
+- `config_quick.json.example` - Fast testing
+- `config_stress.json.example` - Large-scale stress testing
