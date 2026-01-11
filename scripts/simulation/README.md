@@ -118,6 +118,34 @@ py scripts/simulation/backtest_strategy.py --all-strategies --export results/bac
 - Sharpe ratio - Risk-adjusted returns
 - Max drawdown - Largest losing streak
 
+### analyze_predictions.py
+Analyze ELO prediction errors to identify improvement opportunities.
+
+**Usage:**
+```bash
+# Full analysis
+py scripts/simulation/analyze_predictions.py
+
+# Focus on specific analysis
+py scripts/simulation/analyze_predictions.py --focus false_positives
+py scripts/simulation/analyze_predictions.py --focus market_difficulty
+
+# Export report
+py scripts/simulation/analyze_predictions.py --export results/analysis_report.json
+```
+
+**Analysis Types:**
+1. False Positives - High ELO, low actual performance
+2. False Negatives - Low ELO, high actual performance
+3. Market Difficulty - Which markets hardest to predict
+4. Confusion Matrix - Predicted vs actual skill tiers
+
+**Metrics Analyzed:**
+- Error patterns in misranked traders
+- Market difficulty by elite trader success rate
+- Prediction accuracy by skill tier
+- Common failure modes
+
 ## Workflow
 
 ### Complete ELO Validation Workflow
