@@ -146,6 +146,35 @@ py scripts/simulation/analyze_predictions.py --export results/analysis_report.js
 - Prediction accuracy by skill tier
 - Common failure modes
 
+### compare_systems.py
+A/B test different ELO configurations to find optimal system.
+
+**Usage:**
+```bash
+# Compare K-factors
+py scripts/simulation/compare_systems.py --compare k_factors
+
+# Compare simple vs full
+py scripts/simulation/compare_systems.py --compare simple_vs_full
+
+# Run all comparisons
+py scripts/simulation/compare_systems.py --all
+
+# Export results
+py scripts/simulation/compare_systems.py --all --export results/comparison_report.json
+```
+
+**Comparison Types:**
+1. K-Factor Comparison - Test different volatility settings (24 vs 32 vs 40)
+2. Simple vs Full - Basic ELO vs modifiers (not yet implemented)
+
+**Metrics Compared:**
+- Correlation (win rate ↔ ELO)
+- Elite accuracy (>60% win rate in top 20%)
+- Poor accuracy (<45% win rate in bottom 50%)
+- Confusion matrix accuracy
+- Combined score (weighted average)
+
 ## Workflow
 
 ### Complete ELO Validation Workflow
