@@ -88,6 +88,36 @@ py scripts/simulation/optimize_parameters.py --optimize-for correlation
 py scripts/simulation/optimize_parameters.py --export results/optimization_report.json
 ```
 
+### backtest_strategy.py
+Test trading strategies on simulation data with resolved outcomes.
+
+**Usage:**
+```bash
+# Test single strategy
+py scripts/simulation/backtest_strategy.py --strategy follow_top_n --top-n 10
+
+# Test with different confidence threshold
+py scripts/simulation/backtest_strategy.py --strategy follow_top_n --top-n 10 --min-confidence 0.7
+
+# Test all strategies
+py scripts/simulation/backtest_strategy.py --all-strategies
+
+# Export results
+py scripts/simulation/backtest_strategy.py --all-strategies --export results/backtest_report.json
+```
+
+**Strategies:**
+1. Follow Top N ELO - Copy trades from highest-rated traders
+2. Weighted Consensus - (coming soon)
+3. Contrarian - (coming soon)
+
+**Metrics Tracked:**
+- Win rate - % of trades that won
+- ROI - Return on investment
+- Total P&L - Absolute profit/loss
+- Sharpe ratio - Risk-adjusted returns
+- Max drawdown - Largest losing streak
+
 ## Workflow
 
 ### Complete ELO Validation Workflow
