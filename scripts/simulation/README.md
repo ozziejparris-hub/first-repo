@@ -4,6 +4,33 @@ Tools for testing and validating the ELO rating system using simulated trader da
 
 ## Scripts
 
+### view_markets.py
+Inspect simulated markets and trader behavior.
+
+**Usage:**
+```bash
+# List all markets
+py scripts/simulation/view_markets.py
+
+# Show hardest markets
+py scripts/simulation/view_markets.py --sort-by difficulty --limit 10
+
+# Show most traded markets
+py scripts/simulation/view_markets.py --sort-by volume --limit 10
+
+# Show specific market details
+py scripts/simulation/view_markets.py --market-id <market_id>
+```
+
+**Features:**
+- List all simulated markets (resolved and pending)
+- Calculate market difficulty (elite trader success rate)
+- Show trader participation and outcomes
+- Display winners/losers with P&L
+- Sort by difficulty, volume, or title
+
+## Core Scripts
+
 ### seed_test_data.py
 Generates realistic test data with skill-based traders.
 
