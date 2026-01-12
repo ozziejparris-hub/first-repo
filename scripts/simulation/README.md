@@ -260,9 +260,146 @@ py scripts/simulation/run_full_pipeline.py --export-dir results/my_validation
    py scripts/simulation/optimize_parameters.py --k-range 16 40 --optimize-for combined
    ```
 
+## Production-Grade Simulation
+
+### seed_production_data.py
+Enhanced data seeder with realistic market dynamics.
+
+**Usage:**
+```bash
+# Run production simulation
+py scripts/simulation/seed_production_data.py --config experiments/configs/config_production.json --clear-simulation
+```
+
+**Enhanced Features:**
+- **Price Evolution**: Geometric Brownian motion with drift toward true outcome
+- **News Events**: Information shocks that move prices
+- **Multi-Category Markets**: 7 categories (Elections, Geopolitics, Economics, etc.)
+- **Behavioral Biases**: Overconfidence, loss aversion, reaction delays
+- **Market Lifecycle**: Early uncertainty to late certainty evolution
+- **Trader Scaling**: Elite traders build positions gradually
+- **Liquidity Levels**: High, medium, low affecting slippage
+
+### validate_realism.py
+Compare simulation statistics to real Polymarket benchmarks.
+
+**Usage:**
+```bash
+# Full validation
+py scripts/simulation/validate_realism.py
+
+# Export report
+py scripts/simulation/validate_realism.py --export results/realism_report.json
+```
+
+**Metrics Validated:**
+- Volume distribution (Gini coefficient, power law fit)
+- Trader concentration (top 5% profit share)
+- Win rate distribution (normal fit around 50%)
+- Category diversity
+- Trade size distribution
+- Resolution timing patterns
+
+**Benchmark Targets:**
+- Volume Gini: 0.75 (power law distribution)
+- Top 5% Profit Share: 80%
+- Win Rate Mean: 50%
+- Min Categories: 5
+- Realism Score: 80%+
+
+### simulation_observer.py
+Automated analyzer that suggests improvements based on pipeline results.
+
+**Usage:**
+```bash
+# Analyze latest pipeline
+py scripts/simulation/simulation_observer.py --pipeline results/pipeline
+
+# Compare before/after
+py scripts/simulation/simulation_observer.py --compare results/baseline results/improved
+```
+
 ## Configuration
 
-See [experiments/configs/](../../experiments/configs/) for example configurations:
-- `config_simulation.json` - Production config (80% resolved markets)
-- `config_quick.json.example` - Fast testing
-- `config_stress.json.example` - Large-scale stress testing
+See [experiments/configs/](../../experiments/configs/) for configurations:
+- `config_simulation.json` - Basic simulation (80% resolved markets)
+- `config_production.json` - Production-grade simulation with:
+  - 500 traders (25 elite, 75 good, 250 average, 150 poor)
+  - 200 markets across 7 categories
+  - 25,000 trades with realistic dynamics
+  - News events and price evolution
+  - Behavioral biases
+
+## Production Workflow
+
+### Full Production Validation
+
+```bash
+# 1. Clear old simulation data and seed new production data
+py scripts/simulation/seed_production_data.py --config experiments/configs/config_production.json --clear-simulation
+
+# 2. Calculate ELO ratings
+py scripts/simulation/calculate_elo_simple.py --k-factor 32
+
+# 3. Validate realism against Polymarket benchmarks
+py scripts/simulation/validate_realism.py
+
+# 4. Run full validation pipeline
+py scripts/simulation/run_full_pipeline.py --export-dir results/production
+
+# 5. Get improvement recommendations
+py scripts/simulation/simulation_observer.py --pipeline results/production
+```
+
+### Realism Tuning
+
+If realism score is below 80%, adjust config_production.json:
+
+| Issue | Solution |
+|-------|----------|
+| Win rates too high | Reduce skill_ranges, increase market efficiency |
+| Volume not concentrated | Adjust liquidity_levels power law |
+| Categories unbalanced | Modify categories distribution |
+| Trade sizes wrong | Adjust volume_ranges and trade_sizing |
+
+## Architecture
+
+```
+Production Simulation Flow:
+┌──────────────────────────────────────────────────────────────┐
+│  config_production.json                                       │
+│  ├── traders (500: elite/good/average/poor)                  │
+│  ├── markets (200 across 7 categories)                       │
+│  ├── trades (25,000 with behavioral biases)                  │
+│  └── temporal_dynamics (news, lifecycle, hours)              │
+└────────────────────────────────────────────────────────────┬─┘
+                                                             │
+┌────────────────────────────────────────────────────────────▼─┐
+│  seed_production_data.py                                      │
+│  ├── Generate price histories (Brownian motion)              │
+│  ├── Simulate news events                                     │
+│  ├── Create skill-weighted trades                            │
+│  └── Save to SQLite database                                 │
+└────────────────────────────────────────────────────────────┬─┘
+                                                             │
+┌────────────────────────────────────────────────────────────▼─┐
+│  calculate_elo_simple.py                                      │
+│  └── Calculate ELO from resolved market outcomes             │
+└────────────────────────────────────────────────────────────┬─┘
+                                                             │
+┌────────────────────────────────────────────────────────────▼─┐
+│  validate_realism.py                                          │
+│  ├── Compare to Polymarket benchmarks                        │
+│  └── Generate realism score (target: 80%+)                   │
+└────────────────────────────────────────────────────────────┬─┘
+                                                             │
+┌────────────────────────────────────────────────────────────▼─┐
+│  run_full_pipeline.py                                         │
+│  └── 8-stage validation with comprehensive reporting         │
+└────────────────────────────────────────────────────────────┬─┘
+                                                             │
+┌────────────────────────────────────────────────────────────▼─┐
+│  simulation_observer.py                                       │
+│  └── Prioritized improvement recommendations                 │
+└──────────────────────────────────────────────────────────────┘
+```
