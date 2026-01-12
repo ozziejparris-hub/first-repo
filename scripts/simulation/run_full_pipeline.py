@@ -63,11 +63,17 @@ class PipelineOrchestrator:
         start = time.time()
 
         try:
+            # Set PYTHONPATH to project root so child processes can import modules
+            project_root = Path(__file__).parent.parent.parent
+            env = os.environ.copy()
+            env['PYTHONPATH'] = str(project_root)
+
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                cwd=Path(__file__).parent.parent.parent
+                cwd=project_root,
+                env=env  # Pass environment with PYTHONPATH
             )
 
             elapsed = time.time() - start
@@ -94,7 +100,7 @@ class PipelineOrchestrator:
         # Seed new data
         cmd_seed = [
             'py', 'scripts/simulation/seed_test_data.py',
-            'experiments/configs/config_simulation.json',
+            '--config', 'experiments/configs/config_simulation.json',
             '--clear-simulation'
         ]
 

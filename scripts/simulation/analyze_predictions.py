@@ -391,6 +391,11 @@ class PredictionAnalyzer:
 
             matrix[predicted_tier][actual_tier] += 1
 
+        # Calculate accuracy
+        correct = sum(matrix[tier][tier] for tier in ['Elite', 'Good', 'Average', 'Poor'])
+        total = sum(sum(counts.values()) for counts in matrix.values())
+        accuracy = correct / total if total > 0 else 0
+
         # Display matrix
         if verbose:
             print("                     Actual Performance")
@@ -403,20 +408,14 @@ class PredictionAnalyzer:
                       f"{counts['Average']:>8} {counts['Poor']:>7}")
 
             print()
-
-            # Calculate accuracy
-            correct = sum(matrix[tier][tier] for tier in ['Elite', 'Good', 'Average', 'Poor'])
-            total = sum(sum(counts.values()) for counts in matrix.values())
-            accuracy = correct / total if total > 0 else 0
-
             print(f"  Overall Accuracy: {accuracy*100:.1f}% ({correct}/{total} correct)")
             print()
 
         self.analysis_results['confusion_matrix'] = matrix
         self.analysis_results['confusion_matrix_accuracy'] = {
-            'correct': sum(matrix[tier][tier] for tier in ['Elite', 'Good', 'Average', 'Poor']),
-            'total': sum(sum(counts.values()) for counts in matrix.values()),
-            'accuracy': correct / total if total > 0 else 0
+            'correct': correct,
+            'total': total,
+            'accuracy': accuracy
         }
         return matrix
 
