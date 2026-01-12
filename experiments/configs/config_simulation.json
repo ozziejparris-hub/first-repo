@@ -31,16 +31,16 @@
   },
 
   "markets": {
-    "total": 50,
+    "total": 125,
     "resolved_ratio": 0.80,
     "category": "Geopolitics",
     "days_old_range": [1, 90]
   },
 
   "trades": {
-    "total": 2000,
+    "total": 5000,
     "buy_sell_ratio": 0.80,
-    "trades_per_market_range": [20, 50]
+    "trades_per_market_range": [30, 80]
   },
 
   "options": {
