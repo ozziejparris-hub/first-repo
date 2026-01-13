@@ -224,6 +224,32 @@
     }
   },
 
+  "market_efficiency": {
+    "enabled": true,
+    "base_efficiency": 0.85,
+    "category_efficiency": {
+      "Elections": 0.90,
+      "Geopolitics": 0.85,
+      "Economics": 0.88,
+      "Crypto": 0.80,
+      "Sports": 0.92,
+      "Entertainment": 0.85,
+      "Other": 0.85
+    },
+    "liquidity_impact": {
+      "high": 0.95,
+      "medium": 0.85,
+      "low": 0.75
+    }
+  },
+
+  "target_win_rates": {
+    "elite": 0.58,
+    "good": 0.53,
+    "average": 0.49,
+    "poor": 0.42
+  },
+
   "elo_parameters": {
     "base_k_factor": 32,
     "starting_elo": 1500,

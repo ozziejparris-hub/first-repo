@@ -537,30 +537,58 @@ class ProductionSimulator:
 
     def generate_trade(self, trader: TraderProfile, market: Market, timestamp: datetime) -> Optional[Dict]:
         """
-        Generate a trade with realistic decision-making.
+        Generate a trade with realistic decision-making incorporating market efficiency.
+
+        Market efficiency means prices already reflect most information, so even
+        skilled traders only have small edges (5-10%) rather than predicting outcomes directly.
 
         Considers:
-        - Trader skill level
+        - Market efficiency (prices already good estimates)
+        - Trader skill gives SMALL edge over market
         - Current market price
         - Trader's confidence threshold
         - Behavioral biases
         - News events
         """
-        current_price = self.get_price_at_time(market, timestamp)
-
-        # Skilled traders estimate true probability better
-        skill = trader.skill_level
+        # True probability of outcome
         true_prob = 0.8 if market.true_outcome == 'Yes' else 0.2
 
-        # Trader's estimate (skill affects accuracy)
-        noise = random.gauss(0, 0.3 * (1 - skill))
-        trader_estimate = skill * true_prob + (1 - skill) * 0.5 + noise
-        trader_estimate = max(0.1, min(0.9, trader_estimate))
+        # Market efficiency: prices already incorporate most information
+        efficiency_config = self.config.get('market_efficiency', {})
+        if efficiency_config.get('enabled', False):
+            base_efficiency = efficiency_config.get('base_efficiency', 0.85)
+            cat_efficiency = efficiency_config.get('category_efficiency', {}).get(market.category, 0.85)
+            liq_multiplier = efficiency_config.get('liquidity_impact', {}).get(market.liquidity_level, 0.85)
 
-        # Apply overconfidence bias
+            effective_efficiency = base_efficiency * cat_efficiency * liq_multiplier
+
+            # Market price reflects true probability with some noise
+            market_implied_prob = effective_efficiency * true_prob + (1 - effective_efficiency) * 0.5
+            market_noise = random.gauss(0, 0.05 * (1 - effective_efficiency))
+            current_price = max(0.05, min(0.95, market_implied_prob + market_noise))
+        else:
+            # Fallback to simple price from history
+            current_price = self.get_price_at_time(market, timestamp)
+
+        # Trader's edge comes from skill, but it's SMALL (not 50%, more like 5-10%)
+        skill = trader.skill_level
+
+        # Maximum edge even for elite traders is 15 percentage points
+        # Elite (~0.75 skill) get ~3.75pp edge, Poor (~0.35 skill) get -2.25pp edge
+        base_max_edge = 0.15
+        trader_edge = (skill - 0.5) * base_max_edge
+
+        # Add noise to trader estimate (imperfect information)
+        estimate_noise = random.gauss(0, 0.05)
+        trader_estimate = current_price + trader_edge + estimate_noise
+        trader_estimate = max(0.05, min(0.95, trader_estimate))
+
+        # Apply overconfidence bias (overconfident traders overestimate their edge)
         if random.random() < trader.overconfidence:
-            # Overconfident traders think their estimate is more accurate
-            trader_estimate = 0.7 * trader_estimate + 0.3 * (1 if market.true_outcome == 'Yes' else 0)
+            # Amplify perceived edge by 50%
+            edge_amplification = 0.5
+            trader_estimate = current_price + (trader_estimate - current_price) * (1 + edge_amplification)
+            trader_estimate = max(0.05, min(0.95, trader_estimate))
 
         # Calculate perceived edge
         if trader_estimate > current_price:
@@ -630,16 +658,33 @@ class ProductionSimulator:
         }
 
     def generate_trades_for_market(self, market: Market, traders: List[TraderProfile]) -> List[Dict]:
-        """Generate all trades for a single market over its lifetime."""
+        """Generate all trades for a single market over its lifetime using power law distribution."""
         trades = []
         config = self.config['trades']
 
-        # Determine number of trades based on liquidity
-        min_trades, max_trades = config.get('trades_per_market_range', [50, 200])
-        liquidity_multiplier = {'high': 2.0, 'medium': 1.0, 'low': 0.5}
-        mult = liquidity_multiplier.get(market.liquidity_level, 1.0)
+        # Use power law distribution for volume concentration (Pareto principle)
+        # Top 10% of markets should get ~85% of total volume
+        market_rank = self.markets.index(market)
+        power_law_exponent = 1.5
 
-        target_trades = int(random.uniform(min_trades, max_trades) * mult)
+        # Calculate power law factor for this market
+        power_law_factor = (1 / (market_rank + 1)) ** power_law_exponent
+
+        # Normalize across all markets
+        all_factors = [(1 / (i + 1)) ** power_law_exponent for i in range(len(self.markets))]
+        normalized_factor = power_law_factor / sum(all_factors)
+
+        # Target total trades
+        total_target = config.get('total', 25000)
+        target_trades = int(total_target * normalized_factor * len(self.markets))
+
+        # Apply liquidity multiplier on top of power law
+        liquidity_multiplier = {'high': 3.0, 'medium': 1.0, 'low': 0.3}
+        target_trades = int(target_trades * liquidity_multiplier.get(market.liquidity_level, 1.0))
+
+        # Ensure minimum trades
+        min_trades = config.get('trades_per_market_range', [50, 200])[0]
+        target_trades = max(min_trades, target_trades)
 
         # Select participating traders (weighted by diversification preference)
         participating = []
@@ -895,6 +940,10 @@ class ProductionSimulator:
 
         validation_result = self.validate_data(verbose=verbose)
 
+        # Validate win rates by tier
+        if verbose:
+            self.validate_win_rates()
+
         # Summary
         if verbose:
             print()
@@ -919,6 +968,56 @@ class ProductionSimulator:
             print()
 
         return validation_result
+
+    def validate_win_rates(self):
+        """Validate that win rates by tier match targets."""
+        target_win_rates = self.config.get('target_win_rates', {
+            'elite': 0.58,
+            'good': 0.53,
+            'average': 0.49,
+            'poor': 0.42
+        })
+
+        actual_win_rates = defaultdict(list)
+        for trader in self.traders:
+            if trader.total_trades > 0:
+                win_rate = trader.successful_trades / trader.total_trades
+                actual_win_rates[trader.tier].append(win_rate)
+
+        print()
+        print("Win Rate Validation:")
+        print(f"{'Tier':<10} {'Actual':<10} {'Target':<10} {'Status':<10} {'Count':<10}")
+        print("-" * 50)
+
+        overall_pass = True
+        for tier in ['elite', 'good', 'average', 'poor']:
+            if tier not in actual_win_rates or len(actual_win_rates[tier]) == 0:
+                continue
+
+            rates = actual_win_rates[tier]
+            avg_rate = sum(rates) / len(rates)
+            target = target_win_rates.get(tier, 0.5)
+            diff = abs(avg_rate - target)
+            status = 'OK' if diff < 0.08 else 'WARN' if diff < 0.15 else 'FAIL'
+
+            if status == 'FAIL':
+                overall_pass = False
+
+            print(f"{tier.upper():<10} {avg_rate*100:>6.1f}%   {target*100:>6.1f}%   [{status}]      {len(rates):<10}")
+
+        # Overall mean
+        all_rates = [rate for rates in actual_win_rates.values() for rate in rates]
+        if all_rates:
+            overall_mean = sum(all_rates) / len(all_rates)
+            target_mean = 0.50
+            mean_diff = abs(overall_mean - target_mean)
+            mean_status = 'OK' if mean_diff < 0.05 else 'WARN' if mean_diff < 0.10 else 'FAIL'
+
+            print("-" * 50)
+            print(f"{'OVERALL':<10} {overall_mean*100:>6.1f}%   {target_mean*100:>6.1f}%   [{mean_status}]")
+
+        print()
+        return overall_pass
 
     def validate_data(self, verbose: bool = True) -> bool:
         """Comprehensive validation of generated data."""

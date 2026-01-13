@@ -1,0 +1,161 @@
+{
+  "seed": 42,
+  "description": "Quick production test - calibrated win rates",
+  "version": "2.0-quick",
+  "simulation_duration_days": 180,
+
+  "traders": {
+    "total": 100,
+    "distribution": {
+      "elite": 0.05,
+      "good": 0.15,
+      "average": 0.50,
+      "poor": 0.30
+    },
+    "skill_ranges": {
+      "elite": [0.68, 0.82],
+      "good": [0.56, 0.65],
+      "average": [0.46, 0.54],
+      "poor": [0.28, 0.44]
+    },
+    "volume_ranges": {
+      "elite": [10000, 100000],
+      "good": [5000, 50000],
+      "average": [1000, 25000],
+      "poor": [100, 5000]
+    },
+    "trade_frequency": {
+      "elite": [40, 80],
+      "good": [25, 50],
+      "average": [10, 30],
+      "poor": [3, 15]
+    },
+    "activity_patterns": {
+      "elite": {
+        "reaction_time_hours": [0.5, 4],
+        "confidence_threshold": 0.65,
+        "diversification": [8, 15],
+        "scales_into_positions": true,
+        "uses_stop_loss": true
+      },
+      "good": {
+        "reaction_time_hours": [2, 12],
+        "confidence_threshold": 0.60,
+        "diversification": [5, 10],
+        "scales_into_positions": true,
+        "uses_stop_loss": false
+      },
+      "average": {
+        "reaction_time_hours": [6, 48],
+        "confidence_threshold": 0.55,
+        "diversification": [2, 6],
+        "scales_into_positions": false,
+        "uses_stop_loss": false
+      },
+      "poor": {
+        "reaction_time_hours": [12, 120],
+        "confidence_threshold": 0.50,
+        "diversification": [1, 3],
+        "scales_into_positions": false,
+        "uses_stop_loss": false
+      }
+    },
+    "behavioral_biases": {
+      "overconfidence": {
+        "elite": 0.05,
+        "good": 0.10,
+        "average": 0.20,
+        "poor": 0.35
+      },
+      "loss_aversion": {
+        "elite": 1.5,
+        "good": 2.0,
+        "average": 2.5,
+        "poor": 3.0
+      }
+    }
+  },
+
+  "markets": {
+    "total": 50,
+    "resolved_ratio": 0.80,
+    "categories": {
+      "Elections": 0.25,
+      "Geopolitics": 0.20,
+      "Economics": 0.15,
+      "Crypto": 0.15,
+      "Sports": 0.15,
+      "Entertainment": 0.05,
+      "Other": 0.05
+    },
+    "market_lifecycle": {
+      "creation_to_resolution_days": {
+        "min": 7,
+        "max": 180,
+        "median": 45
+      },
+      "liquidity_levels": {
+        "high": 0.15,
+        "medium": 0.35,
+        "low": 0.50
+      }
+    },
+    "price_dynamics": {
+      "initial_uncertainty": {
+        "min": 0.35,
+        "max": 0.65
+      },
+      "volatility": {
+        "moderate": 0.10
+      },
+      "drift_rate": 0.02,
+      "mean_reversion_strength": 0.15
+    }
+  },
+
+  "trades": {
+    "total": 5000,
+    "trades_per_market_range": [30, 100],
+    "trade_sizing": {
+      "kelly_criterion": 0.5,
+      "max_position_pct": 0.20,
+      "min_edge_required": 0.05
+    }
+  },
+
+  "news_events": {
+    "enabled": false
+  },
+
+  "market_efficiency": {
+    "enabled": true,
+    "base_efficiency": 0.85,
+    "category_efficiency": {
+      "Elections": 0.90,
+      "Geopolitics": 0.85,
+      "Economics": 0.88,
+      "Crypto": 0.80,
+      "Sports": 0.92,
+      "Entertainment": 0.85,
+      "Other": 0.85
+    },
+    "liquidity_impact": {
+      "high": 0.95,
+      "medium": 0.85,
+      "low": 0.75
+    }
+  },
+
+  "target_win_rates": {
+    "elite": 0.58,
+    "good": 0.53,
+    "average": 0.49,
+    "poor": 0.42
+  },
+
+  "options": {
+    "clear_database": false,
+    "validate": true,
+    "verbose": true
+  }
+}
