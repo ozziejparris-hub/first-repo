@@ -662,29 +662,33 @@ class ProductionSimulator:
         trades = []
         config = self.config['trades']
 
-        # Use power law distribution for volume concentration (Pareto principle)
-        # Top 10% of markets should get ~85% of total volume
+        # Calculate this market's rank for power law
         market_rank = self.markets.index(market)
-        power_law_exponent = 1.5
 
-        # Calculate power law factor for this market
+        # Power law exponent for volume concentration (reduced for less concentration)
+        power_law_exponent = 0.9
+
+        # This market's power law factor
         power_law_factor = (1 / (market_rank + 1)) ** power_law_exponent
 
-        # Normalize across all markets
-        all_factors = [(1 / (i + 1)) ** power_law_exponent for i in range(len(self.markets))]
-        normalized_factor = power_law_factor / sum(all_factors)
-
-        # Target total trades
+        # Total available trades to distribute
         total_target = config.get('total', 25000)
-        target_trades = int(total_target * normalized_factor * len(self.markets))
 
-        # Apply liquidity multiplier on top of power law
-        liquidity_multiplier = {'high': 3.0, 'medium': 1.0, 'low': 0.3}
+        # Calculate normalized share across all markets
+        all_factors = sum([(1 / (i + 1)) ** power_law_exponent for i in range(len(self.markets))])
+        market_share = power_law_factor / all_factors
+
+        # Base trades for this market (FIXED - removed len(self.markets) multiplication)
+        target_trades = int(total_target * market_share)
+
+        # More balanced volume distribution across liquidity levels
+        liquidity_multiplier = {'high': 2.0, 'medium': 1.0, 'low': 0.5}
         target_trades = int(target_trades * liquidity_multiplier.get(market.liquidity_level, 1.0))
 
-        # Ensure minimum trades
-        min_trades = config.get('trades_per_market_range', [50, 200])[0]
-        target_trades = max(min_trades, target_trades)
+        # Ensure reasonable bounds
+        min_trades, max_trades = config.get('trades_per_market_range', [50, 200])
+        # Allow high-volume markets to exceed bounds more (up to 3x)
+        target_trades = max(min_trades, min(target_trades, max_trades * 3))
 
         # Select participating traders (weighted by diversification preference)
         participating = []

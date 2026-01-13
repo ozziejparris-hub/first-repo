@@ -89,8 +89,11 @@ class SimpleELOCalculator:
                 m.winning_outcome
             FROM trades t
             INNER JOIN markets m ON t.market_id = m.market_id
+            INNER JOIN traders tr ON t.trader_address = tr.address
             WHERE m.resolved = 1
             AND m.winning_outcome IS NOT NULL
+            AND tr.total_trades < 100
+            AND tr.last_updated > datetime('now', '-7 days')
             ORDER BY t.timestamp
         """)
 

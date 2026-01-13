@@ -93,7 +93,7 @@
 
   "markets": {
     "total": 200,
-    "resolved_ratio": 0.70,
+    "resolved_ratio": 0.75,
     "categories": {
       "Elections": 0.25,
       "Geopolitics": 0.20,
@@ -116,9 +116,9 @@
       },
       "volume_distribution": "power_law",
       "liquidity_levels": {
-        "high": 0.15,
-        "medium": 0.35,
-        "low": 0.50
+        "high": 0.20,
+        "medium": 0.45,
+        "low": 0.35
       }
     },
     "price_dynamics": {
@@ -147,9 +147,9 @@
   },
 
   "trades": {
-    "total": 25000,
+    "total": 40000,
     "buy_sell_ratio": 0.75,
-    "trades_per_market_range": [50, 200],
+    "trades_per_market_range": [80, 300],
     "trade_sizing": {
       "kelly_criterion": 0.5,
       "max_position_pct": 0.20,

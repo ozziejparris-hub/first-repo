@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 # Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from monitoring.database import Database
 
