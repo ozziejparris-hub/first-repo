@@ -503,21 +503,23 @@ class UnifiedELOSystem:
             if market_id:
                 market_trades[market_id].append(trade)
 
+        # Get resolved markets from DATABASE (not API - API returns 0, DB has 2480!)
         if verbose:
-            print(f"Checking resolution status for {len(market_trades)} markets...")
+            print(f"Loading resolved markets from database...")
 
-        # Get resolutions for all markets
-        resolved_markets = 0
-        for i, market_id in enumerate(market_trades.keys(), 1):
-            if verbose and i % 10 == 0:
-                print(f"Progress: {i}/{len(market_trades)} markets checked", end='\r')
-            resolution = self.get_market_resolution(market_id)
-            if resolution.get('resolved'):
-                resolved_markets += 1
-            time.sleep(0.1)  # Rate limiting
+        conn = self.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT market_id, winning_outcome
+            FROM markets
+            WHERE resolved = 1
+            AND winning_outcome IS NOT NULL
+        """)
+        resolved_markets_db = {row[0]: str(row[1]).lower() for row in cursor.fetchall()}
+        conn.close()
 
         if verbose:
-            print(f"\nFound {resolved_markets} resolved markets")
+            print(f"Found {len(resolved_markets_db)} resolved markets from database")
             print("\nUpdating category-specific ELO ratings...")
 
         # Process each resolved market to update category-specific ELO
@@ -525,11 +527,11 @@ class UnifiedELOSystem:
         category_updates = defaultdict(int)
 
         for market_id, trades_list in market_trades.items():
-            resolution = self.market_resolutions.get(market_id)
-            if not resolution or not resolution.get('resolved'):
+            # Check if market is resolved in database
+            if market_id not in resolved_markets_db:
                 continue
 
-            winning_outcome = resolution.get('winning_outcome')
+            winning_outcome = resolved_markets_db[market_id]
             if not winning_outcome:
                 continue
 

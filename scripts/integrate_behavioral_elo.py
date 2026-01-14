@@ -228,15 +228,49 @@ def run_unified_elo_with_behavioral(db_path: str) -> bool:
         # Calculate ELO ratings
         system.calculate_elo_ratings(verbose=True)
 
-        # Export to database with behavioral modifiers
-        print("\nExporting ELO ratings with behavioral modifiers...")
-        system.export_to_database(
-            apply_behavioral=True,
-            apply_advanced=True,
-            verbose=True
-        )
+        # ELO ratings are already saved to database during calculate_elo_ratings()
+        # Update traders table with comprehensive_elo column
+        print("\nSaving ELO ratings to database...")
 
-        print("[OK] ELO ratings calculated and exported with behavioral modifiers")
+        conn = sqlite3.connect(system.db_path)
+        cursor = conn.cursor()
+
+        updated_count = 0
+        for trader_address in system.elo_system.get_all_traders():
+            # Get ELO with behavioral modifiers applied
+            comprehensive_elo = system.get_trader_global_elo(
+                trader_address,
+                apply_behavioral=True,
+                apply_advanced=False,  # Skip advanced since calibration may not be calculated yet
+                apply_network=False,
+                apply_contrarian=False,
+                apply_pnl=False
+            )
+
+            base_elo = system.elo_system.get_overall_elo(trader_address)
+
+            cursor.execute("""
+                UPDATE traders
+                SET comprehensive_elo = ?,
+                    base_category_elo = ?,
+                    behavioral_modifier = ?,
+                    elo_last_updated = ?
+                WHERE address = ?
+            """, (
+                comprehensive_elo,
+                base_elo,
+                comprehensive_elo / max(1, base_elo),  # Calculate multiplier
+                datetime.now(),
+                trader_address
+            ))
+
+            if cursor.rowcount > 0:
+                updated_count += 1
+
+        conn.commit()
+        conn.close()
+
+        print(f"[OK] Saved ELO ratings for {updated_count} traders to database")
 
         # Show top traders with behavioral adjustment
         print("\n" + "="*70)
