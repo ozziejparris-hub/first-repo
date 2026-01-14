@@ -272,6 +272,296 @@ class TradingBehaviorAnalyzer:
             'trading_days': trading_days
         }
 
+    def calculate_kelly_alignment(self, trades: List[Dict], trader_address: str) -> Dict:
+        """
+        Calculate Kelly Criterion alignment score.
+
+        Measures how closely position sizing matches optimal Kelly sizing.
+        Higher score = better position sizing discipline.
+        """
+        if not trades or len(trades) < 5:
+            return {
+                'kelly_alignment_score': None,
+                'avg_kelly_ratio': None,
+                'position_sizing_quality': 'Insufficient Data'
+            }
+
+        # Get trader's overall win rate from database (for edge estimation)
+        conn = self.get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT win_rate, total_trades, successful_trades
+            FROM traders
+            WHERE address = ?
+        """, (trader_address,))
+
+        trader_data = cursor.fetchone()
+        conn.close()
+
+        if not trader_data or trader_data[1] < 10:
+            return {
+                'kelly_alignment_score': None,
+                'avg_kelly_ratio': None,
+                'position_sizing_quality': 'Insufficient Data'
+            }
+
+        win_rate = trader_data[0] if trader_data[0] else 0.5
+
+        # Calculate Kelly alignment for each trade
+        kelly_ratios = []
+
+        for trade in trades:
+            price = float(trade.get('price', 0))
+            shares = float(trade.get('shares', 0))
+
+            if price <= 0 or price >= 1 or shares <= 0:
+                continue
+
+            # Implied probability from market price
+            implied_prob = price
+
+            # Trader's estimated edge (difference from market)
+            trader_edge = win_rate - implied_prob
+
+            # Kelly optimal size: (edge * odds) / odds = edge / (1 - p)
+            # Simplified: kelly_fraction = edge
+            if abs(trader_edge) < 0.01:  # No edge, Kelly = 0
+                kelly_optimal = 0.01  # Minimum to avoid division by zero
+            else:
+                kelly_optimal = abs(trader_edge)
+
+            # Actual position size (normalized by assuming $1000 bankroll)
+            actual_size = shares * price / 1000.0
+
+            # Kelly ratio: actual / optimal
+            kelly_ratio = min(actual_size / kelly_optimal, 5.0)  # Cap at 5x
+            kelly_ratios.append(kelly_ratio)
+
+        if not kelly_ratios:
+            return {
+                'kelly_alignment_score': None,
+                'avg_kelly_ratio': None,
+                'position_sizing_quality': 'Insufficient Data'
+            }
+
+        avg_kelly_ratio = statistics.mean(kelly_ratios)
+
+        # Alignment score: 1.0 = perfect, lower = deviation
+        # Penalize both over-betting and under-betting
+        alignment_score = 1.0 / (1.0 + abs(avg_kelly_ratio - 1.0))
+
+        # Quality classification
+        if alignment_score >= 0.80:
+            quality = "Excellent"
+        elif alignment_score >= 0.60:
+            quality = "Good"
+        elif alignment_score >= 0.40:
+            quality = "Fair"
+        else:
+            quality = "Poor"
+
+        return {
+            'kelly_alignment_score': alignment_score,
+            'avg_kelly_ratio': avg_kelly_ratio,
+            'position_sizing_quality': quality
+        }
+
+    def calculate_patience_metrics(self, trades: List[Dict]) -> Dict:
+        """
+        Calculate patience and timing discipline metrics.
+
+        Measures:
+        - Average time between trades
+        - Hold duration patterns
+        - Trading frequency stability
+        """
+        if not trades or len(trades) < 2:
+            return {
+                'patience_score': None,
+                'avg_time_between_trades_hours': None,
+                'trading_discipline': 'Insufficient Data'
+            }
+
+        # Parse timestamps
+        timestamps = []
+        for trade in trades:
+            ts = trade.get('timestamp')
+            if ts:
+                try:
+                    if isinstance(ts, str):
+                        dt = datetime.fromisoformat(ts.replace('Z', '+00:00'))
+                    elif isinstance(ts, (int, float)):
+                        dt = datetime.fromtimestamp(ts)
+                    else:
+                        continue
+                    timestamps.append(dt)
+                except:
+                    continue
+
+        if len(timestamps) < 2:
+            return {
+                'patience_score': None,
+                'avg_time_between_trades_hours': None,
+                'trading_discipline': 'Insufficient Data'
+            }
+
+        timestamps.sort()
+
+        # Calculate time between consecutive trades
+        time_gaps = []
+        for i in range(1, len(timestamps)):
+            gap_hours = (timestamps[i] - timestamps[i-1]).total_seconds() / 3600
+            time_gaps.append(gap_hours)
+
+        avg_gap_hours = statistics.mean(time_gaps)
+        median_gap_hours = statistics.median(time_gaps)
+
+        # Patience score: higher gap = more patient
+        # Normalize to 0-1 scale (24 hours = 0.5, 168 hours/week = ~1.0)
+        patience_score = min(avg_gap_hours / 168.0, 1.0)
+
+        # Classify discipline
+        if avg_gap_hours >= 168:  # Weekly or less
+            discipline = "Very Patient"
+        elif avg_gap_hours >= 48:  # Every 2+ days
+            discipline = "Patient"
+        elif avg_gap_hours >= 12:  # Multiple times per day
+            discipline = "Active"
+        elif avg_gap_hours >= 1:  # Hourly
+            discipline = "High Frequency"
+        else:
+            discipline = "Hyperactive"
+
+        return {
+            'patience_score': patience_score,
+            'avg_time_between_trades_hours': avg_gap_hours,
+            'median_time_between_trades_hours': median_gap_hours,
+            'trading_discipline': discipline
+        }
+
+    def calculate_timing_quality(self, trades: List[Dict]) -> Dict:
+        """
+        Calculate market timing quality.
+
+        Measures entry timing relative to market lifecycle:
+        - Early entries (market discovery)
+        - Mid-cycle entries (established liquidity)
+        - Late entries (near resolution)
+        """
+        if not trades:
+            return {
+                'avg_hold_duration_hours': None,
+                'optimal_timing_score': None,
+                'timing_classification': 'Insufficient Data'
+            }
+
+        # Get market creation and resolution times for timing analysis
+        conn = self.get_db_connection()
+        cursor = conn.cursor()
+
+        # Track position holds by market
+        market_positions = defaultdict(list)
+
+        for trade in trades:
+            market_id = trade.get('market_id')
+            if not market_id:
+                continue
+
+            timestamp = trade.get('timestamp')
+            if timestamp:
+                try:
+                    if isinstance(timestamp, str):
+                        dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                    elif isinstance(timestamp, (int, float)):
+                        dt = datetime.fromtimestamp(timestamp)
+                    else:
+                        continue
+                    market_positions[market_id].append(dt)
+                except:
+                    continue
+
+        # Calculate average hold duration per market
+        hold_durations = []
+        timing_scores = []
+
+        for market_id, timestamps in market_positions.items():
+            if len(timestamps) < 2:
+                continue
+
+            timestamps.sort()
+            first_entry = timestamps[0]
+            last_exit = timestamps[-1]
+
+            # Hold duration
+            hold_hours = (last_exit - first_entry).total_seconds() / 3600
+            hold_durations.append(hold_hours)
+
+            # Get market lifecycle for timing score
+            cursor.execute("""
+                SELECT created_at, end_date, resolved_at
+                FROM markets
+                WHERE market_id = ?
+            """, (market_id,))
+
+            market_data = cursor.fetchone()
+            if market_data and market_data[0]:
+                try:
+                    created_str = market_data[0]
+                    if isinstance(created_str, str):
+                        created_at = datetime.fromisoformat(created_str.replace('Z', '+00:00'))
+                    else:
+                        continue
+
+                    # End date
+                    end_str = market_data[1] or market_data[2]
+                    if end_str and isinstance(end_str, str):
+                        end_at = datetime.fromisoformat(end_str.replace('Z', '+00:00'))
+                    else:
+                        end_at = created_at + timedelta(days=30)  # Default 30 days
+
+                    # Calculate entry timing (0 = at creation, 1 = at resolution)
+                    market_lifetime = (end_at - created_at).total_seconds()
+                    if market_lifetime > 0:
+                        entry_timing = (first_entry - created_at).total_seconds() / market_lifetime
+                        entry_timing = max(0, min(1, entry_timing))
+
+                        # Optimal timing: early to mid (0.1 - 0.5 = best)
+                        if 0.1 <= entry_timing <= 0.5:
+                            timing_score = 1.0
+                        elif entry_timing < 0.1:
+                            timing_score = 0.5 + entry_timing * 5  # Very early (0-10%)
+                        else:
+                            timing_score = max(0, 1.0 - (entry_timing - 0.5))  # Late entry
+
+                        timing_scores.append(timing_score)
+                except:
+                    continue
+
+        conn.close()
+
+        avg_hold_hours = statistics.mean(hold_durations) if hold_durations else None
+        optimal_timing = statistics.mean(timing_scores) if timing_scores else None
+
+        # Classify timing
+        if optimal_timing is not None:
+            if optimal_timing >= 0.8:
+                classification = "Excellent Timing"
+            elif optimal_timing >= 0.6:
+                classification = "Good Timing"
+            elif optimal_timing >= 0.4:
+                classification = "Fair Timing"
+            else:
+                classification = "Poor Timing"
+        else:
+            classification = "Insufficient Data"
+
+        return {
+            'avg_hold_duration_hours': avg_hold_hours,
+            'optimal_timing_score': optimal_timing,
+            'timing_classification': classification
+        }
+
     def classify_trading_style(self, betting: Dict, diversification: Dict, activity: Dict) -> str:
         """
         Classify trader into a style category based on behavior patterns.
@@ -377,6 +667,11 @@ class TradingBehaviorAnalyzer:
             diversification = self.calculate_diversification(trades_list)
             activity = self.calculate_activity_frequency(trades_list)
 
+            # Calculate behavioral metrics (from simulation)
+            kelly_metrics = self.calculate_kelly_alignment(trades_list, trader_address)
+            patience_metrics = self.calculate_patience_metrics(trades_list)
+            timing_metrics = self.calculate_timing_quality(trades_list)
+
             # Classify trading style
             trading_style = self.classify_trading_style(betting, diversification, activity)
 
@@ -413,7 +708,10 @@ class TradingBehaviorAnalyzer:
                 'low_reliability': low_reliability,
                 **betting,
                 **diversification,
-                **activity
+                **activity,
+                **kelly_metrics,
+                **patience_metrics,
+                **timing_metrics
             }
 
         print(f"\nProgress: {len(trader_trades)}/{len(trader_trades)} traders analyzed ✓\n")
@@ -603,7 +901,17 @@ class TradingBehaviorAnalyzer:
                 'Hot Streak (48h)',
                 'Recent 48h Trades',
                 'Power Score',
-                'Low Reliability Flag'
+                'Low Reliability Flag',
+                'Kelly Alignment Score',
+                'Avg Kelly Ratio',
+                'Position Sizing Quality',
+                'Patience Score',
+                'Avg Time Between Trades (hrs)',
+                'Median Time Between Trades (hrs)',
+                'Trading Discipline',
+                'Avg Hold Duration (hrs)',
+                'Optimal Timing Score',
+                'Timing Classification'
             ])
 
             # Write data
@@ -639,7 +947,17 @@ class TradingBehaviorAnalyzer:
                     'Yes' if trader['is_hot_streak'] else 'No',
                     trader['recent_48h_trades'],
                     f"{trader['power_score']:.2f}",
-                    'Yes' if trader['low_reliability'] else 'No'
+                    'Yes' if trader['low_reliability'] else 'No',
+                    f"{trader['kelly_alignment_score']:.3f}" if trader.get('kelly_alignment_score') is not None else 'N/A',
+                    f"{trader['avg_kelly_ratio']:.3f}" if trader.get('avg_kelly_ratio') is not None else 'N/A',
+                    trader.get('position_sizing_quality', 'N/A'),
+                    f"{trader['patience_score']:.3f}" if trader.get('patience_score') is not None else 'N/A',
+                    f"{trader['avg_time_between_trades_hours']:.1f}" if trader.get('avg_time_between_trades_hours') is not None else 'N/A',
+                    f"{trader.get('median_time_between_trades_hours', 0):.1f}" if trader.get('median_time_between_trades_hours') is not None else 'N/A',
+                    trader.get('trading_discipline', 'N/A'),
+                    f"{trader['avg_hold_duration_hours']:.1f}" if trader.get('avg_hold_duration_hours') is not None else 'N/A',
+                    f"{trader['optimal_timing_score']:.3f}" if trader.get('optimal_timing_score') is not None else 'N/A',
+                    trader.get('timing_classification', 'N/A')
                 ])
 
             # Add top markets section

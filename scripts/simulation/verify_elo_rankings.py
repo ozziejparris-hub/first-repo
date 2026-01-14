@@ -68,12 +68,10 @@ class ELORankingsValidator:
                 win_rate,
                 last_updated
             FROM traders
-            WHERE total_trades > 0
-            AND total_trades < 100
-            AND last_updated > ?
+            WHERE total_trades >= 10
             AND comprehensive_elo IS NOT NULL
             ORDER BY comprehensive_elo DESC
-        """, (cutoff_date,))
+        """)
 
         rows = cursor.fetchall()
         conn.close()

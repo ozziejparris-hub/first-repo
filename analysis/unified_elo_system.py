@@ -564,6 +564,18 @@ class UnifiedELOSystem:
             for winner in winners:
                 trader_address = winner.get('trader_address')
                 shares = float(winner.get('shares', 1))
+                price = float(winner.get('price', 0.5))
+
+                # Calculate ROI for this trade
+                # Win: payout is shares * $1, invested is shares * price
+                invested = shares * price
+                payout = shares * 1.0
+                roi = (payout - invested) / invested if invested > 0 else 0.0
+
+                # Convert ROI to score (0-1 range, with 1.0 = 100% ROI, 0.5 = 0% ROI)
+                # Normalize: 100% ROI → 1.0, 0% ROI → 0.5, -100% ROI → 0.0
+                actual_score = 0.5 + (roi / 2.0)  # Maps [-1.0, 1.0] to [0.0, 1.0]
+                actual_score = max(0.1, min(0.9, actual_score))  # Clamp to avoid extremes
 
                 # Normalize bet size
                 all_shares = [float(w.get('shares', 1)) for w in winners + losers]
@@ -577,7 +589,7 @@ class UnifiedELOSystem:
                 self.elo_system.update_rating(
                     trader_address=trader_address,
                     category=category,
-                    actual_score=1.0,  # Win
+                    actual_score=actual_score,  # ROI-based score
                     opponent_rating=avg_loser_elo,
                     bet_size=normalized_bet_size,
                     market_difficulty=market_difficulty,
@@ -590,6 +602,18 @@ class UnifiedELOSystem:
             for loser in losers:
                 trader_address = loser.get('trader_address')
                 shares = float(loser.get('shares', 1))
+                price = float(loser.get('price', 0.5))
+
+                # Calculate ROI for this trade (negative)
+                # Loss: payout is $0, invested is shares * price
+                invested = shares * price
+                payout = 0.0
+                roi = (payout - invested) / invested if invested > 0 else -1.0  # Always negative
+
+                # Convert ROI to score (0-1 range)
+                # -100% ROI → 0.0, -50% ROI → 0.25, 0% ROI → 0.5
+                actual_score = 0.5 + (roi / 2.0)  # Maps [-1.0, 0.0] to [0.0, 0.5]
+                actual_score = max(0.1, min(0.9, actual_score))  # Clamp to avoid extremes
 
                 all_shares = [float(w.get('shares', 1)) for w in winners + losers]
                 max_shares = max(all_shares) if all_shares else 1
@@ -601,7 +625,7 @@ class UnifiedELOSystem:
                 self.elo_system.update_rating(
                     trader_address=trader_address,
                     category=category,
-                    actual_score=0.0,  # Loss
+                    actual_score=actual_score,  # ROI-based score (negative)
                     opponent_rating=avg_winner_elo,
                     bet_size=normalized_bet_size,
                     market_difficulty=market_difficulty,
@@ -758,6 +782,80 @@ class UnifiedELOSystem:
             modifier *= 0.98
 
         return modifier
+
+    def calculate_behavioral_elo_bonus(self, trader_address: str) -> float:
+        """
+        Calculate ELO bonus based on behavioral intelligence metrics.
+
+        Integrates Kelly alignment, patience, and timing quality from
+        simulation learnings. Traders with better discipline and positioning
+        get ELO bonuses.
+
+        Args:
+            trader_address: Trader's address
+
+        Returns:
+            ELO bonus points (-100 to +100)
+            - Kelly alignment (0-40 points): Position sizing discipline
+            - Patience score (0-30 points): Trading frequency control
+            - Timing quality (0-30 points): Market entry/exit timing
+        """
+        behavior_data = self._load_behavioral_data()
+
+        if trader_address not in behavior_data:
+            return 0.0
+
+        trader_behavior = behavior_data[trader_address]
+
+        # Factor 1: Kelly Alignment (0-40 points)
+        kelly_score = trader_behavior.get('kelly_alignment_score')
+        if kelly_score is not None:
+            # Score 0.8-1.0 → 40 pts, 0.6-0.8 → 25 pts, 0.4-0.6 → 10 pts, <0.4 → -20 pts
+            if kelly_score >= 0.8:
+                kelly_bonus = 40
+            elif kelly_score >= 0.6:
+                kelly_bonus = 25
+            elif kelly_score >= 0.4:
+                kelly_bonus = 10
+            else:
+                kelly_bonus = -20  # Penalty for poor position sizing
+        else:
+            kelly_bonus = 0
+
+        # Factor 2: Patience Score (0-30 points)
+        patience_score = trader_behavior.get('patience_score')
+        if patience_score is not None:
+            # Score 0.8-1.0 → 30 pts, 0.5-0.8 → 15 pts, 0.2-0.5 → 5 pts, <0.2 → -10 pts
+            if patience_score >= 0.8:
+                patience_bonus = 30
+            elif patience_score >= 0.5:
+                patience_bonus = 15
+            elif patience_score >= 0.2:
+                patience_bonus = 5
+            else:
+                patience_bonus = -10  # Penalty for hyperactive trading
+        else:
+            patience_bonus = 0
+
+        # Factor 3: Timing Quality (0-30 points)
+        timing_score = trader_behavior.get('optimal_timing_score')
+        if timing_score is not None:
+            # Score 0.8-1.0 → 30 pts, 0.6-0.8 → 20 pts, 0.4-0.6 → 10 pts, <0.4 → -10 pts
+            if timing_score >= 0.8:
+                timing_bonus = 30
+            elif timing_score >= 0.6:
+                timing_bonus = 20
+            elif timing_score >= 0.4:
+                timing_bonus = 10
+            else:
+                timing_bonus = -10  # Penalty for poor timing
+        else:
+            timing_bonus = 0
+
+        total_bonus = kelly_bonus + patience_bonus + timing_bonus
+
+        # Clamp to [-100, +100] range
+        return max(-100, min(100, total_bonus))
 
     def calculate_trading_style_modifier(self, trader_address: str) -> float:
         """
@@ -1745,8 +1843,13 @@ class UnifiedELOSystem:
         adjusted_elo = base_elo
 
         if apply_behavioral:
+            # Apply multiplier (existing behavioral system)
             behavior_data = self.calculate_behavioral_multiplier(trader_address)
             adjusted_elo *= behavior_data['combined_multiplier']
+
+            # Apply ELO bonus from simulation learnings (Kelly, patience, timing)
+            behavioral_bonus = self.calculate_behavioral_elo_bonus(trader_address)
+            adjusted_elo += behavioral_bonus
 
         if apply_advanced:
             advanced_data = self.calculate_advanced_metrics_multiplier(trader_address)
@@ -1809,8 +1912,13 @@ class UnifiedELOSystem:
         adjusted_elo = base_elo
 
         if apply_behavioral:
+            # Apply multiplier (existing behavioral system)
             behavior_data = self.calculate_behavioral_multiplier(trader_address)
             adjusted_elo *= behavior_data['combined_multiplier']
+
+            # Apply ELO bonus from simulation learnings (Kelly, patience, timing)
+            behavioral_bonus = self.calculate_behavioral_elo_bonus(trader_address)
+            adjusted_elo += behavioral_bonus
 
         if apply_advanced:
             advanced_data = self.calculate_advanced_metrics_multiplier(trader_address)
@@ -3381,13 +3489,15 @@ class UnifiedELOSystem:
 
         return export_data
 
-    def get_top_traders(self, category: str = None, limit: int = 10) -> List[Dict]:
+    def get_top_traders(self, category: str = None, limit: int = 10,
+                       min_resolved_trades: int = 50) -> List[Dict]:
         """
         Get top traders by ELO rating.
 
         Args:
             category: Specific category (None = global ELO)
             limit: Number of traders to return
+            min_resolved_trades: Minimum resolved trades required (default: 50)
 
         Returns:
             List of dicts with trader data sorted by ELO
@@ -3395,7 +3505,28 @@ class UnifiedELOSystem:
         all_traders = self.elo_system.get_all_traders()
         trader_ratings = []
 
+        # Get resolved trades count for all traders
+        conn = self.get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT t.trader_address, COUNT(*) as resolved_count
+            FROM trades t
+            JOIN markets m ON t.market_id = m.market_id
+            WHERE m.resolved = 1
+            AND m.winning_outcome IS NOT NULL
+            GROUP BY t.trader_address
+        """)
+
+        resolved_counts = {row[0]: row[1] for row in cursor.fetchall()}
+        conn.close()
+
         for trader_address in all_traders:
+            # Check minimum sample size
+            resolved_count = resolved_counts.get(trader_address, 0)
+            if resolved_count < min_resolved_trades:
+                continue
+
             if category:
                 elo = self.get_trader_category_elo(trader_address, category)
                 market_count = self.elo_system.get_market_count(trader_address, category)
@@ -3406,13 +3537,15 @@ class UnifiedELOSystem:
                         'address': trader_address,
                         'elo': elo,
                         'market_count': market_count,
-                        'category': category
+                        'category': category,
+                        'resolved_trades': resolved_count
                     })
             else:
                 elo = self.get_trader_global_elo(trader_address)
                 trader_ratings.append({
                     'address': trader_address,
-                    'elo': elo
+                    'elo': elo,
+                    'resolved_trades': resolved_count
                 })
 
         trader_ratings.sort(key=lambda x: x['elo'], reverse=True)
