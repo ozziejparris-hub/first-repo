@@ -107,3 +107,8 @@ experiments/*.json
 # Research/temporary files
 resolved_market_samples.json
 investigation_findings.json
+
+# Paper trading
+logs/paper_trading_*.log
+results/paper_trading/
+config/paper_trading_config.json
