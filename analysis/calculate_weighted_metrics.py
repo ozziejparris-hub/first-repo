@@ -38,11 +38,8 @@ class WeightedMetricsCalculator:
         """
         Calculate difficulty score for a market.
 
-        Factors:
-        1. Price volatility (higher = harder to predict)
-        2. Liquidity/volume (lower = harder)
-        3. Market age (newer = less info)
-        4. Number of participants
+        NOTE: Simplified due to missing created_at and volume_usd columns.
+        Uses: volatility, liquidity (calculated), trade activity, outcome clarity.
 
         Returns:
             float: Difficulty score 0-1 (higher = more difficult)
@@ -50,17 +47,15 @@ class WeightedMetricsCalculator:
         conn = self.get_db_connection()
         cursor = conn.cursor()
 
-        # Get market data
+        # Get market data (WITHOUT created_at and volume_usd)
         cursor.execute("""
             SELECT
-                m.created_at,
-                m.end_date,
-                m.volume_usd,
                 COUNT(DISTINCT t.trader_address) as num_traders,
                 COUNT(t.trade_id) as num_trades,
                 AVG(t.price) as avg_price,
                 MIN(t.price) as min_price,
-                MAX(t.price) as max_price
+                MAX(t.price) as max_price,
+                SUM(t.shares * t.price) as volume_usd
             FROM markets m
             LEFT JOIN trades t ON m.market_id = t.market_id
             WHERE m.market_id = ?
@@ -74,21 +69,20 @@ class WeightedMetricsCalculator:
             return None
 
         # Extract data
-        volume = float(row['volume_usd'] or 0)
         num_traders = int(row['num_traders'] or 0)
         num_trades = int(row['num_trades'] or 0)
         avg_price = float(row['avg_price'] or 0.5)
         min_price = float(row['min_price'] or 0)
         max_price = float(row['max_price'] or 1)
+        volume = float(row['volume_usd'] or 0)
 
         # Factor 1: Price volatility (0-1)
         # Higher volatility = harder to predict = higher difficulty
         price_range = max_price - min_price
         volatility_score = min(price_range / 0.5, 1.0)  # Normalize: 0.5 range = max
 
-        # Factor 2: Liquidity (0-1, inverted)
+        # Factor 2: Liquidity (0-1, inverted) - calculated from trades
         # Lower liquidity = harder = higher difficulty
-        # Volume thresholds: $10k = easy, $1k = hard
         if volume >= 10000:
             liquidity_difficulty = 0.2
         elif volume >= 5000:
@@ -100,30 +94,30 @@ class WeightedMetricsCalculator:
         else:
             liquidity_difficulty = 1.0
 
-        # Factor 3: Market maturity (0-1)
+        # Factor 3: Trade activity (replaces maturity since no created_at)
         # Fewer trades = less info = harder
         if num_trades >= 100:
-            maturity_difficulty = 0.2
+            activity_difficulty = 0.2
         elif num_trades >= 50:
-            maturity_difficulty = 0.4
+            activity_difficulty = 0.4
         elif num_trades >= 20:
-            maturity_difficulty = 0.6
+            activity_difficulty = 0.6
         elif num_trades >= 10:
-            maturity_difficulty = 0.8
+            activity_difficulty = 0.8
         else:
-            maturity_difficulty = 1.0
+            activity_difficulty = 1.0
 
         # Factor 4: Outcome clarity (based on price extremity)
         # Markets close to 0.5 are harder than those near 0 or 1
         distance_from_50 = abs(avg_price - 0.5)
         clarity_difficulty = 1.0 - (distance_from_50 * 2)  # 0.5 = max difficulty (1.0)
 
-        # Weighted combination
+        # Weighted combination (adjusted weights since no maturity/age)
         difficulty = (
-            volatility_score * 0.3 +
-            liquidity_difficulty * 0.25 +
-            maturity_difficulty * 0.25 +
-            clarity_difficulty * 0.2
+            volatility_score * 0.35 +
+            liquidity_difficulty * 0.30 +
+            activity_difficulty * 0.20 +
+            clarity_difficulty * 0.15
         )
 
         return min(max(difficulty, 0.0), 1.0)

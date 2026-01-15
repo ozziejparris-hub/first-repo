@@ -520,11 +520,13 @@ class UnifiedELOSystem:
 
         if verbose:
             print(f"Found {len(resolved_markets_db)} resolved markets from database")
+            print(f"Processing {len(market_trades)} total markets ({len(resolved_markets_db)} resolved)...")
             print("\nUpdating category-specific ELO ratings...")
 
         # Process each resolved market to update category-specific ELO
         updates_count = 0
         category_updates = defaultdict(int)
+        markets_processed = 0
 
         for market_id, trades_list in market_trades.items():
             # Check if market is resolved in database
@@ -534,6 +536,11 @@ class UnifiedELOSystem:
             winning_outcome = resolved_markets_db[market_id]
             if not winning_outcome:
                 continue
+
+            # Progress indicator every 100 resolved markets
+            markets_processed += 1
+            if verbose and (markets_processed % 100 == 0 or markets_processed == len(resolved_markets_db)):
+                print(f"Progress: {markets_processed}/{len(resolved_markets_db)} resolved markets processed ({updates_count} ratings updated)", end='\r')
 
             # Determine market category
             if trades_list:
@@ -554,6 +561,18 @@ class UnifiedELOSystem:
                     winners.append(trade)
                 else:
                     losers.append(trade)
+
+            if not winners or not losers:
+                continue
+
+            # Pre-calculate shares for this market (OPTIMIZATION - avoid recalculating per trade)
+            winner_shares = [float(w.get('shares', 1)) for w in winners]
+            loser_shares = [float(l.get('shares', 1)) for l in losers]
+            max_shares = max(max(winner_shares, default=1), max(loser_shares, default=1))
+
+            # Pre-calculate market difficulty (fewer traders = harder market)
+            total_traders = len(set([t.get('trader_address') for t in trades_list]))
+            market_difficulty = max(0.5, min(1.5, 1.0 + (10 - total_traders) / 20))
 
             # Calculate average ELO for each group (within this category)
             winner_elos = [self.elo_system.get_category_elo(w.get('trader_address'), category) for w in winners]
@@ -579,14 +598,8 @@ class UnifiedELOSystem:
                 actual_score = 0.5 + (roi / 2.0)  # Maps [-1.0, 1.0] to [0.0, 1.0]
                 actual_score = max(0.1, min(0.9, actual_score))  # Clamp to avoid extremes
 
-                # Normalize bet size
-                all_shares = [float(w.get('shares', 1)) for w in winners + losers]
-                max_shares = max(all_shares) if all_shares else 1
+                # Normalize bet size (use pre-calculated max_shares)
                 normalized_bet_size = min(shares / max_shares, 2.0) if max_shares > 0 else 1.0
-
-                # Market difficulty (fewer traders = harder market)
-                total_traders = len(set([t.get('trader_address') for t in trades_list]))
-                market_difficulty = max(0.5, min(1.5, 1.0 + (10 - total_traders) / 20))
 
                 self.elo_system.update_rating(
                     trader_address=trader_address,
@@ -617,12 +630,8 @@ class UnifiedELOSystem:
                 actual_score = 0.5 + (roi / 2.0)  # Maps [-1.0, 0.0] to [0.0, 0.5]
                 actual_score = max(0.1, min(0.9, actual_score))  # Clamp to avoid extremes
 
-                all_shares = [float(w.get('shares', 1)) for w in winners + losers]
-                max_shares = max(all_shares) if all_shares else 1
+                # Normalize bet size (use pre-calculated max_shares)
                 normalized_bet_size = min(shares / max_shares, 2.0) if max_shares > 0 else 1.0
-
-                total_traders = len(set([t.get('trader_address') for t in trades_list]))
-                market_difficulty = max(0.5, min(1.5, 1.0 + (10 - total_traders) / 20))
 
                 self.elo_system.update_rating(
                     trader_address=trader_address,
@@ -637,6 +646,7 @@ class UnifiedELOSystem:
                 category_updates[category] += 1
 
         if verbose:
+            print()  # New line after progress indicator
             print(f"✅ Updated {updates_count} category-specific ratings")
             print("\nRatings by category:")
             for category in sorted(category_updates.keys()):

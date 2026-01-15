@@ -444,10 +444,8 @@ class TradingBehaviorAnalyzer:
         """
         Calculate market timing quality.
 
-        Measures entry timing relative to market lifecycle:
-        - Early entries (market discovery)
-        - Mid-cycle entries (established liquidity)
-        - Late entries (near resolution)
+        NOTE: Simplified due to missing created_at column in database.
+        Returns hold duration only; timing score is neutral.
         """
         if not trades:
             return {
@@ -456,110 +454,38 @@ class TradingBehaviorAnalyzer:
                 'timing_classification': 'Insufficient Data'
             }
 
-        # Get market creation and resolution times for timing analysis
-        conn = self.get_db_connection()
-        cursor = conn.cursor()
-
-        # Track position holds by market
-        market_positions = defaultdict(list)
-
+        # Parse timestamps for hold duration only
+        timestamps = []
         for trade in trades:
-            market_id = trade.get('market_id')
-            if not market_id:
-                continue
-
-            timestamp = trade.get('timestamp')
-            if timestamp:
+            ts = trade.get('timestamp')
+            if ts:
                 try:
-                    if isinstance(timestamp, str):
-                        dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-                    elif isinstance(timestamp, (int, float)):
-                        dt = datetime.fromtimestamp(timestamp)
+                    if isinstance(ts, str):
+                        dt = datetime.fromisoformat(ts.replace('Z', '+00:00'))
+                    elif isinstance(ts, (int, float)):
+                        dt = datetime.fromtimestamp(ts)
                     else:
                         continue
-                    market_positions[market_id].append(dt)
+                    timestamps.append(dt)
                 except:
                     continue
 
-        # Calculate average hold duration per market
-        hold_durations = []
-        timing_scores = []
+        if len(timestamps) < 2:
+            return {
+                'avg_hold_duration_hours': None,
+                'optimal_timing_score': None,
+                'timing_classification': 'Insufficient Data'
+            }
 
-        for market_id, timestamps in market_positions.items():
-            if len(timestamps) < 2:
-                continue
+        # Calculate basic hold duration from first to last trade
+        timestamps.sort()
+        hold_hours = (timestamps[-1] - timestamps[0]).total_seconds() / 3600
 
-            timestamps.sort()
-            first_entry = timestamps[0]
-            last_exit = timestamps[-1]
-
-            # Hold duration
-            hold_hours = (last_exit - first_entry).total_seconds() / 3600
-            hold_durations.append(hold_hours)
-
-            # Get market lifecycle for timing score
-            cursor.execute("""
-                SELECT created_at, end_date, resolved_at
-                FROM markets
-                WHERE market_id = ?
-            """, (market_id,))
-
-            market_data = cursor.fetchone()
-            if market_data and market_data[0]:
-                try:
-                    created_str = market_data[0]
-                    if isinstance(created_str, str):
-                        created_at = datetime.fromisoformat(created_str.replace('Z', '+00:00'))
-                    else:
-                        continue
-
-                    # End date
-                    end_str = market_data[1] or market_data[2]
-                    if end_str and isinstance(end_str, str):
-                        end_at = datetime.fromisoformat(end_str.replace('Z', '+00:00'))
-                    else:
-                        end_at = created_at + timedelta(days=30)  # Default 30 days
-
-                    # Calculate entry timing (0 = at creation, 1 = at resolution)
-                    market_lifetime = (end_at - created_at).total_seconds()
-                    if market_lifetime > 0:
-                        entry_timing = (first_entry - created_at).total_seconds() / market_lifetime
-                        entry_timing = max(0, min(1, entry_timing))
-
-                        # Optimal timing: early to mid (0.1 - 0.5 = best)
-                        if 0.1 <= entry_timing <= 0.5:
-                            timing_score = 1.0
-                        elif entry_timing < 0.1:
-                            timing_score = 0.5 + entry_timing * 5  # Very early (0-10%)
-                        else:
-                            timing_score = max(0, 1.0 - (entry_timing - 0.5))  # Late entry
-
-                        timing_scores.append(timing_score)
-                except:
-                    continue
-
-        conn.close()
-
-        avg_hold_hours = statistics.mean(hold_durations) if hold_durations else None
-        optimal_timing = statistics.mean(timing_scores) if timing_scores else None
-
-        # Classify timing
-        if optimal_timing is not None:
-            if optimal_timing >= 0.8:
-                classification = "Excellent Timing"
-            elif optimal_timing >= 0.6:
-                classification = "Good Timing"
-            elif optimal_timing >= 0.4:
-                classification = "Fair Timing"
-            else:
-                classification = "Poor Timing"
-        else:
-            classification = "Insufficient Data"
-
+        # Return neutral timing score since we can't calculate entry timing without created_at
         return {
-            'avg_hold_duration_hours': avg_hold_hours,
-            'optimal_timing_score': optimal_timing,
-            'timing_classification': classification
+            'avg_hold_duration_hours': hold_hours,
+            'optimal_timing_score': 0.5,  # Neutral score
+            'timing_classification': 'Not Calculated (missing created_at)'
         }
 
     def classify_trading_style(self, betting: Dict, diversification: Dict, activity: Dict) -> str:
