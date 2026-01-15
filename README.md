@@ -51,12 +51,21 @@ python -m monitoring.main
 
 ## Documentation
 
+### Quick Reference
+- 👉 **[QUICK_START_CONTEXT.md](QUICK_START_CONTEXT.md)** - 5-minute orientation for new developers
+- 📖 **[PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md)** - Comprehensive project overview (500+ lines)
+
+### Setup & Operation
 - **[SETUP.md](docs/SETUP.md)** - Complete installation and configuration guide
 - **[MONITORING.md](docs/MONITORING.md)** - How the monitoring system works
 - **[ELO_SYSTEM.md](docs/ELO_SYSTEM.md)** - ELO rating system explained
 - **[SYSTEM_OBSERVER.md](docs/SYSTEM_OBSERVER.md)** - AI-powered health monitoring
 - **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - Common issues and solutions
-- **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** - Recent reorganization changes (2026-01-03)
+
+### Recent Changes
+- **[BUGFIX_SUMMARY.md](BUGFIX_SUMMARY.md)** - 3 critical bugs fixed (Jan 2026)
+- **[SCHEMA_FIXES_APPLIED.md](SCHEMA_FIXES_APPLIED.md)** - Schema compatibility fixes
+- **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** - Project reorganization (2026-01-03)
 
 ## Common Commands
 
@@ -87,13 +96,22 @@ first-repo/
 └── archive/          # Historical docs
 ```
 
-## Recent Updates (2026-01-03)
+## Recent Updates
 
+### 2026-01-15: Behavioral ELO Integration & Documentation Cleanup
+- ✅ Implemented behavioral ELO modifiers (Kelly criterion + patience metrics)
+- ✅ Fixed 3 critical bugs (API resolution, method calls, CSV import)
+- ✅ Schema compatibility fixes (timing disabled, volume calculated from trades)
+- ✅ Performance optimizations (ELO calculation no longer hangs)
+- ✅ Repository cleanup (consolidated 17 docs, created quick reference guides)
+- 🎯 Correlation improvement: 0.135 → 0.35-0.50 (target)
+
+See [BUGFIX_SUMMARY.md](BUGFIX_SUMMARY.md) and [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) for details.
+
+### 2026-01-03: Project Reorganization
 - Consolidated 52 markdown files into 7 focused docs
 - Moved all scripts to `scripts/` directory
-- Archived historical completion notes
 - Fixed Telegram bot conflicts (send-only mode)
-- Reorganized project structure for clarity
 
 See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for details.
 
@@ -106,6 +124,6 @@ For help:
 
 ---
 
-**Status:** Active Development
-**Last Updated:** 2026-01-03
-**Version:** 2.0 (Post-Reorganization)
+**Status:** Production-Ready with Active Development
+**Last Updated:** 2026-01-15
+**Version:** 2.1 (Behavioral ELO Integration)
