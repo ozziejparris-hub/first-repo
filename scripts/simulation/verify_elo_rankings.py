@@ -261,7 +261,7 @@ class ELORankingsValidator:
         passed = correlation >= min_correlation
 
         print(f"  Correlation: r = {correlation:.3f}")
-        print(f"  R² (variance explained): {correlation**2:.3f}")
+        print(f"  R (variance explained): {correlation**2:.3f}")
 
         if passed:
             if correlation > 0.7:

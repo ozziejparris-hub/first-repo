@@ -129,7 +129,7 @@ class WeightedMetricsCalculator:
         Returns:
             Dict mapping market_id to difficulty score
         """
-        print("📊 Calculating market difficulty scores...")
+        print(" Calculating market difficulty scores...")
 
         conn = self.get_db_connection()
         cursor = conn.cursor()
@@ -155,7 +155,7 @@ class WeightedMetricsCalculator:
             if difficulty is not None:
                 difficulties[market_id] = difficulty
 
-        print(f"\nProgress: {len(market_ids)}/{len(market_ids)} markets analyzed ✓")
+        print(f"\nProgress: {len(market_ids)}/{len(market_ids)} markets analyzed ")
         print(f"Average difficulty: {statistics.mean(difficulties.values()):.3f}\n")
 
         return difficulties
@@ -393,7 +393,7 @@ class WeightedMetricsCalculator:
                 **confidence_metrics
             }
 
-        print(f"\nProgress: {len(trader_addresses)}/{len(trader_addresses)} traders analyzed ✓\n")
+        print(f"\nProgress: {len(trader_addresses)}/{len(trader_addresses)} traders analyzed \n")
 
         return trader_metrics
 
@@ -453,8 +453,8 @@ class WeightedMetricsCalculator:
                     trader.get('confidence_quality', 'N/A')
                 ])
 
-        print(f"✅ Report saved to: {filename}")
-        print(f"   Qualified traders (≥10 resolved): {len(sorted_traders)}")
+        print(f" Report saved to: {filename}")
+        print(f"   Qualified traders (10 resolved): {len(sorted_traders)}")
         print(f"   Timestamp: {timestamp}\n")
 
 
@@ -467,7 +467,7 @@ def main():
     # Check if database exists
     db_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'polymarket_tracker.db')
     if not os.path.exists(db_path):
-        print("❌ Error: polymarket_tracker.db not found in /data/")
+        print(" Error: polymarket_tracker.db not found in /data/")
         print("   Make sure the monitoring script has run and collected trades")
         return
 

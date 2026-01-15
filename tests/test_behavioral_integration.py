@@ -35,13 +35,13 @@ class TestResults:
     def record_pass(self, test_name: str):
         self.tests_run += 1
         self.tests_passed += 1
-        print(f"  [✓] {test_name}")
+        print(f"  [] {test_name}")
 
     def record_fail(self, test_name: str, reason: str):
         self.tests_run += 1
         self.tests_failed += 1
         self.failures.append((test_name, reason))
-        print(f"  [✗] {test_name}: {reason}")
+        print(f"  [] {test_name}: {reason}")
 
     def summary(self):
         print(f"\n{'='*70}")
@@ -155,7 +155,7 @@ def test_minimum_sample_filter(db_path: str, results: TestResults):
             )
 
             if all_qualified:
-                results.record_pass("All returned traders have ≥50 resolved trades")
+                results.record_pass("All returned traders have 50 resolved trades")
             else:
                 results.record_fail("Sample filter", "Some traders have <50 resolved trades")
         else:
@@ -211,7 +211,7 @@ def test_behavioral_elo_modifier(db_path: str, results: TestResults):
 
         # Should be different (unless bonus is exactly 0 and multiplier is 1.0)
         if abs(adjusted_elo - base_elo) >= 0.1:
-            results.record_pass(f"Behavioral modifier applied (Δ={adjusted_elo-base_elo:+.0f})")
+            results.record_pass(f"Behavioral modifier applied (={adjusted_elo-base_elo:+.0f})")
         else:
             # This is OK if the trader has neutral behavioral metrics
             results.record_pass("Behavioral modifier neutral (expected for average trader)")
@@ -308,9 +308,9 @@ def test_correlation_data_exists(db_path: str, results: TestResults):
 
     # Need at least 10 traders for meaningful correlation
     if qualified_traders >= 10:
-        results.record_pass(f"Sufficient qualified traders ({qualified_traders} with ≥50 resolved)")
+        results.record_pass(f"Sufficient qualified traders ({qualified_traders} with 50 resolved)")
     else:
-        results.record_fail("Data quality", f"Only {qualified_traders} qualified traders (need ≥10)")
+        results.record_fail("Data quality", f"Only {qualified_traders} qualified traders (need 10)")
 
     # Check resolved markets
     cursor.execute("""
@@ -325,7 +325,7 @@ def test_correlation_data_exists(db_path: str, results: TestResults):
     if resolved_markets >= 50:
         results.record_pass(f"Sufficient resolved markets ({resolved_markets})")
     else:
-        results.record_fail("Data quality", f"Only {resolved_markets} resolved markets (need ≥50)")
+        results.record_fail("Data quality", f"Only {resolved_markets} resolved markets (need 50)")
 
     conn.close()
 
@@ -400,14 +400,14 @@ def main():
     success = results.summary()
 
     if success:
-        print("✅ ALL TESTS PASSED - Behavioral ELO integration successful!")
+        print(" ALL TESTS PASSED - Behavioral ELO integration successful!")
         print("\nExpected improvements:")
-        print("  - Correlation: 0.135 → 0.45-0.65 (target)")
-        print("  - Elite accuracy: Current → 70-75% (target)")
+        print("  - Correlation: 0.135  0.45-0.65 (target)")
+        print("  - Elite accuracy: Current  70-75% (target)")
         print("  - ELO spread: More differentiation between skill levels")
         print()
     else:
-        print("❌ SOME TESTS FAILED - Review failures above")
+        print(" SOME TESTS FAILED - Review failures above")
         print("\nTroubleshooting:")
         print("  1. Run: py scripts/integrate_behavioral_elo.py")
         print("  2. Ensure database has resolved markets")

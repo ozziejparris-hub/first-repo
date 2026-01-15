@@ -32,6 +32,9 @@ def import_behavioral_metrics(db_path: str, csv_path: str) -> int:
     skipped = 0
 
     with open(csv_path, 'r', encoding='utf-8') as f:
+        # Skip first 2 rows (timestamp and blank row)
+        next(f)
+        next(f)
         reader = csv.DictReader(f)
         for row in reader:
             trader_address = row.get('Trader Address')
@@ -75,7 +78,7 @@ def import_behavioral_metrics(db_path: str, csv_path: str) -> int:
     conn.commit()
     conn.close()
 
-    print(f"  ✅ Updated {updated} traders with behavioral metrics ({skipped} skipped)")
+    print(f"   Updated {updated} traders with behavioral metrics ({skipped} skipped)")
     return updated
 
 
@@ -94,6 +97,9 @@ def import_weighted_metrics(db_path: str, csv_path: str) -> int:
     skipped = 0
 
     with open(csv_path, 'r', encoding='utf-8') as f:
+        # Skip first 2 rows (timestamp and blank row)
+        next(f)
+        next(f)
         reader = csv.DictReader(f)
         for row in reader:
             trader_address = row.get('Trader Address')
@@ -128,7 +134,7 @@ def import_weighted_metrics(db_path: str, csv_path: str) -> int:
     conn.commit()
     conn.close()
 
-    print(f"  ✅ Updated {updated} traders with weighted metrics ({skipped} skipped)")
+    print(f"   Updated {updated} traders with weighted metrics ({skipped} skipped)")
     return updated
 
 
@@ -147,6 +153,9 @@ def import_performance_metrics(db_path: str, csv_path: str) -> int:
     skipped = 0
 
     with open(csv_path, 'r', encoding='utf-8') as f:
+        # Skip first 2 rows (timestamp and blank row)
+        next(f)
+        next(f)
         reader = csv.DictReader(f)
         for row in reader:
             trader_address = row.get('Trader Address')
@@ -174,7 +183,7 @@ def import_performance_metrics(db_path: str, csv_path: str) -> int:
     conn.commit()
     conn.close()
 
-    print(f"  ✅ Updated {updated} traders with ROI metrics ({skipped} skipped)")
+    print(f"   Updated {updated} traders with ROI metrics ({skipped} skipped)")
     return updated
 
 
@@ -242,7 +251,7 @@ def main():
         total_updated += import_performance_metrics(str(db_path), str(performance_csv))
 
     print("\n" + "="*70)
-    print(f"  ✅ DATABASE UPDATE COMPLETE")
+    print(f"   DATABASE UPDATE COMPLETE")
     print("="*70)
     print(f"  Total updates: {total_updated}")
     print()

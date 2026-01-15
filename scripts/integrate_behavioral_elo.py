@@ -328,7 +328,7 @@ def generate_summary_report(db_path: str):
     print(f"  With weighted win rate: {row[4]:,} ({row[4]/max(1,row[0])*100:.1f}%)")
     print(f"  With ROI percentage: {row[5]:,} ({row[5]/max(1,row[0])*100:.1f}%)")
     print(f"  With resolved trades count: {row[6]:,} ({row[6]/max(1,row[0])*100:.1f}%)")
-    print(f"  Qualified (≥50 resolved): {row[7]:,} ({row[7]/max(1,row[0])*100:.1f}%)")
+    print(f"  Qualified (50 resolved): {row[7]:,} ({row[7]/max(1,row[0])*100:.1f}%)")
 
     # Average scores for qualified traders
     cursor.execute("""
@@ -426,7 +426,7 @@ def main():
 
         # Success
         print("\n" + "="*70)
-        print("  ✅ BEHAVIORAL ELO INTEGRATION COMPLETE")
+        print("   BEHAVIORAL ELO INTEGRATION COMPLETE")
         print("="*70)
         print(f"  Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print("="*70)

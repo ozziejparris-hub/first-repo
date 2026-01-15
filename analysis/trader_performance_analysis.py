@@ -217,7 +217,7 @@ class TraderPerformanceAnalyzer:
         print(f"{'='*70}\n")
 
         # Get all trades
-        print("📊 Loading trades from database...")
+        print(" Loading trades from database...")
         trades = self.get_all_trades(days_filter)
         print(f"Found {len(trades)} total trades")
 
@@ -239,7 +239,7 @@ class TraderPerformanceAnalyzer:
             self.get_market_resolution(market_id)
             time.sleep(0.1)  # Rate limiting
 
-        print(f"\nProgress: {len(unique_markets)}/{len(unique_markets)} markets checked ✓")
+        print(f"\nProgress: {len(unique_markets)}/{len(unique_markets)} markets checked ")
 
         # Count resolved markets
         resolved_count = sum(1 for res in self.market_resolutions.values() if res.get('resolved'))
@@ -309,7 +309,7 @@ class TraderPerformanceAnalyzer:
                 'combined_score': (win_rate * 0.5 + roi * 0.5) if resolved_trades >= 5 else 0.0
             }
 
-        print(f"\nProgress: {len(trader_trades)}/{len(trader_trades)} traders analyzed ✓\n")
+        print(f"\nProgress: {len(trader_trades)}/{len(trader_trades)} traders analyzed \n")
 
         return trader_metrics
 
@@ -327,10 +327,10 @@ class TraderPerformanceAnalyzer:
             if metrics['resolved_trades'] >= min_resolved_trades
         }
 
-        print(f"Qualified traders (≥{min_resolved_trades} resolved trades): {len(qualified_traders)}\n")
+        print(f"Qualified traders ({min_resolved_trades} resolved trades): {len(qualified_traders)}\n")
 
         if not qualified_traders:
-            print("⚠️ No traders with enough resolved trades for analysis")
+            print(" No traders with enough resolved trades for analysis")
             return
 
         # Calculate statistics
@@ -343,7 +343,7 @@ class TraderPerformanceAnalyzer:
         total_analyzed_trades = sum(m['total_trades'] for m in trader_metrics.values())
         total_resolved = sum(m['resolved_trades'] for m in trader_metrics.values())
 
-        print(f"📈 OVERALL STATISTICS:")
+        print(f" OVERALL STATISTICS:")
         print(f"   Total trades analyzed: {total_analyzed_trades:,}")
         print(f"   Resolved trades: {total_resolved:,} ({total_resolved/total_analyzed_trades*100:.1f}%)")
         print(f"   Average win rate: {avg_win_rate:.2f}%")
@@ -352,7 +352,7 @@ class TraderPerformanceAnalyzer:
 
         # Top 10 by win rate
         print(f"\n{'='*70}")
-        print(f"🏆 TOP 10 TRADERS BY WIN RATE")
+        print(f" TOP 10 TRADERS BY WIN RATE")
         print(f"{'='*70}")
         top_win_rate = sorted(
             qualified_traders.values(),
@@ -370,7 +370,7 @@ class TraderPerformanceAnalyzer:
 
         # Top 10 by ROI
         print(f"\n{'='*70}")
-        print(f"💰 TOP 10 TRADERS BY ROI (Return on Investment)")
+        print(f" TOP 10 TRADERS BY ROI (Return on Investment)")
         print(f"{'='*70}")
         top_roi = sorted(
             qualified_traders.values(),
@@ -388,7 +388,7 @@ class TraderPerformanceAnalyzer:
 
         # Top 10 by combined score
         print(f"\n{'='*70}")
-        print(f"⭐ TOP 10 TRADERS BY COMBINED SCORE (Win Rate 50% + ROI 50%)")
+        print(f" TOP 10 TRADERS BY COMBINED SCORE (Win Rate 50% + ROI 50%)")
         print(f"{'='*70}")
         top_combined = sorted(
             qualified_traders.values(),
@@ -456,7 +456,7 @@ class TraderPerformanceAnalyzer:
                     f"{trader['combined_score']:.2f}"
                 ])
 
-        print(f"✅ Report saved to: {filename}")
+        print(f" Report saved to: {filename}")
         print(f"   Total traders: {len(sorted_traders)}")
         print(f"   Timestamp: {timestamp}\n")
 
@@ -479,7 +479,7 @@ def main():
     # Check if database exists
     db_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'polymarket_tracker.db')
     if not os.path.exists(db_path):
-        print("❌ Error: polymarket_tracker.db not found in /data/")
+        print(" Error: polymarket_tracker.db not found in /data/")
         print("   Make sure the monitoring script has run and collected trades")
         return
 

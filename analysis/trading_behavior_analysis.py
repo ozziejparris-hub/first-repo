@@ -566,12 +566,12 @@ class TradingBehaviorAnalyzer:
         print(f"{'='*70}\n")
 
         # Get all trades
-        print("📊 Loading trades from database...")
+        print(" Loading trades from database...")
         trades = self.get_all_trades(days_filter)
         print(f"Found {len(trades)} total trades")
 
         if not trades:
-            print("❌ No trades found in database")
+            print("[X] No trades found in database")
             return {}
 
         # Group trades by trader
@@ -640,7 +640,7 @@ class TradingBehaviorAnalyzer:
                 **timing_metrics
             }
 
-        print(f"\nProgress: {len(trader_trades)}/{len(trader_trades)} traders analyzed ✓\n")
+        print(f"\nProgress: {len(trader_trades)}/{len(trader_trades)} traders analyzed \n")
 
         return trader_metrics
 
@@ -652,7 +652,7 @@ class TradingBehaviorAnalyzer:
         print(f"{'='*70}\n")
 
         if not trader_metrics:
-            print("⚠️ No trader data to analyze")
+            print("[WARNING] No trader data to analyze")
             return
 
         # Filter out low reliability traders for statistics
@@ -662,11 +662,11 @@ class TradingBehaviorAnalyzer:
         }
 
         print(f"Total traders analyzed: {len(trader_metrics)}")
-        print(f"Reliable traders (≥10 trades): {len(reliable_traders)}")
+        print(f"Reliable traders (10 trades): {len(reliable_traders)}")
         print(f"Low reliability traders (<10 trades): {len(trader_metrics) - len(reliable_traders)}\n")
 
         if not reliable_traders:
-            print("⚠️ No traders with enough trades for reliable analysis")
+            print("[WARNING] No traders with enough trades for reliable analysis")
             return
 
         # Overall statistics
@@ -675,7 +675,7 @@ class TradingBehaviorAnalyzer:
         all_diversification = [m['diversification_score'] for m in reliable_traders.values()]
         all_trades_per_day = [m['trades_per_day'] for m in reliable_traders.values()]
 
-        print(f"📈 OVERALL STATISTICS:")
+        print(f" OVERALL STATISTICS:")
         print(f"   Average trades per trader: {statistics.mean(all_trades):.1f}")
         print(f"   Average bet size: ${statistics.mean(all_avg_bets):.2f}")
         print(f"   Average diversification score: {statistics.mean(all_diversification):.1f}%")
@@ -684,18 +684,18 @@ class TradingBehaviorAnalyzer:
         # Hot streak traders
         hot_streak_traders = [m for m in reliable_traders.values() if m['is_hot_streak']]
         if hot_streak_traders:
-            print(f"\n🔥 HOT STREAK TRADERS (≥5 trades in last 48h): {len(hot_streak_traders)}")
+            print(f"\n HOT STREAK TRADERS (5 trades in last 48h): {len(hot_streak_traders)}")
 
         # Trading style distribution
         style_counts = Counter(m['trading_style'] for m in reliable_traders.values())
-        print(f"\n📊 TRADING STYLE DISTRIBUTION:")
+        print(f"\n TRADING STYLE DISTRIBUTION:")
         for style, count in style_counts.most_common():
             percentage = (count / len(reliable_traders) * 100)
             print(f"   {style}: {count} traders ({percentage:.1f}%)")
 
         # LEADERBOARDS
         print(f"\n{'='*70}")
-        print(f"🏆 MOST ACTIVE TRADERS (by trades per day)")
+        print(f" MOST ACTIVE TRADERS (by trades per day)")
         print(f"{'='*70}")
         top_active = sorted(
             reliable_traders.values(),
@@ -710,7 +710,7 @@ class TradingBehaviorAnalyzer:
             print(f"{i:<6}{addr_short:<15}{trader['trades_per_day']:>7.2f}{trader['total_trades']:>12}{trader['trading_style']:<25}")
 
         print(f"\n{'='*70}")
-        print(f"🎯 MOST DIVERSIFIED TRADERS (by unique markets)")
+        print(f" MOST DIVERSIFIED TRADERS (by unique markets)")
         print(f"{'='*70}")
         top_diversified = sorted(
             reliable_traders.values(),
@@ -725,7 +725,7 @@ class TradingBehaviorAnalyzer:
             print(f"{i:<6}{addr_short:<15}{trader['unique_markets']:>12}{trader['diversification_score']:>9.1f}%  {trader['market_concentration']:<20}")
 
         print(f"\n{'='*70}")
-        print(f"💰 BIGGEST BETTORS (by average bet size)")
+        print(f" BIGGEST BETTORS (by average bet size)")
         print(f"{'='*70}")
         top_bettors = sorted(
             reliable_traders.values(),
@@ -742,7 +742,7 @@ class TradingBehaviorAnalyzer:
             print(f"{i:<6}{addr_short:<15}{avg_bet:<12}{volume:<15}{trader['bet_size_consistency']:<20}")
 
         print(f"\n{'='*70}")
-        print(f"⚡ POWER USERS (by combined metrics)")
+        print(f"[POWER] POWER USERS (by combined metrics)")
         print(f"{'='*70}")
 
         # Calculate power score: trades_per_day * diversification * (avg_bet/100)
@@ -767,7 +767,7 @@ class TradingBehaviorAnalyzer:
 
         # Activity by day of week
         print(f"\n{'='*70}")
-        print(f"📅 MOST POPULAR TRADING DAYS")
+        print(f" MOST POPULAR TRADING DAYS")
         print(f"{'='*70}")
         day_counts = Counter(m['most_active_day'] for m in reliable_traders.values() if m['most_active_day'] != 'N/A')
         for day, count in day_counts.most_common():
@@ -898,7 +898,7 @@ class TradingBehaviorAnalyzer:
                 )
                 writer.writerow([trader['trader_address'], top_markets_str])
 
-        print(f"✅ Report saved to: {filename}")
+        print(f"[OK] Report saved to: {filename}")
         print(f"   Total traders: {len(sorted_traders)}")
         print(f"   Timestamp: {timestamp}\n")
 
@@ -912,7 +912,7 @@ def main():
     # Check if database exists
     db_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'polymarket_tracker.db')
     if not os.path.exists(db_path):
-        print("❌ Error: polymarket_tracker.db not found in /data/")
+        print("[X] Error: polymarket_tracker.db not found in /data/")
         print("   Make sure the monitoring script has run and collected trades")
         return
 
