@@ -38,7 +38,9 @@ class WeightedMetricsCalculator:
         """
         Calculate difficulty score for a market.
 
-        NOTE: Simplified due to missing created_at and volume_usd columns.
+        OPTIMIZED: First checks for cached difficulty in database.
+        Only calculates if cache miss.
+
         Uses: volatility, liquidity (calculated), trade activity, outcome clarity.
 
         Returns:
@@ -47,7 +49,20 @@ class WeightedMetricsCalculator:
         conn = self.get_db_connection()
         cursor = conn.cursor()
 
-        # Get market data (WITHOUT created_at and volume_usd)
+        # OPTIMIZATION: Check if difficulty is already cached
+        cursor.execute("""
+            SELECT difficulty_score
+            FROM markets
+            WHERE market_id = ?
+            AND difficulty_score IS NOT NULL
+        """, (market_id,))
+
+        cached = cursor.fetchone()
+        if cached:
+            conn.close()
+            return float(cached[0])
+
+        # Cache miss - calculate from trades
         cursor.execute("""
             SELECT
                 COUNT(DISTINCT t.trader_address) as num_traders,
@@ -63,9 +78,9 @@ class WeightedMetricsCalculator:
         """, (market_id,))
 
         row = cursor.fetchone()
-        conn.close()
 
         if not row:
+            conn.close()
             return None
 
         # Extract data

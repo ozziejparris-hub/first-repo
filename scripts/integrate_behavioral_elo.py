@@ -277,7 +277,7 @@ def run_unified_elo_with_behavioral(db_path: str) -> bool:
         print("  TOP 10 TRADERS (WITH BEHAVIORAL MODIFIERS)")
         print("="*70)
 
-        top_traders = system.get_top_traders(category=None, limit=10, min_resolved_trades=50)
+        top_traders = system.get_top_traders(category=None, limit=10, min_resolved_trades=30)
 
         print(f"\n{'Rank':<6}{'Address':<20}{'ELO':<10}{'Resolved':<12}")
         print("-"*70)
@@ -314,7 +314,7 @@ def generate_summary_report(db_path: str):
             COUNT(weighted_win_rate) as with_weighted_wr,
             COUNT(roi_percentage) as with_roi,
             COUNT(resolved_trades_count) as with_resolved_count,
-            COUNT(CASE WHEN resolved_trades_count >= 50 THEN 1 END) as qualified
+            COUNT(CASE WHEN resolved_trades_count >= 30 THEN 1 END) as qualified
         FROM traders
     """)
 
@@ -328,7 +328,7 @@ def generate_summary_report(db_path: str):
     print(f"  With weighted win rate: {row[4]:,} ({row[4]/max(1,row[0])*100:.1f}%)")
     print(f"  With ROI percentage: {row[5]:,} ({row[5]/max(1,row[0])*100:.1f}%)")
     print(f"  With resolved trades count: {row[6]:,} ({row[6]/max(1,row[0])*100:.1f}%)")
-    print(f"  Qualified (50 resolved): {row[7]:,} ({row[7]/max(1,row[0])*100:.1f}%)")
+    print(f"  Qualified (30+ resolved): {row[7]:,} ({row[7]/max(1,row[0])*100:.1f}%)")
 
     # Average scores for qualified traders
     cursor.execute("""
@@ -340,7 +340,7 @@ def generate_summary_report(db_path: str):
             AVG(roi_percentage),
             AVG(comprehensive_elo)
         FROM traders
-        WHERE resolved_trades_count >= 50
+        WHERE resolved_trades_count >= 30
         AND kelly_alignment_score IS NOT NULL
     """)
 

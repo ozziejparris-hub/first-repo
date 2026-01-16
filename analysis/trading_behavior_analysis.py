@@ -442,50 +442,166 @@ class TradingBehaviorAnalyzer:
 
     def calculate_timing_quality(self, trades: List[Dict]) -> Dict:
         """
-        Calculate market timing quality.
+        Calculate market timing quality using RELATIVE entry positioning.
 
-        NOTE: Simplified due to missing created_at column in database.
-        Returns hold duration only; timing score is neutral.
+        PERMANENT ENHANCEMENT: Uses trader's entry position relative to all traders
+        in each market. Early entrants have information edge.
+
+        This is SUPERIOR to absolute timing because:
+        - Captures information advantage (early adopters see opportunity first)
+        - Works without created_at column (uses existing trade data)
+        - Strengthens with more data (better percentile accuracy)
+        - Permanent metric (no schema migration needed)
+
+        Returns:
+            dict: {
+                'avg_hold_duration_hours': float or None,
+                'optimal_timing_score': float (0.0-1.0),
+                'timing_classification': str,
+                'avg_entry_percentile': float (0-100),
+                'markets_analyzed': int
+            }
         """
         if not trades:
             return {
                 'avg_hold_duration_hours': None,
                 'optimal_timing_score': None,
-                'timing_classification': 'Insufficient Data'
+                'timing_classification': 'Insufficient Data',
+                'avg_entry_percentile': None,
+                'markets_analyzed': 0
             }
 
-        # Parse timestamps for hold duration only
-        timestamps = []
+        # Group trades by market
+        markets = {}
         for trade in trades:
-            ts = trade.get('timestamp')
-            if ts:
-                try:
-                    if isinstance(ts, str):
-                        dt = datetime.fromisoformat(ts.replace('Z', '+00:00'))
-                    elif isinstance(ts, (int, float)):
-                        dt = datetime.fromtimestamp(ts)
-                    else:
-                        continue
-                    timestamps.append(dt)
-                except:
-                    continue
+            market_id = trade.get('market_id') or trade.get('market')
+            if not market_id:
+                continue
 
-        if len(timestamps) < 2:
+            ts = trade.get('timestamp')
+            if not ts:
+                continue
+
+            try:
+                if isinstance(ts, str):
+                    dt = datetime.fromisoformat(ts.replace('Z', '+00:00'))
+                elif isinstance(ts, (int, float)):
+                    dt = datetime.fromtimestamp(ts)
+                else:
+                    continue
+            except:
+                continue
+
+            if market_id not in markets:
+                markets[market_id] = []
+            markets[market_id].append({
+                'timestamp': dt,
+                'trader': trade.get('trader_address')
+            })
+
+        if not markets:
             return {
                 'avg_hold_duration_hours': None,
                 'optimal_timing_score': None,
-                'timing_classification': 'Insufficient Data'
+                'timing_classification': 'Insufficient Data',
+                'avg_entry_percentile': None,
+                'markets_analyzed': 0
             }
 
-        # Calculate basic hold duration from first to last trade
-        timestamps.sort()
-        hold_hours = (timestamps[-1] - timestamps[0]).total_seconds() / 3600
+        # Calculate relative entry timing for each market
+        entry_percentiles = []
+        all_timestamps = []
 
-        # Return neutral timing score since we can't calculate entry timing without created_at
+        for market_id, market_trades in markets.items():
+            if len(market_trades) < 3:
+                continue
+
+            # Get ALL traders' entries for this market from database
+            conn = self.get_db_connection()
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                SELECT trader_address, MIN(timestamp) as first_entry
+                FROM trades
+                WHERE market_id = ?
+                GROUP BY trader_address
+                ORDER BY first_entry
+            """, (market_id,))
+
+            all_entries = cursor.fetchall()
+            conn.close()
+
+            if len(all_entries) < 3:
+                continue
+
+            # Find this trader's entry position
+            trader_entry_time = min(t['timestamp'] for t in market_trades)
+
+            # Calculate percentile (0 = first, 100 = last)
+            earlier_count = 0
+            total_count = len(all_entries)
+
+            for _, entry_time_str in all_entries:
+                try:
+                    if isinstance(entry_time_str, str):
+                        entry_time = datetime.fromisoformat(entry_time_str.replace('Z', '+00:00'))
+                    elif isinstance(entry_time_str, (int, float)):
+                        entry_time = datetime.fromtimestamp(entry_time_str)
+                    else:
+                        continue
+
+                    if entry_time < trader_entry_time:
+                        earlier_count += 1
+                except:
+                    continue
+
+            entry_percentile = (earlier_count / total_count) * 100 if total_count > 0 else 50
+            entry_percentiles.append(entry_percentile)
+
+            # Track timestamps for hold duration
+            all_timestamps.extend([t['timestamp'] for t in market_trades])
+
+        if not entry_percentiles:
+            return {
+                'avg_hold_duration_hours': None,
+                'optimal_timing_score': 0.5,
+                'timing_classification': 'Neutral (insufficient market data)',
+                'avg_entry_percentile': None,
+                'markets_analyzed': 0
+            }
+
+        # Calculate average entry percentile
+        avg_percentile = sum(entry_percentiles) / len(entry_percentiles)
+
+        # Convert percentile to timing score (0.0-1.0)
+        # Lower percentile = earlier entry = better timing
+        # 0% (first) → 1.0, 50% (median) → 0.5, 100% (last) → 0.0
+        timing_score = 1.0 - (avg_percentile / 100.0)
+
+        # Classify timing quality
+        if timing_score >= 0.8:
+            classification = "Exceptional Early Mover"
+        elif timing_score >= 0.65:
+            classification = "Strong Early Adopter"
+        elif timing_score >= 0.45:
+            classification = "Average Timing"
+        elif timing_score >= 0.30:
+            classification = "Late Entry Tendency"
+        else:
+            classification = "Very Late Entry"
+
+        # Calculate hold duration
+        hold_hours = None
+        if len(all_timestamps) >= 2:
+            all_timestamps.sort()
+            hold_hours = (all_timestamps[-1] - all_timestamps[0]).total_seconds() / 3600
+
         return {
             'avg_hold_duration_hours': hold_hours,
-            'optimal_timing_score': 0.5,  # Neutral score
-            'timing_classification': 'Not Calculated (missing created_at)'
+            'optimal_timing_score': timing_score,
+            'timing_classification': classification,
+            'avg_entry_percentile': avg_percentile,
+            'markets_analyzed': len(entry_percentiles)
         }
 
     def classify_trading_style(self, betting: Dict, diversification: Dict, activity: Dict) -> str:
