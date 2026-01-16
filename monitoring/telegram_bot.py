@@ -22,10 +22,16 @@ class TelegramNotifier:
         self.on_stop_callback: Optional[Callable] = None
         # Rate limiting: track last notification time per trader
         self.last_notification = {}  # trader_address -> timestamp
-        self.notification_cooldown = 300  # 5 minutes in seconds
+        self.notification_cooldown = 1800  # 30 minutes in seconds (was 5 min, caused rate limit)
 
-    async def send_message(self, message: str):
-        """Send a message to the configured chat, splitting if too long."""
+    async def send_message(self, message: str, max_retries=3):
+        """
+        Send a message to the configured chat, splitting if too long.
+
+        Args:
+            message: Message text to send
+            max_retries: Maximum retry attempts on rate limit (default: 3)
+        """
         if not self.chat_id:
             print("[WARNING] Chat ID not configured. Cannot send message.")
             return
@@ -36,45 +42,68 @@ class TelegramNotifier:
         # Telegram max message length is 4096 characters
         MAX_LENGTH = 4000  # Leave some margin
 
-        try:
-            if len(message) <= MAX_LENGTH:
-                # Message is short enough, send as-is
-                await bot.send_message(
-                    chat_id=self.chat_id,
-                    text=message,
-                    parse_mode='HTML'
-                )
-            else:
-                # Split into multiple messages
-                parts = []
-                current_part = ""
-
-                for line in message.split('\n'):
-                    if len(current_part) + len(line) + 1 <= MAX_LENGTH:
-                        current_part += line + '\n'
-                    else:
-                        if current_part:
-                            parts.append(current_part)
-                        current_part = line + '\n'
-
-                if current_part:
-                    parts.append(current_part)
-
-                # Send each part
-                for i, part in enumerate(parts, 1):
-                    if len(parts) > 1:
-                        header = f"[Part {i}/{len(parts)}]\n\n"
-                        part = header + part
-
+        # Retry logic with exponential backoff for rate limits
+        for attempt in range(max_retries):
+            try:
+                if len(message) <= MAX_LENGTH:
+                    # Message is short enough, send as-is
                     await bot.send_message(
                         chat_id=self.chat_id,
-                        text=part,
+                        text=message,
                         parse_mode='HTML'
                     )
-                    await asyncio.sleep(0.5)  # Small delay between messages
+                else:
+                    # Split into multiple messages
+                    parts = []
+                    current_part = ""
 
-        except Exception as e:
-            print(f"Error sending Telegram message: {e}")
+                    for line in message.split('\n'):
+                        if len(current_part) + len(line) + 1 <= MAX_LENGTH:
+                            current_part += line + '\n'
+                        else:
+                            if current_part:
+                                parts.append(current_part)
+                            current_part = line + '\n'
+
+                    if current_part:
+                        parts.append(current_part)
+
+                    # Send each part
+                    for i, part in enumerate(parts, 1):
+                        if len(parts) > 1:
+                            header = f"[Part {i}/{len(parts)}]\n\n"
+                            part = header + part
+
+                        await bot.send_message(
+                            chat_id=self.chat_id,
+                            text=part,
+                            parse_mode='HTML'
+                        )
+                        await asyncio.sleep(0.5)  # Small delay between messages
+
+                # Success - exit retry loop
+                return
+
+            except Exception as e:
+                error_msg = str(e)
+
+                # Check if this is a rate limit error (429)
+                if "429" in error_msg or "Too Many Requests" in error_msg:
+                    print(f"[RATE LIMIT] Hit Telegram rate limit, attempt {attempt+1}/{max_retries}")
+
+                    if attempt < max_retries - 1:
+                        # Exponential backoff: 1s, 2s, 4s
+                        wait_time = 2 ** attempt
+                        print(f"[WAIT] Waiting {wait_time}s before retry...")
+                        await asyncio.sleep(wait_time)
+                    else:
+                        # Max retries reached - give up on this message
+                        print(f"[SKIP] Max retries reached, skipping message to avoid infinite loop")
+                        return
+                else:
+                    # Other error - don't retry
+                    print(f"Error sending Telegram message: {e}")
+                    return
 
     def should_notify_trader(self, trader_address: str) -> bool:
         """Check if enough time has passed since last notification for this trader."""
