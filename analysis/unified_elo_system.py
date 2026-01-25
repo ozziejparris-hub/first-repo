@@ -1202,41 +1202,52 @@ class UnifiedELOSystem:
         """
         Calculate calibration-based weight from Brier score.
 
+        ROI-FIRST REBALANCING: Reduced from 0.5-2.0x to 0.85-1.30x.
+        Forecasting accuracy is now a SUPPORTING metric, not dominant.
+
         Brier score measures forecasting accuracy (0.0 = perfect, 1.0 = worst).
         Lower Brier = better forecasting = higher weight.
-
-        Weight formula: 2.0 - brier_score (range 0.5-2.0)
 
         Args:
             trader_address: Trader's address
 
         Returns:
-            float: Weight multiplier (0.5-2.0)
-                - Brier 0.00-0.10: 1.90-2.00x (exceptional forecasting)
-                - Brier 0.10-0.20: 1.80-1.90x (excellent forecasting)
-                - Brier 0.20-0.30: 1.70-1.80x (good forecasting)
-                - Brier 0.30-0.40: 1.60-1.70x (above average)
-                - Brier 0.40-0.50: 1.50-1.60x (average)
-                - Brier 0.50-0.60: 1.40-1.50x (below average)
-                - Brier >0.60: 0.50-1.40x (poor forecasting)
+            float: Weight multiplier (0.85-1.30)
+                - Brier <=0.15: 1.30x (elite forecaster)
+                - Brier 0.15-0.20: 1.20x (excellent forecaster)
+                - Brier 0.20-0.25: 1.15x (good forecaster)
+                - Brier 0.25-0.30: 1.10x (above average)
+                - Brier 0.30-0.35: 1.05x (average)
+                - Brier 0.35-0.40: 1.00x (below average)
+                - Brier >0.40: 0.85x (poor forecaster)
 
         Examples:
-            Brier 0.15 (excellent) → 1.85x weight
-            Brier 0.50 (random guessing) → 1.50x weight
-            Brier 0.80 (poor) → 1.20x weight
+            Brier 0.15 (elite) → 1.30x weight
+            Brier 0.30 (average) → 1.10x weight
+            Brier 0.50 (poor) → 0.85x weight
         """
         # Load data if not cached
         if not self.calibration_cache and self.advanced_metrics_timestamp is None:
             self._load_advanced_metrics_data()
 
-        # Get Brier score (default 0.5 = random guessing)
-        brier_score = self.calibration_cache.get(trader_address, 0.5)
+        # Get Brier score (default 0.30 = average forecaster)
+        brier_score = self.calibration_cache.get(trader_address, 0.30)
 
-        # Calculate weight: 2.0 - brier_score
-        weight = 2.0 - brier_score
-
-        # Clamp to [0.5, 2.0] range
-        weight = max(0.5, min(2.0, weight))
+        # NEW REDUCED CALIBRATION WEIGHT MAPPING
+        if brier_score <= 0.15:
+            weight = 1.30
+        elif brier_score <= 0.20:
+            weight = 1.20
+        elif brier_score <= 0.25:
+            weight = 1.15
+        elif brier_score <= 0.30:
+            weight = 1.10
+        elif brier_score <= 0.35:
+            weight = 1.05
+        elif brier_score <= 0.40:
+            weight = 1.00
+        else:
+            weight = 0.85
 
         return weight
 
@@ -1358,20 +1369,23 @@ class UnifiedELOSystem:
         """
         Calculate combined advanced metrics multiplier.
 
+        ROI-FIRST REBALANCING: Reduced from 0.45-2.3x to 0.85-1.30x.
+        Forecasting accuracy is now a SUPPORTING metric.
+
         Combines three dimensions:
-        1. Calibration weight (forecasting accuracy from Brier scores)
-        2. Execution modifier (timing quality from regret analysis)
-        3. K-factor recommendation (consistency from Sharpe ratios)
+        1. Calibration weight (forecasting accuracy from Brier scores): 0.85-1.30x
+        2. Execution modifier (timing quality from regret analysis): 0.90-1.15x
+        3. K-factor recommendation (consistency from Sharpe ratios): 16-40
 
         Args:
             trader_address: Trader's address
 
         Returns:
             dict: {
-                'calibration_weight': float (0.5-2.0),
+                'calibration_weight': float (0.85-1.30),
                 'execution_modifier': float (0.90-1.15),
                 'k_factor': int (16-40),
-                'combined_multiplier': float (0.45-2.3),
+                'combined_multiplier': float (0.85-1.30),
                 'brier_score': float or None,
                 'sharpe_ratio': float or None,
                 'regret_rate': float or None,
@@ -1379,16 +1393,16 @@ class UnifiedELOSystem:
             }
 
         Examples:
-            Exceptional trader (Brier 0.15, Regret 8%, Sharpe 2.8):
-                calibration_weight: 1.85x
+            Elite forecaster (Brier 0.15, Regret 8%, Sharpe 2.8):
+                calibration_weight: 1.30x
                 execution_modifier: 1.15x
-                combined_multiplier: 2.13x
+                combined_multiplier: 1.30x (clamped)
                 k_factor: 16
 
             Average trader (defaults):
-                calibration_weight: 1.50x
+                calibration_weight: 1.10x
                 execution_modifier: 1.00x
-                combined_multiplier: 1.50x
+                combined_multiplier: 1.10x
                 k_factor: 32
         """
         # Get individual components
@@ -1399,8 +1413,8 @@ class UnifiedELOSystem:
         # Combined multiplier (calibration × execution)
         combined = calibration_weight * execution_modifier
 
-        # Clamp to reasonable range [0.45, 2.3]
-        combined = max(0.45, min(2.3, combined))
+        # Clamp to NEW reduced range [0.85, 1.30] (ROI-first rebalancing)
+        combined = max(0.85, min(1.30, combined))
 
         # Get raw metrics for reporting
         brier_score = self.calibration_cache.get(trader_address)
@@ -1854,8 +1868,8 @@ class UnifiedELOSystem:
         """
         Get trader's global ELO rating (weighted average across all categories).
 
-        This provides a single overall skill rating, but category-specific ratings
-        are more accurate for domain-specific predictions.
+        ROI-FIRST REBALANCING: P&L is now applied FIRST (dominant factor).
+        Order of operations ensures profit performance has maximum multiplicative impact.
 
         Args:
             trader_address: Trader's address
@@ -1863,7 +1877,7 @@ class UnifiedELOSystem:
             apply_advanced: If True, apply advanced metrics (calibration, execution, Sharpe)
             apply_network: If True, apply network filtering (independence, copy-trader detection)
             apply_contrarian: If True, apply contrarian bonus
-            apply_pnl: If True, apply P&L/position tracking modifier (trading skill)
+            apply_pnl: If True, apply P&L/position tracking modifier (DOMINANT - applied first)
             market_id: Market ID for disagreement-adjusted weighting (optional)
 
         Returns:
@@ -1872,11 +1886,7 @@ class UnifiedELOSystem:
 
         Examples:
             Base ELO: system.get_trader_global_elo(trader)
-            Behavioral: system.get_trader_global_elo(trader, apply_behavioral=True)
-            Advanced: system.get_trader_global_elo(trader, apply_advanced=True)
-            Network: system.get_trader_global_elo(trader, apply_network=True)
-            Contrarian: system.get_trader_global_elo(trader, apply_contrarian=True)
-            P&L: system.get_trader_global_elo(trader, apply_pnl=True)
+            P&L (dominant): system.get_trader_global_elo(trader, apply_pnl=True)
             All 6 dimensions: system.get_trader_global_elo(trader, apply_behavioral=True, apply_advanced=True,
                                                             apply_network=True, apply_contrarian=True, apply_pnl=True)
         """
@@ -1898,6 +1908,12 @@ class UnifiedELOSystem:
             behavioral_bonus = self.calculate_behavioral_elo_bonus(trader_address)
             adjusted_elo += behavioral_bonus
 
+        # ROI-FIRST: Apply P&L BEFORE other multipliers (ensures maximum impact)
+        if apply_pnl:
+            pnl_data = self.calculate_pnl_multiplier(trader_address)
+            adjusted_elo *= pnl_data['combined_multiplier']
+
+        # Supporting metrics applied after P&L (they modify P&L-adjusted base)
         if apply_advanced:
             advanced_data = self.calculate_advanced_metrics_multiplier(trader_address)
             adjusted_elo *= advanced_data['combined_multiplier']
@@ -1909,10 +1925,6 @@ class UnifiedELOSystem:
         if apply_contrarian:
             contrarian_data = self.calculate_contrarian_multiplier(trader_address, market_id)
             adjusted_elo *= contrarian_data['combined_multiplier']
-
-        if apply_pnl:
-            pnl_data = self.calculate_pnl_multiplier(trader_address)
-            adjusted_elo *= pnl_data['combined_multiplier']
 
         return adjusted_elo
 
@@ -1967,6 +1979,12 @@ class UnifiedELOSystem:
             behavioral_bonus = self.calculate_behavioral_elo_bonus(trader_address)
             adjusted_elo += behavioral_bonus
 
+        # ROI-FIRST: Apply P&L BEFORE other multipliers (ensures maximum impact)
+        if apply_pnl:
+            pnl_data = self.calculate_pnl_multiplier(trader_address)
+            adjusted_elo *= pnl_data['combined_multiplier']
+
+        # Supporting metrics applied after P&L (they modify P&L-adjusted base)
         if apply_advanced:
             advanced_data = self.calculate_advanced_metrics_multiplier(trader_address)
             adjusted_elo *= advanced_data['combined_multiplier']
@@ -1978,10 +1996,6 @@ class UnifiedELOSystem:
         if apply_contrarian:
             contrarian_data = self.calculate_contrarian_multiplier(trader_address, market_id)
             adjusted_elo *= contrarian_data['combined_multiplier']
-
-        if apply_pnl:
-            pnl_data = self.calculate_pnl_multiplier(trader_address)
-            adjusted_elo *= pnl_data['combined_multiplier']
 
         return adjusted_elo
 
@@ -2330,19 +2344,19 @@ class UnifiedELOSystem:
         """
         Calculate base contrarian modifier for trader.
 
-        Rewards traders who profitably bet against consensus.
+        ROI-FIRST REBALANCING: Reduced from 0.90-1.25x to 0.95-1.15x.
+        Being contrarian is good but shouldn't override profit performance.
 
         Args:
             trader_address: Trader to evaluate
 
         Returns:
-            float: Contrarian multiplier (0.90-1.25)
-                - Consistent Contrarian (high win rate) → 1.20x
-                - Selective Contrarian (picks spots) → 1.15x
-                - Valuable Contrarian (general) → 1.10x
+            float: Contrarian multiplier (0.95-1.15)
+                - Elite Contrarian (70%+ win rate, high divergence) → 1.15x
+                - Consistent Contrarian (65%+ win rate) → 1.10x
+                - Valuable Contrarian (60%+ win rate) → 1.05x
                 - Balanced Trader → 1.00x (neutral)
-                - Herd Follower → 0.95x
-                - Chaos Bettor (contrarian but losing) → 0.90x
+                - Bad Contrarian (contrarian but losing) → 0.95x
         """
         # Load data if not cached
         if not self.contrarian_traders and self.contrarian_cache_timestamp is None:
@@ -2354,33 +2368,25 @@ class UnifiedELOSystem:
 
         trader_data = self.contrarian_traders[trader_address]
 
-        # Get contrarian type
+        # Get contrarian metrics
         contrarian_type = trader_data.get('contrarian_type', 'Balanced Trader')
         is_valuable = trader_data.get('is_valuable', False)
         contrarian_win_rate = trader_data.get('contrarian_win_rate', 0.5)
+        avg_divergence = trader_data.get('avg_divergence', 0.0)
 
-        # Calculate modifier based on type and performance
-        if contrarian_type == "Consistent Contrarian":
-            modifier = 1.20  # Best contrarians
-        elif contrarian_type == "Selective Contrarian":
-            modifier = 1.15  # Picks spots well
-        elif is_valuable:
-            modifier = 1.10  # Generally profitable contrarian
+        # NEW REDUCED CONTRARIAN MODIFIER LOGIC
+        if contrarian_win_rate > 0.70 and avg_divergence > 0.30:
+            modifier = 1.15  # Elite contrarian (was 1.25x)
+        elif contrarian_win_rate > 0.65 and avg_divergence > 0.25:
+            modifier = 1.10  # Strong contrarian (was 1.20x)
+        elif contrarian_win_rate > 0.60 and avg_divergence > 0.20:
+            modifier = 1.05  # Moderate contrarian (was 1.15x)
         elif contrarian_type == "Balanced Trader":
             modifier = 1.00  # Neutral
-        elif contrarian_type == "Herd Follower":
-            modifier = 0.95  # Follows consensus too much
-        elif contrarian_type == "Chaos Bettor":
-            modifier = 0.90  # Contrarian but losing
+        elif contrarian_win_rate < 0.45 and avg_divergence > 0.20:
+            modifier = 0.95  # Bad contrarian (was 0.90x, less harsh)
         else:
             modifier = 1.00  # Default neutral
-
-        # Additional boost for very high contrarian win rate
-        if contrarian_win_rate > 0.7:
-            modifier += 0.05  # Extra bonus for exceptional contrarians
-
-        # Clamp to [0.90, 1.25] range
-        modifier = max(0.90, min(1.25, modifier))
 
         return modifier
 
@@ -2436,22 +2442,19 @@ class UnifiedELOSystem:
         """
         Calculate disagreement-adjusted weight for trader on specific market.
 
-        In high-disagreement markets, valuable contrarians get extra weight
-        because they provide unique signal when consensus is uncertain.
-
-        Formula: base_weight × (1 + disagreement_boost)
-
-        Where disagreement_boost = disagreement_score × contrarian_multiplier
+        ROI-FIRST REBALANCING: Reduced from 1.0-1.5x to 1.0-1.10x.
+        High disagreement bonus is now much smaller.
 
         Args:
             trader_address: Trader to evaluate
             market_id: Market ID for context
 
         Returns:
-            float: Disagreement-adjusted multiplier (1.0-1.5x)
-                - High disagreement + valuable contrarian → 1.3-1.5x
-                - High disagreement + regular trader → 1.0-1.1x
-                - Low disagreement (any trader) → 1.0x
+            float: Disagreement-adjusted multiplier (1.0-1.10x)
+                - High disagreement (>0.8) + valuable contrarian → 1.10x
+                - High disagreement (>0.6) + valuable contrarian → 1.05x
+                - Moderate disagreement (>0.4) + valuable contrarian → 1.02x
+                - Low disagreement OR regular trader → 1.00x
         """
         # Load data if not cached
         if not self.market_disagreements and self.contrarian_cache_timestamp is None:
@@ -2464,26 +2467,26 @@ class UnifiedELOSystem:
         disagreement_data = self.market_disagreements[market_id]
         disagreement_score = disagreement_data.get('disagreement_score', 0.0)
 
-        # Only apply boost in high-disagreement markets (>0.6)
-        if disagreement_score < 0.6:
+        # Only apply boost in moderate-to-high disagreement markets (>0.4)
+        if disagreement_score < 0.4:
             return 1.0  # Low disagreement, no boost
 
         # Check if trader is valuable contrarian
         contrarian_data = self.is_valuable_contrarian(trader_address)
 
         if contrarian_data['is_valuable']:
-            # Valuable contrarians get extra weight in high-disagreement markets
-            # Maximum boost: disagreement_score (0.6-1.0) × 0.5 = 0.3-0.5
-            disagreement_boost = disagreement_score * 0.5
+            # NEW REDUCED DISAGREEMENT ADJUSTMENT
+            if disagreement_score > 0.8:
+                multiplier = 1.10  # Was 1.50x
+            elif disagreement_score > 0.6:
+                multiplier = 1.05  # Was 1.35x
+            elif disagreement_score > 0.4:
+                multiplier = 1.02  # Was 1.20x
+            else:
+                multiplier = 1.00
         else:
-            # Regular traders get minor boost in high-disagreement (uncertainty)
-            disagreement_boost = disagreement_score * 0.1
-
-        # Calculate final multiplier
-        multiplier = 1.0 + disagreement_boost
-
-        # Clamp to [1.0, 1.5] range
-        multiplier = max(1.0, min(1.5, multiplier))
+            # Regular traders get no boost (was 1.0-1.1x)
+            multiplier = 1.00
 
         return multiplier
 
@@ -2492,9 +2495,12 @@ class UnifiedELOSystem:
         """
         Calculate combined contrarian multiplier.
 
+        ROI-FIRST REBALANCING: Reduced from 0.90-1.875x to 0.95-1.25x.
+        Contrarian bonus is now a SUPPORTING metric.
+
         Combines two components:
-        1. Base contrarian modifier (trader-intrinsic)
-        2. Disagreement-adjusted weight (market-context-aware, if market_id provided)
+        1. Base contrarian modifier (trader-intrinsic): 0.95-1.15x
+        2. Disagreement-adjusted weight (market-context-aware): 1.0-1.10x
 
         Args:
             trader_address: Trader to evaluate
@@ -2502,9 +2508,9 @@ class UnifiedELOSystem:
 
         Returns:
             dict: {
-                'base_modifier': float (0.90-1.25),
-                'disagreement_adjusted': float (1.0-1.5),
-                'combined_multiplier': float (0.90-1.875),
+                'base_modifier': float (0.95-1.15),
+                'disagreement_adjusted': float (1.0-1.10),
+                'combined_multiplier': float (0.95-1.25),
                 'contrarian_data': dict,
                 'disagreement_score': float or None,
                 'breakdown': str
@@ -2527,8 +2533,8 @@ class UnifiedELOSystem:
         # Combined multiplier
         combined = base_modifier * disagreement_adjusted
 
-        # Clamp to [0.90, 1.875] range
-        combined = max(0.90, min(1.875, combined))
+        # Clamp to NEW reduced range [0.95, 1.25] (ROI-first rebalancing)
+        combined = max(0.95, min(1.25, combined))
 
         # Build breakdown string
         breakdown_parts = []
@@ -3685,125 +3691,147 @@ class UnifiedELOSystem:
         """
         Calculate profit-based modifier from realized P&L.
 
+        ROI-FIRST REBALANCING: Increased ranges to reward exceptional profits.
+
         Args:
             realized_pnl: Total realized profit/loss
 
         Returns:
-            float: Multiplier (0.85-1.20)
-                - $500+: 1.20x (exceptional)
-                - $250-499: 1.15x (strong)
-                - $100-249: 1.10x (good)
-                - $50-99: 1.05x (modest)
-                - $10-49: 1.00x (neutral)
-                - $0-9: 0.95x (minimal)
-                - Negative: 0.85-0.95x (losses)
+            float: Multiplier (0.50-1.40)
+                - $50,000+: 1.40x (legendary profit)
+                - $25,000-50k: 1.30x (exceptional profit)
+                - $10,000-25k: 1.20x (elite profit)
+                - $5,000-10k: 1.15x (strong profit)
+                - $1,000-5k: 1.08x (good profit)
+                - $0-1k: 1.00x (break-even)
+                - $-1k-0: 0.95x (minor loss)
+                - $-5k--1k: 0.85x (moderate loss)
+                - $-10k--5k: 0.70x (heavy loss)
+                - <-$10k: 0.50x (catastrophic loss)
         """
-        if realized_pnl >= 500:
+        if realized_pnl >= 50000:
+            return 1.40
+        elif realized_pnl >= 25000:
+            return 1.30
+        elif realized_pnl >= 10000:
             return 1.20
-        elif realized_pnl >= 250:
+        elif realized_pnl >= 5000:
             return 1.15
-        elif realized_pnl >= 100:
-            return 1.10
-        elif realized_pnl >= 50:
-            return 1.05
-        elif realized_pnl >= 10:
-            return 1.00
+        elif realized_pnl >= 1000:
+            return 1.08
         elif realized_pnl >= 0:
+            return 1.00
+        elif realized_pnl >= -1000:
             return 0.95
+        elif realized_pnl >= -5000:
+            return 0.85
+        elif realized_pnl >= -10000:
+            return 0.70
         else:
-            # Negative P&L: scale from 0.85 to 0.95
-            # -$100 or worse = 0.85x
-            return max(0.85, 0.95 + (realized_pnl / 100) * 0.10)
+            return 0.50
 
     def calculate_roi_modifier(self, avg_roi: float) -> float:
         """
         Calculate ROI-based modifier from average return.
 
-        OPTIMIZED for real monitoring data with early exits and position tracking.
-        Ranges calibrated from simulations showing 10-30% ROI for skilled traders.
+        ROI-FIRST REBALANCING: THIS IS NOW THE DOMINANT FACTOR.
+        Exceptional profits deserve extraordinary ELO boosts.
 
         Args:
             avg_roi: Average ROI percentage
 
         Returns:
-            float: Multiplier (0.85-1.25)
-                - >50%: 1.25x (exceptional, rare)
-                - 30-50%: 1.20x (elite performance)
-                - 20-30%: 1.15x (strong skill)
-                - 10-20%: 1.10x (above average)
-                - 5-10%: 1.05x (slight edge)
-                - 0-5%: 1.00x (neutral)
-                - -5-0%: 0.95x (small losses)
-                - -10--5%: 0.90x (poor)
-                - <-10%: 0.85x (very poor)
+            float: Multiplier (0.40-2.50)
+                - >=100%: 2.50x (LEGENDARY ROI - 100%+ returns!)
+                - 75-100%: 2.00x (exceptional ROI)
+                - 50-75%: 1.70x (elite ROI)
+                - 30-50%: 1.40x (strong ROI)
+                - 15-30%: 1.20x (good ROI)
+                - 5-15%: 1.10x (above average)
+                - 0-5%: 1.00x (break-even)
+                - -10-0%: 0.90x (minor negative ROI)
+                - -25--10%: 0.75x (moderate negative ROI)
+                - -50--25%: 0.60x (heavy negative ROI)
+                - <-50%: 0.40x (catastrophic ROI)
         """
-        if avg_roi > 50:
-            return 1.25
-        elif avg_roi > 30:
+        if avg_roi >= 100:
+            return 2.50
+        elif avg_roi >= 75:
+            return 2.00
+        elif avg_roi >= 50:
+            return 1.70
+        elif avg_roi >= 30:
+            return 1.40
+        elif avg_roi >= 15:
             return 1.20
-        elif avg_roi > 20:
-            return 1.15
-        elif avg_roi > 10:
+        elif avg_roi >= 5:
             return 1.10
-        elif avg_roi > 5:
-            return 1.05
-        elif avg_roi > 0:
+        elif avg_roi >= 0:
             return 1.00
-        elif avg_roi > -5:
-            return 0.95
-        elif avg_roi > -10:
+        elif avg_roi >= -10:
             return 0.90
+        elif avg_roi >= -25:
+            return 0.75
+        elif avg_roi >= -50:
+            return 0.60
         else:
-            return 0.85
+            return 0.40
 
     def calculate_position_quality_modifier(self, profitable_rate: float) -> float:
         """
         Calculate position quality modifier from profitable rate.
 
+        ROI-FIRST REBALANCING: Slightly increased to reward elite win rates.
+
         Args:
             profitable_rate: Fraction of closed positions that were profitable (0-1)
 
         Returns:
-            float: Multiplier (0.95-1.10)
-                - >70%: 1.10x (very selective)
-                - 60-70%: 1.07x (good selection)
-                - 50-60%: 1.05x (slightly profitable)
-                - 40-50%: 1.00x (neutral)
-                - 30-40%: 0.97x (more losers)
-                - <30%: 0.95x (poor selection)
+            float: Multiplier (0.90-1.15)
+                - >=75%: 1.15x (elite position quality)
+                - 65-75%: 1.10x (strong position quality)
+                - 55-65%: 1.05x (good position quality)
+                - 45-55%: 1.00x (average quality)
+                - 35-45%: 0.95x (below average quality)
+                - <35%: 0.90x (poor position quality)
         """
-        if profitable_rate > 0.70:
+        if profitable_rate >= 0.75:
+            return 1.15
+        elif profitable_rate >= 0.65:
             return 1.10
-        elif profitable_rate > 0.60:
-            return 1.07
-        elif profitable_rate > 0.50:
+        elif profitable_rate >= 0.55:
             return 1.05
-        elif profitable_rate > 0.40:
+        elif profitable_rate >= 0.45:
             return 1.00
-        elif profitable_rate > 0.30:
-            return 0.97
-        else:
+        elif profitable_rate >= 0.35:
             return 0.95
+        else:
+            return 0.90
 
     def calculate_pnl_confidence(self, closed_positions: int) -> float:
         """
         Calculate confidence multiplier based on sample size.
+
+        ROI-FIRST REBALANCING: Slightly adjusted to reach full confidence faster.
 
         Args:
             closed_positions: Number of closed positions
 
         Returns:
             float: Confidence (0.50-1.00)
-                - 30+: 1.00 (full confidence)
-                - 20-29: 0.90
-                - 10-19: 0.75
-                - 5-9: 0.60
-                - <5: 0.50
+                - 100+: 1.00 (full confidence - large sample)
+                - 50-99: 0.95 (high confidence)
+                - 25-49: 0.85 (moderate confidence)
+                - 10-24: 0.75 (low confidence)
+                - 5-9: 0.60 (very low confidence)
+                - <5: 0.50 (minimum confidence)
         """
-        if closed_positions >= 30:
+        if closed_positions >= 100:
             return 1.00
-        elif closed_positions >= 20:
-            return 0.90
+        elif closed_positions >= 50:
+            return 0.95
+        elif closed_positions >= 25:
+            return 0.85
         elif closed_positions >= 10:
             return 0.75
         elif closed_positions >= 5:
@@ -3815,10 +3843,12 @@ class UnifiedELOSystem:
         """
         Calculate combined P&L/position tracking multiplier.
 
-        Combines three P&L dimensions:
-        1. Profit score (absolute $ made)
-        2. ROI score (percentage returns)
-        3. Position quality (profitable rate)
+        ROI-FIRST REBALANCING: P&L IS NOW THE DOMINANT FACTOR.
+        Combines three P&L dimensions with aggressive ranges to reward exceptional profits.
+
+        1. Profit score (absolute $ made): 0.50-1.40x
+        2. ROI score (percentage returns): 0.40-2.50x ← DOMINANT
+        3. Position quality (profitable rate): 0.90-1.15x
 
         Adjusted by sample size confidence.
 
@@ -3827,11 +3857,11 @@ class UnifiedELOSystem:
 
         Returns:
             dict: {
-                'profit_modifier': float (0.85-1.20),
-                'roi_modifier': float (0.90-1.15),
-                'quality_modifier': float (0.95-1.10),
+                'profit_modifier': float (0.50-1.40),
+                'roi_modifier': float (0.40-2.50),
+                'quality_modifier': float (0.90-1.15),
                 'confidence': float (0.50-1.00),
-                'combined_multiplier': float (0.70-1.40),
+                'combined_multiplier': float (0.40-2.50),
                 'raw_metrics': dict,
                 'breakdown': str
             }
@@ -3877,10 +3907,13 @@ class UnifiedELOSystem:
         confidence = self.calculate_pnl_confidence(closed_positions)
 
         # Combined multiplier (multiplicative with confidence)
-        combined = profit_modifier * roi_modifier * quality_modifier * confidence
+        combined = profit_modifier * roi_modifier * quality_modifier
 
-        # Clamp to reasonable range
-        combined = max(0.70, min(1.40, combined))
+        # Apply confidence weighting (regression to mean for small samples)
+        final_combined = 1.0 + (combined - 1.0) * confidence
+
+        # Clamp to NEW aggressive range (ROI-first rebalancing)
+        final_combined = max(0.40, min(2.50, final_combined))
 
         # Build breakdown string
         breakdown_parts = []
@@ -3888,7 +3921,7 @@ class UnifiedELOSystem:
         breakdown_parts.append(f"ROI: {roi_modifier:.2f}x ({avg_roi:.1f}%)")
         breakdown_parts.append(f"Quality: {quality_modifier:.2f}x ({profitable_rate*100:.1f}% profitable)")
         breakdown_parts.append(f"Confidence: {confidence:.2f} ({closed_positions} closed)")
-        breakdown_parts.append(f"TOTAL: {combined:.2f}x")
+        breakdown_parts.append(f"TOTAL: {final_combined:.2f}x")
 
         breakdown = " | ".join(breakdown_parts)
 
@@ -3897,7 +3930,7 @@ class UnifiedELOSystem:
             'roi_modifier': round(roi_modifier, 3),
             'quality_modifier': round(quality_modifier, 3),
             'confidence': round(confidence, 3),
-            'combined_multiplier': round(combined, 3),
+            'combined_multiplier': round(final_combined, 3),
             'raw_metrics': {
                 'realized_pnl': round(realized_pnl, 2),
                 'avg_roi': round(avg_roi, 2),
