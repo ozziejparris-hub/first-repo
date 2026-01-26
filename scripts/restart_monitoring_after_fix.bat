@@ -1,52 +1,68 @@
 @echo off
-REM Restart monitoring after Telegram rate limit fix
+REM ====================================================================
+REM  RESTART MONITORING WITH POSITION TRACKER FIX
+REM ====================================================================
+REM
+REM  This script:
+REM  1. Verifies position tracker is integrated
+REM  2. Stops any running monitoring process
+REM  3. Starts monitoring with position tracking active
+REM  4. Shows live P&L logs
+REM
+REM ====================================================================
 
 echo.
-echo ======================================================================
-echo   RESTART MONITORING - After Telegram Rate Limit Fix
-echo ======================================================================
+echo ====================================================================
+echo   MONITORING RESTART SCRIPT
+echo   Position Tracker Integration Fix
+echo ====================================================================
 echo.
 
-echo [1/3] Killing old monitoring process...
+REM Step 1: Verify position tracker integration
+echo [1/4] Verifying position tracker integration...
+echo.
+py scripts\test_position_tracker.py
+
+echo.
+echo If you see "Position tracker is fully integrated" above, continue.
+echo Otherwise, fix integration issues first.
+echo.
+pause
+
+REM Step 2: Stop any running monitoring processes
+echo.
+echo [2/4] Stopping any running monitoring processes...
 taskkill /F /IM python.exe >nul 2>&1
 if errorlevel 1 (
     echo       No python.exe processes found
 ) else (
-    echo       Killed python.exe processes
+    echo       [OK] Killed python.exe processes
 )
 timeout /t 2 /nobreak >nul
 
+REM Step 3: Start monitoring with position tracking
 echo.
-echo [2/3] Verifying fix applied...
-findstr /C:"max_retries=3" monitoring\telegram_bot.py >nul
-if errorlevel 1 (
-    echo       [!] WARNING: max_retries not found in telegram_bot.py
-    echo       [!] Fix may not be applied correctly
-) else (
-    echo       [OK] Retry limit verified
-)
-
-findstr /C:"notification_cooldown = 1800" monitoring\telegram_bot.py >nul
-if errorlevel 1 (
-    echo       [!] WARNING: cooldown not set to 1800
-    echo       [!] Fix may not be applied correctly
-) else (
-    echo       [OK] Cooldown verified (30 minutes)
-)
-
+echo [3/4] Starting monitoring system...
 echo.
-echo [3/3] Starting monitoring...
+echo ====================================================================
+echo   MONITORING STARTED
+echo   Watch for [P^&L] messages indicating position tracking activity
+echo ====================================================================
 echo.
-echo       Process will run in this window
-echo       Press Ctrl+C to stop
+echo Expected output every 15 minutes:
+echo   [P^&L] Updating position tracking...
+echo   [P^&L] Processing 1323 active traders...
+echo   [P^&L] [OK] Updated P^&L for 456 traders
 echo.
-echo       Expected behavior:
-echo         - Market scans every 15 minutes
-echo         - Trade processing
-echo         - If rate limit: "[RATE LIMIT] Attempt X/3" then "[SKIP]"
-echo         - System continues (not stuck)
+echo Press Ctrl+C to stop monitoring
 echo.
-echo ======================================================================
+echo ====================================================================
 echo.
 
-python -m monitoring.main
+REM Run monitoring with proper Python module syntax
+py -m monitoring.main
+
+echo.
+echo [4/4] Monitoring stopped
+echo.
+pause
