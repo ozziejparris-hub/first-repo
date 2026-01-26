@@ -1,0 +1,15 @@
+{
+  "auto_updates_enabled": true,
+  "update_triggers": {
+    "min_pnl_coverage": 0.20,
+    "min_closed_positions": 100,
+    "max_hours_between_updates": 24
+  },
+  "telegram_notifications": {
+    "enabled": true,
+    "send_leaderboard": true,
+    "leaderboard_top_n": 20,
+    "hourly_mini_leaderboard": true,
+    "mini_leaderboard_top_n": 5
+  }
+}

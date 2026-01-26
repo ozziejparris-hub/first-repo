@@ -17,8 +17,11 @@ This is an independent watchdog process that monitors the main monitoring system
 import asyncio
 import signal
 import sys
+import sqlite3
+import subprocess
 from datetime import datetime, timedelta
 from typing import Optional, Dict
+from pathlib import Path
 import psutil
 
 from .health_checker import HealthChecker
@@ -62,8 +65,12 @@ class SystemObserver:
         self.start_time = None
         self.observer_start_time = datetime.now()  # Track when observer started
         self.last_hourly_report = None
+        self.last_elo_update = None  # Track last ELO update
         self.check_count = 0
         self.error_count = 0
+
+        # Database path
+        self.db_path = 'data/polymarket_tracker.db'
 
         # Setup signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -101,7 +108,8 @@ class SystemObserver:
         tasks = [
             asyncio.create_task(self._health_check_loop()),
             asyncio.create_task(self._log_monitor_loop()),
-            asyncio.create_task(self._hourly_report_loop())
+            asyncio.create_task(self._hourly_report_loop()),
+            asyncio.create_task(self._elo_update_loop())
         ]
 
         try:
@@ -265,6 +273,79 @@ class SystemObserver:
                 print(f"[OBSERVER] Error in hourly report loop: {e}")
                 await asyncio.sleep(60)
 
+    def _get_top_traders(self, limit: int = 5) -> list:
+        """
+        Get top traders by ELO for mini leaderboard.
+
+        Args:
+            limit: Number of top traders to return
+
+        Returns:
+            list: Top traders with ELO, ROI, address
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                SELECT address, comprehensive_elo, roi_percentage
+                FROM traders
+                WHERE comprehensive_elo IS NOT NULL
+                ORDER BY comprehensive_elo DESC
+                LIMIT ?
+            """, (limit,))
+
+            traders = cursor.fetchall()
+            conn.close()
+
+            return [
+                {
+                    'address': addr,
+                    'elo': elo,
+                    'roi': roi
+                }
+                for addr, elo, roi in traders
+            ]
+
+        except Exception as e:
+            print(f"[OBSERVER] Error getting top traders: {e}")
+            return []
+
+    def _get_pnl_stats(self) -> Dict:
+        """
+        Get P&L coverage statistics.
+
+        Returns:
+            dict: P&L stats including coverage percentage
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                SELECT COUNT(*) FROM traders
+                WHERE roi_percentage IS NOT NULL
+                AND total_trades >= 10
+            """)
+            traders_with_roi = cursor.fetchone()[0]
+
+            cursor.execute("""
+                SELECT COUNT(*) FROM positions
+                WHERE status = 'closed'
+            """)
+            closed_positions = cursor.fetchone()[0]
+
+            conn.close()
+
+            return {
+                'traders_with_roi': traders_with_roi,
+                'closed_positions': closed_positions
+            }
+
+        except Exception as e:
+            print(f"[OBSERVER] Error getting P&L stats: {e}")
+            return {'traders_with_roi': 0, 'closed_positions': 0}
+
     def _count_activity_from_logs(self, hours: float = 1.0) -> Dict:
         """
         Count actual monitoring activity from log files.
@@ -386,6 +467,12 @@ class SystemObserver:
         # Get REAL activity from logs (last hour)
         activity = self._count_activity_from_logs(hours=1.0)
 
+        # Get top 5 traders for mini leaderboard
+        top_traders = self._get_top_traders(limit=5)
+
+        # Get P&L coverage stats
+        pnl_stats = self._get_pnl_stats()
+
         return {
             'health_status': health['status'],
             'uptime_hours': uptime_hours,
@@ -393,8 +480,246 @@ class SystemObserver:
             'error_count': error_summary.get('total_errors', 0),
             'error_details': error_details,
             'performance': performance,
-            'activity': activity
+            'activity': activity,
+            'top_traders': top_traders,
+            'pnl_stats': pnl_stats
         }
+
+    async def _elo_update_loop(self):
+        """
+        ELO update loop - checks every 10 minutes if ELO update is needed.
+        """
+        print("[OBSERVER] ELO update loop started")
+
+        while self.running:
+            try:
+                # Check if update needed
+                if self._check_elo_update_needed():
+                    print("[OBSERVER] ELO update triggered")
+
+                    # Run ELO integration
+                    elo_results = await self._run_elo_integration()
+
+                    # Generate leaderboard
+                    leaderboard = self._generate_leaderboard(top_n=20)
+
+                    # Send notification
+                    await self._send_elo_update_notification(elo_results, leaderboard)
+
+                # Check every 10 minutes
+                await asyncio.sleep(600)
+
+            except Exception as e:
+                print(f"[OBSERVER] Error in ELO update loop: {e}")
+                await asyncio.sleep(600)
+
+    def _check_elo_update_needed(self) -> bool:
+        """
+        Determine if ELO system needs updating.
+
+        Triggers update if:
+        - P&L coverage reached 20%+ (first time)
+        - 100+ new closed positions since last update
+        - 24 hours since last update
+
+        Returns:
+            bool: True if update needed
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            # Check P&L coverage
+            cursor.execute("SELECT COUNT(*) FROM traders WHERE total_trades >= 10")
+            total_qualified = cursor.fetchone()[0]
+
+            cursor.execute("""
+                SELECT COUNT(*) FROM traders
+                WHERE total_trades >= 10
+                AND roi_percentage IS NOT NULL
+            """)
+            with_roi = cursor.fetchone()[0]
+
+            coverage = with_roi / max(1, total_qualified)
+
+            # Check hours since last update
+            if self.last_elo_update is None:
+                hours_since = 999  # Force first update
+            else:
+                hours_since = (datetime.now() - self.last_elo_update).total_seconds() / 3600
+
+            # Get closed positions count
+            cursor.execute("SELECT COUNT(*) FROM positions WHERE status = 'closed'")
+            closed_positions = cursor.fetchone()[0]
+
+            conn.close()
+
+            # Decision logic
+            reasons = []
+
+            if coverage >= 0.20 and self.last_elo_update is None:
+                reasons.append(f"P&L coverage reached {coverage*100:.1f}% (first time)")
+
+            if hours_since >= 24:
+                reasons.append(f"{hours_since:.1f} hours since last update")
+
+            if closed_positions >= 100 and self.last_elo_update is None:
+                reasons.append(f"{closed_positions} closed positions available")
+
+            if reasons:
+                print(f"\n[ELO UPDATE] Triggering update:")
+                for reason in reasons:
+                    print(f"  - {reason}")
+                return True
+
+            return False
+
+        except Exception as e:
+            print(f"[OBSERVER] Error checking ELO update: {e}")
+            return False
+
+    async def _run_elo_integration(self) -> Dict:
+        """
+        Run complete ELO integration pipeline.
+
+        Returns:
+            Dict with results: correlation, success status, etc.
+        """
+        print(f"\n{'='*70}")
+        print(f"  RUNNING ELO INTEGRATION")
+        print(f"{'='*70}\n")
+
+        try:
+            # Run integration script
+            result = await asyncio.create_subprocess_exec(
+                'python', 'scripts/integrate_behavioral_elo.py',
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+
+            stdout, stderr = await asyncio.wait_for(result.communicate(), timeout=600)
+
+            if result.returncode == 0:
+                print("[ELO] Integration complete")
+
+                # Run verification
+                result = await asyncio.create_subprocess_exec(
+                    'python', 'scripts/simulation/verify_elo_rankings.py',
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+
+                stdout, stderr = await asyncio.wait_for(result.communicate(), timeout=300)
+
+                if result.returncode == 0:
+                    print("[ELO] Verification complete")
+
+                    # Parse correlation from output
+                    correlation = None
+                    output_text = stdout.decode('utf-8', errors='ignore')
+                    for line in output_text.split('\n'):
+                        if 'Correlation:' in line and 'r =' in line:
+                            # Extract r = 0.XXX
+                            parts = line.split('r =')
+                            if len(parts) > 1:
+                                try:
+                                    correlation = float(parts[1].strip().split()[0])
+                                except:
+                                    pass
+
+                    # Update timestamp
+                    self.last_elo_update = datetime.now()
+
+                    return {
+                        'success': True,
+                        'correlation': correlation,
+                        'timestamp': datetime.now()
+                    }
+
+            print(f"[ELO] Integration failed")
+            return {'success': False, 'error': stderr.decode('utf-8', errors='ignore')}
+
+        except asyncio.TimeoutError:
+            print(f"[ELO] Timeout")
+            return {'success': False, 'error': 'Timeout after 10 minutes'}
+        except Exception as e:
+            print(f"[ELO] Error: {e}")
+            return {'success': False, 'error': str(e)}
+
+    def _generate_leaderboard(self, top_n: int = 20) -> str:
+        """
+        Generate formatted leaderboard for Telegram.
+
+        Returns:
+            str: Formatted leaderboard message
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                SELECT
+                    address,
+                    comprehensive_elo,
+                    roi_percentage,
+                    total_trades,
+                    win_rate
+                FROM traders
+                WHERE comprehensive_elo IS NOT NULL
+                AND total_trades >= 30
+                ORDER BY comprehensive_elo DESC
+                LIMIT ?
+            """, (top_n,))
+
+            traders = cursor.fetchall()
+            conn.close()
+
+            if not traders:
+                return "⚠️ No traders with ELO ratings yet"
+
+            # Format leaderboard
+            message = f"🏆 **TOP {top_n} TRADERS** (ELO Rankings)\n\n"
+
+            for i, (address, elo, roi, trades, win_rate) in enumerate(traders, 1):
+                addr_short = address[:8] + "..." + address[-4:]
+                roi_str = f"{roi:+.1f}%" if roi is not None else "N/A"
+                wr_str = f"{win_rate*100:.1f}%" if win_rate else "N/A"
+
+                # Medal for top 3
+                medal = ["🥇", "🥈", "🥉"][i-1] if i <= 3 else f"{i}."
+
+                message += f"{medal} `{addr_short}`\n"
+                message += f"   ELO: **{elo:.0f}** | ROI: {roi_str} | WR: {wr_str}\n"
+                message += f"   Trades: {trades:,}\n\n"
+
+            # Add footer
+            message += f"_Updated: {datetime.now().strftime('%Y-%m-%d %H:%M')}_"
+
+            return message
+
+        except Exception as e:
+            print(f"[OBSERVER] Error generating leaderboard: {e}")
+            return f"⚠️ Error generating leaderboard: {e}"
+
+    async def _send_elo_update_notification(self, elo_results: Dict, leaderboard: str):
+        """Send ELO update notification to Telegram."""
+
+        if not elo_results.get('success'):
+            msg = "❌ **ELO Update Failed**\n\n"
+            msg += f"Error: {elo_results.get('error', 'Unknown')}"
+            await self.telegram.send_message(msg)
+            return
+
+        # Success notification
+        correlation = elo_results.get('correlation')
+        corr_str = f"r = {correlation:.3f}" if correlation else "N/A"
+
+        msg = "✅ **ELO System Updated**\n\n"
+        msg += f"📊 Correlation: {corr_str}\n"
+        msg += f"⏰ Updated: {datetime.now().strftime('%H:%M')}\n\n"
+        msg += leaderboard
+
+        await self.telegram.send_message(msg)
 
     async def _shutdown(self):
         """

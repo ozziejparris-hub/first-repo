@@ -284,6 +284,30 @@ class TelegramHealthBot:
 
         message_parts.append("")
 
+        # P&L Stats
+        if 'pnl_stats' in metrics:
+            pnl_stats = metrics['pnl_stats']
+            traders_with_roi = pnl_stats.get('traders_with_roi', 0)
+            closed_positions = pnl_stats.get('closed_positions', 0)
+
+            message_parts.append(f"💰 P&L Coverage:")
+            message_parts.append(f"  • Traders with ROI: {traders_with_roi}")
+            message_parts.append(f"  • Closed positions: {closed_positions}")
+            message_parts.append("")
+
+        # Top 5 Traders Mini Leaderboard
+        if 'top_traders' in metrics and metrics['top_traders']:
+            message_parts.append("🏆 Top 5 Traders:")
+            for i, trader in enumerate(metrics['top_traders'], 1):
+                addr = trader['address']
+                addr_short = addr[:6] + "..."
+                elo = trader['elo']
+                roi = trader.get('roi')
+                roi_str = f"{roi:+.1f}%" if roi is not None else "N/A"
+
+                message_parts.append(f"{i}. `{addr_short}` ELO: {elo:.0f} ROI: {roi_str}")
+            message_parts.append("")
+
         # Performance
         performance = metrics.get('performance', 'unknown')
         perf_emoji = '✅' if performance == 'good' else '⚠️'
