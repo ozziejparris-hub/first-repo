@@ -178,6 +178,78 @@ class Database:
         finally:
             conn.close()
 
+    def insert_position(self, position):
+        """
+        Insert or update a position in the positions table.
+
+        Args:
+            position: Position object with to_dict() method or dict
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        # Convert Position object to dict if needed
+        if hasattr(position, 'to_dict'):
+            pos_dict = position.to_dict()
+        else:
+            pos_dict = position
+
+        try:
+            cursor.execute("""
+                INSERT OR REPLACE INTO positions (
+                    position_id,
+                    trader_address,
+                    market_id,
+                    market_title,
+                    outcome,
+                    entry_shares,
+                    entry_avg_price,
+                    entry_total_cost,
+                    entry_timestamp,
+                    entry_trade_ids,
+                    exit_shares,
+                    exit_avg_price,
+                    exit_total_received,
+                    exit_timestamp,
+                    exit_trade_ids,
+                    realized_pnl,
+                    roi_percent,
+                    holding_period_hours,
+                    status,
+                    remaining_shares,
+                    last_updated
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            """, (
+                pos_dict['position_id'],
+                pos_dict['trader_address'],
+                pos_dict['market_id'],
+                pos_dict['market_title'],
+                pos_dict['outcome'],
+                pos_dict['entry_shares'],
+                pos_dict['entry_avg_price'],
+                pos_dict['entry_total_cost'],
+                pos_dict['entry_timestamp'],
+                pos_dict['entry_trade_ids'],
+                pos_dict['exit_shares'],
+                pos_dict['exit_avg_price'],
+                pos_dict['exit_total_received'],
+                pos_dict['exit_timestamp'],
+                pos_dict['exit_trade_ids'],
+                pos_dict['realized_pnl'],
+                pos_dict['roi_percent'],
+                pos_dict['holding_period_hours'],
+                pos_dict['status'],
+                pos_dict['remaining_shares']
+            ))
+
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"[DATABASE] Error inserting position: {e}")
+            return False
+        finally:
+            conn.close()
+
     def mark_trade_notified(self, trade_id: str):
         """Mark a trade as notified."""
         conn = self.get_connection()

@@ -666,6 +666,10 @@ class PolymarketMonitor:
                 if not positions:
                     continue
 
+                # CRITICAL: Save positions to database
+                for position in positions:
+                    self.db.insert_position(position)
+
                 # Calculate aggregate P&L metrics
                 closed_positions = [p for p in positions if p.status == 'closed']
                 open_positions = [p for p in positions if p.status == 'open']
