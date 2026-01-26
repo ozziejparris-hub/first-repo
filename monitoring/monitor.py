@@ -8,6 +8,7 @@ from .database import Database
 from .polymarket_client import PolymarketClient
 from .telegram_bot import TelegramNotifier
 from .trader_analyzer import TraderAnalyzer
+from .position_tracker import PositionTracker
 
 # AI Filtering Configuration
 AI_FILTERING_ENABLED = True  # Toggle AI filtering on/off
@@ -44,6 +45,7 @@ class PolymarketMonitor:
         self.polymarket = PolymarketClient(polymarket_api_key)
         self.telegram = TelegramNotifier(telegram_token, telegram_chat_id)
         self.analyzer = TraderAnalyzer(self.db, self.polymarket)
+        self.position_tracker = PositionTracker(self.db)  # CRITICAL: P&L tracking
         self.ai_agent = ai_agent  # Store AI agent
         self.check_interval = check_interval
         self.is_running = False
@@ -631,6 +633,79 @@ class PolymarketMonitor:
         for trade in unnotified_trades:
             self.db.mark_trade_notified(trade['trade_id'])
 
+    async def update_position_tracking(self) -> int:
+        """
+        Update position tracking and P&L for all active traders.
+
+        Returns:
+            int: Number of traders with updated P&L
+        """
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+
+        # Get all traders with trades (focus on active ones)
+        cursor.execute("""
+            SELECT DISTINCT trader_address
+            FROM trades
+            WHERE timestamp > datetime('now', '-30 days')
+            ORDER BY timestamp DESC
+        """)
+
+        active_traders = [row[0] for row in cursor.fetchall()]
+        conn.close()
+
+        safe_print(f"[P&L] Processing {len(active_traders)} active traders...")
+
+        traders_updated = 0
+
+        for trader_address in active_traders:
+            try:
+                # Match trades into positions
+                positions = self.position_tracker.match_trades_for_trader(trader_address, verbose=False)
+
+                if not positions:
+                    continue
+
+                # Calculate aggregate P&L metrics
+                closed_positions = [p for p in positions if p.status == 'closed']
+                open_positions = [p for p in positions if p.status == 'open']
+
+                if closed_positions:
+                    realized_pnl = sum(p.realized_pnl for p in closed_positions if p.realized_pnl)
+                    avg_roi = sum(p.roi_percent for p in closed_positions if p.roi_percent) / len(closed_positions)
+
+                    # Update trader table with P&L data
+                    conn = self.db.get_connection()
+                    cursor = conn.cursor()
+
+                    cursor.execute("""
+                        UPDATE traders
+                        SET realized_pnl = ?,
+                            avg_roi = ?,
+                            roi_percentage = ?,
+                            closed_positions = ?,
+                            open_positions = ?
+                        WHERE address = ?
+                    """, (
+                        realized_pnl,
+                        avg_roi,
+                        avg_roi,  # roi_percentage
+                        len(closed_positions),
+                        len(open_positions),
+                        trader_address
+                    ))
+
+                    conn.commit()
+                    conn.close()
+
+                    traders_updated += 1
+
+            except Exception as e:
+                safe_print(f"[P&L] [ERROR] Failed for trader {trader_address[:10]}: {e}")
+                continue
+
+        return traders_updated
+
     async def monitoring_loop(self):
         """Main monitoring loop that runs every check_interval."""
         cycle_count = 0
@@ -682,6 +757,17 @@ class PolymarketMonitor:
                         )
                     else:
                         safe_print(f"[MONITOR] No new resolutions found (markets are long-dated)")
+
+                # CRITICAL: Position tracking & P&L calculation (every cycle)
+                safe_print("\n[P&L] Updating position tracking...")
+                try:
+                    positions_updated = await self.update_position_tracking()
+                    if positions_updated > 0:
+                        safe_print(f"[P&L] [OK] Updated P&L for {positions_updated} traders")
+                except Exception as e:
+                    safe_print(f"[P&L] [ERROR] Position tracking failed: {e}")
+                    import traceback
+                    safe_print(f"[P&L] Traceback: {traceback.format_exc()}")
 
                 safe_print(f"\n[OK] Cycle complete. Next check in {self.check_interval // 60} minutes.")
 
