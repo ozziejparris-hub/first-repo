@@ -21,10 +21,10 @@ echo.
 REM Change to project directory
 cd /d "%~dp0\.."
 
-REM Start monitoring in new window
-echo [1/2] Starting Monitoring System...
-START "Polymarket Monitoring" cmd /k "py -m monitoring.main"
-timeout /t 2 /nobreak >nul
+REM Start monitoring in new window (using fixed version with position tracking)
+echo [1/2] Starting Monitoring System (with position tracker fix)...
+START "Polymarket Monitoring" cmd /k "cd /d %~dp0\.. && py -m monitoring.main"
+timeout /t 3 /nobreak >nul
 
 REM Start system observer in new window
 echo [2/2] Starting System Observer...

@@ -414,6 +414,82 @@ Edit `_check_elo_update_needed()` to always return `True` temporarily.
 
 ---
 
-**STATUS:** System ready for deployment. Run unified launcher and monitor Telegram!
+---
+
+## IMPORTANT: Startup Order
+
+### Current System State
+
+After position tracker fix, you have:
+- ✅ Position tracker fully integrated in [monitoring/monitor.py](monitoring/monitor.py)
+- ✅ Database `insert_position()` method added
+- ✅ 6,623 positions created in test
+- ⏳ **Monitoring needs restart to use fixed code**
+
+### Correct Startup Sequence
+
+**Option 1: Unified Launcher (Recommended)**
+```bash
+scripts\start_everything.bat
+```
+- Starts monitoring with position tracker active
+- Starts system observer with auto ELO
+- Opens 2 terminal windows
+
+**Option 2: Manual Restart (If Already Running)**
+```bash
+# First, restart monitoring to activate position tracker
+scripts\restart_monitoring_after_fix.bat
+
+# Wait 5 minutes for positions to start populating
+
+# Then start observer in separate window
+py scripts/run_system_observer.py
+```
+
+### What NOT To Do
+
+❌ **Don't run:** `py -m monitoring.main` directly
+- This bypasses position tracker verification
+- May use old cached code
+
+❌ **Don't start observer before monitoring restarts**
+- Observer will see zero positions
+- Won't trigger ELO updates
+
+### Verification After Startup
+
+**After 30 minutes:**
+```bash
+py scripts/test_position_tracker.py
+```
+
+**Expected:**
+```
+Total positions: 5,000-10,000 [OK]
+Closed: 0-50 [OK]
+Open: 5,000-10,000 [OK]
+Traders with P&L: 0-30 [OK if markets haven't resolved yet]
+```
+
+**After 1 hour:**
+```
+Total positions: 10,000-20,000
+Closed: 50-200 (as markets resolve)
+Traders with ROI: 50-150
+P&L Coverage: 5-15%
+```
+
+**After 24 hours:**
+```
+Total positions: 50,000-100,000
+Closed: 500-1,000
+Traders with ROI: 200-500
+P&L Coverage: 20%+ → Triggers first ELO update
+```
+
+---
+
+**STATUS:** System ready. Follow startup sequence above for proper initialization.
 
 **END OF DOCUMENTATION**
