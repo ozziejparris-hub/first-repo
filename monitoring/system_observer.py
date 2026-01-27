@@ -27,6 +27,7 @@ import psutil
 from .health_checker import HealthChecker
 from .log_monitor import LogMonitor
 from .telegram_health_bot import TelegramHealthBot
+from .diagnostics import ELOSystemDiagnostics, PerformanceMonitor, FixSuggestionEngine
 
 
 class SystemObserver:
@@ -66,11 +67,17 @@ class SystemObserver:
         self.observer_start_time = datetime.now()  # Track when observer started
         self.last_hourly_report = None
         self.last_elo_update = None  # Track last ELO update
+        self.last_full_diagnostic = None  # Track last comprehensive diagnostic
         self.check_count = 0
         self.error_count = 0
 
         # Database path
         self.db_path = 'data/polymarket_tracker.db'
+
+        # Initialize diagnostic engines
+        self.diagnostics = ELOSystemDiagnostics(db_path=self.db_path)
+        self.performance_monitor = PerformanceMonitor(db_path=self.db_path)
+        self.fix_engine = FixSuggestionEngine()
 
         # Setup signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -99,6 +106,8 @@ class SystemObserver:
         print(f"[OBSERVER] Telegram alerts: enabled")
         print(f"[OBSERVER] Health check interval: 60s")
         print(f"[OBSERVER] Hourly reports: enabled")
+        print(f"[OBSERVER] Comprehensive diagnostics: every 6h")
+        print(f"[OBSERVER] Auto ELO updates: enabled")
         print()
 
         # Send startup notification
@@ -109,7 +118,8 @@ class SystemObserver:
             asyncio.create_task(self._health_check_loop()),
             asyncio.create_task(self._log_monitor_loop()),
             asyncio.create_task(self._hourly_report_loop()),
-            asyncio.create_task(self._elo_update_loop())
+            asyncio.create_task(self._elo_update_loop()),
+            asyncio.create_task(self._comprehensive_diagnostic_loop())
         ]
 
         try:
@@ -802,6 +812,145 @@ class SystemObserver:
         msg += leaderboard
 
         await self.telegram.send_message(msg)
+
+    async def _comprehensive_diagnostic_loop(self):
+        """
+        Comprehensive diagnostic loop - runs every 6 hours.
+
+        Performs deep system health checks:
+        - ELO calculation pipeline
+        - Analysis tools integrity
+        - Database health
+        - Data quality
+        - Performance metrics
+        """
+        print("[OBSERVER] Comprehensive diagnostic loop started")
+
+        while self.running:
+            try:
+                # Check if we should run full diagnostic (every 6 hours)
+                should_run = False
+
+                if self.last_full_diagnostic is None:
+                    # First diagnostic after 1 hour of startup
+                    if (datetime.now() - self.start_time).total_seconds() >= 3600:
+                        should_run = True
+                else:
+                    # Check if 6 hours have passed
+                    hours_since = (datetime.now() - self.last_full_diagnostic).total_seconds() / 3600
+                    if hours_since >= 6:
+                        should_run = True
+
+                if should_run:
+                    print("\n[DIAGNOSTIC] Running comprehensive health check...")
+
+                    # Run full diagnostic
+                    report = self.diagnostics.run_full_diagnostic()
+
+                    # Update timestamp
+                    self.last_full_diagnostic = datetime.now()
+
+                    # Send diagnostic report to Telegram
+                    await self._send_diagnostic_report(report)
+
+                    # If critical issues found, send additional alert
+                    if report['overall_status'] == 'CRITICAL':
+                        critical_msg = "🚨 CRITICAL SYSTEM ISSUES DETECTED\n\nCheck diagnostic report above for details and fixes!"
+                        await self.telegram._send_message(critical_msg)
+
+                    # Collect performance metrics
+                    perf_metrics = self.performance_monitor.collect_metrics()
+                    perf_issues = self.performance_monitor.detect_performance_issues()
+
+                    if perf_issues:
+                        print(f"[DIAGNOSTIC] Performance issues detected: {len(perf_issues)}")
+                        for issue in perf_issues:
+                            print(f"  - {issue}")
+
+                # Check every 30 minutes
+                await asyncio.sleep(1800)
+
+            except Exception as e:
+                print(f"[OBSERVER] Error in diagnostic loop: {e}")
+                import traceback
+                traceback.print_exc()
+                await asyncio.sleep(1800)
+
+    async def _send_diagnostic_report(self, report: Dict):
+        """
+        Send comprehensive diagnostic report to Telegram.
+
+        Args:
+            report: Diagnostic report from diagnostics engine
+        """
+        status_emoji = {
+            'HEALTHY': '✅',
+            'WARNING': '⚠️',
+            'CRITICAL': '🚨'
+        }
+
+        overall = report['overall_status']
+        emoji = status_emoji.get(overall, '❓')
+
+        msg_parts = [
+            f"{emoji} **SYSTEM DIAGNOSTIC REPORT**",
+            "",
+            f"**Overall Status:** {overall}",
+            f"**Time:** {report['timestamp'].strftime('%Y-%m-%d %H:%M')}",
+            ""
+        ]
+
+        # Critical issues (if any)
+        if report['issues']:
+            msg_parts.append(f"**🚨 CRITICAL ISSUES ({len(report['issues'])}):**")
+            for issue in report['issues'][:5]:  # First 5
+                msg_parts.append(f"  • {issue}")
+
+            if len(report['issues']) > 5:
+                msg_parts.append(f"  • ...and {len(report['issues']) - 5} more")
+            msg_parts.append("")
+
+        # Warnings (if any)
+        if report['warnings']:
+            msg_parts.append(f"**⚠️ WARNINGS ({len(report['warnings'])}):**")
+            for warning in report['warnings'][:5]:  # First 5
+                msg_parts.append(f"  • {warning}")
+
+            if len(report['warnings']) > 5:
+                msg_parts.append(f"  • ...and {len(report['warnings']) - 5} more")
+            msg_parts.append("")
+
+        # Component status breakdown
+        msg_parts.append("**📊 Component Health:**")
+        for component, result in report['details'].items():
+            comp_status = result['status']
+            comp_emoji = status_emoji.get(comp_status, '❓')
+            comp_name = component.replace('_', ' ').title()
+            msg_parts.append(f"{comp_emoji} {comp_name}")
+
+        # Key metrics
+        msg_parts.append("")
+        msg_parts.append("**📈 Key Metrics:**")
+
+        elo_metrics = report['details']['elo_system'].get('metrics', {})
+        msg_parts.append(f"  • ELO coverage: {elo_metrics.get('elo_coverage', 0)*100:.1f}%")
+        msg_parts.append(f"  • ROI coverage: {elo_metrics.get('roi_coverage', 0)*100:.1f}%")
+
+        db_metrics = report['details']['database'].get('metrics', {})
+        msg_parts.append(f"  • DB size: {db_metrics.get('db_size_mb', 0):.0f} MB")
+
+        data_metrics = report['details']['data_quality'].get('metrics', {})
+        msg_parts.append(f"  • Last trade: {data_metrics.get('hours_since_last_trade', 0):.1f}h ago")
+
+        # Fix recommendations (if issues exist)
+        if report['issues']:
+            msg_parts.append("")
+            fix_report = self.fix_engine.generate_fix_report(report['issues'][:3])  # Top 3 issues
+            msg_parts.append(fix_report)
+
+        msg = '\n'.join(msg_parts)
+
+        await self.telegram._send_message(msg)
 
     async def _shutdown(self):
         """
