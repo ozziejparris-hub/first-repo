@@ -85,6 +85,13 @@ async def main():
     logger.info("Position tracking: ENABLED")
     logger.info("Check interval: 15 minutes")
 
+    # Write PID file for System Observer to find this process
+    pid_file = Path('data/.monitoring.pid')
+    pid_file.parent.mkdir(exist_ok=True)
+    pid_file.write_text(str(os.getpid()))
+    print(f"[OK] PID file created: {pid_file} (PID: {os.getpid()})")
+    logger.info(f"PID file created: {pid_file}")
+
     try:
         # Start monitoring loop
         await monitor.start()
@@ -100,6 +107,11 @@ async def main():
 
     finally:
         await monitor.stop()
+
+        # Clean up PID file
+        if pid_file.exists():
+            pid_file.unlink()
+            logger.info("PID file cleaned up")
 
 
 if __name__ == '__main__':

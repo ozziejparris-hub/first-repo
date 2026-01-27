@@ -978,15 +978,44 @@ def find_monitoring_process() -> Optional[int]:
     """
     Try to find the monitoring process PID.
 
+    First tries reading PID from file (fast and reliable),
+    then falls back to process search.
+
     Looks for processes running:
+    - python -m monitoring (standard entry point)
     - python -m monitoring.main
-    - python -m monitoring.monitor
+    - python monitoring/main_telegram_safe.py
     - python monitor.py
-    - python monitoring/monitor.py
 
     Returns:
         int: PID if found, None otherwise
     """
+    # Try PID file first (most reliable method)
+    pid_file = Path('data/.monitoring.pid')
+    if pid_file.exists():
+        try:
+            pid = int(pid_file.read_text().strip())
+
+            # Verify process exists and is running
+            if psutil.pid_exists(pid):
+                proc = psutil.Process(pid)
+                if proc.is_running():
+                    print(f"[OBSERVER] Found monitoring process via PID file: PID={pid}")
+                    return pid
+                else:
+                    print(f"[OBSERVER] PID file exists but process not running (stale PID)")
+            else:
+                print(f"[OBSERVER] PID in file ({pid}) does not exist (stale PID)")
+
+            # Clean up stale PID file
+            pid_file.unlink()
+
+        except (ValueError, IOError) as e:
+            print(f"[OBSERVER] Error reading PID file: {e}")
+
+    # Fallback: Search for process by command line
+    print("[OBSERVER] PID file not found, searching for monitoring process...")
+
     for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
         try:
             # Skip non-Python processes
@@ -1000,17 +1029,20 @@ def find_monitoring_process() -> Optional[int]:
             # Join and check patterns (case-insensitive for Windows compatibility)
             cmdline_str = ' '.join(str(c) for c in cmdline).lower()
 
-            # Patterns for monitoring process
+            # Patterns for monitoring process (updated for standard entry point)
             patterns = [
-                'monitoring.main',      # python -m monitoring.main (most common)
-                'monitoring.monitor',   # python -m monitoring.monitor
-                'monitor.py',           # python monitor.py or monitoring/monitor.py
-                'polymarket',           # any polymarket monitoring script
+                '-m monitoring',           # python -m monitoring (STANDARD)
+                'monitoring.main',         # python -m monitoring.main
+                'main_telegram_safe.py',   # python monitoring/main_telegram_safe.py
+                'monitoring.__main__',     # python -m monitoring (module form)
+                'monitor.py',              # python monitor.py
             ]
 
             if any(pattern in cmdline_str for pattern in patterns):
-                print(f"[OBSERVER] Found monitoring process: PID={proc.info['pid']}, cmd={' '.join(cmdline[:3])}")
-                return proc.info['pid']
+                # Avoid matching the observer itself
+                if 'observer' not in cmdline_str:
+                    print(f"[OBSERVER] Found monitoring process: PID={proc.info['pid']}, cmd={' '.join(cmdline[:3])}")
+                    return proc.info['pid']
 
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue

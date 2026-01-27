@@ -1,10 +1,22 @@
+#!/usr/bin/env python3
 """
-Entry point for running monitoring package as a module.
+Polymarket Monitoring System - Standard Entry Point
 
-Usage: python -m monitoring
+Run with: python -m monitoring
+
+This is the standard, official way to start the monitoring system.
+It runs in telegram-safe mode (no messages from monitoring, only from observer).
 """
 
-from .main import main
+import asyncio
+import sys
+from pathlib import Path
 
-if __name__ == "__main__":
-    main()
+# Ensure project root in path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# Import the telegram-safe main
+from monitoring.main_telegram_safe import main
+
+if __name__ == '__main__':
+    asyncio.run(main())
