@@ -1,14 +1,14 @@
 import asyncio
 import re
 import time
-import re
 from datetime import datetime
 from typing import Optional, Dict
 from .database import Database
 from .polymarket_client import PolymarketClient
-from .telegram_bot import TelegramNotifier
 from .trader_analyzer import TraderAnalyzer
 from .position_tracker import PositionTracker
+
+# Telegram imports removed - all notifications handled by System Observer
 
 # AI Filtering Configuration
 AI_FILTERING_ENABLED = True  # Toggle AI filtering on/off
@@ -37,19 +37,29 @@ def safe_print(message: str, fallback: str = None):
 class PolymarketMonitor:
     """Main monitoring service that coordinates all components."""
 
-    def __init__(self, polymarket_api_key: str, telegram_token: Optional[str] = None,
-                 telegram_chat_id: Optional[str] = None,
+    def __init__(self, polymarket_api_key: str,
                  check_interval: int = 900,  # 900 seconds = 15 minutes
                  ai_agent = None):  # AI agent for intelligent categorization
+        """
+        Initialize Polymarket Monitor.
+
+        Args:
+            polymarket_api_key: Polymarket API key
+            check_interval: Check interval in seconds (default: 900 = 15 min)
+            ai_agent: Optional AI agent for intelligent categorization
+
+        Note:
+            Telegram notifications completely disabled in monitoring.
+            All notifications are handled by System Observer.
+            This eliminates Telegram rate limit issues.
+        """
         self.db = Database()
         self.polymarket = PolymarketClient(polymarket_api_key)
 
-        # Only create Telegram notifier if token provided (None = telegram-safe mode)
-        if telegram_token is not None:
-            self.telegram = TelegramNotifier(telegram_token, telegram_chat_id)
-        else:
-            self.telegram = None
-            safe_print("[MONITOR] [OK] Running without Telegram (safe mode)")
+        # Telegram completely disabled - all notifications via System Observer
+        self.telegram = None
+        self.elo_bot = None
+        self.elo_scheduler = None
 
         self.analyzer = TraderAnalyzer(self.db, self.polymarket)
         self.position_tracker = PositionTracker(self.db)  # CRITICAL: P&L tracking
@@ -60,40 +70,7 @@ class PolymarketMonitor:
         # Cache for AI categorization to avoid repeated API calls
         self.ai_cache: Dict[str, bool] = {}
 
-        # Set stop callback (only if telegram bot exists)
-        if self.telegram is not None:
-            self.telegram.set_stop_callback(self.request_stop)
-
-        # Initialize Telegram ELO Bot for betting intelligence
-        # NOTE: ELO bot uses send-only mode (no polling) to avoid conflicts
-        # Only initialize if telegram token provided (skip in telegram-safe mode)
-        self.elo_bot = None
-        self.elo_scheduler = None
-        if telegram_token is not None:
-            try:
-                from .telegram_elo_bot import ELOTelegramBot
-
-                self.elo_bot = ELOTelegramBot(
-                    token=telegram_token,
-                    chat_id=telegram_chat_id,
-                    database=self.db
-                )
-
-                # NOTE: Scheduler disabled - user ditching Task Scheduler
-                # Daily leaderboards can be sent manually or via simple loop if needed
-                # from .telegram_scheduler import TelegramScheduler
-                # self.elo_scheduler = TelegramScheduler(self.elo_bot, self.db)
-
-                safe_print("[MONITOR] [OK] ELO Telegram bot initialized (send-only mode)")
-            except ImportError as e:
-                # APScheduler not installed - that's OK, scheduler is disabled anyway
-                safe_print(f"[MONITOR] [INFO] Info: ELO bot scheduler dependencies not available: {e}")
-                safe_print("[MONITOR] [INFO] ELO bot will work without scheduling (send-only mode)")
-                self.elo_bot = None
-            except Exception as e:
-                safe_print(f"[MONITOR] [WARNING] Warning: Could not initialize ELO bot: {e}")
-                self.elo_bot = None
-                self.elo_scheduler = None
+        safe_print("[MONITOR] [OK] Telegram disabled - Observer handles all notifications")
 
     def request_stop(self):
         """Request the monitor to stop."""
@@ -463,24 +440,18 @@ class PolymarketMonitor:
         return False
 
     async def initial_scan(self):
-        """Perform initial scan to identify successful traders."""
+        """
+        Perform initial scan to identify successful traders.
+
+        Telegram notifications disabled - Observer handles all notifications.
+        """
         safe_print("Starting initial scan for successful traders...")
 
-        if self.telegram is not None:
-            await self.telegram.send_message("🔍 Starting initial trader scan...")
-
         newly_flagged = self.analyzer.scan_for_successful_traders()
-
         summary = self.analyzer.get_flagged_traders_summary()
 
-        if self.telegram is not None:
-            await self.telegram.send_message(
-                f"✅ Initial scan complete!\n\n"
-                f"Found {newly_flagged} new successful traders.\n\n"
-                f"{summary}"
-            )
-
         safe_print(f"[OK] Initial scan complete. Flagged {newly_flagged} traders.")
+        safe_print(f"[INFO] {summary}")
 
     async def check_for_new_trades(self):
         """Check for new trades from flagged traders."""
@@ -640,9 +611,7 @@ class PolymarketMonitor:
 
         safe_print(f"Bundled into {len(trades_by_trader)} traders")
 
-        # Send bundled notifications (only if telegram enabled)
-        if self.telegram is not None:
-            await self.telegram.send_bundled_trade_alerts(trades_by_trader, trader_stats_map)
+        # Telegram notifications disabled - Observer handles all notifications
 
         # Mark all as notified
         for trade in unnotified_trades:
@@ -773,18 +742,18 @@ class PolymarketMonitor:
                 # Check for new trades
                 new_trades = await self.check_for_new_trades()
 
-                # Send notifications for new trades (skip if Telegram disabled)
-                if new_trades > 0 and self.telegram:
+                # Telegram notifications disabled - Observer handles all notifications
+                # (notify_new_trades still marks trades as notified in database)
+                if new_trades > 0:
                     await self.notify_new_trades()
 
                 # Periodically re-scan for new successful traders (every 10 cycles)
                 if cycle_count % 10 == 0:
                     safe_print("\nPerforming periodic trader re-scan...")
                     newly_flagged = self.analyzer.scan_for_successful_traders()
-                    if newly_flagged > 0 and self.telegram:
-                        await self.telegram.send_message(
-                            f"🆕 Found {newly_flagged} new successful traders!"
-                        )
+                    if newly_flagged > 0:
+                        safe_print(f"[OK] Found {newly_flagged} new successful traders!")
+                        # Telegram notifications disabled - Observer handles notifications
 
                 # Check for market resolutions (every 10 cycles)
                 if cycle_count % 10 == 0:
@@ -805,10 +774,7 @@ class PolymarketMonitor:
 
                     if newly_resolved > 0:
                         safe_print(f"[MONITOR] {newly_resolved} new resolution(s) found!")
-                        if self.telegram:
-                            await self.telegram.send_message(
-                                f"✅ {newly_resolved} market(s) resolved! Win rate data updated."
-                            )
+                        # Telegram notifications disabled - Observer handles notifications
                     else:
                         safe_print(f"[MONITOR] No new resolutions found (markets are long-dated)")
 
@@ -844,9 +810,7 @@ class PolymarketMonitor:
                 logger.error(f"Error in monitoring cycle: {e}")
                 logger.error(f"Full traceback:\n{error_traceback}")
 
-                # Send brief error to Telegram (only if telegram enabled)
-                if self.telegram is not None:
-                    await self.telegram.send_message(f"[WARNING] Error in monitoring: {str(e)}")
+                # Telegram notifications disabled - Observer monitors logs and sends alerts
 
             # Wait for next cycle or until stop is requested
             for _ in range(self.check_interval):
@@ -857,52 +821,20 @@ class PolymarketMonitor:
         safe_print("\n[STOP] Monitoring loop stopped")
 
     async def start(self):
-        """Start the monitoring service."""
-        safe_print("Starting Polymarket Monitor...")
+        """
+        Start the monitoring service.
+
+        Telegram completely disabled - all notifications via System Observer.
+        This eliminates Telegram rate limit issues.
+        """
+        safe_print("\n" + "="*70)
+        safe_print("  POLYMARKET MONITOR STARTED")
+        safe_print("  Telegram: DISABLED (Observer handles all notifications)")
+        safe_print("  Position tracking: ENABLED")
+        safe_print("  Database: Active")
+        safe_print("="*70 + "\n")
+
         self.is_running = True
-
-        # Initialize Telegram bot in send-only mode (no polling = no conflicts)
-        # User running manually, doesn't need /stop command via Telegram
-        # Check if telegram bot exists before initializing (may be None in telegram-safe mode)
-        if self.telegram is not None:
-            try:
-                await self.telegram.initialize(send_only=True)
-            except Exception as e:
-                safe_print(f"[WARNING] Telegram bot initialization failed: {e}")
-                safe_print("[WARNING] Continuing without Telegram notifications")
-                self.telegram = None
-
-        # Initialize ELO bot for betting intelligence (also send-only mode)
-        if self.elo_bot:
-            try:
-                # Both bots in send-only mode = no polling conflicts
-                await self.elo_bot.initialize(send_only=True)
-
-                # NOTE: Scheduler disabled - user ditching Task Scheduler
-                # Daily leaderboards disabled for now (can be re-enabled with simple loop if needed)
-                # if self.elo_scheduler:
-                #     self.elo_scheduler.schedule_daily_leaderboard(hour=9, minute=0)
-                #     self.elo_scheduler.start()
-
-                safe_print("[MONITOR] [OK] ELO bot active (send-only mode, no polling conflicts)")
-                safe_print("[MONITOR] Betting intelligence features enabled:")
-                safe_print("[MONITOR]    - Elite trader alerts (top 10)")
-                safe_print("[MONITOR]    - Market momentum tracking")
-                safe_print("[MONITOR]    - Contrarian signal detection")
-                safe_print("[MONITOR]    - Large position alerts")
-                safe_print("[MONITOR]    - Win streak notifications")
-                safe_print("[MONITOR] [INFO] Daily leaderboard scheduling disabled (no APScheduler)")
-            except Exception as e:
-                safe_print(f"[MONITOR] [WARNING] Warning: ELO bot initialization failed: {e}")
-                self.elo_bot = None
-
-        # Send startup message (only if telegram enabled)
-        if self.telegram is not None:
-            await self.telegram.send_message(
-                "🚀 <b>Polymarket Monitor Started!</b>\n\n"
-                "Monitoring geopolitical markets for successful trader activity.\n\n"
-                "Press Ctrl+C to stop the service."
-            )
 
         # Perform initial scan
         await self.initial_scan()
@@ -911,34 +843,18 @@ class PolymarketMonitor:
         await self.monitoring_loop()
 
     async def stop(self):
-        """Stop the monitoring service gracefully."""
-        safe_print("[STOP] Stopping Polymarket Monitor...")
+        """
+        Stop the monitoring service gracefully.
+
+        Telegram completely disabled - no cleanup needed.
+        """
+        safe_print("\n[STOP] Stopping Polymarket Monitor...")
         self.is_running = False
 
-        # Stop ELO bot and scheduler
-        if self.elo_scheduler:
-            try:
-                self.elo_scheduler.stop()
-                safe_print("[MONITOR] [OK] ELO scheduler stopped")
-            except Exception as e:
-                safe_print(f"[MONITOR] Warning: ELO scheduler stop failed: {e}")
+        # Telegram completely disabled - no bot cleanup needed
+        # (self.telegram = None, self.elo_bot = None)
 
-        if self.elo_bot:
-            try:
-                await self.elo_bot.stop()
-                safe_print("[MONITOR] [OK] ELO bot stopped")
-            except Exception as e:
-                safe_print(f"[MONITOR] Warning: ELO bot stop failed: {e}")
-
-        # Only send stop message if telegram bot exists (may be None in telegram-safe mode)
-        if self.telegram is not None:
-            try:
-                await self.telegram.send_message("👋 Polymarket Monitor stopped.")
-                await self.telegram.stop()
-            except Exception as e:
-                safe_print(f"[WARNING] Failed to send stop message: {e}")
-
-        safe_print("[OK] Monitor stopped successfully")
+        safe_print("[OK] Monitor stopped successfully\n")
 
 
 async def main(polymarket_api_key: str, telegram_token: str,

@@ -64,22 +64,16 @@ async def main():
     # Import here to avoid circular imports
     from monitoring.monitor import PolymarketMonitor
 
-    # Create monitor WITHOUT Telegram credentials
-    # Passing None for telegram_token activates telegram-safe mode
-    # (It won't send any messages)
+    # Create monitor - Telegram completely disabled (no parameters needed)
+    # All notifications handled by System Observer
     monitor = PolymarketMonitor(
         polymarket_api_key=polymarket_api_key,
-        telegram_token=None,  # No Telegram integration (safe mode)
-        telegram_chat_id=None,
         check_interval=900,  # 15 minutes
         ai_agent=None
     )
 
-    # Verify telegram-safe mode is active
-    if monitor.telegram is None:
-        print("[OK] Telegram-safe mode confirmed - NO messages will be sent")
-    else:
-        print("[WARNING] Telegram bot detected - unexpected in safe mode")
+    # Telegram is always disabled (hardcoded in Monitor class)
+    print("[OK] Monitoring initialized - Telegram disabled by design")
 
     logger.info("Starting monitoring (Telegram-safe mode)")
     logger.info("Position tracking: ENABLED")
