@@ -465,16 +465,20 @@ class PolymarketMonitor:
     async def initial_scan(self):
         """Perform initial scan to identify successful traders."""
         safe_print("Starting initial scan for successful traders...")
-        await self.telegram.send_message("🔍 Starting initial trader scan...")
+
+        if self.telegram is not None:
+            await self.telegram.send_message("🔍 Starting initial trader scan...")
 
         newly_flagged = self.analyzer.scan_for_successful_traders()
 
         summary = self.analyzer.get_flagged_traders_summary()
-        await self.telegram.send_message(
-            f"✅ Initial scan complete!\n\n"
-            f"Found {newly_flagged} new successful traders.\n\n"
-            f"{summary}"
-        )
+
+        if self.telegram is not None:
+            await self.telegram.send_message(
+                f"✅ Initial scan complete!\n\n"
+                f"Found {newly_flagged} new successful traders.\n\n"
+                f"{summary}"
+            )
 
         safe_print(f"[OK] Initial scan complete. Flagged {newly_flagged} traders.")
 
@@ -636,8 +640,9 @@ class PolymarketMonitor:
 
         safe_print(f"Bundled into {len(trades_by_trader)} traders")
 
-        # Send bundled notifications
-        await self.telegram.send_bundled_trade_alerts(trades_by_trader, trader_stats_map)
+        # Send bundled notifications (only if telegram enabled)
+        if self.telegram is not None:
+            await self.telegram.send_bundled_trade_alerts(trades_by_trader, trader_stats_map)
 
         # Mark all as notified
         for trade in unnotified_trades:
@@ -839,8 +844,9 @@ class PolymarketMonitor:
                 logger.error(f"Error in monitoring cycle: {e}")
                 logger.error(f"Full traceback:\n{error_traceback}")
 
-                # Send brief error to Telegram
-                await self.telegram.send_message(f"[WARNING] Error in monitoring: {str(e)}")
+                # Send brief error to Telegram (only if telegram enabled)
+                if self.telegram is not None:
+                    await self.telegram.send_message(f"[WARNING] Error in monitoring: {str(e)}")
 
             # Wait for next cycle or until stop is requested
             for _ in range(self.check_interval):
@@ -890,12 +896,13 @@ class PolymarketMonitor:
                 safe_print(f"[MONITOR] [WARNING] Warning: ELO bot initialization failed: {e}")
                 self.elo_bot = None
 
-        # Send startup message
-        await self.telegram.send_message(
-            "🚀 <b>Polymarket Monitor Started!</b>\n\n"
-            "Monitoring geopolitical markets for successful trader activity.\n\n"
-            "Press Ctrl+C to stop the service."
-        )
+        # Send startup message (only if telegram enabled)
+        if self.telegram is not None:
+            await self.telegram.send_message(
+                "🚀 <b>Polymarket Monitor Started!</b>\n\n"
+                "Monitoring geopolitical markets for successful trader activity.\n\n"
+                "Press Ctrl+C to stop the service."
+            )
 
         # Perform initial scan
         await self.initial_scan()
