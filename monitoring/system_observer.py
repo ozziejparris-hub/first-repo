@@ -261,6 +261,23 @@ class SystemObserver:
                     # Collect metrics
                     metrics = await self._collect_metrics()
 
+                    # Check for monitoring freeze and send dedicated alert
+                    if 'monitoring_activity' in metrics:
+                        mon_activity = metrics['monitoring_activity']
+                        minutes_since = mon_activity.get('minutes_since_activity', 0)
+
+                        if minutes_since > 30:
+                            print(f"[OBSERVER] ⚠️ MONITORING FROZEN DETECTED: {minutes_since:.0f} minutes silence")
+
+                            # Send dedicated freeze alert with diagnostics
+                            freeze_diagnostics = {
+                                'minutes_since_activity': minutes_since,
+                                'last_activity': mon_activity.get('last_activity'),
+                                'closed_positions': metrics.get('pnl_stats', {}).get('closed_positions', 0),
+                                'traders_with_roi': metrics.get('pnl_stats', {}).get('traders_with_roi', 0)
+                            }
+                            await self.telegram.send_monitoring_freeze_alert(freeze_diagnostics)
+
                     # Send report
                     await self.telegram.send_hourly_report(metrics)
 
@@ -310,6 +327,67 @@ class SystemObserver:
         except Exception as e:
             print(f"[OBSERVER] Error getting top traders: {e}")
             return []
+
+    def _get_monitoring_activity(self) -> Dict:
+        """
+        Get monitoring activity status from database.
+
+        Returns:
+            dict: Activity status including last_activity timestamp
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            # Check if monitoring_status table exists
+            cursor.execute("""
+                SELECT name FROM sqlite_master
+                WHERE type='table' AND name='monitoring_status'
+            """)
+
+            if not cursor.fetchone():
+                conn.close()
+                return {
+                    'last_activity': None,
+                    'process_id': None,
+                    'minutes_since_activity': 999
+                }
+
+            # Get last activity
+            cursor.execute("""
+                SELECT last_activity, process_id
+                FROM monitoring_status
+                WHERE id = 1
+            """)
+
+            row = cursor.fetchone()
+            conn.close()
+
+            if row and row[0]:
+                last_activity = datetime.fromisoformat(row[0].replace(' ', 'T'))
+                process_id = row[1]
+
+                minutes_since = (datetime.now() - last_activity).total_seconds() / 60
+
+                return {
+                    'last_activity': last_activity,
+                    'process_id': process_id,
+                    'minutes_since_activity': minutes_since
+                }
+
+            return {
+                'last_activity': None,
+                'process_id': None,
+                'minutes_since_activity': 999
+            }
+
+        except Exception as e:
+            print(f"[OBSERVER] Error getting monitoring activity: {e}")
+            return {
+                'last_activity': None,
+                'process_id': None,
+                'minutes_since_activity': 999
+            }
 
     def _get_pnl_stats(self) -> Dict:
         """
@@ -473,6 +551,9 @@ class SystemObserver:
         # Get P&L coverage stats
         pnl_stats = self._get_pnl_stats()
 
+        # Get monitoring activity from database (for freeze detection)
+        monitoring_activity = self._get_monitoring_activity()
+
         return {
             'health_status': health['status'],
             'uptime_hours': uptime_hours,
@@ -482,7 +563,8 @@ class SystemObserver:
             'performance': performance,
             'activity': activity,
             'top_traders': top_traders,
-            'pnl_stats': pnl_stats
+            'pnl_stats': pnl_stats,
+            'monitoring_activity': monitoring_activity
         }
 
     async def _elo_update_loop(self):

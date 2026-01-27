@@ -284,6 +284,29 @@ class TelegramHealthBot:
 
         message_parts.append("")
 
+        # Monitoring Activity Status (FREEZE DETECTION)
+        if 'monitoring_activity' in metrics:
+            mon_activity = metrics['monitoring_activity']
+            minutes_since = mon_activity.get('minutes_since_activity', 999)
+
+            # Detect if monitoring is frozen (> 30 min silence)
+            if minutes_since > 30:
+                message_parts.append("🔴 MONITORING FROZEN DETECTED")
+                message_parts.append(f"  • Last activity: {minutes_since:.0f} minutes ago")
+                if mon_activity.get('last_activity'):
+                    message_parts.append(f"  • Time: {mon_activity['last_activity'].strftime('%H:%M:%S')}")
+                message_parts.append("  • ACTION: Restart monitoring system")
+                message_parts.append("")
+            elif minutes_since > 20:
+                # Warning: approaching freeze threshold
+                message_parts.append("⚠️ Monitoring Delayed")
+                message_parts.append(f"  • Last activity: {minutes_since:.0f} minutes ago")
+                message_parts.append("")
+            else:
+                # Healthy
+                message_parts.append(f"✅ Monitoring Active ({minutes_since:.0f}m ago)")
+                message_parts.append("")
+
         # P&L Stats
         if 'pnl_stats' in metrics:
             pnl_stats = metrics['pnl_stats']
@@ -407,6 +430,69 @@ class TelegramHealthBot:
             message_parts.append(f"Occurrences: {error.occurrences}")
 
         return '\n'.join(message_parts)
+
+    async def send_monitoring_freeze_alert(self, diagnostics: Dict) -> bool:
+        """
+        Send detailed alert when monitoring system is frozen.
+
+        Args:
+            diagnostics: Diagnostic data about the freeze
+
+        Returns:
+            bool: True if sent successfully
+        """
+        # Rate limit: One freeze alert per 20 minutes
+        if not self._should_send_alert('monitoring_freeze', minutes=20):
+            return False
+
+        minutes_since = diagnostics.get('minutes_since_activity', 0)
+        last_activity = diagnostics.get('last_activity')
+        closed_positions = diagnostics.get('closed_positions', 0)
+        traders_with_roi = diagnostics.get('traders_with_roi', 0)
+
+        message_parts = [
+            "🔴 MONITORING SYSTEM FROZEN",
+            "",
+            f"⏰ Last Activity: {minutes_since:.0f} minutes ago"
+        ]
+
+        if last_activity:
+            message_parts.append(f"   Time: {last_activity.strftime('%Y-%m-%d %H:%M:%S')}")
+
+        message_parts.extend([
+            "",
+            "📊 Current State:",
+            f"  • Closed positions: {closed_positions}",
+            f"  • Traders with ROI: {traders_with_roi}"
+        ])
+
+        # Likely cause
+        message_parts.extend([
+            "",
+            "🔍 Likely Cause:",
+            "  Telegram rate limit causing hang",
+            "  (System waits indefinitely on blocked send)"
+        ])
+
+        # Recommended fix
+        message_parts.extend([
+            "",
+            "✅ FIX:",
+            "  1. Run: scripts\\restart_monitoring_telegram_safe.bat",
+            "  2. This version sends NO Telegram messages",
+            "  3. System Observer handles all notifications",
+            "",
+            "💡 Or manually:",
+            "  taskkill /F /IM python.exe",
+            "  py monitoring/main_telegram_safe.py"
+        ])
+
+        message_parts.append("")
+        message_parts.append(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+        message = '\n'.join(message_parts)
+
+        return await self._send_message(message)
 
     async def send_shutdown_notification(self) -> bool:
         """

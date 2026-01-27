@@ -633,6 +633,40 @@ class PolymarketMonitor:
         for trade in unnotified_trades:
             self.db.mark_trade_notified(trade['trade_id'])
 
+    def _update_activity_timestamp(self):
+        """
+        Update last activity timestamp in database for system observer.
+
+        This allows the system observer to detect if monitoring has frozen/hung.
+        """
+        try:
+            conn = self.db.get_connection()
+            cursor = conn.cursor()
+
+            # Create monitoring_status table if it doesn't exist
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS monitoring_status (
+                    id INTEGER PRIMARY KEY,
+                    last_activity TIMESTAMP,
+                    last_cycle_count INTEGER,
+                    process_id INTEGER
+                )
+            """)
+
+            import os
+            process_id = os.getpid()
+
+            cursor.execute("""
+                INSERT OR REPLACE INTO monitoring_status (id, last_activity, process_id)
+                VALUES (1, datetime('now'), ?)
+            """, (process_id,))
+
+            conn.commit()
+            conn.close()
+
+        except Exception as e:
+            safe_print(f"[WARNING] Failed to update activity timestamp: {e}")
+
     async def update_position_tracking(self) -> int:
         """
         Update position tracking and P&L for all active traders.
@@ -724,15 +758,15 @@ class PolymarketMonitor:
                 # Check for new trades
                 new_trades = await self.check_for_new_trades()
 
-                # Send notifications for new trades
-                if new_trades > 0:
+                # Send notifications for new trades (skip if Telegram disabled)
+                if new_trades > 0 and self.telegram:
                     await self.notify_new_trades()
 
                 # Periodically re-scan for new successful traders (every 10 cycles)
                 if cycle_count % 10 == 0:
                     safe_print("\nPerforming periodic trader re-scan...")
                     newly_flagged = self.analyzer.scan_for_successful_traders()
-                    if newly_flagged > 0:
+                    if newly_flagged > 0 and self.telegram:
                         await self.telegram.send_message(
                             f"🆕 Found {newly_flagged} new successful traders!"
                         )
@@ -756,9 +790,10 @@ class PolymarketMonitor:
 
                     if newly_resolved > 0:
                         safe_print(f"[MONITOR] {newly_resolved} new resolution(s) found!")
-                        await self.telegram.send_message(
-                            f"✅ {newly_resolved} market(s) resolved! Win rate data updated."
-                        )
+                        if self.telegram:
+                            await self.telegram.send_message(
+                                f"✅ {newly_resolved} market(s) resolved! Win rate data updated."
+                            )
                     else:
                         safe_print(f"[MONITOR] No new resolutions found (markets are long-dated)")
 
@@ -772,6 +807,9 @@ class PolymarketMonitor:
                     safe_print(f"[P&L] [ERROR] Position tracking failed: {e}")
                     import traceback
                     safe_print(f"[P&L] Traceback: {traceback.format_exc()}")
+
+                # Update activity timestamp for system observer
+                self._update_activity_timestamp()
 
                 safe_print(f"\n[OK] Cycle complete. Next check in {self.check_interval // 60} minutes.")
 
