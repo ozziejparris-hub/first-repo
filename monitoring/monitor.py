@@ -37,13 +37,20 @@ def safe_print(message: str, fallback: str = None):
 class PolymarketMonitor:
     """Main monitoring service that coordinates all components."""
 
-    def __init__(self, polymarket_api_key: str, telegram_token: str,
+    def __init__(self, polymarket_api_key: str, telegram_token: Optional[str] = None,
                  telegram_chat_id: Optional[str] = None,
                  check_interval: int = 900,  # 900 seconds = 15 minutes
                  ai_agent = None):  # AI agent for intelligent categorization
         self.db = Database()
         self.polymarket = PolymarketClient(polymarket_api_key)
-        self.telegram = TelegramNotifier(telegram_token, telegram_chat_id)
+
+        # Only create Telegram notifier if token provided (None = telegram-safe mode)
+        if telegram_token is not None:
+            self.telegram = TelegramNotifier(telegram_token, telegram_chat_id)
+        else:
+            self.telegram = None
+            safe_print("[MONITOR] [OK] Running without Telegram (safe mode)")
+
         self.analyzer = TraderAnalyzer(self.db, self.polymarket)
         self.position_tracker = PositionTracker(self.db)  # CRITICAL: P&L tracking
         self.ai_agent = ai_agent  # Store AI agent
@@ -53,37 +60,40 @@ class PolymarketMonitor:
         # Cache for AI categorization to avoid repeated API calls
         self.ai_cache: Dict[str, bool] = {}
 
-        # Set stop callback
-        self.telegram.set_stop_callback(self.request_stop)
+        # Set stop callback (only if telegram bot exists)
+        if self.telegram is not None:
+            self.telegram.set_stop_callback(self.request_stop)
 
         # Initialize Telegram ELO Bot for betting intelligence
         # NOTE: ELO bot uses send-only mode (no polling) to avoid conflicts
+        # Only initialize if telegram token provided (skip in telegram-safe mode)
         self.elo_bot = None
         self.elo_scheduler = None
-        try:
-            from .telegram_elo_bot import ELOTelegramBot
+        if telegram_token is not None:
+            try:
+                from .telegram_elo_bot import ELOTelegramBot
 
-            self.elo_bot = ELOTelegramBot(
-                token=telegram_token,
-                chat_id=telegram_chat_id,
-                database=self.db
-            )
+                self.elo_bot = ELOTelegramBot(
+                    token=telegram_token,
+                    chat_id=telegram_chat_id,
+                    database=self.db
+                )
 
-            # NOTE: Scheduler disabled - user ditching Task Scheduler
-            # Daily leaderboards can be sent manually or via simple loop if needed
-            # from .telegram_scheduler import TelegramScheduler
-            # self.elo_scheduler = TelegramScheduler(self.elo_bot, self.db)
+                # NOTE: Scheduler disabled - user ditching Task Scheduler
+                # Daily leaderboards can be sent manually or via simple loop if needed
+                # from .telegram_scheduler import TelegramScheduler
+                # self.elo_scheduler = TelegramScheduler(self.elo_bot, self.db)
 
-            safe_print("[MONITOR] [OK] ELO Telegram bot initialized (send-only mode)")
-        except ImportError as e:
-            # APScheduler not installed - that's OK, scheduler is disabled anyway
-            safe_print(f"[MONITOR] [INFO] Info: ELO bot scheduler dependencies not available: {e}")
-            safe_print("[MONITOR] [INFO] ELO bot will work without scheduling (send-only mode)")
-            self.elo_bot = None
-        except Exception as e:
-            safe_print(f"[MONITOR] [WARNING] Warning: Could not initialize ELO bot: {e}")
-            self.elo_bot = None
-            self.elo_scheduler = None
+                safe_print("[MONITOR] [OK] ELO Telegram bot initialized (send-only mode)")
+            except ImportError as e:
+                # APScheduler not installed - that's OK, scheduler is disabled anyway
+                safe_print(f"[MONITOR] [INFO] Info: ELO bot scheduler dependencies not available: {e}")
+                safe_print("[MONITOR] [INFO] ELO bot will work without scheduling (send-only mode)")
+                self.elo_bot = None
+            except Exception as e:
+                safe_print(f"[MONITOR] [WARNING] Warning: Could not initialize ELO bot: {e}")
+                self.elo_bot = None
+                self.elo_scheduler = None
 
     def request_stop(self):
         """Request the monitor to stop."""
@@ -847,7 +857,14 @@ class PolymarketMonitor:
 
         # Initialize Telegram bot in send-only mode (no polling = no conflicts)
         # User running manually, doesn't need /stop command via Telegram
-        await self.telegram.initialize(send_only=True)
+        # Check if telegram bot exists before initializing (may be None in telegram-safe mode)
+        if self.telegram is not None:
+            try:
+                await self.telegram.initialize(send_only=True)
+            except Exception as e:
+                safe_print(f"[WARNING] Telegram bot initialization failed: {e}")
+                safe_print("[WARNING] Continuing without Telegram notifications")
+                self.telegram = None
 
         # Initialize ELO bot for betting intelligence (also send-only mode)
         if self.elo_bot:
@@ -906,8 +923,13 @@ class PolymarketMonitor:
             except Exception as e:
                 safe_print(f"[MONITOR] Warning: ELO bot stop failed: {e}")
 
-        await self.telegram.send_message("👋 Polymarket Monitor stopped.")
-        await self.telegram.stop()
+        # Only send stop message if telegram bot exists (may be None in telegram-safe mode)
+        if self.telegram is not None:
+            try:
+                await self.telegram.send_message("👋 Polymarket Monitor stopped.")
+                await self.telegram.stop()
+            except Exception as e:
+                safe_print(f"[WARNING] Failed to send stop message: {e}")
 
         safe_print("[OK] Monitor stopped successfully")
 
