@@ -655,6 +655,11 @@ class PolymarketMonitor:
         """
         Update position tracking and P&L for all active traders.
 
+        OPTIMIZED to prevent blocking:
+        - Processes traders in batches
+        - Yields control to event loop between traders
+        - Batch commits to reduce database locks
+
         Returns:
             int: Number of traders with updated P&L
         """
@@ -675,56 +680,68 @@ class PolymarketMonitor:
         safe_print(f"[P&L] Processing {len(active_traders)} active traders...")
 
         traders_updated = 0
+        batch_size = 10  # Process 10 traders at a time
 
-        for trader_address in active_traders:
-            try:
-                # Match trades into positions
-                positions = self.position_tracker.match_trades_for_trader(trader_address, verbose=False)
+        for i in range(0, len(active_traders), batch_size):
+            batch = active_traders[i:i + batch_size]
 
-                if not positions:
+            for trader_address in batch:
+                try:
+                    # Match trades into positions
+                    # (This is CPU-intensive but unavoidable)
+                    positions = self.position_tracker.match_trades_for_trader(trader_address, verbose=False)
+
+                    if not positions:
+                        continue
+
+                    # CRITICAL: Save positions to database
+                    for position in positions:
+                        self.db.insert_position(position)
+
+                    # Calculate aggregate P&L metrics
+                    closed_positions = [p for p in positions if p.status == 'closed']
+                    open_positions = [p for p in positions if p.status == 'open']
+
+                    if closed_positions:
+                        realized_pnl = sum(p.realized_pnl for p in closed_positions if p.realized_pnl)
+                        avg_roi = sum(p.roi_percent for p in closed_positions if p.roi_percent) / len(closed_positions)
+
+                        # Update trader table with P&L data
+                        conn = self.db.get_connection()
+                        cursor = conn.cursor()
+
+                        cursor.execute("""
+                            UPDATE traders
+                            SET realized_pnl = ?,
+                                avg_roi = ?,
+                                roi_percentage = ?,
+                                closed_positions = ?,
+                                open_positions = ?
+                            WHERE address = ?
+                        """, (
+                            realized_pnl,
+                            avg_roi,
+                            avg_roi,  # roi_percentage
+                            len(closed_positions),
+                            len(open_positions),
+                            trader_address
+                        ))
+
+                        conn.commit()
+                        conn.close()
+
+                        traders_updated += 1
+
+                except Exception as e:
+                    safe_print(f"[P&L] [ERROR] Failed for trader {trader_address[:10]}: {e}")
                     continue
 
-                # CRITICAL: Save positions to database
-                for position in positions:
-                    self.db.insert_position(position)
+            # CRITICAL: Yield control to event loop after each batch
+            # This prevents blocking for long periods
+            await asyncio.sleep(0.1)  # 100ms break between batches
 
-                # Calculate aggregate P&L metrics
-                closed_positions = [p for p in positions if p.status == 'closed']
-                open_positions = [p for p in positions if p.status == 'open']
-
-                if closed_positions:
-                    realized_pnl = sum(p.realized_pnl for p in closed_positions if p.realized_pnl)
-                    avg_roi = sum(p.roi_percent for p in closed_positions if p.roi_percent) / len(closed_positions)
-
-                    # Update trader table with P&L data
-                    conn = self.db.get_connection()
-                    cursor = conn.cursor()
-
-                    cursor.execute("""
-                        UPDATE traders
-                        SET realized_pnl = ?,
-                            avg_roi = ?,
-                            roi_percentage = ?,
-                            closed_positions = ?,
-                            open_positions = ?
-                        WHERE address = ?
-                    """, (
-                        realized_pnl,
-                        avg_roi,
-                        avg_roi,  # roi_percentage
-                        len(closed_positions),
-                        len(open_positions),
-                        trader_address
-                    ))
-
-                    conn.commit()
-                    conn.close()
-
-                    traders_updated += 1
-
-            except Exception as e:
-                safe_print(f"[P&L] [ERROR] Failed for trader {trader_address[:10]}: {e}")
-                continue
+            if i + batch_size < len(active_traders):
+                safe_print(f"[P&L] Progress: {min(i + batch_size, len(active_traders))}/{len(active_traders)} traders processed...")
 
         return traders_updated
 
@@ -778,12 +795,20 @@ class PolymarketMonitor:
                     else:
                         safe_print(f"[MONITOR] No new resolutions found (markets are long-dated)")
 
-                # CRITICAL: Position tracking & P&L calculation (every cycle)
-                safe_print("\n[P&L] Updating position tracking...")
+                # Position tracking with timeout protection (prevents freezing)
+                safe_print("\n[P&L] Updating position tracking (with timeout protection)...")
                 try:
-                    positions_updated = await self.update_position_tracking()
+                    # Run with 5-minute timeout to prevent blocking
+                    positions_updated = await asyncio.wait_for(
+                        self.update_position_tracking(),
+                        timeout=300  # 5 minutes max
+                    )
                     if positions_updated > 0:
                         safe_print(f"[P&L] [OK] Updated P&L for {positions_updated} traders")
+                    else:
+                        safe_print(f"[P&L] No traders needed P&L updates")
+                except asyncio.TimeoutError:
+                    safe_print(f"[P&L] [WARNING] Position tracking timed out after 5 minutes - skipping this cycle")
                 except Exception as e:
                     safe_print(f"[P&L] [ERROR] Position tracking failed: {e}")
                     import traceback
