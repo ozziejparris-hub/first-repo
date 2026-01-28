@@ -20,6 +20,7 @@ Key Concepts:
 """
 
 import json
+from collections import deque  # O(1) operations for queue
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 from monitoring.database import Database
@@ -220,7 +221,7 @@ class PositionTracker:
             List of Position objects
         """
         positions = []
-        open_buy_queue = []  # Queue of unmatched BUY trades
+        open_buy_queue = deque()  # O(1) queue operations (was list)
 
         for trade in trades:
             if trade['side'].upper() == 'BUY':
@@ -239,7 +240,7 @@ class PositionTracker:
                         # Fully match this BUY
                         matched_buys.append(oldest_buy.copy())
                         sell_shares_remaining -= oldest_buy['shares']
-                        open_buy_queue.pop(0)
+                        open_buy_queue.popleft()  # O(1) operation (was pop(0) = O(n))
                     else:
                         # Partially match this BUY
                         partial_buy = oldest_buy.copy()
