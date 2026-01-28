@@ -52,8 +52,8 @@ class BackgroundPnLWorker:
         self.is_running = False
 
         # Configuration
-        self.batch_size = 10  # Process 10 traders per batch
-        self.batch_sleep = 60  # Sleep 60 seconds between batches
+        self.batch_size = 20  # Process 20 traders per batch (4x faster)
+        self.batch_sleep = 30  # Sleep 30 seconds between batches (4x faster)
         self.trade_limit = 2000  # Skip traders with >2000 trades
 
         # Statistics

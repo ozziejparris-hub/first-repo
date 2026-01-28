@@ -143,8 +143,8 @@ Returns statistics:
 
 **Configuration:**
 ```python
-self.batch_size = 10  # Process 10 traders per batch
-self.batch_sleep = 60  # Sleep 60 seconds between batches
+self.batch_size = 20  # Process 20 traders per batch (optimized for speed)
+self.batch_sleep = 30  # Sleep 30 seconds between batches (optimized for speed)
 self.trade_limit = 2000  # Skip traders with >2000 trades
 ```
 
@@ -350,20 +350,20 @@ print(f"Never updated: {stats['never_updated']}")
 print(f"Stale: {stats['stale_pnl']}")
 ```
 
+**Expected after 30 minutes:**
+```
+Total active traders: 773
+Up to date: 750-773
+Never updated: 0-23
+Stale: 0
+```
+
 **Expected after 1 hour:**
 ```
 Total active traders: 773
-Up to date: 60-80
-Never updated: 690-710
-Stale: 0-5
-```
-
-**Expected after 24 hours:**
-```
-Total active traders: 773
-Up to date: 740-773
-Never updated: 0-30
-Stale: 0-5
+Up to date: 773
+Never updated: 0
+Stale: 0
 ```
 
 **Success criteria:**
@@ -390,12 +390,12 @@ Stale: 0-5
 
 | Metric | Value |
 |--------|-------|
-| Batch size | 10 traders |
-| Batch time | 8-15 seconds |
-| Sleep between batches | 60 seconds |
-| Processing rate | 8-12 traders/minute |
-| Time to process all 773 | 60-90 minutes |
-| Updates per day | All traders refreshed |
+| Batch size | 20 traders |
+| Batch time | 15-30 seconds |
+| Sleep between batches | 30 seconds |
+| Processing rate | 25-40 traders/minute |
+| Time to process all 773 | 20-30 minutes |
+| Updates per day | All traders refreshed multiple times |
 
 ### Database Impact
 
@@ -514,13 +514,11 @@ print(db.get_pnl_worker_stats())
 | Time | Status |
 |------|--------|
 | 0:00 | System starts, worker initializes |
-| 0:01 | First batch processed (10 traders) |
-| 0:05 | 30-40 traders processed |
+| 0:01 | First batch processed (20 traders) |
+| 0:05 | 100-120 traders processed |
 | 0:15 | First monitoring cycle completes |
-| 0:30 | 150-200 traders processed |
-| 1:00 | 400-500 traders processed |
-| 2:00 | All 773 traders processed (first pass complete) |
-| 2:00+ | Worker maintains updates (traders with new trades prioritized) |
+| 0:20 | All 773 traders processed (first pass complete) |
+| 0:20+ | Worker maintains updates (traders with new trades prioritized) |
 
 ---
 
