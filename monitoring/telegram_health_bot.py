@@ -307,6 +307,31 @@ class TelegramHealthBot:
                 message_parts.append(f"✅ Monitoring Active ({minutes_since:.0f}m ago)")
                 message_parts.append("")
 
+        # Background Worker Health
+        if 'worker_health' in metrics:
+            worker = metrics['worker_health']
+            status = worker.get('status', 'UNKNOWN')
+            coverage = worker.get('coverage_percent', 0)
+            never_updated = worker.get('never_updated', 0)
+
+            if status == 'HEALTHY':
+                status_emoji = '✅'
+            elif status == 'WORKING' or status == 'STARTING':
+                status_emoji = '⚙️'
+            else:
+                status_emoji = '⚠️'
+
+            message_parts.append(f"🔧 Background P&L Worker: {status_emoji}")
+            message_parts.append(f"  • Status: {status}")
+            message_parts.append(f"  • Coverage: {coverage:.1f}%")
+
+            if never_updated > 0:
+                message_parts.append(f"  • Pending: {never_updated} traders")
+            else:
+                message_parts.append(f"  • All traders up-to-date!")
+
+            message_parts.append("")
+
         # P&L Stats
         if 'pnl_stats' in metrics:
             pnl_stats = metrics['pnl_stats']

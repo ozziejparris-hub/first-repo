@@ -434,6 +434,82 @@ class SystemObserver:
             print(f"[OBSERVER] Error getting P&L stats: {e}")
             return {'traders_with_roi': 0, 'closed_positions': 0}
 
+    def _check_background_worker_health(self) -> Dict:
+        """
+        Check health of background P&L worker.
+
+        Returns:
+            Dict with worker status and metrics
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            # Get P&L worker statistics
+            cursor.execute("""
+                SELECT
+                    COUNT(DISTINCT t.trader_address) as total_active,
+                    COUNT(DISTINCT CASE
+                        WHEN tr.pnl_last_updated IS NULL THEN t.trader_address
+                    END) as never_updated,
+                    COUNT(DISTINCT CASE
+                        WHEN tr.pnl_last_updated < datetime('now', '-24 hours')
+                        THEN t.trader_address
+                    END) as stale_pnl,
+                    COUNT(DISTINCT CASE
+                        WHEN tr.pnl_last_updated > datetime('now', '-1 hour')
+                        THEN t.trader_address
+                    END) as recently_updated
+                FROM trades t
+                LEFT JOIN traders tr ON t.trader_address = tr.address
+                WHERE t.timestamp > datetime('now', '-30 days')
+            """)
+
+            result = cursor.fetchone()
+
+            total_active = result[0] if result else 0
+            never_updated = result[1] if result else 0
+            stale_pnl = result[2] if result else 0
+            recently_updated = result[3] if result else 0
+
+            # Calculate coverage
+            if total_active > 0:
+                coverage = ((total_active - never_updated) / total_active) * 100
+            else:
+                coverage = 0
+
+            # Determine health status
+            if coverage >= 90:
+                status = "HEALTHY"
+            elif coverage >= 50:
+                status = "WORKING"
+            elif coverage >= 10:
+                status = "STARTING"
+            else:
+                status = "UNHEALTHY"
+
+            conn.close()
+
+            return {
+                'status': status,
+                'total_active_traders': total_active,
+                'never_updated': never_updated,
+                'stale_pnl': stale_pnl,
+                'recently_updated': recently_updated,
+                'coverage_percent': round(coverage, 1)
+            }
+
+        except Exception as e:
+            print(f"[OBSERVER] Error checking worker health: {e}")
+            return {
+                'status': 'ERROR',
+                'total_active_traders': 0,
+                'never_updated': 0,
+                'stale_pnl': 0,
+                'recently_updated': 0,
+                'coverage_percent': 0
+            }
+
     def _count_activity_from_logs(self, hours: float = 1.0) -> Dict:
         """
         Count actual monitoring activity from log files.
@@ -561,6 +637,9 @@ class SystemObserver:
         # Get P&L coverage stats
         pnl_stats = self._get_pnl_stats()
 
+        # Get background worker health
+        worker_health = self._check_background_worker_health()
+
         # Get monitoring activity from database (for freeze detection)
         monitoring_activity = self._get_monitoring_activity()
 
@@ -574,6 +653,7 @@ class SystemObserver:
             'activity': activity,
             'top_traders': top_traders,
             'pnl_stats': pnl_stats,
+            'worker_health': worker_health,
             'monitoring_activity': monitoring_activity
         }
 

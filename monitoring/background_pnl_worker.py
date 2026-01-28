@@ -54,7 +54,7 @@ class BackgroundPnLWorker:
         # Configuration
         self.batch_size = 20  # Process 20 traders per batch (4x faster)
         self.batch_sleep = 30  # Sleep 30 seconds between batches (4x faster)
-        self.trade_limit = 2000  # Skip traders with >2000 trades
+        self.trade_limit = None  # No limit - process all traders (deque optimization allows this)
 
         # Statistics
         self.traders_processed = 0
@@ -139,11 +139,11 @@ class BackgroundPnLWorker:
             trade_count = cursor.fetchone()[0]
             conn.close()
 
-            if trade_count > self.trade_limit:
-                safe_print(f"[P&L WORKER] [SKIP] {trader_address[:10]}... has {trade_count:,} trades (too many)")
-                self.traders_skipped += 1
-                self.db.mark_trader_pnl_updated(trader_address)  # Mark as updated to avoid retry
-                return
+            # Log warning for very large traders but process them anyway
+            if trade_count > 5000:
+                safe_print(f"[P&L WORKER] [WHALE] {trader_address[:10]}... has {trade_count:,} trades (processing, may take 1-2 min)")
+
+            # Continue processing regardless of trade count
 
             # Match trades into positions
             positions = self.position_tracker.match_trades_for_trader(trader_address, verbose=False)
