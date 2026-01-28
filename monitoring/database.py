@@ -110,6 +110,31 @@ class Database:
         except sqlite3.OperationalError:
             pass  # Column already exists
 
+        # Migration: Add P&L tracking columns for background worker
+        try:
+            cursor.execute("""
+                ALTER TABLE traders
+                ADD COLUMN pnl_last_updated TIMESTAMP
+            """)
+            print("[DATABASE] Added 'pnl_last_updated' column to traders table")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
+        try:
+            cursor.execute("""
+                ALTER TABLE traders
+                ADD COLUMN pnl_update_priority INTEGER DEFAULT 0
+            """)
+            print("[DATABASE] Added 'pnl_update_priority' column to traders table")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
+        # Create index for efficient P&L worker queries
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_traders_pnl_priority
+            ON traders(pnl_update_priority DESC, pnl_last_updated ASC)
+        """)
+
         conn.commit()
         conn.close()
 
@@ -925,3 +950,125 @@ class Database:
             }
 
         return None
+
+    def get_traders_needing_pnl_update(self, limit: int = 10) -> list:
+        """
+        Get traders that need P&L updates, prioritized by:
+        1. Traders with trades in last hour (highest priority)
+        2. Traders with stale P&L (>24h since last update)
+        3. Traders never updated
+        4. Traders with oldest updates
+
+        Args:
+            limit: Maximum number of traders to return
+
+        Returns:
+            List of (trader_address, last_trade_time, last_pnl_update) tuples
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT DISTINCT
+                t.trader_address,
+                MAX(t.timestamp) as last_trade,
+                tr.pnl_last_updated
+            FROM trades t
+            LEFT JOIN traders tr ON t.trader_address = tr.address
+            WHERE t.timestamp > datetime('now', '-30 days')
+            GROUP BY t.trader_address
+            ORDER BY
+                CASE
+                    -- Priority 1: Recent trades (last hour)
+                    WHEN MAX(t.timestamp) > datetime('now', '-1 hour') THEN 1
+                    -- Priority 2: Stale P&L (>24h old)
+                    WHEN tr.pnl_last_updated IS NULL
+                         OR tr.pnl_last_updated < datetime('now', '-24 hours') THEN 2
+                    -- Priority 3: Everything else
+                    ELSE 3
+                END,
+                tr.pnl_last_updated ASC NULLS FIRST,
+                last_trade DESC
+            LIMIT ?
+        """, (limit,))
+
+        results = cursor.fetchall()
+        conn.close()
+        return results
+
+    def mark_trader_pnl_updated(self, trader_address: str):
+        """
+        Mark trader's P&L as recently updated.
+
+        Args:
+            trader_address: Trader address
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE traders
+            SET pnl_last_updated = datetime('now')
+            WHERE address = ?
+        """, (trader_address,))
+
+        conn.commit()
+        conn.close()
+
+    def get_pnl_worker_stats(self) -> dict:
+        """
+        Get statistics about P&L update status.
+
+        Returns:
+            Dict with stats about P&L updates
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        # Total traders with trades in last 30 days
+        cursor.execute("""
+            SELECT COUNT(DISTINCT trader_address)
+            FROM trades
+            WHERE timestamp > datetime('now', '-30 days')
+        """)
+        total_active = cursor.fetchone()[0]
+
+        # Traders never updated
+        cursor.execute("""
+            SELECT COUNT(DISTINCT t.trader_address)
+            FROM trades t
+            LEFT JOIN traders tr ON t.trader_address = tr.address
+            WHERE t.timestamp > datetime('now', '-30 days')
+              AND tr.pnl_last_updated IS NULL
+        """)
+        never_updated = cursor.fetchone()[0]
+
+        # Traders with stale P&L (>24h)
+        cursor.execute("""
+            SELECT COUNT(DISTINCT t.trader_address)
+            FROM trades t
+            INNER JOIN traders tr ON t.trader_address = tr.address
+            WHERE t.timestamp > datetime('now', '-30 days')
+              AND tr.pnl_last_updated < datetime('now', '-24 hours')
+        """)
+        stale = cursor.fetchone()[0]
+
+        # Traders updated in last hour
+        cursor.execute("""
+            SELECT COUNT(DISTINCT t.trader_address)
+            FROM trades t
+            INNER JOIN traders tr ON t.trader_address = tr.address
+            WHERE t.timestamp > datetime('now', '-30 days')
+              AND tr.pnl_last_updated > datetime('now', '-1 hour')
+        """)
+        recently_updated = cursor.fetchone()[0]
+
+        conn.close()
+
+        return {
+            'total_active_traders': total_active,
+            'never_updated': never_updated,
+            'stale_pnl': stale,
+            'recently_updated': recently_updated,
+            'up_to_date': total_active - never_updated - stale
+        }

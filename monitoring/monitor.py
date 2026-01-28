@@ -7,6 +7,7 @@ from .database import Database
 from .polymarket_client import PolymarketClient
 from .trader_analyzer import TraderAnalyzer
 from .position_tracker import PositionTracker
+from .background_pnl_worker import BackgroundPnLWorker
 
 # Telegram imports removed - all notifications handled by System Observer
 
@@ -63,6 +64,10 @@ class PolymarketMonitor:
 
         self.analyzer = TraderAnalyzer(self.db, self.polymarket)
         self.position_tracker = PositionTracker(self.db)  # CRITICAL: P&L tracking
+
+        # NEW: Initialize background P&L worker
+        self.pnl_worker = BackgroundPnLWorker(self.db, self.position_tracker)
+
         self.ai_agent = ai_agent  # Store AI agent
         self.check_interval = check_interval
         self.is_running = False
@@ -667,10 +672,12 @@ class PolymarketMonitor:
         cursor = conn.cursor()
 
         # Get all traders with trades (focus on active ones)
+        # OPTIMIZATION: Reduced from 30 days to 7 days to reduce load by ~75%
+        # This cuts processing from 773 traders → ~200 traders
         cursor.execute("""
             SELECT DISTINCT trader_address
             FROM trades
-            WHERE timestamp > datetime('now', '-30 days')
+            WHERE timestamp > datetime('now', '-7 days')
             ORDER BY timestamp DESC
         """)
 
@@ -685,7 +692,7 @@ class PolymarketMonitor:
         cursor.execute("""
             SELECT trader_address, COUNT(*) as trade_count
             FROM trades
-            WHERE timestamp > datetime('now', '-30 days')
+            WHERE timestamp > datetime('now', '-7 days')
             GROUP BY trader_address
             HAVING COUNT(*) > 1000
             ORDER BY trade_count DESC
@@ -707,8 +714,13 @@ class PolymarketMonitor:
         for i in range(0, len(active_traders), batch_size):
             batch = active_traders[i:i + batch_size]
 
-            for trader_address in batch:
+            for batch_index, trader_address in enumerate(batch):
                 try:
+                    # START TIMING - Diagnostic for rate limiting detection
+                    import time
+                    start_time = time.time()
+                    trader_number = i + batch_index + 1
+
                     # CRITICAL FIX: Check trade count before processing
                     # Traders with 2000+ trades cause O(n²) explosion in FIFO matching
                     conn = self.db.get_connection()
@@ -722,13 +734,20 @@ class PolymarketMonitor:
 
                     # Skip traders with too many trades (prevents timeout)
                     if trade_count > 2000:
-                        safe_print(f"[P&L] [SKIP] Trader {trader_address[:10]}... has {trade_count:,} trades (too many, skipping)")
+                        safe_print(f"[P&L] [SKIP] Trader #{trader_number} ({trader_address[:10]}...) has {trade_count:,} trades (too many, skipping)")
                         traders_skipped += 1
                         continue
 
                     # Match trades into positions
                     # (This is CPU-intensive but unavoidable)
                     positions = self.position_tracker.match_trades_for_trader(trader_address, verbose=False)
+
+                    # END TIMING - Report slow traders (API rate limiting indicator)
+                    elapsed = time.time() - start_time
+
+                    # DIAGNOSTIC: Report slow traders
+                    if elapsed > 5.0:
+                        safe_print(f"[P&L] [SLOW] Trader #{trader_number} ({trader_address[:10]}..., {trade_count} trades) took {elapsed:.1f}s (possible rate limit or large dataset)")
 
                     if not positions:
                         continue
@@ -838,24 +857,28 @@ class PolymarketMonitor:
                     else:
                         safe_print(f"[MONITOR] No new resolutions found (markets are long-dated)")
 
+                # OLD P&L CODE - DISABLED (background worker handles this now)
                 # Position tracking with timeout protection (prevents freezing)
-                safe_print("\n[P&L] Updating position tracking (with timeout protection)...")
-                try:
-                    # Run with 5-minute timeout to prevent blocking
-                    positions_updated = await asyncio.wait_for(
-                        self.update_position_tracking(),
-                        timeout=300  # 5 minutes max
-                    )
-                    if positions_updated > 0:
-                        safe_print(f"[P&L] [OK] Updated P&L for {positions_updated} traders")
-                    else:
-                        safe_print(f"[P&L] No traders needed P&L updates")
-                except asyncio.TimeoutError:
-                    safe_print(f"[P&L] [WARNING] Position tracking timed out after 5 minutes - skipping this cycle")
-                except Exception as e:
-                    safe_print(f"[P&L] [ERROR] Position tracking failed: {e}")
-                    import traceback
-                    safe_print(f"[P&L] Traceback: {traceback.format_exc()}")
+                # safe_print("\n[P&L] Updating position tracking (with timeout protection)...")
+                # try:
+                #     # Run with 5-minute timeout to prevent blocking
+                #     positions_updated = await asyncio.wait_for(
+                #         self.update_position_tracking(),
+                #         timeout=300  # 5 minutes max
+                #     )
+                #     if positions_updated > 0:
+                #         safe_print(f"[P&L] [OK] Updated P&L for {positions_updated} traders")
+                #     else:
+                #         safe_print(f"[P&L] No traders needed P&L updates")
+                # except asyncio.TimeoutError:
+                #     safe_print(f"[P&L] [WARNING] Position tracking timed out after 5 minutes - skipping this cycle")
+                # except Exception as e:
+                #     safe_print(f"[P&L] [ERROR] Position tracking failed: {e}")
+                #     import traceback
+                #     safe_print(f"[P&L] Traceback: {traceback.format_exc()}")
+
+                # NEW: P&L handled by background worker (no action needed here)
+                safe_print("\n[P&L] Background worker handling position tracking continuously")
 
                 # Update activity timestamp for system observer
                 self._update_activity_timestamp()
@@ -898,7 +921,7 @@ class PolymarketMonitor:
         safe_print("\n" + "="*70)
         safe_print("  POLYMARKET MONITOR STARTED")
         safe_print("  Telegram: DISABLED (Observer handles all notifications)")
-        safe_print("  Position tracking: ENABLED")
+        safe_print("  Position tracking: BACKGROUND WORKER")
         safe_print("  Database: Active")
         safe_print("="*70 + "\n")
 
@@ -906,6 +929,10 @@ class PolymarketMonitor:
 
         # Perform initial scan
         await self.initial_scan()
+
+        # NEW: Start background P&L worker (non-blocking)
+        asyncio.create_task(self.pnl_worker.start())
+        safe_print("[MONITOR] Background P&L worker started\n")
 
         # Start monitoring loop
         await self.monitoring_loop()
@@ -918,6 +945,10 @@ class PolymarketMonitor:
         """
         safe_print("\n[STOP] Stopping Polymarket Monitor...")
         self.is_running = False
+
+        # NEW: Stop background P&L worker
+        if hasattr(self, 'pnl_worker'):
+            self.pnl_worker.stop()
 
         # Telegram completely disabled - no bot cleanup needed
         # (self.telegram = None, self.elo_bot = None)
