@@ -679,7 +679,29 @@ class PolymarketMonitor:
 
         safe_print(f"[P&L] Processing {len(active_traders)} active traders...")
 
+        # DIAGNOSTIC: Identify whale traders (1000+ trades) that may cause timeouts
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT trader_address, COUNT(*) as trade_count
+            FROM trades
+            WHERE timestamp > datetime('now', '-30 days')
+            GROUP BY trader_address
+            HAVING COUNT(*) > 1000
+            ORDER BY trade_count DESC
+            LIMIT 5
+        """)
+        whale_traders = cursor.fetchall()
+        conn.close()
+
+        if whale_traders:
+            safe_print("\n[P&L] [DIAGNOSTIC] Whale traders detected (1000+ trades):")
+            for trader, count in whale_traders:
+                safe_print(f"  {trader[:10]}... : {count:,} trades")
+            safe_print("")
+
         traders_updated = 0
+        traders_skipped = 0
         batch_size = 10  # Process 10 traders at a time
 
         for i in range(0, len(active_traders), batch_size):
@@ -687,6 +709,23 @@ class PolymarketMonitor:
 
             for trader_address in batch:
                 try:
+                    # CRITICAL FIX: Check trade count before processing
+                    # Traders with 2000+ trades cause O(n²) explosion in FIFO matching
+                    conn = self.db.get_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        SELECT COUNT(*) FROM trades
+                        WHERE trader_address = ?
+                    """, (trader_address,))
+                    trade_count = cursor.fetchone()[0]
+                    conn.close()
+
+                    # Skip traders with too many trades (prevents timeout)
+                    if trade_count > 2000:
+                        safe_print(f"[P&L] [SKIP] Trader {trader_address[:10]}... has {trade_count:,} trades (too many, skipping)")
+                        traders_skipped += 1
+                        continue
+
                     # Match trades into positions
                     # (This is CPU-intensive but unavoidable)
                     positions = self.position_tracker.match_trades_for_trader(trader_address, verbose=False)
@@ -742,6 +781,10 @@ class PolymarketMonitor:
 
             if i + batch_size < len(active_traders):
                 safe_print(f"[P&L] Progress: {min(i + batch_size, len(active_traders))}/{len(active_traders)} traders processed...")
+
+        # Summary reporting
+        if traders_skipped > 0:
+            safe_print(f"\n[P&L] Summary: {traders_updated} updated, {traders_skipped} skipped (too many trades)")
 
         return traders_updated
 

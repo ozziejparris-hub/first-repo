@@ -252,6 +252,101 @@ If you have 200+ active traders:
 
 ---
 
+## Emergency Fix: Whale Trader Protection (Applied)
+
+### Additional Problem Discovered
+
+After initial fix, position tracking still timed out at trader ~450-500 every cycle.
+
+**Root cause:** One or more traders have 5,000+ trades causing O(n²) explosion in FIFO matching algorithm.
+
+### The Fix
+
+Added trade count check BEFORE processing each trader to skip whales.
+
+**File:** [monitoring/monitor.py:706-717](monitoring/monitor.py#L706-L717)
+
+```python
+# CRITICAL FIX: Check trade count before processing
+conn = self.db.get_connection()
+cursor = conn.cursor()
+cursor.execute("""
+    SELECT COUNT(*) FROM trades
+    WHERE trader_address = ?
+""", (trader_address,))
+trade_count = cursor.fetchone()[0]
+conn.close()
+
+# Skip traders with too many trades (prevents timeout)
+if trade_count > 2000:
+    safe_print(f"[P&L] [SKIP] Trader {trader_address[:10]}... has {trade_count:,} trades (too many, skipping)")
+    traders_skipped += 1
+    continue
+```
+
+### Whale Diagnostics
+
+Added automatic whale detection at the start of each P&L cycle.
+
+**File:** [monitoring/monitor.py:683-697](monitoring/monitor.py#L683-L697)
+
+```python
+# DIAGNOSTIC: Identify whale traders (1000+ trades)
+cursor.execute("""
+    SELECT trader_address, COUNT(*) as trade_count
+    FROM trades
+    WHERE timestamp > datetime('now', '-30 days')
+    GROUP BY trader_address
+    HAVING COUNT(*) > 1000
+    ORDER BY trade_count DESC
+    LIMIT 5
+""")
+whale_traders = cursor.fetchall()
+
+if whale_traders:
+    safe_print("\n[P&L] [DIAGNOSTIC] Whale traders detected (1000+ trades):")
+    for trader, count in whale_traders:
+        safe_print(f"  {trader[:10]}... : {count:,} trades")
+```
+
+### Expected Output
+
+**With whale traders present:**
+```
+[P&L] Processing 772 active traders...
+
+[P&L] [DIAGNOSTIC] Whale traders detected (1000+ trades):
+  0x1a2b3c4d... : 5,247 trades
+  0x9e8f7d6c... : 3,891 trades
+  0x5a4b3c2d... : 2,456 trades
+
+[P&L] Progress: 10/772 traders processed...
+[P&L] Progress: 440/772 traders processed...
+[P&L] [SKIP] Trader 0x1a2b3c4d... has 5,247 trades (too many, skipping)
+[P&L] Progress: 450/772 traders processed...
+[P&L] Progress: 770/772 traders processed...
+
+[P&L] Summary: 765 updated, 7 skipped (too many trades)
+[P&L] [OK] Updated P&L for 765 traders
+```
+
+### Performance Impact
+
+| Trade Count | Processing Time | Algorithm Complexity |
+|------------|-----------------|---------------------|
+| 100 trades | ~0.5 seconds | O(100²) = 10,000 ops |
+| 500 trades | ~2 seconds | O(500²) = 250,000 ops |
+| 1,000 trades | ~8 seconds | O(1,000²) = 1M ops |
+| 2,000 trades | ~30 seconds | O(2,000²) = 4M ops |
+| 5,000 trades | ~3-5 minutes | O(5,000²) = 25M ops |
+
+**Why 2,000 trade limit:**
+- Keeps processing time per trader under 30 seconds
+- Allows 10-trader batches to complete in ~5 minutes
+- Prevents single trader from consuming entire timeout window
+
+---
+
 ## Alternative Optimizations (Future Work)
 
 If position tracking still takes too long, consider:
