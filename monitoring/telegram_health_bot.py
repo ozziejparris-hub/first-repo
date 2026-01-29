@@ -477,6 +477,171 @@ class TelegramHealthBot:
 
         return await self._send_message(message)
 
+    async def send_weekly_report(self, metrics: Dict) -> bool:
+        """
+        Send comprehensive weekly performance summary.
+
+        Args:
+            metrics: Weekly metrics dict from system_observer
+
+        Returns:
+            bool: True if sent successfully
+        """
+        from datetime import datetime, timedelta
+
+        # Header
+        today = datetime.now()
+        week_start = (today - timedelta(days=7)).strftime("%Y-%m-%d")
+        week_end = today.strftime("%Y-%m-%d")
+
+        message_parts = [
+            f"📊 **WEEKLY PERFORMANCE SUMMARY**",
+            f"Week: {week_start} to {week_end}",
+            "=" * 50,
+            ""
+        ]
+
+        # Check for errors
+        if 'error' in metrics:
+            message_parts.append(f"❌ Error generating report: {metrics['error']}")
+            return await self._send_message('\n'.join(message_parts))
+
+        # 1. Top 20 Traders (Extended Leaderboard)
+        message_parts.append("🏆 **TOP 20 TRADERS**")
+        message_parts.append("-" * 50)
+
+        if metrics.get('top_20_traders'):
+            for i, trader in enumerate(metrics['top_20_traders'], 1):
+                message_parts.append(
+                    f"{i:2d}. `{trader['address'][:10]}...` "
+                    f"ELO: {trader['elo']:.0f} | "
+                    f"ROI: {trader['roi']:+.1f}%"
+                )
+
+                # Add separator every 5 for readability
+                if i % 5 == 0 and i < 20:
+                    message_parts.append("")
+        else:
+            message_parts.append("  No data available")
+
+        # 2. Most Active Traders (7 days)
+        message_parts.append("")
+        message_parts.append("🔥 **MOST ACTIVE TRADERS (7 days)**")
+        message_parts.append("-" * 50)
+
+        if metrics.get('most_active_7d'):
+            for trader in metrics['most_active_7d'][:5]:
+                message_parts.append(
+                    f"• `{trader['address'][:10]}...` "
+                    f"{trader['trades_7d']} trades | "
+                    f"ELO: {trader['elo']:.0f}"
+                )
+        else:
+            message_parts.append("  No active traders this week")
+
+        # 3. Best Trades of the Week (Top 5)
+        message_parts.append("")
+        message_parts.append("⭐ **BEST TRADES OF THE WEEK**")
+        message_parts.append("-" * 50)
+
+        if metrics.get('best_trades_7d'):
+            for i, trade in enumerate(metrics['best_trades_7d'][:5], 1):
+                message_parts.append(f"{i}. `{trade['trader'][:10]}...` (ELO: {trade['trader_elo']:.0f})")
+                market_title = trade['market_title'][:45]
+                if len(trade['market_title']) > 45:
+                    market_title += "..."
+                message_parts.append(f"   Market: \"{market_title}\"")
+                message_parts.append(f"   ROI: {trade['roi']:.1f}% | P&L: ${trade['pnl']:+.2f}")
+                message_parts.append("")
+        else:
+            message_parts.append("  No closed positions this week")
+
+        # 4. P&L Leaders (7 days)
+        message_parts.append("💰 **P&L LEADERS (7 days)**")
+        message_parts.append("-" * 50)
+
+        if metrics.get('pnl_leaders_7d'):
+            for leader in metrics['pnl_leaders_7d'][:5]:
+                message_parts.append(
+                    f"• `{leader['address'][:10]}...` "
+                    f"${leader['pnl_7d']:+.2f} "
+                    f"({leader['trades_closed']} positions)"
+                )
+        else:
+            message_parts.append("  No profitable positions this week")
+
+        # 5. Win Rate Leaders (7 days)
+        message_parts.append("")
+        message_parts.append("🎯 **WIN RATE LEADERS (7 days)**")
+        message_parts.append("-" * 50)
+
+        if metrics.get('win_rate_leaders_7d'):
+            for leader in metrics['win_rate_leaders_7d'][:5]:
+                message_parts.append(
+                    f"• `{leader['address'][:10]}...` "
+                    f"{leader['win_rate']:.1f}% "
+                    f"({leader['wins']}/{leader['total']} wins)"
+                )
+        else:
+            message_parts.append("  Insufficient data (need 5+ trades)")
+
+        # 6. Most Active Markets (7 days)
+        message_parts.append("")
+        message_parts.append("📈 **MOST ACTIVE MARKETS (7 days)**")
+        message_parts.append("-" * 50)
+
+        if metrics.get('active_markets_7d'):
+            for i, market in enumerate(metrics['active_markets_7d'][:5], 1):
+                market_title = market['title'][:40]
+                if len(market['title']) > 40:
+                    market_title += "..."
+                message_parts.append(f"{i}. \"{market_title}\"")
+                message_parts.append(
+                    f"   {market['total_trades']} trades | "
+                    f"{market['unique_traders']} traders | "
+                    f"Avg: ${market['avg_price']:.3f}"
+                )
+                message_parts.append("")
+        else:
+            message_parts.append("  No active markets this week")
+
+        # 7. Markets Resolved (7 days)
+        message_parts.append("✅ **MARKETS RESOLVED (7 days)**")
+        message_parts.append("-" * 50)
+
+        if metrics.get('markets_resolved_7d'):
+            message_parts.append(f"Total resolved: {len(metrics['markets_resolved_7d'])}")
+            message_parts.append("")
+            for market in metrics['markets_resolved_7d'][:3]:
+                market_title = market['title'][:40]
+                if len(market['title']) > 40:
+                    market_title += "..."
+                message_parts.append(f"• \"{market_title}\"")
+                message_parts.append(f"  Outcome: {market['outcome']}")
+                message_parts.append("")
+        else:
+            message_parts.append("  No markets resolved this week")
+
+        # 8. System Performance (7 days)
+        message_parts.append("📊 **SYSTEM PERFORMANCE (7 days)**")
+        message_parts.append("-" * 50)
+        message_parts.append(f"• Trades processed: {metrics.get('trades_7d', 0):,}")
+        message_parts.append(f"• Active traders: {metrics.get('active_traders_7d', 0):,}")
+        message_parts.append(f"• Markets resolved: {metrics.get('markets_resolved_count', 0)}")
+        message_parts.append(f"• Total P&L: ${metrics.get('total_pnl_7d', 0):+,.2f}")
+        message_parts.append(f"• Worker coverage: {metrics.get('worker_coverage', 0):.1f}%")
+        message_parts.append(f"• Total traders tracked: {metrics.get('total_traders', 0):,}")
+
+        # Footer
+        message_parts.append("")
+        message_parts.append("=" * 50)
+        message_parts.append("📈 Outstanding work this week!")
+        message_parts.append("See you next Sunday for another weekly summary.")
+
+        message = '\n'.join(message_parts)
+
+        return await self._send_message(message)
+
     async def send_startup_notification(self) -> bool:
         """
         Send notification when observer starts.

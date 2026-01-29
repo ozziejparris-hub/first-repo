@@ -107,6 +107,7 @@ class SystemObserver:
         print(f"[OBSERVER] Health check interval: 60s")
         print(f"[OBSERVER] Hourly reports: enabled")
         print(f"[OBSERVER] Daily reports: enabled (23:00 UTC)")
+        print(f"[OBSERVER] Weekly reports: enabled (Sunday 23:00 UTC)")
         print(f"[OBSERVER] Comprehensive diagnostics: every 6h")
         print(f"[OBSERVER] Auto ELO updates: enabled")
         print()
@@ -120,6 +121,7 @@ class SystemObserver:
             asyncio.create_task(self._log_monitor_loop()),
             asyncio.create_task(self._hourly_report_loop()),
             asyncio.create_task(self._daily_report_loop()),
+            asyncio.create_task(self._weekly_report_loop()),
             asyncio.create_task(self._elo_update_loop()),
             asyncio.create_task(self._comprehensive_diagnostic_loop())
         ]
@@ -344,6 +346,52 @@ class SystemObserver:
                 import traceback
                 traceback.print_exc()
                 await asyncio.sleep(300)  # Wait 5 minutes on error
+
+    async def _weekly_report_loop(self):
+        """
+        Send comprehensive weekly report every Sunday at 23:00 UTC.
+
+        Report includes:
+        - Top 20 traders leaderboard
+        - Most active traders (7 days)
+        - Best trades of the week
+        - P&L leaders
+        - Win rate leaders
+        - Most active markets
+        - Markets resolved
+        - System performance
+        """
+        print("[OBSERVER] Weekly report loop started (triggers Sunday 23:00 UTC)")
+
+        while self.running:
+            try:
+                now = datetime.now()
+
+                # Check if it's Sunday (weekday 6) at 23:00 UTC
+                if now.weekday() == 6 and now.hour == 23 and now.minute == 0:
+                    print("[OBSERVER] Generating weekly report...")
+
+                    # Collect weekly metrics
+                    metrics = await self._collect_weekly_metrics()
+
+                    # Send report via Telegram
+                    if self.telegram:
+                        await self.telegram.send_weekly_report(metrics)
+                        print("[OBSERVER] Weekly report sent successfully")
+                    else:
+                        print("[OBSERVER] [WARNING] Telegram not configured, skipping report")
+
+                    # Wait 7 days before next report
+                    await asyncio.sleep(604800)  # 7 days
+                else:
+                    # Check every hour to catch the Sunday 23:00 window
+                    await asyncio.sleep(3600)
+
+            except Exception as e:
+                print(f"[OBSERVER] Error in weekly report loop: {e}")
+                import traceback
+                traceback.print_exc()
+                await asyncio.sleep(3600)  # Wait 1 hour on error
 
     def _get_top_traders(self, limit: int = 5) -> list:
         """
@@ -886,6 +934,297 @@ class SystemObserver:
 
         except Exception as e:
             print(f"[OBSERVER] Error collecting daily metrics: {e}")
+            import traceback
+            traceback.print_exc()
+            metrics['error'] = str(e)
+
+        finally:
+            conn.close()
+
+        return metrics
+
+    async def _collect_weekly_metrics(self) -> Dict:
+        """
+        Collect comprehensive 7-day metrics for weekly report.
+
+        Returns:
+            Dict with weekly metrics including top traders, movers, trends, etc.
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        metrics = {}
+
+        try:
+            # Check if positions table exists
+            cursor.execute("""
+                SELECT name FROM sqlite_master
+                WHERE type='table' AND name='positions'
+            """)
+            has_positions = cursor.fetchone() is not None
+
+            # 1. Top 20 traders by comprehensive ELO (extended leaderboard)
+            cursor.execute("""
+                SELECT
+                    address,
+                    comprehensive_elo,
+                    roi_percentage,
+                    total_trades,
+                    realized_pnl,
+                    win_rate
+                FROM traders
+                WHERE comprehensive_elo IS NOT NULL
+                ORDER BY comprehensive_elo DESC
+                LIMIT 20
+            """)
+
+            metrics['top_20_traders'] = []
+            for row in cursor.fetchall():
+                metrics['top_20_traders'].append({
+                    'address': row[0],
+                    'elo': row[1] or 0,
+                    'roi': row[2] or 0,
+                    'total_trades': row[3] or 0,
+                    'pnl': row[4] or 0,
+                    'win_rate': row[5] or 0
+                })
+
+            # 2. Most active traders (7 days) - traders with most trades
+            cursor.execute("""
+                SELECT
+                    t.address,
+                    t.comprehensive_elo,
+                    COUNT(tr.trade_id) as trades_7d,
+                    t.total_trades
+                FROM traders t
+                LEFT JOIN trades tr ON t.address = tr.trader_address
+                    AND datetime(tr.timestamp) > datetime('now', '-7 days')
+                WHERE t.comprehensive_elo IS NOT NULL
+                GROUP BY t.address
+                HAVING trades_7d > 0
+                ORDER BY trades_7d DESC
+                LIMIT 10
+            """)
+
+            metrics['most_active_7d'] = []
+            for row in cursor.fetchall():
+                metrics['most_active_7d'].append({
+                    'address': row[0],
+                    'elo': row[1] or 0,
+                    'trades_7d': row[2] or 0,
+                    'total_trades': row[3] or 0
+                })
+
+            # 3. Best trades of the week (top 10 by ROI)
+            metrics['best_trades_7d'] = []
+            if has_positions:
+                cursor.execute("""
+                    SELECT
+                        p.trader_address,
+                        p.market_id,
+                        p.outcome,
+                        p.roi_percent,
+                        p.realized_pnl,
+                        p.exit_timestamp,
+                        m.title,
+                        t.comprehensive_elo
+                    FROM positions p
+                    LEFT JOIN markets m ON p.market_id = m.market_id
+                    LEFT JOIN traders t ON p.trader_address = t.address
+                    WHERE p.status = 'closed'
+                      AND datetime(p.exit_timestamp) > datetime('now', '-7 days')
+                      AND p.roi_percent IS NOT NULL
+                    ORDER BY p.roi_percent DESC
+                    LIMIT 10
+                """)
+
+                for row in cursor.fetchall():
+                    metrics['best_trades_7d'].append({
+                        'trader': row[0],
+                        'market_id': row[1],
+                        'outcome': row[2],
+                        'roi': row[3] or 0,
+                        'pnl': row[4] or 0,
+                        'timestamp': row[5],
+                        'market_title': row[6] or 'Unknown',
+                        'trader_elo': row[7] or 0
+                    })
+
+            # 4. P&L leaders (7 days) - most profitable traders
+            metrics['pnl_leaders_7d'] = []
+            if has_positions:
+                cursor.execute("""
+                    SELECT
+                        t.address,
+                        t.comprehensive_elo,
+                        SUM(CASE
+                            WHEN p.realized_pnl IS NOT NULL
+                            AND p.status = 'closed'
+                            AND datetime(p.exit_timestamp) > datetime('now', '-7 days')
+                            THEN p.realized_pnl
+                            ELSE 0
+                        END) as pnl_7d,
+                        COUNT(CASE
+                            WHEN p.status = 'closed'
+                            AND datetime(p.exit_timestamp) > datetime('now', '-7 days')
+                            THEN 1
+                        END) as trades_closed_7d
+                    FROM traders t
+                    LEFT JOIN positions p ON t.address = p.trader_address
+                    GROUP BY t.address
+                    HAVING pnl_7d > 0
+                    ORDER BY pnl_7d DESC
+                    LIMIT 10
+                """)
+
+                for row in cursor.fetchall():
+                    metrics['pnl_leaders_7d'].append({
+                        'address': row[0],
+                        'elo': row[1] or 0,
+                        'pnl_7d': row[2] or 0,
+                        'trades_closed': row[3] or 0
+                    })
+
+            # 5. Win rate leaders (7 days) - best accuracy
+            metrics['win_rate_leaders_7d'] = []
+            if has_positions:
+                cursor.execute("""
+                    SELECT
+                        p.trader_address,
+                        t.comprehensive_elo,
+                        COUNT(CASE WHEN p.realized_pnl > 0 THEN 1 END) as wins,
+                        COUNT(*) as total,
+                        CAST(COUNT(CASE WHEN p.realized_pnl > 0 THEN 1 END) AS FLOAT) /
+                            COUNT(*) * 100 as win_rate_7d
+                    FROM positions p
+                    LEFT JOIN traders t ON p.trader_address = t.address
+                    WHERE p.status = 'closed'
+                      AND datetime(p.exit_timestamp) > datetime('now', '-7 days')
+                      AND p.realized_pnl IS NOT NULL
+                    GROUP BY p.trader_address
+                    HAVING total >= 5
+                    ORDER BY win_rate_7d DESC, total DESC
+                    LIMIT 10
+                """)
+
+                for row in cursor.fetchall():
+                    metrics['win_rate_leaders_7d'].append({
+                        'address': row[0],
+                        'elo': row[1] or 0,
+                        'wins': row[2] or 0,
+                        'total': row[3] or 0,
+                        'win_rate': row[4] or 0
+                    })
+
+            # 6. Most active markets (7 days)
+            cursor.execute("""
+                SELECT
+                    m.market_id,
+                    m.title,
+                    m.category,
+                    COUNT(DISTINCT tr.trader_address) as unique_traders,
+                    COUNT(tr.trade_id) as total_trades,
+                    AVG(tr.price) as avg_price
+                FROM markets m
+                LEFT JOIN trades tr ON m.market_id = tr.market_id
+                    AND datetime(tr.timestamp) > datetime('now', '-7 days')
+                WHERE tr.trade_id IS NOT NULL
+                GROUP BY m.market_id
+                ORDER BY total_trades DESC
+                LIMIT 10
+            """)
+
+            metrics['active_markets_7d'] = []
+            for row in cursor.fetchall():
+                metrics['active_markets_7d'].append({
+                    'market_id': row[0],
+                    'title': row[1] or 'Unknown',
+                    'category': row[2] or 'Unknown',
+                    'unique_traders': row[3] or 0,
+                    'total_trades': row[4] or 0,
+                    'avg_price': row[5] or 0
+                })
+
+            # 7. Markets resolved (7 days)
+            cursor.execute("""
+                SELECT
+                    market_id,
+                    title,
+                    winning_outcome,
+                    resolution_date
+                FROM markets
+                WHERE resolved = 1
+                  AND resolution_date IS NOT NULL
+                  AND datetime(resolution_date) > datetime('now', '-7 days')
+                ORDER BY resolution_date DESC
+                LIMIT 10
+            """)
+
+            metrics['markets_resolved_7d'] = []
+            for row in cursor.fetchall():
+                metrics['markets_resolved_7d'].append({
+                    'market_id': row[0],
+                    'title': row[1] or 'Unknown',
+                    'outcome': row[2] or 'Unknown',
+                    'resolved_at': row[3]
+                })
+
+            # 8. System statistics (7 days)
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM trades
+                WHERE datetime(timestamp) > datetime('now', '-7 days')
+            """)
+            metrics['trades_7d'] = cursor.fetchone()[0]
+
+            cursor.execute("""
+                SELECT COUNT(DISTINCT trader_address)
+                FROM trades
+                WHERE datetime(timestamp) > datetime('now', '-7 days')
+            """)
+            metrics['active_traders_7d'] = cursor.fetchone()[0]
+
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM markets
+                WHERE resolved = 1
+                  AND resolution_date IS NOT NULL
+                  AND datetime(resolution_date) > datetime('now', '-7 days')
+            """)
+            metrics['markets_resolved_count'] = cursor.fetchone()[0]
+
+            # Total P&L (7 days)
+            metrics['total_pnl_7d'] = 0
+            if has_positions:
+                cursor.execute("""
+                    SELECT
+                        SUM(CASE
+                            WHEN p.realized_pnl IS NOT NULL
+                            AND p.status = 'closed'
+                            AND datetime(p.exit_timestamp) > datetime('now', '-7 days')
+                            THEN p.realized_pnl
+                            ELSE 0
+                        END) as total_pnl_7d
+                    FROM positions p
+                """)
+                result = cursor.fetchone()
+                metrics['total_pnl_7d'] = result[0] or 0
+
+            # 9. Background worker coverage
+            worker_health = self._check_background_worker_health()
+            metrics['worker_coverage'] = worker_health.get('coverage_percent', 0)
+            metrics['worker_status'] = worker_health.get('status', 'UNKNOWN')
+
+            # 10. Total traders tracked
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM traders
+                WHERE comprehensive_elo IS NOT NULL
+            """)
+            metrics['total_traders'] = cursor.fetchone()[0]
+
+        except Exception as e:
+            print(f"[OBSERVER] Error collecting weekly metrics: {e}")
             import traceback
             traceback.print_exc()
             metrics['error'] = str(e)
