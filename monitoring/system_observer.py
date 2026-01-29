@@ -106,6 +106,7 @@ class SystemObserver:
         print(f"[OBSERVER] Telegram alerts: enabled")
         print(f"[OBSERVER] Health check interval: 60s")
         print(f"[OBSERVER] Hourly reports: enabled")
+        print(f"[OBSERVER] Daily reports: enabled (23:00 UTC)")
         print(f"[OBSERVER] Comprehensive diagnostics: every 6h")
         print(f"[OBSERVER] Auto ELO updates: enabled")
         print()
@@ -118,6 +119,7 @@ class SystemObserver:
             asyncio.create_task(self._health_check_loop()),
             asyncio.create_task(self._log_monitor_loop()),
             asyncio.create_task(self._hourly_report_loop()),
+            asyncio.create_task(self._daily_report_loop()),
             asyncio.create_task(self._elo_update_loop()),
             asyncio.create_task(self._comprehensive_diagnostic_loop())
         ]
@@ -299,6 +301,49 @@ class SystemObserver:
             except Exception as e:
                 print(f"[OBSERVER] Error in hourly report loop: {e}")
                 await asyncio.sleep(60)
+
+    async def _daily_report_loop(self):
+        """
+        Send comprehensive daily report at 23:00 UTC.
+
+        Report includes:
+        - Top 10 traders leaderboard
+        - Biggest winners/losers (24h)
+        - Best trade of the day
+        - Market resolutions
+        - System statistics
+        """
+        print("[OBSERVER] Daily report loop started (triggers at 23:00 UTC)")
+
+        while self.running:
+            try:
+                now = datetime.now()
+
+                # Check if it's 23:00 UTC
+                if now.hour == 23 and now.minute == 0:
+                    print("[OBSERVER] Generating daily report...")
+
+                    # Collect daily metrics
+                    metrics = await self._collect_daily_metrics()
+
+                    # Send report via Telegram
+                    if self.telegram:
+                        await self.telegram.send_daily_report(metrics)
+                        print("[OBSERVER] Daily report sent successfully")
+                    else:
+                        print("[OBSERVER] [WARNING] Telegram not configured, skipping report")
+
+                    # Wait 24 hours before next report
+                    await asyncio.sleep(86400)  # 24 hours
+                else:
+                    # Check every minute to catch the 23:00 window
+                    await asyncio.sleep(60)
+
+            except Exception as e:
+                print(f"[OBSERVER] Error in daily report loop: {e}")
+                import traceback
+                traceback.print_exc()
+                await asyncio.sleep(300)  # Wait 5 minutes on error
 
     def _get_top_traders(self, limit: int = 5) -> list:
         """
@@ -656,6 +701,199 @@ class SystemObserver:
             'worker_health': worker_health,
             'monitoring_activity': monitoring_activity
         }
+
+    async def _collect_daily_metrics(self) -> Dict:
+        """
+        Collect comprehensive 24-hour metrics for daily report.
+
+        Returns:
+            Dict with daily metrics including top traders, winners, losers, best trade, etc.
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        metrics = {}
+
+        try:
+            # Check if positions table exists
+            cursor.execute("""
+                SELECT name FROM sqlite_master
+                WHERE type='table' AND name='positions'
+            """)
+            has_positions = cursor.fetchone() is not None
+            # 1. Top 10 traders by composite ELO
+            cursor.execute("""
+                SELECT
+                    address,
+                    comprehensive_elo,
+                    roi_percentage,
+                    total_trades,
+                    realized_pnl,
+                    win_rate
+                FROM traders
+                WHERE comprehensive_elo IS NOT NULL
+                ORDER BY comprehensive_elo DESC
+                LIMIT 10
+            """)
+
+            metrics['top_10_traders'] = []
+            for row in cursor.fetchall():
+                metrics['top_10_traders'].append({
+                    'address': row[0],
+                    'elo': row[1] or 0,
+                    'roi': row[2] or 0,
+                    'total_trades': row[3] or 0,
+                    'pnl': row[4] or 0,
+                    'win_rate': row[5] or 0
+                })
+
+            # 2. Biggest winners (24h) - traders with highest P&L change
+            metrics['daily_winners'] = []
+            if has_positions:
+                cursor.execute("""
+                    SELECT
+                        t.address,
+                        t.comprehensive_elo,
+                        SUM(CASE
+                            WHEN p.realized_pnl IS NOT NULL
+                            AND p.status = 'closed'
+                            AND datetime(p.exit_timestamp) > datetime('now', '-24 hours')
+                            THEN p.realized_pnl
+                            ELSE 0
+                        END) as pnl_24h
+                    FROM traders t
+                    LEFT JOIN positions p ON t.address = p.trader_address
+                    GROUP BY t.address
+                    HAVING pnl_24h > 0
+                    ORDER BY pnl_24h DESC
+                    LIMIT 5
+                """)
+
+                for row in cursor.fetchall():
+                    metrics['daily_winners'].append({
+                        'address': row[0],
+                        'elo': row[1] or 0,
+                        'pnl_24h': row[2] or 0
+                    })
+
+            # 3. Biggest losers (24h)
+            metrics['daily_losers'] = []
+            if has_positions:
+                cursor.execute("""
+                    SELECT
+                        t.address,
+                        t.comprehensive_elo,
+                        SUM(CASE
+                            WHEN p.realized_pnl IS NOT NULL
+                            AND p.status = 'closed'
+                            AND datetime(p.exit_timestamp) > datetime('now', '-24 hours')
+                            THEN p.realized_pnl
+                            ELSE 0
+                        END) as pnl_24h
+                    FROM traders t
+                    LEFT JOIN positions p ON t.address = p.trader_address
+                    GROUP BY t.address
+                    HAVING pnl_24h < 0
+                    ORDER BY pnl_24h ASC
+                    LIMIT 5
+                """)
+
+                for row in cursor.fetchall():
+                    metrics['daily_losers'].append({
+                        'address': row[0],
+                        'elo': row[1] or 0,
+                        'pnl_24h': row[2] or 0
+                    })
+
+            # 4. Best single trade (24h) - highest ROI
+            metrics['best_trade'] = None
+            if has_positions:
+                cursor.execute("""
+                    SELECT
+                        p.trader_address,
+                        p.market_id,
+                        p.outcome,
+                        p.roi_percent,
+                        p.realized_pnl,
+                        p.exit_timestamp,
+                        m.title
+                    FROM positions p
+                    LEFT JOIN markets m ON p.market_id = m.market_id
+                    WHERE p.status = 'closed'
+                      AND datetime(p.exit_timestamp) > datetime('now', '-24 hours')
+                      AND p.roi_percent IS NOT NULL
+                    ORDER BY p.roi_percent DESC
+                    LIMIT 1
+                """)
+
+                result = cursor.fetchone()
+                if result:
+                    metrics['best_trade'] = {
+                        'trader': result[0],
+                        'market_id': result[1],
+                        'outcome': result[2],
+                        'roi': result[3] or 0,
+                        'pnl': result[4] or 0,
+                        'timestamp': result[5],
+                        'market_title': result[6] or 'Unknown'
+                    }
+
+            # 5. Markets resolved (24h)
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM markets
+                WHERE resolved = 1
+                  AND resolution_date IS NOT NULL
+                  AND datetime(resolution_date) > datetime('now', '-24 hours')
+            """)
+            metrics['markets_resolved_24h'] = cursor.fetchone()[0]
+
+            # 6. Total P&L change (24h)
+            metrics['total_pnl_24h'] = 0
+            if has_positions:
+                cursor.execute("""
+                    SELECT
+                        SUM(CASE
+                            WHEN p.realized_pnl IS NOT NULL
+                            AND p.status = 'closed'
+                            AND datetime(p.exit_timestamp) > datetime('now', '-24 hours')
+                            THEN p.realized_pnl
+                            ELSE 0
+                        END) as total_pnl_24h
+                    FROM positions p
+                """)
+                result = cursor.fetchone()
+                metrics['total_pnl_24h'] = result[0] or 0
+
+            # 7. System stats (24h)
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM trades
+                WHERE timestamp > datetime('now', '-24 hours')
+            """)
+            metrics['trades_24h'] = cursor.fetchone()[0]
+
+            cursor.execute("""
+                SELECT COUNT(DISTINCT trader_address)
+                FROM trades
+                WHERE timestamp > datetime('now', '-24 hours')
+            """)
+            metrics['active_traders_24h'] = cursor.fetchone()[0]
+
+            # 8. Background worker coverage
+            worker_health = self._check_background_worker_health()
+            metrics['worker_coverage'] = worker_health.get('coverage_percent', 0)
+
+        except Exception as e:
+            print(f"[OBSERVER] Error collecting daily metrics: {e}")
+            import traceback
+            traceback.print_exc()
+            metrics['error'] = str(e)
+
+        finally:
+            conn.close()
+
+        return metrics
 
     async def _elo_update_loop(self):
         """

@@ -369,6 +369,114 @@ class TelegramHealthBot:
 
         return await self._send_message(message)
 
+    async def send_daily_report(self, metrics: Dict) -> bool:
+        """
+        Send comprehensive end-of-day report.
+
+        Args:
+            metrics: Daily metrics dict from system_observer
+
+        Returns:
+            bool: True if sent successfully
+        """
+        from datetime import datetime
+
+        # Header
+        today = datetime.now().strftime("%Y-%m-%d")
+        message_parts = [
+            f"📊 **DAILY REPORT** - {today}",
+            "=" * 50,
+            ""
+        ]
+
+        # Check for errors
+        if 'error' in metrics:
+            message_parts.append(f"❌ Error generating report: {metrics['error']}")
+            return await self._send_message('\n'.join(message_parts))
+
+        # 1. Top 10 Traders
+        message_parts.append("🏆 **TOP 10 TRADERS**")
+        message_parts.append("-" * 50)
+
+        if metrics.get('top_10_traders'):
+            for i, trader in enumerate(metrics['top_10_traders'], 1):
+                message_parts.append(
+                    f"{i:2d}. `{trader['address'][:10]}...` "
+                    f"ELO: {trader['elo']:.0f} | "
+                    f"ROI: {trader['roi']:+.1f}% | "
+                    f"Trades: {trader['total_trades']}"
+                )
+        else:
+            message_parts.append("  No data available")
+
+        # 2. Biggest Winners (24h)
+        message_parts.append("")
+        message_parts.append("🎉 **BIGGEST WINNERS (24h)**")
+        message_parts.append("-" * 50)
+
+        if metrics.get('daily_winners'):
+            for winner in metrics['daily_winners']:
+                message_parts.append(
+                    f"• `{winner['address'][:10]}...` "
+                    f"P&L: ${winner['pnl_24h']:+.2f} | "
+                    f"ELO: {winner['elo']:.0f}"
+                )
+        else:
+            message_parts.append("  No profitable positions closed today")
+
+        # 3. Biggest Losers (24h)
+        message_parts.append("")
+        message_parts.append("📉 **BIGGEST LOSERS (24h)**")
+        message_parts.append("-" * 50)
+
+        if metrics.get('daily_losers'):
+            for loser in metrics['daily_losers']:
+                message_parts.append(
+                    f"• `{loser['address'][:10]}...` "
+                    f"P&L: ${loser['pnl_24h']:+.2f} | "
+                    f"ELO: {loser['elo']:.0f}"
+                )
+        else:
+            message_parts.append("  No losing positions closed today")
+
+        # 4. Best Trade of the Day
+        message_parts.append("")
+        message_parts.append("⭐ **BEST TRADE OF THE DAY**")
+        message_parts.append("-" * 50)
+
+        if metrics.get('best_trade'):
+            best = metrics['best_trade']
+            message_parts.append(f"Trader: `{best['trader'][:10]}...`")
+            market_title = best['market_title'][:50]
+            if len(best['market_title']) > 50:
+                market_title += "..."
+            message_parts.append(f"Market: \"{market_title}\"")
+            message_parts.append(f"Outcome: {best['outcome']}")
+            message_parts.append(
+                f"ROI: {best['roi']:.1f}% | P&L: ${best['pnl']:+.2f}"
+            )
+        else:
+            message_parts.append("  No closed positions today")
+
+        # 5. System Statistics (24h)
+        message_parts.append("")
+        message_parts.append("📊 **SYSTEM STATISTICS (24h)**")
+        message_parts.append("-" * 50)
+        message_parts.append(f"• Trades processed: {metrics.get('trades_24h', 0):,}")
+        message_parts.append(f"• Active traders: {metrics.get('active_traders_24h', 0):,}")
+        message_parts.append(f"• Markets resolved: {metrics.get('markets_resolved_24h', 0)}")
+        message_parts.append(f"• Total P&L change: ${metrics.get('total_pnl_24h', 0):+,.2f}")
+        message_parts.append(f"• Worker coverage: {metrics.get('worker_coverage', 0):.1f}%")
+
+        # Footer
+        message_parts.append("")
+        message_parts.append("=" * 50)
+        message_parts.append("📈 See you tomorrow with another daily report!")
+
+        message = '\n'.join(message_parts)
+
+        return await self._send_message(message)
+
     async def send_startup_notification(self) -> bool:
         """
         Send notification when observer starts.
