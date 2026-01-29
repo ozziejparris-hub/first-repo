@@ -111,8 +111,7 @@ class SystemObserver:
         print(f"[OBSERVER] Analysis scheduler: enabled (daily 01:00 UTC)")
         print(f"[OBSERVER] Trend analysis: enabled (every 6 hours)")
         print(f"[OBSERVER] Comprehensive diagnostics: every 6h")
-        # DISABLED: Auto ELO updates spawn rogue 1.5GB process
-        # print(f"[OBSERVER] Auto ELO updates: enabled")
+        print(f"[OBSERVER] Auto ELO updates: enabled (direct call, no subprocess)")
         print()
 
         # Send startup notification
@@ -127,8 +126,7 @@ class SystemObserver:
             asyncio.create_task(self._weekly_report_loop()),
             asyncio.create_task(self._analysis_report_loop()),
             asyncio.create_task(self._trend_analysis_loop()),
-            # DISABLED: ELO update loop spawns 1.5GB subprocess - integrate_behavioral_elo.py
-            # asyncio.create_task(self._elo_update_loop()),
+            asyncio.create_task(self._elo_update_loop()),
             asyncio.create_task(self._comprehensive_diagnostic_loop())
         ]
 
@@ -1678,70 +1676,48 @@ class SystemObserver:
 
     async def _run_elo_integration(self) -> Dict:
         """
-        Run complete ELO integration pipeline.
+        Run complete ELO integration pipeline (direct import, no subprocess).
 
         Returns:
-            Dict with results: correlation, success status, etc.
+            Dict with results: success status, timestamp
         """
         print(f"\n{'='*70}")
-        print(f"  RUNNING ELO INTEGRATION")
+        print(f"  RUNNING ELO INTEGRATION (Direct Call)")
         print(f"{'='*70}\n")
 
         try:
-            # Run integration script
-            result = await asyncio.create_subprocess_exec(
-                'python', 'scripts/integrate_behavioral_elo.py',
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
+            # Import the integration script's main function
+            import sys
+            from pathlib import Path
 
-            stdout, stderr = await asyncio.wait_for(result.communicate(), timeout=600)
+            # Add scripts directory to path if not already there
+            scripts_path = str(Path(__file__).parent.parent / 'scripts')
+            if scripts_path not in sys.path:
+                sys.path.insert(0, scripts_path)
 
-            if result.returncode == 0:
-                print("[ELO] Integration complete")
+            from integrate_behavioral_elo import main as integrate_elo_main
 
-                # Run verification
-                result = await asyncio.create_subprocess_exec(
-                    'python', 'scripts/simulation/verify_elo_rankings.py',
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
+            print("[ELO] Starting integration (direct function call)...")
 
-                stdout, stderr = await asyncio.wait_for(result.communicate(), timeout=300)
+            # Run in executor to avoid blocking event loop
+            # This allows the long-running synchronous function to run without blocking
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, integrate_elo_main)
 
-                if result.returncode == 0:
-                    print("[ELO] Verification complete")
+            print("[ELO] Integration complete")
 
-                    # Parse correlation from output
-                    correlation = None
-                    output_text = stdout.decode('utf-8', errors='ignore')
-                    for line in output_text.split('\n'):
-                        if 'Correlation:' in line and 'r =' in line:
-                            # Extract r = 0.XXX
-                            parts = line.split('r =')
-                            if len(parts) > 1:
-                                try:
-                                    correlation = float(parts[1].strip().split()[0])
-                                except:
-                                    pass
+            # Update timestamp
+            self.last_elo_update = datetime.now()
 
-                    # Update timestamp
-                    self.last_elo_update = datetime.now()
+            return {
+                'success': True,
+                'timestamp': datetime.now()
+            }
 
-                    return {
-                        'success': True,
-                        'correlation': correlation,
-                        'timestamp': datetime.now()
-                    }
-
-            print(f"[ELO] Integration failed")
-            return {'success': False, 'error': stderr.decode('utf-8', errors='ignore')}
-
-        except asyncio.TimeoutError:
-            print(f"[ELO] Timeout")
-            return {'success': False, 'error': 'Timeout after 10 minutes'}
         except Exception as e:
             print(f"[ELO] Error: {e}")
+            import traceback
+            traceback.print_exc()
             return {'success': False, 'error': str(e)}
 
     def _generate_leaderboard(self, top_n: int = 20) -> str:
