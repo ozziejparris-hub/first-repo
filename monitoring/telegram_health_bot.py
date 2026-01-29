@@ -642,6 +642,123 @@ class TelegramHealthBot:
 
         return await self._send_message(message)
 
+    async def send_analysis_summary(self, results: Dict) -> bool:
+        """
+        Send comprehensive analysis summary.
+
+        Args:
+            results: Analysis results dict from system_observer
+
+        Returns:
+            bool: True if sent successfully
+        """
+        from datetime import datetime
+        import os
+
+        # Header
+        today = datetime.now().strftime("%Y-%m-%d")
+        message_parts = [
+            "🔬 **COMPREHENSIVE ANALYSIS REPORT**",
+            f"Date: {today}",
+            "=" * 50,
+            ""
+        ]
+
+        # Check if analysis succeeded
+        if not results.get('success'):
+            message_parts.append("❌ Analysis failed")
+            message_parts.append("")
+            message_parts.append(f"Error: {results.get('error', 'Unknown error')}")
+            return await self._send_message('\n'.join(message_parts))
+
+        # Reports generated
+        reports = results.get('reports_generated', [])
+        message_parts.append(f"📊 **Reports Generated:** {len(reports)}")
+        message_parts.append("")
+
+        if reports:
+            for report_path in reports:
+                report_name = os.path.basename(report_path)
+                message_parts.append(f"• {report_name}")
+            message_parts.append("")
+
+        # Extract key insights from summary
+        summary = results.get('summary', '')
+
+        if summary:
+            message_parts.append("📈 **KEY INSIGHTS**")
+            message_parts.append("-" * 50)
+            message_parts.append("")
+
+            # Parse summary for key sections
+            lines = summary.split('\n')
+
+            # Look for section headers and important lines
+            in_key_section = False
+            key_insights = []
+
+            for line in lines[:50]:  # First 50 lines
+                line = line.strip()
+
+                # Detect section headers
+                if any(keyword in line.upper() for keyword in [
+                    'DATA STATUS', 'ANALYSIS TOOLS', 'KEY FINDINGS',
+                    'SUMMARY', 'HIGHLIGHTS', 'TOP TRADERS',
+                    'BEST OPPORTUNITIES', 'INSIGHTS', 'PHASE'
+                ]):
+                    in_key_section = True
+                    if line and len(line) < 80:
+                        key_insights.append(f"**{line}**")
+                    continue
+
+                # Add important lines
+                if in_key_section and line:
+                    if line.startswith('-') or line.startswith('•') or line.startswith('✓'):
+                        key_insights.append(line)
+                    elif ':' in line and len(line) < 100:
+                        key_insights.append(line)
+
+                # Stop after collecting enough insights
+                if len(key_insights) >= 15:
+                    break
+
+            if key_insights:
+                message_parts.extend(key_insights[:15])
+            else:
+                # Fallback: show first 500 characters
+                message_parts.append(summary[:500])
+                if len(summary) > 500:
+                    message_parts.append("...")
+                    message_parts.append("")
+                    message_parts.append("[See full report in /reports directory]")
+        else:
+            message_parts.append("ℹ️ No summary available")
+
+        # Analysis tools run
+        message_parts.append("")
+        message_parts.append("🛠️ **ANALYSIS TOOLS**")
+        message_parts.append("-" * 50)
+        message_parts.append("The following tools were executed:")
+        message_parts.append("")
+        message_parts.append("1. Trading Behavior Analysis")
+        message_parts.append("2. Correlation Matrix")
+        message_parts.append("3. Trader Performance Analysis")
+        message_parts.append("4. Weighted Consensus System")
+        message_parts.append("5. Trader Specialization Analysis")
+        message_parts.append("6. Copy Trade Detector")
+        message_parts.append("7. Market Confidence Meter")
+        message_parts.append("8. Consensus Divergence Detector")
+
+        # Footer
+        message_parts.append("")
+        message_parts.append("=" * 50)
+        message_parts.append("📁 Full reports saved to: `/reports/`")
+        message_parts.append("🔄 Next analysis: Tomorrow at 01:00 UTC")
+
+        message = '\n'.join(message_parts)
+
+        return await self._send_message(message)
+
     async def send_startup_notification(self) -> bool:
         """
         Send notification when observer starts.

@@ -108,6 +108,7 @@ class SystemObserver:
         print(f"[OBSERVER] Hourly reports: enabled")
         print(f"[OBSERVER] Daily reports: enabled (23:00 UTC)")
         print(f"[OBSERVER] Weekly reports: enabled (Sunday 23:00 UTC)")
+        print(f"[OBSERVER] Analysis scheduler: enabled (daily 01:00 UTC)")
         print(f"[OBSERVER] Comprehensive diagnostics: every 6h")
         print(f"[OBSERVER] Auto ELO updates: enabled")
         print()
@@ -122,6 +123,7 @@ class SystemObserver:
             asyncio.create_task(self._hourly_report_loop()),
             asyncio.create_task(self._daily_report_loop()),
             asyncio.create_task(self._weekly_report_loop()),
+            asyncio.create_task(self._analysis_report_loop()),
             asyncio.create_task(self._elo_update_loop()),
             asyncio.create_task(self._comprehensive_diagnostic_loop())
         ]
@@ -389,6 +391,62 @@ class SystemObserver:
 
             except Exception as e:
                 print(f"[OBSERVER] Error in weekly report loop: {e}")
+                import traceback
+                traceback.print_exc()
+                await asyncio.sleep(3600)  # Wait 1 hour on error
+
+    async def _analysis_report_loop(self):
+        """
+        Run comprehensive analysis daily at 01:00 UTC.
+
+        The analysis scheduler:
+        - Checks data sufficiency
+        - Runs 8 analysis tools in phases
+        - Generates unified reports
+        - Sends summary to Telegram
+        """
+        print("[OBSERVER] Analysis scheduler loop started (triggers at 01:00 UTC)")
+
+        while self.running:
+            try:
+                now = datetime.now()
+
+                # Check if it's 01:00 UTC (low activity time)
+                if now.hour == 1 and now.minute == 0:
+                    print("[OBSERVER] Triggering daily analysis...")
+
+                    # Run analysis scheduler
+                    results = await self._run_analysis_scheduler()
+
+                    # Send results via Telegram
+                    if self.telegram:
+                        if results['success']:
+                            await self.telegram.send_analysis_summary(results)
+                            print("[OBSERVER] Analysis summary sent to Telegram")
+                        else:
+                            # Send status update about insufficient data
+                            message = (
+                                "⏳ **Daily Analysis Postponed**\n\n"
+                                f"Reason: {results.get('error', 'Unknown')}\n\n"
+                                "Analysis requires:\n"
+                                "• 10+ resolved markets\n"
+                                "• 20+ active traders\n"
+                                "• 100+ total trades\n"
+                                "• 5+ markets with multiple traders"
+                            )
+                            await self.telegram._send_message(message)
+                            print("[OBSERVER] Analysis postponed - insufficient data")
+                    else:
+                        print("[OBSERVER] [WARNING] Telegram not configured, skipping report")
+
+                    # Wait 24 hours before next analysis
+                    await asyncio.sleep(86400)  # 24 hours
+                else:
+                    # Check every hour to catch the 01:00 window
+                    await asyncio.sleep(3600)
+
+            except Exception as e:
+                print(f"[OBSERVER] Error in analysis report loop: {e}")
                 import traceback
                 traceback.print_exc()
                 await asyncio.sleep(3600)  # Wait 1 hour on error
@@ -1233,6 +1291,103 @@ class SystemObserver:
             conn.close()
 
         return metrics
+
+    async def _run_analysis_scheduler(self) -> Dict:
+        """
+        Run the comprehensive analysis scheduler.
+
+        Returns:
+            Dict with analysis results and summary
+        """
+        import os
+
+        results = {
+            'success': False,
+            'error': None,
+            'reports_generated': [],
+            'data_sufficient': False,
+            'summary': None
+        }
+
+        try:
+            print("[OBSERVER] Running comprehensive analysis scheduler...")
+
+            # Import scheduler (dynamic import to avoid circular dependencies)
+            import sys
+            sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            from analysis.analysis_scheduler import AnalysisScheduler
+
+            # Initialize scheduler
+            scheduler = AnalysisScheduler(
+                db_path=self.db_path,
+                send_alerts=False  # We'll handle Telegram via System Observer
+            )
+
+            # Step 1: Check data sufficiency
+            print("[OBSERVER] Checking data sufficiency...")
+            sufficiency = scheduler.check_data_sufficiency()
+
+            results['data_sufficient'] = sufficiency.get('sufficient', False)
+
+            if not results['data_sufficient']:
+                print("[OBSERVER] Insufficient data for analysis")
+                missing = sufficiency.get('missing_requirements', [])
+                results['error'] = missing[0] if missing else 'Insufficient data'
+                return results
+
+            print("[OBSERVER] Data sufficient, proceeding with analysis...")
+
+            # Step 2: Run full analysis
+            print("[OBSERVER] Running full analysis (this may take 5-10 minutes)...")
+            scheduler.run_full_analysis()
+
+            # Step 3: Get generated reports
+            reports_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'reports')
+            if os.path.exists(reports_dir):
+                # Find most recent reports
+                from datetime import datetime
+                today = datetime.now().strftime('%Y%m%d')
+
+                report_files = [
+                    f'unified_analysis_{today}*.txt',
+                    f'top_opportunities_{today}*.txt',
+                    f'trader_rankings_{today}*.txt'
+                ]
+
+                import glob
+                for pattern in report_files:
+                    report_pattern = os.path.join(reports_dir, pattern)
+                    matching_files = glob.glob(report_pattern)
+                    if matching_files:
+                        # Get most recent file
+                        most_recent = max(matching_files, key=os.path.getmtime)
+                        results['reports_generated'].append(most_recent)
+
+            # Step 4: Extract summary from unified report
+            if results['reports_generated']:
+                unified_report_path = [r for r in results['reports_generated']
+                                      if 'unified_analysis' in r]
+
+                if unified_report_path:
+                    try:
+                        with open(unified_report_path[0], 'r', encoding='utf-8') as f:
+                            content = f.read()
+
+                            # Extract key insights (first 2000 characters)
+                            results['summary'] = content[:2000]
+                    except Exception as e:
+                        print(f"[OBSERVER] Could not read unified report: {e}")
+
+            results['success'] = True
+            print(f"[OBSERVER] Analysis complete! Generated {len(results['reports_generated'])} reports")
+
+        except Exception as e:
+            print(f"[OBSERVER] Error running analysis scheduler: {e}")
+            import traceback
+            traceback.print_exc()
+            results['error'] = str(e)
+
+        return results
 
     async def _elo_update_loop(self):
         """
