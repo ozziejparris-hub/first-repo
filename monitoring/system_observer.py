@@ -111,7 +111,8 @@ class SystemObserver:
         print(f"[OBSERVER] Analysis scheduler: enabled (daily 01:00 UTC)")
         print(f"[OBSERVER] Trend analysis: enabled (every 6 hours)")
         print(f"[OBSERVER] Comprehensive diagnostics: every 6h")
-        print(f"[OBSERVER] Auto ELO updates: enabled")
+        # DISABLED: Auto ELO updates spawn rogue 1.5GB process
+        # print(f"[OBSERVER] Auto ELO updates: enabled")
         print()
 
         # Send startup notification
@@ -126,7 +127,8 @@ class SystemObserver:
             asyncio.create_task(self._weekly_report_loop()),
             asyncio.create_task(self._analysis_report_loop()),
             asyncio.create_task(self._trend_analysis_loop()),
-            asyncio.create_task(self._elo_update_loop()),
+            # DISABLED: ELO update loop spawns 1.5GB subprocess - integrate_behavioral_elo.py
+            # asyncio.create_task(self._elo_update_loop()),
             asyncio.create_task(self._comprehensive_diagnostic_loop())
         ]
 
