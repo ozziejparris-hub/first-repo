@@ -1725,21 +1725,44 @@ class SystemObserver:
         print(f"{'='*70}\n")
 
         try:
-            # Import the integration script's main function
+            # Import using importlib to handle path issues robustly
+            import importlib.util
             import sys
             from pathlib import Path
 
-            # Add scripts directory to path if not already there
-            scripts_path = str(Path(__file__).parent.parent / 'scripts')
-            if scripts_path not in sys.path:
-                sys.path.insert(0, scripts_path)
+            # Get the script path
+            scripts_dir = Path(__file__).parent.parent / 'scripts'
+            script_path = scripts_dir / 'integrate_behavioral_elo.py'
 
-            from integrate_behavioral_elo import main as integrate_elo_main
+            if not script_path.exists():
+                raise FileNotFoundError(f"ELO integration script not found: {script_path}")
+
+            # Load the module dynamically
+            spec = importlib.util.spec_from_file_location(
+                "integrate_behavioral_elo",
+                str(script_path)
+            )
+
+            if spec is None or spec.loader is None:
+                raise ImportError(f"Could not load spec for {script_path}")
+
+            elo_module = importlib.util.module_from_spec(spec)
+
+            # Add to sys.modules to handle internal imports
+            sys.modules['integrate_behavioral_elo'] = elo_module
+
+            # Execute the module
+            spec.loader.exec_module(elo_module)
+
+            # Get the main function
+            if not hasattr(elo_module, 'main'):
+                raise AttributeError("integrate_behavioral_elo.py has no main() function")
+
+            integrate_elo_main = elo_module.main
 
             print("[ELO] Starting integration (direct function call)...")
 
             # Run in executor to avoid blocking event loop
-            # This allows the long-running synchronous function to run without blocking
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(None, integrate_elo_main)
 

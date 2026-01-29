@@ -18,11 +18,50 @@ Requires:
 - Telegram chat ID in .env (telegram_chat_id)
 """
 
+# CRITICAL: Single instance check BEFORE any imports
+# This prevents duplicate System Observer processes
 import sys
 import os
+from pathlib import Path
+
+pid_file = Path('data/.system_observer.pid')
+
+if pid_file.exists():
+    try:
+        old_pid = int(pid_file.read_text().strip())
+
+        # Lightweight check using subprocess (before importing psutil)
+        import subprocess
+
+        # Windows check
+        try:
+            result = subprocess.run(
+                ['tasklist', '/FI', f'PID eq {old_pid}', '/NH'],
+                capture_output=True,
+                text=True,
+                timeout=2
+            )
+
+            if str(old_pid) in result.stdout:
+                print(f"\n[ERROR] System Observer already running (PID {old_pid})")
+                print(f"[ERROR] Stop it first:")
+                print(f"[ERROR]   python scripts/kill_all.py")
+                print(f"[ERROR]   OR: taskkill /PID {old_pid} /F\n")
+                sys.exit(1)
+            else:
+                # Stale PID file
+                print(f"[CLEANUP] Removing stale System Observer PID file")
+                pid_file.unlink()
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            # tasklist not available (Linux?) or timed out, skip for now
+            pass
+
+    except (ValueError, FileNotFoundError):
+        pass  # Corrupt PID file
+
+# Now continue with normal imports
 import asyncio
 import argparse
-from pathlib import Path
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
