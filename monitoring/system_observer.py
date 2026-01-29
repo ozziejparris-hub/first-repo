@@ -20,7 +20,7 @@ import sys
 import sqlite3
 import subprocess
 from datetime import datetime, timedelta
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from pathlib import Path
 import psutil
 
@@ -109,6 +109,7 @@ class SystemObserver:
         print(f"[OBSERVER] Daily reports: enabled (23:00 UTC)")
         print(f"[OBSERVER] Weekly reports: enabled (Sunday 23:00 UTC)")
         print(f"[OBSERVER] Analysis scheduler: enabled (daily 01:00 UTC)")
+        print(f"[OBSERVER] Trend analysis: enabled (every 6 hours)")
         print(f"[OBSERVER] Comprehensive diagnostics: every 6h")
         print(f"[OBSERVER] Auto ELO updates: enabled")
         print()
@@ -124,6 +125,7 @@ class SystemObserver:
             asyncio.create_task(self._daily_report_loop()),
             asyncio.create_task(self._weekly_report_loop()),
             asyncio.create_task(self._analysis_report_loop()),
+            asyncio.create_task(self._trend_analysis_loop()),
             asyncio.create_task(self._elo_update_loop()),
             asyncio.create_task(self._comprehensive_diagnostic_loop())
         ]
@@ -447,6 +449,57 @@ class SystemObserver:
 
             except Exception as e:
                 print(f"[OBSERVER] Error in analysis report loop: {e}")
+                import traceback
+                traceback.print_exc()
+                await asyncio.sleep(3600)  # Wait 1 hour on error
+
+    async def _trend_analysis_loop(self):
+        """
+        Analyze market trends every 6 hours and send alerts.
+
+        Detects:
+        - Strong momentum shifts (>20% consensus change)
+        - Elite trader convergence (70%+ agreement)
+        - High-confidence trend signals
+        - Volume spikes (3x+ normal activity)
+        """
+        print("[OBSERVER] Trend analysis loop started (runs every 6 hours)")
+
+        while self.running:
+            try:
+                print("[OBSERVER] Running trend analysis...")
+
+                # Detect trends
+                trends = await self._detect_market_trends()
+
+                print(f"[OBSERVER] Detected {len(trends)} active trends")
+
+                # Send alerts for high-confidence trends
+                if self.telegram and trends:
+                    # Filter for high confidence (elite agreement >= 70% OR volume spike)
+                    high_confidence_trends = [
+                        t for t in trends
+                        if t['elite_agreement'] >= 70 or t['volume_spike']
+                    ]
+
+                    if high_confidence_trends:
+                        print(f"[OBSERVER] Sending {len(high_confidence_trends)} trend alerts...")
+
+                        for trend in high_confidence_trends[:5]:  # Max 5 alerts per run
+                            await self.telegram.send_trend_alert(trend)
+
+                        print("[OBSERVER] Trend alerts sent")
+                    else:
+                        print("[OBSERVER] No high-confidence trends to alert")
+                else:
+                    if not self.telegram:
+                        print("[OBSERVER] Telegram not configured, skipping alerts")
+
+                # Wait 6 hours
+                await asyncio.sleep(21600)  # 6 hours
+
+            except Exception as e:
+                print(f"[OBSERVER] Error in trend analysis loop: {e}")
                 import traceback
                 traceback.print_exc()
                 await asyncio.sleep(3600)  # Wait 1 hour on error
@@ -1388,6 +1441,145 @@ class SystemObserver:
             results['error'] = str(e)
 
         return results
+
+    async def _detect_market_trends(self) -> List[Dict]:
+        """
+        Detect significant market trends based on:
+        - Consensus shifts (>20% change in average position)
+        - Elite trader agreement (>70% of top traders agree)
+        - Volume spikes (>3x normal volume)
+
+        Returns list of trend alerts.
+        """
+        trends = []
+
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        try:
+            # Get markets with recent activity (last 24 hours)
+            cursor.execute("""
+                SELECT DISTINCT m.market_id, m.title
+                FROM markets m
+                JOIN trades t ON m.market_id = t.market_id
+                WHERE t.timestamp >= datetime('now', '-1 day')
+                AND m.resolved = 0
+            """)
+            active_markets = cursor.fetchall()
+
+            for market_id, title in active_markets:
+                # Get consensus shift data (compare last 6h vs previous 18h)
+                cursor.execute("""
+                    SELECT
+                        AVG(CASE WHEN outcome = 'YES' THEN shares ELSE -shares END) as recent_consensus
+                    FROM trades
+                    WHERE market_id = ?
+                    AND timestamp >= datetime('now', '-6 hours')
+                """, (market_id,))
+                recent_result = cursor.fetchone()
+                recent_consensus = recent_result[0] if recent_result[0] else 0
+
+                cursor.execute("""
+                    SELECT
+                        AVG(CASE WHEN outcome = 'YES' THEN shares ELSE -shares END) as previous_consensus
+                    FROM trades
+                    WHERE market_id = ?
+                    AND timestamp >= datetime('now', '-24 hours')
+                    AND timestamp < datetime('now', '-6 hours')
+                """, (market_id,))
+                previous_result = cursor.fetchone()
+                previous_consensus = previous_result[0] if previous_result[0] else 0
+
+                # Calculate consensus shift percentage
+                if abs(previous_consensus) > 0.01:
+                    shift_pct = ((recent_consensus - previous_consensus) / abs(previous_consensus)) * 100
+
+                    # Check if shift is significant (>20%)
+                    if abs(shift_pct) > 20:
+                        # Get elite trader positions (top 10 by ELO)
+                        cursor.execute("""
+                            SELECT t.trader_address, t.outcome, SUM(t.shares) as total_shares
+                            FROM trades t
+                            JOIN traders tr ON t.trader_address = tr.address
+                            WHERE t.market_id = ?
+                            AND t.timestamp >= datetime('now', '-6 hours')
+                            AND tr.comprehensive_elo IS NOT NULL
+                            AND tr.comprehensive_elo >= (
+                                SELECT comprehensive_elo
+                                FROM traders
+                                WHERE comprehensive_elo IS NOT NULL
+                                ORDER BY comprehensive_elo DESC
+                                LIMIT 1 OFFSET 9
+                            )
+                            GROUP BY t.trader_address, t.outcome
+                        """, (market_id,))
+                        elite_positions = cursor.fetchall()
+
+                        # Calculate elite agreement
+                        yes_shares = sum(shares for _, outcome, shares in elite_positions if outcome == 'YES')
+                        no_shares = sum(shares for _, outcome, shares in elite_positions if outcome == 'NO')
+                        total_elite_shares = yes_shares + no_shares
+
+                        if total_elite_shares > 0:
+                            yes_agreement = (yes_shares / total_elite_shares) * 100
+                            elite_consensus = 'YES' if yes_agreement > 50 else 'NO'
+                            agreement_pct = max(yes_agreement, 100 - yes_agreement)
+
+                            # Check volume spike
+                            cursor.execute("""
+                                SELECT COUNT(*) as recent_trades
+                                FROM trades
+                                WHERE market_id = ?
+                                AND timestamp >= datetime('now', '-6 hours')
+                            """, (market_id,))
+                            recent_trades = cursor.fetchone()[0]
+
+                            cursor.execute("""
+                                SELECT COUNT(*) / 3.0 as avg_trades
+                                FROM trades
+                                WHERE market_id = ?
+                                AND timestamp >= datetime('now', '-24 hours')
+                                AND timestamp < datetime('now', '-6 hours')
+                            """, (market_id,))
+                            avg_trades_result = cursor.fetchone()
+                            avg_trades = avg_trades_result[0] if avg_trades_result[0] else 0
+
+                            volume_spike = False
+                            volume_multiplier = 0
+                            if avg_trades > 0:
+                                volume_multiplier = recent_trades / avg_trades
+                                volume_spike = volume_multiplier >= 3.0
+
+                            # Create trend alert
+                            trend = {
+                                'market_id': market_id,
+                                'title': title,
+                                'consensus_shift': shift_pct,
+                                'direction': 'YES' if shift_pct > 0 else 'NO',
+                                'elite_consensus': elite_consensus,
+                                'elite_agreement': agreement_pct,
+                                'volume_spike': volume_spike,
+                                'volume_multiplier': volume_multiplier,
+                                'recent_trades': recent_trades,
+                                'elite_trader_count': len(set(addr for addr, _, _ in elite_positions))
+                            }
+
+                            # Add to trends if meets criteria
+                            if agreement_pct >= 70 or volume_spike:
+                                trends.append(trend)
+
+        except Exception as e:
+            print(f"[OBSERVER] Error detecting trends: {e}")
+            import traceback
+            traceback.print_exc()
+
+        finally:
+            conn.close()
+
+        # Sort by consensus shift magnitude
+        trends.sort(key=lambda x: abs(x['consensus_shift']), reverse=True)
+
+        return trends
 
     async def _elo_update_loop(self):
         """

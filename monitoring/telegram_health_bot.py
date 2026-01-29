@@ -759,6 +759,96 @@ class TelegramHealthBot:
 
         return await self._send_message(message)
 
+    async def send_trend_alert(self, trend: Dict) -> bool:
+        """
+        Send market trend alert.
+
+        Args:
+            trend: Trend data dict from system_observer
+
+        Returns:
+            bool: True if sent successfully
+        """
+        shift = trend['consensus_shift']
+        direction = "BULLISH" if shift > 0 else "BEARISH"
+        emoji = "[UP]" if shift > 0 else "[DOWN]"
+
+        message_parts = []
+
+        # Header
+        message_parts.append(f"{emoji} **MARKET TREND ALERT**")
+        message_parts.append("=" * 50)
+        message_parts.append("")
+
+        # Market info
+        title = trend['title']
+        if len(title) > 60:
+            title = title[:57] + "..."
+
+        message_parts.append(f"**Market:** \"{title}\"")
+        message_parts.append("")
+
+        # Trend details
+        message_parts.append(f"[FIRE] **STRONG {direction} MOMENTUM**")
+        message_parts.append("-" * 50)
+        message_parts.append(f"- Consensus shift: {shift:+.1%} (recent)")
+        message_parts.append(f"- Direction: {trend['direction']}")
+        message_parts.append("")
+
+        # Elite trader consensus
+        message_parts.append("[CROWN] **ELITE TRADER CONSENSUS**")
+        message_parts.append("-" * 50)
+        message_parts.append(f"- Position: {trend['elite_consensus']}")
+        message_parts.append(f"- Agreement: {trend['elite_agreement']:.1%}")
+        message_parts.append(f"- Elite traders involved: {trend['elite_trader_count']}")
+
+        # Interpretation
+        if trend['elite_agreement'] >= 0.70:
+            message_parts.append("")
+            message_parts.append("[OK] **High elite agreement** - Top traders strongly unified")
+        elif trend['elite_agreement'] >= 0.50:
+            message_parts.append("")
+            message_parts.append("[WARNING] **Moderate agreement** - Some elite trader divergence")
+
+        # Volume spike
+        if trend['volume_spike']:
+            message_parts.append("")
+            message_parts.append("[CHART] **VOLUME SPIKE DETECTED**")
+            message_parts.append("-" * 50)
+            message_parts.append(f"- Volume multiplier: {trend['volume_multiplier']:.1f}x normal")
+            message_parts.append(f"- Recent trades (6h): {trend['recent_trades']:,}")
+
+        # Activity metrics
+        message_parts.append("")
+        message_parts.append("[STATS] **ACTIVITY METRICS**")
+        message_parts.append("-" * 50)
+        message_parts.append(f"- Recent trades: {trend['recent_trades']:,}")
+        message_parts.append(f"- Elite traders: {trend['elite_trader_count']}")
+
+        # Insight
+        message_parts.append("")
+        message_parts.append("[LIGHT] **INSIGHT:**")
+
+        if trend['elite_agreement'] >= 0.70 and abs(shift) > 0.25:
+            message_parts.append("Strong trend with elite trader convergence. High-confidence signal.")
+        elif trend['elite_agreement'] >= 0.70:
+            message_parts.append("Elite traders agree, but momentum is moderate. Monitor for further movement.")
+        elif abs(shift) > 0.25:
+            message_parts.append("Strong momentum but elite traders divided. Trend may be retail-driven.")
+        elif trend['volume_spike']:
+            message_parts.append("Significant volume spike detected. Market attention increasing.")
+        else:
+            message_parts.append("Moderate trend with mixed signals. Exercise caution.")
+
+        # Footer
+        message_parts.append("")
+        message_parts.append("=" * 50)
+        message_parts.append(f"Market ID: `{trend['market_id']}`")
+
+        message = '\n'.join(message_parts)
+
+        return await self._send_message(message)
+
     async def send_startup_notification(self) -> bool:
         """
         Send notification when observer starts.
