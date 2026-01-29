@@ -52,6 +52,45 @@ class SystemObserver:
             chat_id: Telegram chat ID
             monitoring_pid: PID of monitoring process (optional - will auto-detect)
         """
+        # Single instance enforcement - check if observer already running
+        import os
+        from pathlib import Path
+
+        pid_file = Path('data/.system_observer.pid')
+        if pid_file.exists():
+            try:
+                old_pid = int(pid_file.read_text().strip())
+
+                # Check if process is actually running
+                import psutil
+                if psutil.pid_exists(old_pid):
+                    try:
+                        proc = psutil.Process(old_pid)
+                        if proc.is_running():
+                            print(f"\n[ERROR] System Observer already running (PID {old_pid})")
+                            print(f"[ERROR] Stop existing instance first:")
+                            print(f"[ERROR]   Windows: taskkill /PID {old_pid} /F")
+                            print(f"[ERROR]   Linux:   kill {old_pid}")
+                            print(f"[ERROR] Or use: python scripts/kill_all.py")
+                            sys.exit(1)
+                    except psutil.NoSuchProcess:
+                        pass  # Process died, will remove stale PID file below
+            except (ValueError, FileNotFoundError):
+                pass  # Corrupt PID file, will overwrite
+
+            # Remove stale PID file
+            print(f"[CLEANUP] Removing stale System Observer PID file")
+            pid_file.unlink()
+
+        # Write our PID
+        self.observer_pid = os.getpid()
+        pid_file.parent.mkdir(exist_ok=True)
+        pid_file.write_text(str(self.observer_pid))
+        self.pid_file = pid_file
+
+        print(f"[OBSERVER] Started with PID {self.observer_pid}")
+        print(f"[OBSERVER] PID file: {pid_file}")
+
         self.telegram_token = telegram_token
         self.chat_id = chat_id
         self.monitoring_pid = monitoring_pid
@@ -1953,6 +1992,17 @@ class SystemObserver:
         print(f"  Uptime: {uptime:.1f} hours")
         print(f"  Health checks: {self.check_count}")
         print(f"  Errors detected: {self.error_count}")
+
+        # Clean up PID file
+        if hasattr(self, 'pid_file') and self.pid_file.exists():
+            try:
+                # Only remove if it's our PID
+                if int(self.pid_file.read_text().strip()) == self.observer_pid:
+                    self.pid_file.unlink()
+                    print(f"[OBSERVER] PID file cleaned up")
+            except:
+                pass
+
         print("[OBSERVER] Stopped")
 
 
