@@ -53,3 +53,12 @@ logs/*.txt
 .pytest_cache/
 .coverage
 htmlcov/
+
+echo "*.db" >> .gitignore
+echo "*.db-shm" >> .gitignore
+echo "*.db-wal" >> .gitignore
+echo "*.log" >> .gitignore
+echo "reports/*.json" >> .gitignore
+echo "reports/*.csv" >> .gitignore
+echo "correlation_*.json" >> .gitignore
+echo "correlation_*.csv" >> .gitignore
