@@ -19,9 +19,12 @@ python scripts/run_system_observer.py
 
 This starts the health monitoring system with:
 - Atomic file locking (prevents duplicates)
+- Automatic monitoring PID detection
 - Telegram health alerts
 - Activity monitoring
 - Error detection
+
+**Note:** System Observer automatically detects the monitoring process PID, even when the PID file is locked
 
 ---
 
