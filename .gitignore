@@ -79,3 +79,24 @@ data/*.backup_*
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Claude AI metadata
+.claude/
+
+# Configuration files (runtime-specific)
+config/paper_trading_config.json
+
+# Backup directories
+data/backups/
+
+# Documentation outputs
+docs/*.json
+
+# Experiment configurations (generated)
+experiments/config_*.json
+
+# Results directory
+results/
+
+# Windows null device artifact
+nul
