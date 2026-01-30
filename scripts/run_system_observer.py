@@ -144,33 +144,8 @@ async def main():
     if monitoring_pid is None:
         print("[OBSERVER] No PID provided, attempting auto-detection...")
 
-        # Try to read from PID file first (may be locked by monitoring process)
-        monitoring_pid_file = Path('data/.monitoring.pid')
-
-        if monitoring_pid_file.exists():
-            try:
-                # Try to read PID (may fail if file is exclusively locked)
-                with open(monitoring_pid_file, 'r') as f:
-                    monitoring_pid = int(f.read().strip())
-                print(f"[OBSERVER] Read monitoring PID from file: {monitoring_pid}")
-            except (PermissionError, OSError) as e:
-                # File is locked by monitoring process, fall back to process search
-                print(f"[OBSERVER] PID file locked (expected), searching processes...")
-                monitoring_pid = find_monitoring_process()
-                if monitoring_pid:
-                    print(f"[OBSERVER] Found monitoring process: PID {monitoring_pid}")
-            except (ValueError, FileNotFoundError):
-                # Corrupt or missing file
-                print("[OBSERVER] PID file corrupt, searching processes...")
-                monitoring_pid = find_monitoring_process()
-                if monitoring_pid:
-                    print(f"[OBSERVER] Found monitoring process: PID {monitoring_pid}")
-        else:
-            # No PID file, search processes
-            print("[OBSERVER] PID file not found, searching processes...")
-            monitoring_pid = find_monitoring_process()
-            if monitoring_pid:
-                print(f"[OBSERVER] Found monitoring process: PID {monitoring_pid}")
+        # Use find_monitoring_process() which handles PID file reading with proper error handling
+        monitoring_pid = find_monitoring_process()
 
         # If still no PID found, warn user
         if not monitoring_pid:

@@ -1,18 +1,12 @@
-# Environment variables
-.env
-
-# Database files
-*.db
-*.db.*
-*.sqlite
-*.sqlite3
-
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+env/
+venv/
+ENV/
 build/
 develop-eggs/
 dist/
@@ -25,18 +19,13 @@ parts/
 sdist/
 var/
 wheels/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
-# Virtual environments
-venv/
-env/
-ENV/
-env.bak/
-venv.bak/
+# Environment
+.env
+.venv
 
 # IDE
 .vscode/
@@ -49,66 +38,18 @@ venv.bak/
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
-logs/
+# Project-specific
+data/*.db
+data/*.db-journal
+data/*.pid
+logs/*.log
+logs/*.txt
 
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
 
 # Testing
 .pytest_cache/
+.coverage
 htmlcov/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Analysis Reports (generated data, not source code)
-reports/*.csv
-reports/*.txt
-reports/*.json
-reports/*.png
-reports/*.html
-
-# Generated results and experiments
-results/
-results/*.csv
-
-# Temporary experiment configs (keep .example files)
-experiments/*.json
-!experiments/*.json.example
-
-# Claude Code
-.claude/
-settings.local.json
-
-# Database backups and temp files
-data/backups/
-data/*.db
-data/polymarket_tracker.db-journal
-data/polymarket_tracker.db-wal
-data/polymarket_tracker.db-shm
-
-# SQLite database temporary files (global pattern)
-*.db-wal
-*.db-shm
-nul
-
-# Database temp files
-*.db-wal
-*.db-shm
-
-# Generated results
-results/
-results/*.csv
-
-# Actual experiment configs (keep templates)
-experiments/*.json
-!experiments/*.json.example
-
-# Research/temporary files
-resolved_market_samples.json
-investigation_findings.json
-
-# Paper trading
-logs/paper_trading_*.log
-results/paper_trading/
-config/paper_trading_config.json

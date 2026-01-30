@@ -2027,6 +2027,10 @@ def find_monitoring_process() -> Optional[int]:
             # Clean up stale PID file
             pid_file.unlink()
 
+        except PermissionError:
+            # File is locked by running monitoring process - this is expected!
+            # Fall through to process search
+            print(f"[OBSERVER] PID file is locked (monitoring is running), using process search...")
         except (ValueError, IOError) as e:
             print(f"[OBSERVER] Error reading PID file: {e}")
 
@@ -2046,9 +2050,10 @@ def find_monitoring_process() -> Optional[int]:
             # Join and check patterns (case-insensitive for Windows compatibility)
             cmdline_str = ' '.join(str(c) for c in cmdline).lower()
 
-            # Patterns for monitoring process (updated for standard entry point)
+            # Patterns for monitoring process (updated for new entry point)
             patterns = [
-                '-m monitoring',           # python -m monitoring (STANDARD)
+                'start_monitoring.py',     # python scripts/start_monitoring.py (NEW STANDARD)
+                '-m monitoring',           # python -m monitoring (old method)
                 'monitoring.main',         # python -m monitoring.main
                 'main_telegram_safe.py',   # python monitoring/main_telegram_safe.py
                 'monitoring.__main__',     # python -m monitoring (module form)
