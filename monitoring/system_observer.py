@@ -734,9 +734,10 @@ class SystemObserver:
         """
         cutoff_time = datetime.now() - timedelta(hours=hours)
 
-        telegram_calls = 0
-        ollama_calls = 0
-        polymarket_calls = 0
+        trades_fetched = 0
+        markets_checked = 0
+        api_calls = 0
+        cycle_count = 0
 
         try:
             with open('logs/monitoring.log', 'r', encoding='utf-8', errors='replace') as f:
@@ -754,17 +755,32 @@ class SystemObserver:
                         if timestamp < cutoff_time:
                             continue
 
-                        # Count API calls
+                        # Count actual monitoring activity
                         line_lower = line.lower()
 
-                        if 'telegram.org' in line_lower or ('telegram' in line_lower and 'http' in line_lower):
-                            telegram_calls += 1
+                        # Count trades fetched/processed
+                        if 'fetched' in line_lower and 'recent trades' in line_lower:
+                            # Parse: "Fetched X recent trades"
+                            import re
+                            match = re.search(r'fetched (\d+) recent trades', line_lower)
+                            if match:
+                                trades_fetched += int(match.group(1))
 
-                        if '11434' in line or 'ollama' in line_lower or 'mistral' in line_lower:
-                            ollama_calls += 1
+                        # Count new trades
+                        if 'new trades:' in line_lower:
+                            # Parse: "New trades: X |"
+                            import re
+                            match = re.search(r'new trades: (\d+)', line_lower)
+                            if match:
+                                trades_fetched += int(match.group(1))
 
-                        if 'polymarket' in line_lower or 'clob' in line_lower:
-                            polymarket_calls += 1
+                        # Count monitoring cycles
+                        if 'cycle complete' in line_lower or 'next check in' in line_lower:
+                            cycle_count += 1
+
+                        # Count API calls (Polymarket CLOB API)
+                        if 'clob.polymarket.com' in line_lower or 'polymarket' in line_lower and 'api' in line_lower:
+                            api_calls += 1
 
                     except ValueError:
                         # Not a valid timestamp line
@@ -774,10 +790,10 @@ class SystemObserver:
             pass
 
         return {
-            'trades_checked': telegram_calls,  # Each Telegram call = 1 trade notification
-            'markets_scanned': ollama_calls,  # Each Ollama call = 1 market filtered by AI
-            'elo_updates': 0,  # Not tracked in logs
-            'api_calls': telegram_calls + ollama_calls + polymarket_calls
+            'trades_checked': trades_fetched,
+            'markets_scanned': cycle_count,  # Each cycle scans markets
+            'elo_updates': 0,  # Not tracked in logs currently
+            'api_calls': api_calls if api_calls > 0 else trades_fetched  # Estimate: ~1 API call per trade
         }
 
     async def _collect_metrics(self) -> Dict:
