@@ -38,12 +38,38 @@ wheels/
 .DS_Store
 Thumbs.db
 
-# Project-specific
-data/*.db
-data/*.db-journal
+# Project-specific - PID files
 data/*.pid
-logs/*.log
+
+# Project-specific - Database files
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Project-specific - Logs
+*.log
 logs/*.txt
+
+# Project-specific - Generated reports
+reports/*.json
+reports/*.csv
+correlation_*.json
+correlation_*.csv
+correlation_results.log
+elo_integration_output.log
+
+# Project-specific - Generated CSVs
+behavioral_metrics_*.csv
+trader_performance_*.csv
+trader_classifications_*.csv
+weighted_metrics_*.csv
+trading_behavior_*.csv
+elo_rankings_*.csv
+
+# Project-specific - Backup files
+*.backup_*
+data/*.backup_*
 
 # Jupyter
 .ipynb_checkpoints/
@@ -53,12 +79,3 @@ logs/*.txt
 .pytest_cache/
 .coverage
 htmlcov/
-
-echo "*.db" >> .gitignore
-echo "*.db-shm" >> .gitignore
-echo "*.db-wal" >> .gitignore
-echo "*.log" >> .gitignore
-echo "reports/*.json" >> .gitignore
-echo "reports/*.csv" >> .gitignore
-echo "correlation_*.json" >> .gitignore
-echo "correlation_*.csv" >> .gitignore
