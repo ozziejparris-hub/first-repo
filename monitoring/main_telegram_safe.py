@@ -55,32 +55,8 @@ async def main():
     print("  All notifications via System Observer")
     print("="*70 + "\n")
 
-    # Single instance enforcement - check if monitoring already running
-    pid_file = Path('data/.monitoring.pid')
-    if pid_file.exists():
-        try:
-            old_pid = int(pid_file.read_text().strip())
-
-            # Check if process is actually running
-            import psutil
-            if psutil.pid_exists(old_pid):
-                try:
-                    proc = psutil.Process(old_pid)
-                    if proc.is_running():
-                        print(f"\n[ERROR] Monitoring already running (PID {old_pid})")
-                        print(f"[ERROR] Stop existing instance first:")
-                        print(f"[ERROR]   Windows: taskkill /PID {old_pid} /F")
-                        print(f"[ERROR]   Linux:   kill {old_pid}")
-                        print(f"[ERROR] Or use: python scripts/kill_all.py")
-                        sys.exit(1)
-                except psutil.NoSuchProcess:
-                    pass  # Process died, will remove stale PID file below
-        except (ValueError, FileNotFoundError):
-            pass  # Corrupt PID file, will overwrite
-
-        # Remove stale PID file
-        print(f"[CLEANUP] Removing stale PID file")
-        pid_file.unlink()
+    # NOTE: Single instance enforcement is handled by the entry point script
+    # (scripts/start_monitoring.py) using OS-level file locking
 
     # Get API keys
     polymarket_api_key = os.getenv('POLYMARKET_API_KEY')
@@ -105,12 +81,10 @@ async def main():
     logger.info("Starting monitoring (Telegram-safe mode)")
     logger.info("Position tracking: ENABLED")
     logger.info("Check interval: 15 minutes")
+    logger.info(f"Process ID: {os.getpid()}")
 
-    # Write PID file for System Observer to find this process
-    pid_file.parent.mkdir(exist_ok=True)
-    pid_file.write_text(str(os.getpid()))
-    print(f"[OK] PID file created: {pid_file} (PID: {os.getpid()})")
-    logger.info(f"PID file created: {pid_file}")
+    # NOTE: PID file is created and managed by the entry point script
+    # (scripts/start_monitoring.py) using OS-level file locking
 
     try:
         # Start monitoring loop
@@ -127,11 +101,8 @@ async def main():
 
     finally:
         await monitor.stop()
-
-        # Clean up PID file
-        if pid_file.exists():
-            pid_file.unlink()
-            logger.info("PID file cleaned up")
+        # NOTE: PID file cleanup is handled by the entry point script
+        # (scripts/start_monitoring.py) using OS-level file locking
 
 
 if __name__ == '__main__':
