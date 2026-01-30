@@ -292,7 +292,7 @@ class SystemObserver:
                         mon_activity = metrics['monitoring_activity']
                         minutes_since = mon_activity.get('minutes_since_activity', 0)
 
-                        if minutes_since > 30:
+                        if minutes_since > 60:
                             print(f"[OBSERVER] ⚠️ MONITORING FROZEN DETECTED: {minutes_since:.0f} minutes silence")
 
                             # Send dedicated freeze alert with diagnostics
@@ -2063,8 +2063,24 @@ def find_monitoring_process() -> Optional[int]:
             if any(pattern in cmdline_str for pattern in patterns):
                 # Avoid matching the observer itself
                 if 'observer' not in cmdline_str:
-                    print(f"[OBSERVER] Found monitoring process: PID={proc.info['pid']}, cmd={' '.join(cmdline[:3])}")
-                    return proc.info['pid']
+                    # Filter out launcher stubs by checking memory usage
+                    # Real monitoring process: 60+ MB, Launcher stub: 3-4 MB
+                    try:
+                        memory_mb = proc.memory_info().rss / (1024 * 1024)
+
+                        # Skip launcher stubs (< 10 MB)
+                        if memory_mb < 10:
+                            print(f"[OBSERVER] Skipping launcher stub: PID={proc.info['pid']} ({memory_mb:.1f} MB)")
+                            continue
+
+                        # This is the real monitoring process
+                        print(f"[OBSERVER] Found monitoring process: PID={proc.info['pid']} ({memory_mb:.1f} MB)")
+                        return proc.info['pid']
+
+                    except Exception:
+                        # If can't get memory info, accept the process anyway
+                        print(f"[OBSERVER] Found monitoring process: PID={proc.info['pid']}, cmd={' '.join(cmdline[:3])}")
+                        return proc.info['pid']
 
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue

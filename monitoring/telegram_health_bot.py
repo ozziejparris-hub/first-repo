@@ -289,15 +289,15 @@ class TelegramHealthBot:
             mon_activity = metrics['monitoring_activity']
             minutes_since = mon_activity.get('minutes_since_activity', 999)
 
-            # Detect if monitoring is frozen (> 30 min silence)
-            if minutes_since > 30:
+            # Detect if monitoring is frozen (> 60 min silence)
+            if minutes_since > 60:
                 message_parts.append("🔴 MONITORING FROZEN DETECTED")
                 message_parts.append(f"  • Last activity: {minutes_since:.0f} minutes ago")
                 if mon_activity.get('last_activity'):
                     message_parts.append(f"  • Time: {mon_activity['last_activity'].strftime('%H:%M:%S')}")
                 message_parts.append("  • ACTION: Restart monitoring system")
                 message_parts.append("")
-            elif minutes_since > 20:
+            elif minutes_since > 40:
                 # Warning: approaching freeze threshold
                 message_parts.append("⚠️ Monitoring Delayed")
                 message_parts.append(f"  • Last activity: {minutes_since:.0f} minutes ago")
