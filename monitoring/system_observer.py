@@ -292,7 +292,7 @@ class SystemObserver:
                         mon_activity = metrics['monitoring_activity']
                         minutes_since = mon_activity.get('minutes_since_activity', 0)
 
-                        if minutes_since > 60:
+                        if minutes_since > 240:
                             print(f"[OBSERVER] ⚠️ MONITORING FROZEN DETECTED: {minutes_since:.0f} minutes silence")
 
                             # Send dedicated freeze alert with diagnostics
@@ -303,6 +303,15 @@ class SystemObserver:
                                 'traders_with_roi': metrics.get('pnl_stats', {}).get('traders_with_roi', 0)
                             }
                             await self.telegram.send_monitoring_freeze_alert(freeze_diagnostics)
+
+                    # Check for high-value trades (runs every hour with the report)
+                    await self._check_high_value_trades()
+
+                    # Check for smart money consensus (runs every hour)
+                    await self._check_consensus_positions()
+
+                    # Check for consensus exits (runs every hour)
+                    await self._check_consensus_exits()
 
                     # Send report
                     await self.telegram.send_hourly_report(metrics)
@@ -379,19 +388,12 @@ class SystemObserver:
             try:
                 now = datetime.now()
 
-                # Check if it's Sunday (weekday 6) at 23:00 UTC
-                if now.weekday() == 6 and now.hour == 23 and now.minute == 0:
-                    print("[OBSERVER] Generating weekly report...")
+                # Check if it's Sunday (weekday 6) at 20:00 UTC (changed from 23:00 for better timing)
+                if now.weekday() == 6 and now.hour == 20 and now.minute == 0:
+                    print("[OBSERVER] Generating weekly performance summary...")
 
-                    # Collect weekly metrics
-                    metrics = await self._collect_weekly_metrics()
-
-                    # Send report via Telegram
-                    if self.telegram:
-                        await self.telegram.send_weekly_report(metrics)
-                        print("[OBSERVER] Weekly report sent successfully")
-                    else:
-                        print("[OBSERVER] [WARNING] Telegram not configured, skipping report")
+                    # Send simplified weekly summary focused on trader intelligence
+                    await self._send_weekly_summary()
 
                     # Wait 7 days before next report
                     await asyncio.sleep(604800)  # 7 days
@@ -527,7 +529,12 @@ class SystemObserver:
             cursor = conn.cursor()
 
             cursor.execute("""
-                SELECT address, comprehensive_elo, roi_percentage
+                SELECT
+                    address,
+                    comprehensive_elo,
+                    roi_percentage,
+                    total_pnl,
+                    closed_positions
                 FROM traders
                 WHERE comprehensive_elo IS NOT NULL
                 ORDER BY comprehensive_elo DESC
@@ -541,9 +548,11 @@ class SystemObserver:
                 {
                     'address': addr,
                     'elo': elo,
-                    'roi': roi
+                    'roi': roi if (roi and roi != 0) else None,  # None means "calculating"
+                    'pnl': pnl,
+                    'closed_positions': closed_pos
                 }
-                for addr, elo, roi in traders
+                for addr, elo, roi, pnl, closed_pos in traders
             ]
 
         except Exception as e:
@@ -795,6 +804,481 @@ class SystemObserver:
             'elo_updates': 0,  # Not tracked in logs currently
             'api_calls': api_calls if api_calls > 0 else trades_fetched  # Estimate: ~1 API call per trade
         }
+
+    async def _check_high_value_trades(self):
+        """
+        Monitor for high-value trades from top traders and send real-time alerts.
+
+        Checks for:
+        - Trades from traders with ELO >= 1550
+        - Trade size >= $1,000
+        - Within last 30 minutes (prevents duplicate alerts)
+        """
+        try:
+            from datetime import timedelta
+
+            # Get trades from last 30 minutes
+            cutoff = datetime.now() - timedelta(minutes=30)
+
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            query = """
+            SELECT
+                t.address,
+                t.comprehensive_elo,
+                t.roi_percentage,
+                tr.market_id,
+                tr.outcome,
+                tr.shares,
+                tr.price,
+                tr.timestamp,
+                m.title as market_title
+            FROM trades tr
+            JOIN traders t ON tr.trader_address = t.address
+            LEFT JOIN markets m ON tr.market_id = m.market_id
+            WHERE
+                t.comprehensive_elo >= 1550
+                AND tr.timestamp >= ?
+                AND (tr.shares * tr.price) >= 1000
+            ORDER BY tr.timestamp DESC
+            """
+
+            cursor.execute(query, (cutoff.isoformat(),))
+            trades = cursor.fetchall()
+            conn.close()
+
+            # Send alert for each high-value trade
+            for trade in trades:
+                address, elo, roi, market_id, outcome, shares, price, timestamp, market_title = trade
+
+                trade_size = shares * price
+                roi_str = f"+{roi:.1f}%" if roi and roi > 0 else f"{roi:.1f}%" if roi else "Calculating..."
+
+                # Format market title
+                market_str = market_title if market_title else f"Market ID: {market_id}"
+
+                message = f"""🎯 HIGH-VALUE TRADE ALERT
+
+Trader: `{address}`
+ELO: {elo:.0f} | ROI: {roi_str}
+
+Market: {market_str}
+Position: {outcome} @ ${price:.4f}
+Size: ${trade_size:,.0f}
+
+Time: {timestamp}
+
+Polymarket Profile:
+https://polymarket.com/profile/{address}
+"""
+
+                await self.telegram.send_message(message)
+                print(f"[OBSERVER] Sent high-value trade alert for {address[:10]}... (${trade_size:,.0f})")
+
+        except Exception as e:
+            print(f"[OBSERVER] Error checking high-value trades: {e}")
+            import traceback
+            traceback.print_exc()
+
+    async def _send_weekly_summary(self):
+        """
+        Send weekly performance summary every Sunday at 20:00 (8 PM).
+
+        Includes:
+        - Best trader by profit (last 7 days)
+        - Biggest ELO mover (overall)
+        - Hottest market (most skilled traders)
+        - Low-volume opportunities (<$10k volume, 5+ high-ELO traders)
+        """
+        try:
+            from datetime import timedelta
+
+            # Get data from last 7 days
+            week_ago = datetime.now() - timedelta(days=7)
+
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            # Best trader by ELO with ROI
+            cursor.execute("""
+                SELECT
+                    address,
+                    comprehensive_elo,
+                    roi_percentage,
+                    total_pnl
+                FROM traders
+                WHERE comprehensive_elo IS NOT NULL
+                ORDER BY comprehensive_elo DESC
+                LIMIT 1
+            """)
+            best_trader = cursor.fetchone()
+
+            # Hottest markets (most skilled traders trading)
+            cursor.execute("""
+                SELECT
+                    m.title,
+                    m.market_id,
+                    COUNT(DISTINCT t.address) as skilled_traders,
+                    SUM(tr.shares * tr.price) as total_volume
+                FROM trades tr
+                JOIN traders t ON tr.trader_address = t.address
+                LEFT JOIN markets m ON tr.market_id = m.market_id
+                WHERE
+                    t.comprehensive_elo >= 1550
+                    AND tr.timestamp >= ?
+                GROUP BY m.market_id, m.title
+                HAVING skilled_traders >= 3
+                ORDER BY skilled_traders DESC
+                LIMIT 3
+            """, (week_ago.isoformat(),))
+            hot_markets = cursor.fetchall()
+
+            # Low-volume opportunities
+            cursor.execute("""
+                SELECT
+                    m.title,
+                    m.market_id,
+                    m.volume,
+                    COUNT(DISTINCT t.address) as skilled_traders
+                FROM markets m
+                JOIN trades tr ON m.market_id = tr.market_id
+                JOIN traders t ON tr.trader_address = t.address
+                WHERE
+                    m.volume < 10000
+                    AND t.comprehensive_elo >= 1550
+                    AND tr.timestamp >= ?
+                GROUP BY m.market_id, m.title, m.volume
+                HAVING skilled_traders >= 5
+                ORDER BY skilled_traders DESC
+                LIMIT 3
+            """, (week_ago.isoformat(),))
+            opportunities = cursor.fetchall()
+
+            # Strongest consensuses this week
+            cursor.execute("""
+                SELECT
+                    m.title,
+                    m.market_id,
+                    tr.outcome,
+                    COUNT(DISTINCT t.address) as trader_count,
+                    SUM(tr.shares * tr.price) as volume
+                FROM trades tr
+                JOIN traders t ON tr.trader_address = t.address
+                LEFT JOIN markets m ON tr.market_id = m.market_id
+                WHERE
+                    t.comprehensive_elo >= 1550
+                    AND tr.timestamp >= ?
+                    AND tr.shares > 0
+                GROUP BY m.market_id, m.title, tr.outcome
+                HAVING trader_count >= 3
+                ORDER BY trader_count DESC, volume DESC
+                LIMIT 3
+            """, (week_ago.isoformat(),))
+            consensuses = cursor.fetchall()
+
+            conn.close()
+
+            # Format message
+            message_parts = ["📈 WEEKLY PERFORMANCE SUMMARY", ""]
+
+            if best_trader:
+                address, elo, roi, pnl = best_trader
+                roi_str = f"+{roi:.1f}%" if roi and roi > 0 else f"{roi:.1f}%" if roi else "Calculating..."
+                pnl_str = f"${pnl:,.0f}" if pnl else "N/A"
+
+                message_parts.append(f"🏆 Top Trader:")
+                message_parts.append(f"  • `{address}`")
+                message_parts.append(f"  • ELO: {elo:.0f}")
+                message_parts.append(f"  • ROI: {roi_str}")
+                message_parts.append(f"  • P&L: {pnl_str}")
+                message_parts.append("")
+
+            if hot_markets:
+                message_parts.append("🔥 Hottest Markets (Last 7 Days):")
+                for i, (title, market_id, traders, volume) in enumerate(hot_markets, 1):
+                    market_str = title if title else f"Market {market_id}"
+                    message_parts.append(f"{i}. {market_str}")
+                    message_parts.append(f"   {traders} skilled traders | ${volume:,.0f} volume")
+                message_parts.append("")
+
+            if opportunities:
+                message_parts.append("💎 Your Opportunities:")
+                message_parts.append("(Low volume markets with high skilled trader interest)")
+                for i, (title, market_id, volume, traders) in enumerate(opportunities, 1):
+                    market_str = title if title else f"Market {market_id}"
+                    message_parts.append(f"{i}. {market_str}")
+                    message_parts.append(f"   ${volume:,.0f} vol | {traders} skilled traders")
+                message_parts.append("")
+
+            if consensuses:
+                message_parts.append("🎯 Strongest Consensuses This Week:")
+                for i, (title, market_id, outcome, count, volume) in enumerate(consensuses, 1):
+                    market_str = title if title else f"Market {market_id}"
+                    message_parts.append(f"{i}. {market_str}")
+                    message_parts.append(f"   {outcome} - {count} elite traders | ${volume:,.0f} volume")
+                message_parts.append("")
+
+            message = "\n".join(message_parts)
+            await self.telegram.send_message(message)
+
+            print("[OBSERVER] Sent weekly performance summary")
+
+        except Exception as e:
+            print(f"[OBSERVER] Error sending weekly summary: {e}")
+            import traceback
+            traceback.print_exc()
+
+    async def _check_consensus_positions(self):
+        """
+        Detect when multiple elite traders take the same position (smart money consensus).
+
+        Triggers alert when:
+        - 3+ traders with ELO >= 1550
+        - All take same position (YES or NO)
+        - Within last 24 hours
+
+        Signal Strength:
+        - 3 traders = 🔥 MODERATE
+        - 4 traders = 🔥🔥 STRONG
+        - 5+ traders = 🔥🔥🔥 VERY STRONG
+        """
+        try:
+            from datetime import timedelta
+
+            # Look for consensus within last 24 hours
+            cutoff = datetime.now() - timedelta(hours=24)
+
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            # Find markets where 3+ elite traders took same position
+            query = """
+            SELECT
+                tr.market_id,
+                m.title as market_question,
+                tr.outcome,
+                COUNT(DISTINCT tr.trader_address) as trader_count,
+                SUM(tr.shares * tr.price) as total_volume,
+                GROUP_CONCAT(t.address || '|' || CAST(t.comprehensive_elo AS TEXT)) as traders,
+                MIN(tr.timestamp) as first_trade,
+                MAX(tr.timestamp) as last_trade
+            FROM trades tr
+            JOIN traders t ON tr.trader_address = t.address
+            LEFT JOIN markets m ON tr.market_id = m.market_id
+            WHERE
+                t.comprehensive_elo >= 1550
+                AND tr.timestamp >= ?
+                AND tr.shares > 0
+            GROUP BY tr.market_id, tr.outcome
+            HAVING trader_count >= 3
+            ORDER BY trader_count DESC, total_volume DESC
+            LIMIT 5
+            """
+
+            cursor.execute(query, (cutoff.isoformat(),))
+            consensuses = cursor.fetchall()
+            conn.close()
+
+            if not consensuses:
+                return
+
+            # Send alerts for new consensuses
+            for consensus in consensuses:
+                market_id, question, outcome, count, volume, traders_str, first, last = consensus
+
+                # Check if already alerted
+                if self._already_alerted_consensus(market_id, outcome):
+                    continue
+
+                # Parse trader details
+                traders_list = traders_str.split(',')
+                trader_details = []
+                for t in traders_list[:5]:  # Show top 5
+                    parts = t.split('|')
+                    if len(parts) == 2:
+                        addr, elo = parts
+                        short_addr = addr[:6] + "..." + addr[-4:]
+                        try:
+                            elo_float = float(elo)
+                            trader_details.append(f"  • {short_addr} (ELO: {elo_float:.0f})")
+                        except ValueError:
+                            trader_details.append(f"  • {short_addr}")
+
+                traders_text = "\n".join(trader_details)
+                if len(traders_list) > 5:
+                    traders_text += f"\n  • ...and {len(traders_list) - 5} more"
+
+                # Determine signal strength
+                if count >= 5:
+                    signal_strength = "🔥🔥🔥 VERY STRONG"
+                elif count >= 4:
+                    signal_strength = "🔥🔥 STRONG"
+                else:
+                    signal_strength = "🔥 MODERATE"
+
+                # Format market title
+                market_str = question if question else f"Market ID: {market_id}"
+
+                message = f"""🎯 SMART MONEY CONSENSUS DETECTED
+
+📊 Market: {market_str}
+🎲 Position: {outcome}
+👥 Elite Traders: {count}
+💰 Combined Size: ${volume:,.0f}
+
+Top Traders:
+{traders_text}
+
+⏰ Time Window: {first} → {last}
+
+🔗 Market: https://polymarket.com/event/{market_id}
+
+💡 Signal Strength: {signal_strength}
+"""
+
+                await self.telegram.send_message(message)
+                self._mark_consensus_alerted(market_id, outcome)
+                print(f"[OBSERVER] Sent consensus alert: {market_id} {outcome} ({count} traders)")
+
+        except Exception as e:
+            print(f"[OBSERVER] Error checking consensus positions: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _already_alerted_consensus(self, market_id: str, outcome: str) -> bool:
+        """Check if we already sent alert for this consensus."""
+        if not hasattr(self, '_alerted_consensuses'):
+            self._alerted_consensuses = set()
+
+        key = f"{market_id}_{outcome}"
+        return key in self._alerted_consensuses
+
+    def _mark_consensus_alerted(self, market_id: str, outcome: str):
+        """Mark consensus as alerted to prevent duplicates."""
+        if not hasattr(self, '_alerted_consensuses'):
+            self._alerted_consensuses = set()
+
+        key = f"{market_id}_{outcome}"
+        self._alerted_consensuses.add(key)
+
+    async def _check_consensus_exits(self):
+        """
+        Detect when elite traders exit consensus positions (selling/unwinding).
+
+        Triggers alert when:
+        - 2+ traders with ELO >= 1550
+        - All selling positions (negative shares)
+        - Within last 6 hours
+
+        This signals profit-taking or loss-cutting by smart money.
+        """
+        try:
+            from datetime import timedelta
+
+            # Look for sells in last 6 hours
+            recent = datetime.now() - timedelta(hours=6)
+
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            # Find markets where elite traders are SELLING positions
+            query = """
+            SELECT
+                tr.market_id,
+                m.title as market_question,
+                tr.outcome,
+                COUNT(DISTINCT tr.trader_address) as sellers,
+                SUM(ABS(tr.shares)) as shares_sold,
+                GROUP_CONCAT(t.address || '|' || CAST(t.comprehensive_elo AS TEXT)) as traders
+            FROM trades tr
+            JOIN traders t ON tr.trader_address = t.address
+            LEFT JOIN markets m ON tr.market_id = m.market_id
+            WHERE
+                t.comprehensive_elo >= 1550
+                AND tr.timestamp >= ?
+                AND tr.shares < 0
+            GROUP BY tr.market_id, tr.outcome
+            HAVING sellers >= 2
+            ORDER BY sellers DESC
+            LIMIT 5
+            """
+
+            cursor.execute(query, (recent.isoformat(),))
+            exits = cursor.fetchall()
+            conn.close()
+
+            if not exits:
+                return
+
+            # Send alerts for new exits
+            for exit_data in exits:
+                market_id, question, outcome, count, shares, traders_str = exit_data
+
+                # Check if already alerted
+                if self._already_alerted_exit(market_id, outcome):
+                    continue
+
+                # Parse trader details
+                traders_list = traders_str.split(',')
+                trader_details = []
+                for t in traders_list[:3]:  # Show top 3 for exits
+                    parts = t.split('|')
+                    if len(parts) == 2:
+                        addr, elo = parts
+                        short_addr = addr[:6] + "..." + addr[-4:]
+                        try:
+                            elo_float = float(elo)
+                            trader_details.append(f"  • {short_addr} (ELO: {elo_float:.0f})")
+                        except ValueError:
+                            trader_details.append(f"  • {short_addr}")
+
+                traders_text = "\n".join(trader_details)
+                if len(traders_list) > 3:
+                    traders_text += f"\n  • ...and {len(traders_list) - 3} more"
+
+                # Format market title
+                market_str = question if question else f"Market ID: {market_id}"
+
+                message = f"""🚨 SMART MONEY EXIT DETECTED
+
+📊 Market: {market_str}
+🎲 Position: {outcome}
+👥 Elite Traders Exiting: {count}
+📉 Shares Sold: {shares:,.0f}
+
+Sellers:
+{traders_text}
+
+⚠️ Signal: Elite traders taking profits or cutting losses
+
+🔗 Market: https://polymarket.com/event/{market_id}
+"""
+
+                await self.telegram.send_message(message)
+                self._mark_exit_alerted(market_id, outcome)
+                print(f"[OBSERVER] Sent exit alert: {market_id} {outcome} ({count} traders)")
+
+        except Exception as e:
+            print(f"[OBSERVER] Error checking consensus exits: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _already_alerted_exit(self, market_id: str, outcome: str) -> bool:
+        """Check if we already alerted this exit."""
+        if not hasattr(self, '_alerted_exits'):
+            self._alerted_exits = set()
+
+        key = f"{market_id}_{outcome}"
+        return key in self._alerted_exits
+
+    def _mark_exit_alerted(self, market_id: str, outcome: str):
+        """Mark exit as alerted to prevent duplicates."""
+        if not hasattr(self, '_alerted_exits'):
+            self._alerted_exits = set()
+
+        key = f"{market_id}_{outcome}"
+        self._alerted_exits.add(key)
 
     async def _collect_metrics(self) -> Dict:
         """

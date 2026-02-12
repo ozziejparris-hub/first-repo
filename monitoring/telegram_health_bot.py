@@ -289,15 +289,15 @@ class TelegramHealthBot:
             mon_activity = metrics['monitoring_activity']
             minutes_since = mon_activity.get('minutes_since_activity', 999)
 
-            # Detect if monitoring is frozen (> 60 min silence)
-            if minutes_since > 60:
+            # Detect if monitoring is frozen (> 240 min = 4 hours silence)
+            if minutes_since > 240:
                 message_parts.append("🔴 MONITORING FROZEN DETECTED")
                 message_parts.append(f"  • Last activity: {minutes_since:.0f} minutes ago")
                 if mon_activity.get('last_activity'):
                     message_parts.append(f"  • Time: {mon_activity['last_activity'].strftime('%H:%M:%S')}")
                 message_parts.append("  • ACTION: Restart monitoring system")
                 message_parts.append("")
-            elif minutes_since > 40:
+            elif minutes_since > 180:
                 # Warning: approaching freeze threshold
                 message_parts.append("⚠️ Monitoring Delayed")
                 message_parts.append(f"  • Last activity: {minutes_since:.0f} minutes ago")
@@ -348,10 +348,10 @@ class TelegramHealthBot:
             message_parts.append("🏆 Top 5 Traders:")
             for i, trader in enumerate(metrics['top_traders'], 1):
                 addr = trader['address']
-                addr_short = addr[:6] + "..."
+                addr_short = addr[:6] + "..." + addr[-4:]
                 elo = trader['elo']
                 roi = trader.get('roi')
-                roi_str = f"{roi:+.1f}%" if roi is not None else "N/A"
+                roi_str = f"{roi:+.1f}%" if roi is not None else "Calculating..."
 
                 message_parts.append(f"{i}. `{addr_short}` ELO: {elo:.0f} ROI: {roi_str}")
             message_parts.append("")
