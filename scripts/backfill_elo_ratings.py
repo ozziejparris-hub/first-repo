@@ -1,394 +1,441 @@
 #!/usr/bin/env python3
 """
-Backfill Historical ELO Ratings
+Historical ELO Rating Backfill
 
-Calculate accurate ELO ratings for all traders using complete historical trading data
-from Polymarket instead of waiting months for new data to accumulate.
+Calculates accurate ELO ratings for all traders by replaying resolved markets
+chronologically using actual win/loss outcomes.
+
+Algorithm:
+  For each resolved market (ordered by resolution_date):
+    1. Get all traders who had open BUY positions in this market
+    2. Determine which outcome won (from markets.winning_outcome)
+    3. Match traders' outcome against winning_outcome
+       - Binary markets (YES/NO): direct comparison
+       - Multi-outcome markets: direct name match
+    4. Update ELO: winners gain from losers, using weighted K-factor
+       - K-factor scaled by bet size (larger bet = more ELO movement)
+       - Market difficulty: fewer traders = harder market
+    5. Process in resolution_date order so ELO evolves realistically
+
+Prerequisites:
+  - Run fetch_market_resolutions.py first (populates markets.winning_outcome)
+  - Markets with resolved=1 and winning_outcome IS NOT NULL are used
+
+Expected output after full backfill:
+  - ELO range: 1200 - 1800+
+  - Elite traders (>=1550): 50-200+
+  - Average ELO: ~1500
 
 Usage:
+    # First: python scripts/fetch_market_resolutions.py
     python scripts/backfill_elo_ratings.py
 
-Requirements:
-    - Historical data from poly_data repo or Polymarket API
-    - Market resolution data
-    - Existing trader database
+    # Dry-run (calculate but don't write to DB):
+    python scripts/backfill_elo_ratings.py --dry-run
 
-Expected Results:
-    - 800+ traders with ELO ratings
-    - 100+ elite traders (ELO >= 1550)
-    - Instant "mature" ratings for consensus detection
+    # Reset all ELO to 1500 before backfill:
+    python scripts/backfill_elo_ratings.py --reset
 """
 
 import sys
 import sqlite3
+import argparse
+import os
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
-from typing import Dict, List, Tuple, Optional
-import os
 
-# Add project to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-# Change to project root
 os.chdir(project_root)
 
+# ── ELO constants ────────────────────────────────────────────────────────────
 
-class ELOCalculator:
-    """Calculate and manage ELO ratings for traders."""
+STARTING_ELO = 1500.0
+K_FACTOR = 32.0           # Base K-factor (same as unified_elo_system.py)
+MIN_ELO = 800.0           # Floor — prevents ELO going to zero
+MAX_ELO = 2500.0          # Ceiling for backfill (live system can exceed this)
 
-    def __init__(self, db_path: str = 'data/polymarket_tracker.db'):
-        """
-        Initialize ELO calculator.
+# Outcome normalisation helpers
+_YES_SYNONYMS = {'yes', 'y', '1', 'true', 'long'}
+_NO_SYNONYMS  = {'no',  'n', '0', 'false', 'short'}
 
-        Args:
-            db_path: Path to SQLite database
-        """
+
+def normalise_outcome(raw: str | None) -> str:
+    """
+    Normalise an outcome string to a consistent lowercase form.
+
+    Binary markets store 'Yes'/'No' in both trades.outcome and
+    markets.winning_outcome.  Multi-outcome markets use arbitrary
+    names (e.g. 'Chiefs', 'Republicans').  We lower-case everything
+    so that comparison is case-insensitive.
+    """
+    if not raw:
+        return ''
+    s = raw.strip().lower()
+    # Map common YES synonyms to canonical 'yes'
+    if s in _YES_SYNONYMS:
+        return 'yes'
+    if s in _NO_SYNONYMS:
+        return 'no'
+    return s
+
+
+def expected_score(rating_a: float, rating_b: float) -> float:
+    """Standard ELO expected score for player A vs player B."""
+    return 1.0 / (1.0 + 10.0 ** ((rating_b - rating_a) / 400.0))
+
+
+def update_elo(
+    current_elo: float,
+    opponent_elo: float,
+    won: bool,
+    k_factor: float = K_FACTOR,
+) -> float:
+    """
+    Standard ELO update formula.
+
+    actual_score: 1.0 for win, 0.0 for loss (no draws in prediction markets)
+    """
+    exp = expected_score(current_elo, opponent_elo)
+    actual = 1.0 if won else 0.0
+    new_elo = current_elo + k_factor * (actual - exp)
+    return max(MIN_ELO, min(MAX_ELO, new_elo))
+
+
+# ── Database helpers ──────────────────────────────────────────────────────────
+
+def load_resolved_markets(cur: sqlite3.Cursor) -> list[dict]:
+    """
+    Return all resolved markets that have traders' trades, ordered chronologically.
+
+    Uses resolution_date when available; falls back to end_date.
+    """
+    cur.execute("""
+        SELECT
+            m.market_id,
+            m.winning_outcome,
+            COALESCE(m.resolution_date, m.end_date) AS resolve_ts
+        FROM markets m
+        WHERE m.resolved = 1
+          AND m.winning_outcome IS NOT NULL
+          AND m.winning_outcome != ''
+          AND EXISTS (
+              SELECT 1 FROM trades t WHERE t.market_id = m.market_id
+          )
+        ORDER BY resolve_ts ASC NULLS LAST
+    """)
+    rows = cur.fetchall()
+    return [
+        {'market_id': r[0], 'winning_outcome': r[1], 'resolve_ts': r[2]}
+        for r in rows
+    ]
+
+
+def load_market_traders(cur: sqlite3.Cursor, market_id: str) -> list[dict]:
+    """
+    Return all traders who placed BUY trades in a market, with their outcome
+    and a weight proportional to the total shares bought.
+
+    We group by (trader_address, outcome) so each trader has one position
+    per outcome bet.  Traders who bet both YES and NO are treated separately
+    per outcome (rare, but possible via partial exits and re-entries).
+    """
+    cur.execute("""
+        SELECT
+            trader_address,
+            outcome,
+            SUM(CASE WHEN shares > 0 THEN shares ELSE 0 END) AS total_shares,
+            AVG(price) AS avg_price
+        FROM trades
+        WHERE market_id = ?
+          AND shares > 0          -- only BUY positions
+          AND outcome IS NOT NULL
+          AND outcome != ''
+        GROUP BY trader_address, outcome
+        HAVING total_shares > 0
+    """, (market_id,))
+    rows = cur.fetchall()
+    return [
+        {
+            'trader_address': r[0],
+            'outcome': r[1],
+            'total_shares': float(r[2]),
+            'avg_price': float(r[3]) if r[3] else 0.5,
+        }
+        for r in rows
+    ]
+
+
+# ── Core backfill logic ───────────────────────────────────────────────────────
+
+class ELOBackfill:
+
+    def __init__(self, db_path: str, dry_run: bool = False, reset: bool = False):
         self.db_path = db_path
-        self.trader_elo = defaultdict(lambda: 1500.0)  # Start at 1500
-        self.trade_history = defaultdict(list)
-        self.market_resolutions = {}
+        self.dry_run = dry_run
+        self.reset = reset
+        self.elo: dict[str, float] = defaultdict(lambda: STARTING_ELO)
 
-    def calculate_elo_update(
-        self,
-        current_elo: float,
-        opponent_elo: float,
-        won: bool,
-        k_factor: float = 32.0
-    ) -> float:
-        """
-        Calculate new ELO rating after a match.
-
-        Args:
-            current_elo: Current ELO rating
-            opponent_elo: Opponent's ELO rating (or market average)
-            won: True if won, False if lost
-            k_factor: K-factor (higher = more volatile)
-
-        Returns:
-            New ELO rating
-        """
-        # Expected score
-        expected = 1.0 / (1.0 + 10 ** ((opponent_elo - current_elo) / 400.0))
-
-        # Actual score
-        actual = 1.0 if won else 0.0
-
-        # New ELO
-        new_elo = current_elo + k_factor * (actual - expected)
-
-        return new_elo
-
-    def load_existing_traders(self):
-        """Load existing traders from database."""
-        print("\n[1/7] Loading existing traders from database...")
-
+    def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        conn.execute("PRAGMA journal_mode=WAL")
+        return conn
 
-        cursor.execute("""
+    # ── Step 1: Load seed ELO ────────────────────────────────────────────
+
+    def load_seed_elos(self, cur: sqlite3.Cursor):
+        """
+        Seed in-memory ELO from DB.
+
+        If --reset: everyone starts at 1500.
+        Otherwise: use existing comprehensive_elo if present (allows incremental
+        re-runs without wiping prior ratings).
+        """
+        if self.reset:
+            print("  --reset flag: all traders start at 1500")
+            return
+
+        cur.execute("""
             SELECT address, comprehensive_elo
             FROM traders
             WHERE comprehensive_elo IS NOT NULL
         """)
-
-        traders = cursor.fetchall()
-        conn.close()
-
-        for address, elo in traders:
+        loaded = 0
+        for address, elo in cur.fetchall():
             if elo:
-                self.trader_elo[address] = elo
+                self.elo[address] = float(elo)
+                loaded += 1
+        print(f"  Seeded {loaded:,} existing ELO ratings from DB")
 
-        print(f"  Loaded {len(traders)} existing traders")
-        print(f"  Average existing ELO: {sum(self.trader_elo.values()) / len(self.trader_elo):.0f}" if self.trader_elo else "  No existing ELO data")
+    # ── Step 2: Process each resolved market ─────────────────────────────
 
-    def load_market_resolutions(self):
-        """Load market resolutions from database."""
-        print("\n[2/7] Loading market resolutions...")
-
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-
-        # Get resolved markets from database
-        # Note: Adjust column names based on your schema
-        cursor.execute("""
-            SELECT DISTINCT market_id
-            FROM markets
-            WHERE resolved = 1 OR closed = 1
-        """)
-
-        resolved_markets = cursor.fetchall()
-        conn.close()
-
-        print(f"  Found {len(resolved_markets)} resolved markets")
-        print(f"  Note: Resolution outcomes must be manually verified")
-        print(f"  TODO: Query Polymarket API for actual resolutions")
-
-        # For now, we'll calculate ELO based on trade activity
-        # Real implementation should fetch actual resolutions from Polymarket API
-
-    def load_historical_trades(self) -> List[Dict]:
+    def process_market(self, market: dict, traders: list[dict]) -> int:
         """
-        Load historical trades from database.
+        Update ELO for all traders in one resolved market.
 
-        Returns:
-            List of trade dictionaries sorted by timestamp
+        Returns number of ELO updates applied.
         """
-        print("\n[3/7] Loading historical trades from database...")
+        winning_outcome_norm = normalise_outcome(market['winning_outcome'])
+        if not winning_outcome_norm:
+            return 0
 
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        # Partition into winners and losers
+        winners = [t for t in traders if normalise_outcome(t['outcome']) == winning_outcome_norm]
+        losers  = [t for t in traders if normalise_outcome(t['outcome']) != winning_outcome_norm]
 
-        # Get all trades sorted chronologically
-        cursor.execute("""
-            SELECT
-                trader_address,
-                market_id,
-                outcome,
-                shares,
-                price,
-                timestamp
-            FROM trades
-            WHERE trader_address IN (
-                SELECT address FROM traders WHERE comprehensive_elo IS NOT NULL
+        if not winners or not losers:
+            # If everyone bet the same side (or no one on one side), no ELO movement
+            return 0
+
+        # Market difficulty: fewer total participants → harder market (they had less
+        # information / competition to help them decide)
+        n_traders = len(traders)
+        difficulty = max(0.5, min(1.5, 1.0 + (10 - n_traders) / 20.0))
+
+        # Average ELO of winners and losers (used as "opponent" for each side)
+        avg_winner_elo = sum(self.elo[t['trader_address']] for t in winners) / len(winners)
+        avg_loser_elo  = sum(self.elo[t['trader_address']] for t in losers)  / len(losers)
+
+        # Max shares in this market (used to normalise bet size)
+        max_shares = max(t['total_shares'] for t in traders)
+
+        updates = 0
+
+        for trader in winners:
+            addr = trader['trader_address']
+            bet_size_norm = min(trader['total_shares'] / max_shares, 2.0) if max_shares > 0 else 1.0
+            adjusted_k = K_FACTOR * bet_size_norm * difficulty
+
+            self.elo[addr] = update_elo(
+                self.elo[addr], avg_loser_elo, won=True, k_factor=adjusted_k
             )
-            ORDER BY timestamp ASC
-        """)
+            updates += 1
 
-        trades = []
-        for row in cursor.fetchall():
-            trader_address, market_id, outcome, shares, price, timestamp = row
-            trades.append({
-                'trader_address': trader_address,
-                'market_id': market_id,
-                'outcome': outcome,
-                'shares': shares,
-                'price': price,
-                'timestamp': timestamp,
-                'is_buy': shares > 0
-            })
+        for trader in losers:
+            addr = trader['trader_address']
+            bet_size_norm = min(trader['total_shares'] / max_shares, 2.0) if max_shares > 0 else 1.0
+            adjusted_k = K_FACTOR * bet_size_norm * difficulty
 
-        conn.close()
+            self.elo[addr] = update_elo(
+                self.elo[addr], avg_winner_elo, won=False, k_factor=adjusted_k
+            )
+            updates += 1
 
-        print(f"  Loaded {len(trades):,} historical trades")
-        if trades:
-            print(f"  Date range: {trades[0]['timestamp']} → {trades[-1]['timestamp']}")
+        return updates
 
-        return trades
+    # ── Step 3: Persist results ───────────────────────────────────────────
 
-    def calculate_elo_from_trades(self, trades: List[Dict]):
-        """
-        Calculate ELO ratings from historical trades.
-
-        This is a simplified approach that updates ELO based on:
-        - Trading activity (active traders gain ELO)
-        - Trade profitability (winning trades gain ELO)
-
-        Real implementation should use actual market resolutions.
-
-        Args:
-            trades: List of historical trades sorted chronologically
-        """
-        print("\n[4/7] Calculating ELO from historical trades...")
-        print("  Note: Using simplified ELO calculation")
-        print("  TODO: Integrate actual market resolutions for accurate ELO")
-
-        # Group trades by market
-        market_trades = defaultdict(list)
-        for trade in trades:
-            market_trades[trade['market_id']].append(trade)
-
-        processed = 0
-        for market_id, market_trade_list in market_trades.items():
-            # For each market, update ELO based on participation
-            # This is a placeholder - real implementation needs resolutions
-
-            traders_in_market = set(t['trader_address'] for t in market_trade_list)
-
-            # Simple heuristic: traders who trade more get slight ELO boost
-            # (This is NOT accurate - just demonstrates the process)
-            for trader in traders_in_market:
-                trader_trades_count = sum(1 for t in market_trade_list if t['trader_address'] == trader)
-
-                # Minimal adjustment for demonstration
-                # Real version: use market resolution to determine winners/losers
-                if trader_trades_count > 3:  # Active trader
-                    current_elo = self.trader_elo[trader]
-                    # Tiny boost for being active (placeholder)
-                    self.trader_elo[trader] = current_elo + 0.1
-
-            processed += 1
-            if processed % 100 == 0:
-                print(f"  Processed {processed:,} / {len(market_trades):,} markets...", end='\r')
-
-        print(f"\n  Processed {len(market_trades):,} markets")
-        print(f"  Updated ELO for {len(self.trader_elo):,} traders")
-
-    def calculate_elo_from_resolutions(self):
-        """
-        Calculate ELO from market resolutions (accurate method).
-
-        This requires fetching actual resolution data from Polymarket API.
-        Placeholder for now.
-        """
-        print("\n[5/7] Calculating ELO from market resolutions...")
-        print("  ⚠️  WARNING: Market resolution data not yet integrated")
-        print("  Current implementation uses simplified trade activity heuristic")
-        print("")
-        print("  To implement accurate ELO calculation:")
-        print("  1. Query Polymarket Gamma API for market resolutions")
-        print("  2. Determine which traders bet correctly (outcome = resolution)")
-        print("  3. Update ELO: winners gain points from losers")
-        print("  4. Process chronologically by resolution date")
-        print("")
-        print("  Skipping for now - using trade activity heuristic instead")
-
-    def save_to_database(self):
-        """Save calculated ELO ratings to database."""
-        print("\n[6/7] Saving ELO ratings to database...")
-
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+    def save_elos(self, conn: sqlite3.Connection):
+        """Write all computed ELOs back to traders.comprehensive_elo."""
+        cur = conn.cursor()
+        now = datetime.now().isoformat()
 
         updated = 0
-        for trader_address, elo in self.trader_elo.items():
-            cursor.execute("""
+        for address, elo in self.elo.items():
+            cur.execute("""
                 UPDATE traders
-                SET
-                    comprehensive_elo = ?,
+                SET comprehensive_elo = ?,
                     elo_last_updated = ?
                 WHERE address = ?
-            """, (elo, datetime.now().isoformat(), trader_address))
-
-            if cursor.rowcount > 0:
+            """, (round(elo, 4), now, address))
+            if cur.rowcount > 0:
                 updated += 1
 
         conn.commit()
-        conn.close()
+        return updated
 
-        print(f"  Updated {updated:,} traders")
+    # ── Step 4: Statistics ────────────────────────────────────────────────
 
-    def print_statistics(self):
-        """Print ELO distribution statistics."""
-        print("\n[7/7] ELO Rating Statistics:")
-        print("=" * 70)
-
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-
-        # Overall stats
-        cursor.execute("""
+    def print_stats(self, cur: sqlite3.Cursor):
+        cur.execute("""
             SELECT
-                COUNT(*) as count,
-                AVG(comprehensive_elo) as avg_elo,
-                MIN(comprehensive_elo) as min_elo,
-                MAX(comprehensive_elo) as max_elo,
-                STDEV(comprehensive_elo) as std_elo
+                COUNT(*) as n,
+                AVG(comprehensive_elo),
+                MIN(comprehensive_elo),
+                MAX(comprehensive_elo)
             FROM traders
             WHERE comprehensive_elo IS NOT NULL
         """)
-
-        stats = cursor.fetchone()
-        count, avg, min_elo, max_elo, std = stats
-
-        print(f"Total Traders:     {count:,}")
-        print(f"Average ELO:       {avg:.0f}")
-        print(f"ELO Range:         {min_elo:.0f} - {max_elo:.0f}")
-        print(f"Std Deviation:     {std:.0f}" if std else "Std Deviation:     N/A")
+        n, avg, lo, hi = cur.fetchone()
+        print(f"  Total traders with ELO : {n:,}")
+        print(f"  ELO range              : {lo:.0f} – {hi:.0f}")
+        print(f"  Average ELO            : {avg:.0f}")
         print()
 
-        # Elite traders
-        cursor.execute("""
-            SELECT COUNT(*)
-            FROM traders
-            WHERE comprehensive_elo >= 1550
-        """)
-        elite = cursor.fetchone()[0]
-        print(f"Elite Traders (≥1550):     {elite:,} ({elite/count*100:.1f}%)")
+        for label, threshold in [('Elite (≥1550)', 1550), ('Expert (≥1600)', 1600), ('Master (≥1700)', 1700)]:
+            cur.execute("SELECT COUNT(*) FROM traders WHERE comprehensive_elo >= ?", (threshold,))
+            cnt = cur.fetchone()[0]
+            pct = cnt / n * 100 if n else 0
+            print(f"  {label:<20} : {cnt:>5,}  ({pct:.1f}%)")
 
-        cursor.execute("""
-            SELECT COUNT(*)
-            FROM traders
-            WHERE comprehensive_elo >= 1600
-        """)
-        expert = cursor.fetchone()[0]
-        print(f"Expert Traders (≥1600):    {expert:,} ({expert/count*100:.1f}%)")
-
-        cursor.execute("""
-            SELECT COUNT(*)
-            FROM traders
-            WHERE comprehensive_elo >= 1700
-        """)
-        master = cursor.fetchone()[0]
-        print(f"Master Traders (≥1700):    {master:,} ({master/count*100:.1f}%)")
         print()
-
-        # Top 10 traders
-        cursor.execute("""
-            SELECT address, comprehensive_elo
+        print("  Top 15 traders:")
+        cur.execute("""
+            SELECT address, comprehensive_elo, roi_percentage, closed_positions
             FROM traders
             WHERE comprehensive_elo IS NOT NULL
             ORDER BY comprehensive_elo DESC
-            LIMIT 10
+            LIMIT 15
         """)
+        for rank, (addr, elo, roi, closed) in enumerate(cur.fetchall(), 1):
+            roi_str = f"{roi:+.1f}%" if roi is not None else "n/a"
+            print(f"    {rank:>2}. {addr[:6]}...{addr[-4:]}  ELO={elo:>7.1f}  "
+                  f"ROI={roi_str:>7}  closed_pos={closed}")
 
-        top_traders = cursor.fetchall()
-        print("Top 10 Traders:")
-        for i, (address, elo) in enumerate(top_traders, 1):
-            short_addr = address[:6] + "..." + address[-4:]
-            print(f"  {i:2d}. {short_addr}  ELO: {elo:.0f}")
-
-        conn.close()
-        print("=" * 70)
+    # ── Main entry ────────────────────────────────────────────────────────
 
     def run(self):
-        """Run complete ELO backfill process."""
         print("\n" + "=" * 70)
-        print("  HISTORICAL ELO RATING BACKFILL")
+        print("  HISTORICAL ELO BACKFILL  (accurate — resolution-based)")
         print("=" * 70)
+        if self.dry_run:
+            print("  *** DRY RUN — no changes will be written to database ***")
+            print()
 
-        try:
-            # Load existing data
-            self.load_existing_traders()
-            self.load_market_resolutions()
+        conn = self._connect()
+        cur  = conn.cursor()
 
-            # Load and process trades
-            trades = self.load_historical_trades()
+        # 1. Seed
+        print("\n[1/4] Seeding ELO ratings...")
+        self.load_seed_elos(cur)
 
-            if not trades:
-                print("\n❌ No historical trades found!")
-                print("   Make sure monitoring has been running and trades are in database")
-                return
+        # 2. Load resolved markets
+        print("\n[2/4] Loading resolved markets...")
+        markets = load_resolved_markets(cur)
+        print(f"  Found {len(markets):,} resolved markets with trader activity")
 
-            # Calculate ELO
-            self.calculate_elo_from_trades(trades)
-            self.calculate_elo_from_resolutions()
+        if not markets:
+            print("\n  ⚠️  No resolved markets found.")
+            print("  Run: python scripts/fetch_market_resolutions.py")
+            conn.close()
+            return
 
-            # Save results
-            self.save_to_database()
+        # 3. Process chronologically
+        print(f"\n[3/4] Replaying {len(markets):,} markets chronologically...")
+        total_updates = 0
+        skipped = 0
 
-            # Show statistics
-            self.print_statistics()
+        for i, market in enumerate(markets, 1):
+            traders = load_market_traders(cur, market['market_id'])
 
-            print("\n✅ ELO backfill complete!")
-            print("\nNext steps:")
-            print("  1. Verify ELO distribution looks reasonable")
-            print("  2. Check that elite traders (≥1550) are identified")
-            print("  3. Restart System Observer to use new ELO ratings")
-            print("  4. Consensus detection will now work immediately")
+            if not traders:
+                skipped += 1
+                continue
 
-        except Exception as e:
-            print(f"\n❌ Error during ELO backfill: {e}")
-            import traceback
-            traceback.print_exc()
-            sys.exit(1)
+            updates = self.process_market(market, traders)
+            total_updates += updates
+
+            if i % 20 == 0 or i == len(markets):
+                unique_traders = len(self.elo)
+                print(
+                    f"  [{i:>5}/{len(markets)}]  ELO updates={total_updates:,}  "
+                    f"traders tracked={unique_traders:,}",
+                    end='\r',
+                    flush=True,
+                )
+
+        print()  # newline after \r
+        print(f"  Markets processed  : {len(markets) - skipped:,}")
+        print(f"  Markets skipped    : {skipped:,}  (no BUY trades found)")
+        print(f"  Total ELO updates  : {total_updates:,}")
+        print(f"  Unique traders     : {len(self.elo):,}")
+
+        # 4. Save
+        if self.dry_run:
+            print("\n[4/4] Dry run — skipping database write")
+            # Still show stats from in-memory data
+            elo_vals = list(self.elo.values())
+            if elo_vals:
+                elite = sum(1 for e in elo_vals if e >= 1550)
+                print(f"\n  In-memory ELO range : {min(elo_vals):.0f} – {max(elo_vals):.0f}")
+                print(f"  Average ELO         : {sum(elo_vals)/len(elo_vals):.0f}")
+                print(f"  Elite traders       : {elite:,}")
+        else:
+            print("\n[4/4] Writing ELO ratings to database...")
+            written = self.save_elos(conn)
+            print(f"  Updated {written:,} trader records")
+
+        # 5. Stats from DB
+        if not self.dry_run:
+            print("\n" + "=" * 70)
+            print("  RESULTS")
+            print("=" * 70)
+            self.print_stats(cur)
+
+        conn.close()
+
+        print("\n" + "=" * 70)
+        if self.dry_run:
+            print("  DRY RUN complete — re-run without --dry-run to apply changes")
+        else:
+            print("  ✅  BACKFILL COMPLETE")
+            print()
+            print("  Next steps:")
+            print("    1. Restart System Observer to pick up new ELO ratings")
+            print("    2. Check consensus detection — elite traders should now appear")
+            print("    3. Review top traders to validate ELO makes intuitive sense")
+        print("=" * 70)
 
 
 def main():
-    """Main entry point."""
-    calculator = ELOCalculator()
-    calculator.run()
+    parser = argparse.ArgumentParser(
+        description='Backfill historical ELO ratings using resolved market outcomes'
+    )
+    parser.add_argument('--dry-run', action='store_true',
+                        help='Calculate ELO but do not write to database')
+    parser.add_argument('--reset', action='store_true',
+                        help='Reset all ELO to 1500 before backfill (full recalculation)')
+    parser.add_argument('--db', default='data/polymarket_tracker.db',
+                        help='Path to SQLite database')
+    args = parser.parse_args()
+
+    backfill = ELOBackfill(
+        db_path=args.db,
+        dry_run=args.dry_run,
+        reset=args.reset,
+    )
+    backfill.run()
 
 
 if __name__ == "__main__":
