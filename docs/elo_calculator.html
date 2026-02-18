@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polymarket ELO Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #0f172a; color: #e2e8f0; font-family: 'Inter', system-ui, sans-serif; }
+    input[type=range] { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 3px; outline: none; cursor: pointer; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; cursor: pointer; }
+    input[type=range].blue  { background: linear-gradient(to right, #3b82f6 var(--pct), #1e293b var(--pct)); }
+    input[type=range].blue::-webkit-slider-thumb  { background: #3b82f6; }
+    input[type=range].green { background: linear-gradient(to right, #22c55e var(--pct), #1e293b var(--pct)); }
+    input[type=range].green::-webkit-slider-thumb { background: #22c55e; }
+    input[type=range].purple{ background: linear-gradient(to right, #a855f7 var(--pct), #1e293b var(--pct)); }
+    input[type=range].purple::-webkit-slider-thumb{ background: #a855f7; }
+    .bar-fill { transition: width 0.3s ease; }
+    .elo-number { transition: all 0.2s ease; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; }
+    .step-arrow { color: #64748b; font-size: 1.2rem; }
+  </style>
+</head>
+<body class="min-h-screen p-4">
+
+<div class="max-w-4xl mx-auto">
+
+  <!-- Header -->
+  <div class="text-center mb-6">
+    <h1 class="text-3xl font-bold text-white mb-1">ELO Rating Calculator</h1>
+    <p class="text-slate-400">Interactive simulator for the Polymarket Trader Intelligence System</p>
+  </div>
+
+  <!-- Preset Buttons -->
+  <div class="card p-4 mb-4">
+    <p class="text-xs text-slate-400 uppercase font-semibold mb-3">Preset Profiles</p>
+    <div class="flex flex-wrap gap-2">
+      <button onclick="loadPreset('highWinNegROI')"   class="preset-btn bg-orange-900 hover:bg-orange-700 text-orange-200 text-xs px-3 py-1.5 rounded-full transition">💀 High Win, Negative ROI</button>
+      <button onclick="loadPreset('moderateExcellent')" class="preset-btn bg-blue-900 hover:bg-blue-700 text-blue-200 text-xs px-3 py-1.5 rounded-full transition">🏆 Moderate Win, Excellent ROI</button>
+      <button onclick="loadPreset('eliteBreakeven')"  class="preset-btn bg-green-900 hover:bg-green-700 text-green-200 text-xs px-3 py-1.5 rounded-full transition">✅ Elite Win, Breakeven ROI</button>
+      <button onclick="loadPreset('poorEverything')"  class="preset-btn bg-red-900 hover:bg-red-700 text-red-200 text-xs px-3 py-1.5 rounded-full transition">☠️ Poor Everything</button>
+      <button onclick="loadPreset('average')"         class="preset-btn bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs px-3 py-1.5 rounded-full transition">➖ Average Trader</button>
+      <button onclick="loadPreset('legendary')"       class="preset-btn bg-yellow-900 hover:bg-yellow-700 text-yellow-200 text-xs px-3 py-1.5 rounded-full transition">👑 Legendary</button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+
+    <!-- Left: Inputs -->
+    <div class="card p-5 space-y-5">
+      <p class="text-xs text-slate-400 uppercase font-semibold">Trader Profile</p>
+
+      <!-- Performance inputs -->
+      <div>
+        <p class="text-xs text-slate-500 uppercase font-semibold mb-3">Performance</p>
+
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between text-sm mb-1">
+              <span class="text-slate-300">Win Rate</span>
+              <span id="winRateVal" class="text-green-400 font-mono font-bold">50%</span>
+            </div>
+            <input type="range" id="winRate" class="w-full green" min="0" max="100" value="50"
+                   oninput="updateSlider(this,'winRateVal', v => v+'%'); recalc()">
+          </div>
+
+          <div>
+            <div class="flex justify-between text-sm mb-1">
+              <span class="text-slate-300">Avg ROI</span>
+              <span id="roiVal" class="text-blue-400 font-mono font-bold">0%</span>
+            </div>
+            <input type="range" id="roi" class="w-full blue" min="-100" max="200" value="0"
+                   oninput="updateSlider(this,'roiVal', v => (v>=0?'+':'')+v+'%'); recalc()">
+          </div>
+
+          <div>
+            <div class="flex justify-between text-sm mb-1">
+              <span class="text-slate-300">Realized P&L</span>
+              <span id="pnlVal" class="text-blue-400 font-mono font-bold">$0</span>
+            </div>
+            <input type="range" id="pnl" class="w-full blue" min="-10000" max="50000" step="500" value="0"
+                   oninput="updateSlider(this,'pnlVal', v => (v>=0?'$':'-$')+Math.abs(v).toLocaleString()); recalc()">
+          </div>
+
+          <div>
+            <div class="flex justify-between text-sm mb-1">
+              <span class="text-slate-300">Closed Positions</span>
+              <span id="posVal" class="text-blue-400 font-mono font-bold">0</span>
+            </div>
+            <input type="range" id="positions" class="w-full blue" min="0" max="200" value="0"
+                   oninput="updateSlider(this,'posVal', v => v); recalc()">
+          </div>
+        </div>
+      </div>
+
+      <!-- Behavioral inputs -->
+      <div>
+        <p class="text-xs text-slate-500 uppercase font-semibold mb-3">Behavioral Metrics</p>
+        <div class="space-y-4">
+
+          <div>
+            <div class="flex justify-between text-sm mb-1">
+              <span class="text-slate-300">Kelly Alignment <span class="text-slate-500 text-xs">(position sizing)</span></span>
+              <span id="kellyVal" class="text-purple-400 font-mono font-bold">0.50</span>
+            </div>
+            <input type="range" id="kelly" class="w-full purple" min="0" max="100" value="50"
+                   oninput="updateSlider(this,'kellyVal', v => (v/100).toFixed(2)); recalc()">
+          </div>
+
+          <div>
+            <div class="flex justify-between text-sm mb-1">
+              <span class="text-slate-300">Patience Score <span class="text-slate-500 text-xs">(selectivity)</span></span>
+              <span id="patienceVal" class="text-purple-400 font-mono font-bold">0.50</span>
+            </div>
+            <input type="range" id="patience" class="w-full purple" min="0" max="100" value="50"
+                   oninput="updateSlider(this,'patienceVal', v => (v/100).toFixed(2)); recalc()">
+          </div>
+
+          <div>
+            <div class="flex justify-between text-sm mb-1">
+              <span class="text-slate-300">Timing Quality <span class="text-slate-500 text-xs">(entry/exit)</span></span>
+              <span id="timingVal" class="text-purple-400 font-mono font-bold">0.50</span>
+            </div>
+            <input type="range" id="timing" class="w-full purple" min="0" max="100" value="50"
+                   oninput="updateSlider(this,'timingVal', v => (v/100).toFixed(2)); recalc()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Result -->
+    <div class="space-y-4">
+
+      <!-- Final ELO -->
+      <div class="card p-5 text-center">
+        <p class="text-xs text-slate-400 uppercase font-semibold mb-2">Final ELO Rating</p>
+        <div id="eloNumber" class="elo-number text-6xl font-black mb-2 text-white">1500</div>
+        <div id="eloTier" class="text-2xl font-bold mb-3">✅ AVERAGE</div>
+
+        <!-- ELO Bar -->
+        <div class="bg-slate-700 rounded-full h-4 overflow-hidden mb-1">
+          <div id="eloBar" class="bar-fill h-full rounded-full bg-green-500" style="width:50%"></div>
+        </div>
+        <div class="flex justify-between text-xs text-slate-500">
+          <span>0</span><span>1000</span><span>1500</span><span>2000</span><span>3000+</span>
+        </div>
+      </div>
+
+      <!-- Step Breakdown -->
+      <div class="card p-5">
+        <p class="text-xs text-slate-400 uppercase font-semibold mb-3">Calculation Breakdown</p>
+        <div class="space-y-2 font-mono text-sm">
+
+          <div class="flex justify-between">
+            <span class="text-slate-400">Base ELO</span>
+            <span id="bBase" class="text-white font-bold">1500</span>
+          </div>
+          <div class="step-arrow text-center">↓ × P&L Multiplier</div>
+          <div class="flex justify-between pl-4">
+            <span class="text-blue-400 text-xs">ROI mod</span>
+            <span id="bRoiMod" class="text-blue-400 text-xs">1.00×</span>
+          </div>
+          <div class="flex justify-between pl-4">
+            <span class="text-blue-400 text-xs">Profit mod</span>
+            <span id="bProfitMod" class="text-blue-400 text-xs">1.00×</span>
+          </div>
+          <div class="flex justify-between pl-4">
+            <span class="text-blue-400 text-xs">Quality mod</span>
+            <span id="bQualityMod" class="text-blue-400 text-xs">1.00×</span>
+          </div>
+          <div class="flex justify-between pl-4">
+            <span class="text-blue-400 text-xs">Confidence</span>
+            <span id="bConf" class="text-blue-400 text-xs">0.50</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">After P&L mult</span>
+            <span id="bAfterPnL" class="text-blue-300 font-bold">1500</span>
+          </div>
+          <div class="step-arrow text-center">↓ + Behavioral Bonus</div>
+          <div class="flex justify-between pl-4">
+            <span class="text-purple-400 text-xs">Kelly (+40 max)</span>
+            <span id="bKelly" class="text-purple-400 text-xs">0</span>
+          </div>
+          <div class="flex justify-between pl-4">
+            <span class="text-purple-400 text-xs">Patience (+30 max)</span>
+            <span id="bPatience" class="text-purple-400 text-xs">0</span>
+          </div>
+          <div class="flex justify-between pl-4">
+            <span class="text-purple-400 text-xs">Timing (+30 max)</span>
+            <span id="bTiming" class="text-purple-400 text-xs">0</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">After behavioral</span>
+            <span id="bAfterBehav" class="text-purple-300 font-bold">1500</span>
+          </div>
+          <div class="step-arrow text-center">↓ × Other Modifiers (1.05×)</div>
+          <div class="flex justify-between border-t border-slate-600 pt-2 mt-1">
+            <span class="text-white font-semibold">FINAL ELO</span>
+            <span id="bFinal" class="text-white font-black">1500</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Component Bars -->
+  <div class="card p-5 mb-4">
+    <p class="text-xs text-slate-400 uppercase font-semibold mb-4">Component Impact</p>
+    <div class="space-y-3" id="compBars"></div>
+  </div>
+
+  <!-- Key Insight -->
+  <div id="insightBox" class="card p-4 border-l-4 border-blue-500">
+    <p class="text-xs text-slate-400 uppercase font-semibold mb-1">Key Insight</p>
+    <p id="insightText" class="text-sm text-slate-300">Adjust the sliders to see how each component affects the final ELO rating.</p>
+  </div>
+
+</div>
+
+<script>
+const PRESETS = {
+  highWinNegROI:    { winRate:60, roi:-10, pnl:-500,  positions:50,  kelly:50, patience:50, timing:50 },
+  moderateExcellent:{ winRate:55, roi:45,  pnl:8500,  positions:100, kelly:85, patience:80, timing:70 },
+  eliteBreakeven:   { winRate:75, roi:2,   pnl:400,   positions:100, kelly:50, patience:50, timing:50 },
+  poorEverything:   { winRate:30, roi:-60, pnl:-6800, positions:100, kelly:20, patience:20, timing:40 },
+  average:          { winRate:50, roi:0,   pnl:0,     positions:25,  kelly:50, patience:50, timing:50 },
+  legendary:        { winRate:70, roi:85,  pnl:42000, positions:150, kelly:90, patience:88, timing:85 },
+};
+
+const TIERS = [
+  { min: 2500, label: '👑 LEGENDARY', color: '#f59e0b', bg: 'bg-yellow-500' },
+  { min: 1700, label: '👑 MASTER',    color: '#eab308', bg: 'bg-yellow-400' },
+  { min: 1600, label: '🏆 EXPERT',    color: '#a855f7', bg: 'bg-purple-500' },
+  { min: 1550, label: '🔥 ELITE',     color: '#3b82f6', bg: 'bg-blue-500'   },
+  { min: 1500, label: '✅ AVERAGE',   color: '#22c55e', bg: 'bg-green-500'  },
+  { min: 1400, label: '⚠️ BELOW AVG', color: '#f59e0b', bg: 'bg-yellow-500' },
+  { min: 1200, label: '🔻 POOR',      color: '#f97316', bg: 'bg-orange-500' },
+  { min:    0, label: '💀 CATASTROPHIC', color: '#ef4444', bg: 'bg-red-500' },
+];
+
+function getTier(elo) {
+  return TIERS.find(t => elo >= t.min) || TIERS[TIERS.length - 1];
+}
+
+function roiMod(roi) {
+  if (roi >= 100) return 2.50; if (roi >= 75) return 2.00;
+  if (roi >= 50)  return 1.70; if (roi >= 30) return 1.40;
+  if (roi >= 15)  return 1.20; if (roi >= 5)  return 1.10;
+  if (roi >= 0)   return 1.00; if (roi >= -10) return 0.90;
+  if (roi >= -25) return 0.75; if (roi >= -50) return 0.60;
+  return 0.40;
+}
+
+function profitMod(pnl) {
+  if (pnl >= 50000) return 1.40; if (pnl >= 25000) return 1.30;
+  if (pnl >= 10000) return 1.20; if (pnl >= 5000)  return 1.15;
+  if (pnl >= 1000)  return 1.08; if (pnl >= 0)     return 1.00;
+  if (pnl >= -1000) return 0.95; if (pnl >= -5000) return 0.85;
+  if (pnl >= -10000)return 0.70; return 0.50;
+}
+
+function qualityMod(wr) {
+  if (wr >= 0.75) return 1.15; if (wr >= 0.65) return 1.10;
+  if (wr >= 0.55) return 1.05; if (wr >= 0.45) return 1.00;
+  if (wr >= 0.35) return 0.95; return 0.90;
+}
+
+function confidence(pos) {
+  if (pos >= 100) return 1.00; if (pos >= 50) return 0.95;
+  if (pos >= 25)  return 0.85; if (pos >= 10) return 0.75;
+  if (pos >= 5)   return 0.60; return 0.50;
+}
+
+function calcElo(winRate, roi, pnl, positions, kelly, patience, timing) {
+  // Base ELO
+  const baseElo = 1500 + (winRate/100 - 0.50) * 200;
+
+  // P&L multiplier
+  const rm  = roiMod(roi);
+  const pm  = profitMod(pnl);
+  const qm  = qualityMod(winRate / 100);
+  const conf = confidence(positions);
+  const combined = rm * pm * qm;
+  const pnlMult = Math.max(0.40, Math.min(2.50, 1.0 + (combined - 1.0) * conf));
+
+  const afterPnL = baseElo * pnlMult;
+
+  // Behavioral bonus
+  const kellyBonus   = (kelly/100   - 0.5) * 2 * 40;
+  const patienceBonus= (patience/100 - 0.5) * 2 * 30;
+  const timingBonus  = (timing/100  - 0.5) * 2 * 30;
+  const behBonus = Math.max(-100, Math.min(100, kellyBonus + patienceBonus + timingBonus));
+
+  const afterBehav = afterPnL + behBonus;
+
+  // Other modifiers (simplified fixed 1.05x)
+  const finalElo = afterBehav * 1.05;
+
+  return {
+    baseElo, rm, pm, qm, conf, pnlMult, afterPnL,
+    kellyBonus, patienceBonus, timingBonus, behBonus,
+    afterBehav, finalElo
+  };
+}
+
+function updateSlider(el, labelId, fmt) {
+  const v = parseFloat(el.value);
+  const min = parseFloat(el.min), max = parseFloat(el.max);
+  const pct = ((v - min) / (max - min) * 100).toFixed(1) + '%';
+  el.style.setProperty('--pct', pct);
+  document.getElementById(labelId).textContent = fmt(v);
+}
+
+function fmt1(n) { return n.toFixed(1); }
+function fmtSign(n) { return (n >= 0 ? '+' : '') + n.toFixed(1); }
+
+function recalc() {
+  const winRate  = parseFloat(document.getElementById('winRate').value);
+  const roi      = parseFloat(document.getElementById('roi').value);
+  const pnl      = parseFloat(document.getElementById('pnl').value);
+  const positions= parseFloat(document.getElementById('positions').value);
+  const kelly    = parseFloat(document.getElementById('kelly').value);
+  const patience = parseFloat(document.getElementById('patience').value);
+  const timing   = parseFloat(document.getElementById('timing').value);
+
+  const r = calcElo(winRate, roi, pnl, positions, kelly, patience, timing);
+  const elo = Math.round(r.finalElo);
+  const tier = getTier(elo);
+
+  // ELO number
+  document.getElementById('eloNumber').textContent = elo.toLocaleString();
+  document.getElementById('eloNumber').style.color = tier.color;
+  document.getElementById('eloTier').textContent = tier.label;
+  document.getElementById('eloTier').style.color = tier.color;
+
+  // ELO bar (scale 0-3000+)
+  const barPct = Math.max(2, Math.min(100, elo / 3000 * 100));
+  const bar = document.getElementById('eloBar');
+  bar.style.width = barPct + '%';
+  bar.className = `bar-fill h-full rounded-full ${tier.bg}`;
+
+  // Breakdown
+  document.getElementById('bBase').textContent       = Math.round(r.baseElo).toLocaleString();
+  document.getElementById('bRoiMod').textContent     = r.rm.toFixed(2) + '×';
+  document.getElementById('bProfitMod').textContent  = r.pm.toFixed(2) + '×';
+  document.getElementById('bQualityMod').textContent = r.qm.toFixed(2) + '×';
+  document.getElementById('bConf').textContent       = r.conf.toFixed(2);
+  document.getElementById('bAfterPnL').textContent   = Math.round(r.afterPnL).toLocaleString();
+  document.getElementById('bKelly').textContent      = fmtSign(r.kellyBonus);
+  document.getElementById('bPatience').textContent   = fmtSign(r.patienceBonus);
+  document.getElementById('bTiming').textContent     = fmtSign(r.timingBonus);
+  document.getElementById('bAfterBehav').textContent = Math.round(r.afterBehav).toLocaleString();
+  document.getElementById('bFinal').textContent      = elo.toLocaleString();
+
+  // Component bars
+  const pnlContrib = Math.abs(r.afterPnL - r.baseElo);
+  const behContrib = Math.abs(r.behBonus);
+  const otherContrib = Math.abs(r.finalElo - r.afterBehav);
+  const total = Math.max(1, pnlContrib + behContrib + otherContrib + r.baseElo);
+
+  const comps = [
+    { label: 'Base ELO (Win Rate)', value: Math.round(r.baseElo), color: '#22c55e',  pct: r.baseElo / total * 100 },
+    { label: 'P&L Multiplier',      value: Math.round(r.afterPnL - r.baseElo), color: '#3b82f6', pct: pnlContrib / total * 100 },
+    { label: 'Behavioral Bonus',    value: Math.round(r.behBonus), color: '#a855f7', pct: behContrib / total * 100 },
+    { label: 'Other Modifiers',     value: Math.round(r.finalElo - r.afterBehav), color: '#f59e0b', pct: otherContrib / total * 100 },
+  ];
+
+  const compHtml = comps.map(c => `
+    <div>
+      <div class="flex justify-between text-sm mb-1">
+        <span class="text-slate-400">${c.label}</span>
+        <span style="color:${c.color}" class="font-mono font-bold">${c.value >= 0 ? '+' : ''}${c.value.toLocaleString()}</span>
+      </div>
+      <div class="bg-slate-700 rounded-full h-2 overflow-hidden">
+        <div class="bar-fill h-full rounded-full" style="width:${Math.max(1, Math.min(100, c.pct)).toFixed(1)}%; background:${c.color}"></div>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('compBars').innerHTML = compHtml;
+
+  // Insight
+  let insight = '';
+  if (roi < 0 && winRate > 55) {
+    insight = `⚠️ Despite a ${winRate}% win rate, negative ROI (${roi}%) causes a ${r.rm.toFixed(2)}× penalty on the P&L multiplier. The system correctly identifies this trader as unprofitable.`;
+  } else if (roi >= 30 && winRate < 60) {
+    insight = `✅ Despite a moderate ${winRate}% win rate, the strong ${roi}% ROI earns a ${r.rm.toFixed(2)}× P&L multiplier boost. ROI is the dominant factor — not win rate.`;
+  } else if (pnl < -2000) {
+    insight = `📉 Realized losses of $${Math.abs(pnl).toLocaleString()} apply a ${r.pm.toFixed(2)}× profit modifier. Large losses compound with ROI penalty.`;
+  } else if (elo >= 2000) {
+    insight = `👑 This is an exceptional trader profile. The P&L multiplier (${r.pnlMult.toFixed(2)}×) dominates — applied first, it magnifies everything else.`;
+  } else if (positions < 10) {
+    insight = `📊 With only ${positions} closed positions, confidence is ${r.conf.toFixed(2)} — ELO impact is dampened until more trades are tracked (target: 50+).`;
+  } else {
+    insight = `The P&L multiplier (${r.pnlMult.toFixed(2)}×) contributes the most to this rating. ROI modifier: ${r.rm.toFixed(2)}×, applied to base ELO of ${Math.round(r.baseElo)}.`;
+  }
+  document.getElementById('insightText').textContent = insight;
+}
+
+function loadPreset(name) {
+  const p = PRESETS[name];
+  if (!p) return;
+  const sets = {
+    winRate: p.winRate, roi: p.roi, pnl: p.pnl,
+    positions: p.positions, kelly: p.kelly, patience: p.patience, timing: p.timing
+  };
+  document.getElementById('winRate').value  = sets.winRate;
+  document.getElementById('roi').value      = sets.roi;
+  document.getElementById('pnl').value      = sets.pnl;
+  document.getElementById('positions').value= sets.positions;
+  document.getElementById('kelly').value    = sets.kelly;
+  document.getElementById('patience').value = sets.patience;
+  document.getElementById('timing').value   = sets.timing;
+
+  updateSlider(document.getElementById('winRate'),   'winRateVal', v => v+'%');
+  updateSlider(document.getElementById('roi'),       'roiVal',     v => (v>=0?'+':'')+v+'%');
+  updateSlider(document.getElementById('pnl'),       'pnlVal',     v => (v>=0?'$':'-$')+Math.abs(v).toLocaleString());
+  updateSlider(document.getElementById('positions'), 'posVal',     v => v);
+  updateSlider(document.getElementById('kelly'),     'kellyVal',   v => (v/100).toFixed(2));
+  updateSlider(document.getElementById('patience'),  'patienceVal',v => (v/100).toFixed(2));
+  updateSlider(document.getElementById('timing'),    'timingVal',  v => (v/100).toFixed(2));
+
+  recalc();
+}
+
+// Init sliders
+document.querySelectorAll('input[type=range]').forEach(el => {
+  const min = parseFloat(el.min), max = parseFloat(el.max), v = parseFloat(el.value);
+  const pct = ((v - min) / (max - min) * 100).toFixed(1) + '%';
+  el.style.setProperty('--pct', pct);
+});
+recalc();
+</script>
+</body>
+</html>
