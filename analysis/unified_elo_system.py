@@ -3664,6 +3664,7 @@ class UnifiedELOSystem:
                                 'avg_roi': pnl_stats['avg_roi'],
                                 'closed_positions': pnl_stats['closed_positions'],
                                 'open_positions': pnl_stats['open_positions'],
+                                'open_cost_basis': pnl_stats.get('open_cost_basis', 0.0),
                                 'total_invested': pnl_stats['total_invested'],
                                 'profitable_rate': pnl_stats['profitable_rate']
                             }
@@ -3862,9 +3863,14 @@ class UnifiedELOSystem:
                 'quality_modifier': float (0.90-1.15),
                 'confidence': float (0.50-1.00),
                 'combined_multiplier': float (0.40-2.50),
-                'raw_metrics': dict,
+                'raw_metrics': dict (includes unrealized_drag, adjusted_pnl, open_cost_basis),
                 'breakdown': str
             }
+
+        Note on unrealized_drag: since live market prices are unavailable, open position
+        cost basis is used as a conservative downside proxy (50% weight). This penalises
+        traders who have large amounts of capital stuck in unresolved positions without
+        inventing a price we don't have.
         """
         # Load data if not cached
         if not hasattr(self, 'pnl_cache'):
@@ -3898,8 +3904,20 @@ class UnifiedELOSystem:
         profitable_rate = pnl_data['profitable_rate']
         closed_positions = pnl_data['closed_positions']
 
+        # Unrealized exposure: capital in open positions treated as 50% loss drag.
+        # We have no live prices, so we conservatively assume open positions are worth
+        # their cost basis (break-even). If the trader is ahead on open positions the
+        # penalty is zero; if behind, they haven't closed yet so we can't reward them.
+        # Using half the cost basis as a conservative downside-only proxy.
+        open_cost_basis = pnl_data.get('open_cost_basis', 0.0)
+        unrealized_drag = -(open_cost_basis * 0.5) if open_cost_basis > 0 else 0.0
+
+        # Combine realized P&L with unrealized drag for profit modifier only
+        # (ROI modifier stays realized-only; it already captures per-trade efficiency)
+        adjusted_pnl = realized_pnl + unrealized_drag
+
         # Calculate component modifiers
-        profit_modifier = self.calculate_profit_modifier(realized_pnl)
+        profit_modifier = self.calculate_profit_modifier(adjusted_pnl)
         roi_modifier = self.calculate_roi_modifier(avg_roi)
         quality_modifier = self.calculate_position_quality_modifier(profitable_rate)
 
@@ -3917,7 +3935,7 @@ class UnifiedELOSystem:
 
         # Build breakdown string
         breakdown_parts = []
-        breakdown_parts.append(f"Profit: {profit_modifier:.2f}x (${realized_pnl:,.2f})")
+        breakdown_parts.append(f"Profit: {profit_modifier:.2f}x (${realized_pnl:,.2f} realized, ${unrealized_drag:,.2f} open drag)")
         breakdown_parts.append(f"ROI: {roi_modifier:.2f}x ({avg_roi:.1f}%)")
         breakdown_parts.append(f"Quality: {quality_modifier:.2f}x ({profitable_rate*100:.1f}% profitable)")
         breakdown_parts.append(f"Confidence: {confidence:.2f} ({closed_positions} closed)")
@@ -3933,10 +3951,13 @@ class UnifiedELOSystem:
             'combined_multiplier': round(final_combined, 3),
             'raw_metrics': {
                 'realized_pnl': round(realized_pnl, 2),
+                'unrealized_drag': round(unrealized_drag, 2),
+                'adjusted_pnl': round(adjusted_pnl, 2),
                 'avg_roi': round(avg_roi, 2),
                 'profitable_rate': round(profitable_rate, 3),
                 'closed_positions': closed_positions,
                 'open_positions': pnl_data['open_positions'],
+                'open_cost_basis': round(open_cost_basis, 2),
                 'total_invested': round(pnl_data['total_invested'], 2)
             },
             'breakdown': breakdown

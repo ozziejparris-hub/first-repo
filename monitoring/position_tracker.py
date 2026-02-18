@@ -324,6 +324,9 @@ class PositionTracker:
         # In production, you'd fetch current market prices from API
         unrealized_pnl = 0  # Placeholder - would need live market data
 
+        # Open position cost basis: capital still tied up in unresolved markets
+        open_cost_basis = sum(p.entry_total_cost for p in open_pos)
+
         # Average ROI
         rois = [p.roi_percent for p in closed if p.roi_percent is not None]
         avg_roi = sum(rois) / len(rois) if rois else 0
@@ -338,6 +341,7 @@ class PositionTracker:
         return {
             'realized_pnl': realized_pnl,
             'unrealized_pnl': unrealized_pnl,
+            'open_cost_basis': open_cost_basis,
             'total_pnl': realized_pnl + unrealized_pnl,
             'avg_roi': avg_roi,
             'total_invested': total_invested,
