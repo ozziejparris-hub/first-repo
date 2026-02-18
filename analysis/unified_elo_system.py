@@ -3666,7 +3666,9 @@ class UnifiedELOSystem:
                                 'open_positions': pnl_stats['open_positions'],
                                 'open_cost_basis': pnl_stats.get('open_cost_basis', 0.0),
                                 'total_invested': pnl_stats['total_invested'],
-                                'profitable_rate': pnl_stats['profitable_rate']
+                                # position_tracker returns profitable_rate as 0-100;
+                                # convert to 0.0-1.0 fraction for quality modifier
+                                'profitable_rate': pnl_stats['profitable_rate'] / 100.0
                             }
                             loaded_count += 1
                     except Exception as e:
@@ -3909,8 +3911,16 @@ class UnifiedELOSystem:
         # their cost basis (break-even). If the trader is ahead on open positions the
         # penalty is zero; if behind, they haven't closed yet so we can't reward them.
         # Using half the cost basis as a conservative downside-only proxy.
+        #
+        # GUARD: only apply the drag when the trader has closed positions. Without
+        # any closed history we have no P&L baseline, so the drag would fire purely
+        # because the trader is active — unfairly penalising good traders whose
+        # positions simply haven't resolved yet.
         open_cost_basis = pnl_data.get('open_cost_basis', 0.0)
-        unrealized_drag = -(open_cost_basis * 0.5) if open_cost_basis > 0 else 0.0
+        if open_cost_basis > 0 and closed_positions >= 1:
+            unrealized_drag = -(open_cost_basis * 0.5)
+        else:
+            unrealized_drag = 0.0
 
         # Combine realized P&L with unrealized drag for profit modifier only
         # (ROI modifier stays realized-only; it already captures per-trade efficiency)
