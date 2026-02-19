@@ -100,14 +100,15 @@ def main():
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT address, comprehensive_elo
+        SELECT address, base_category_elo
         FROM traders
-        WHERE comprehensive_elo IS NOT NULL
+        WHERE base_category_elo IS NOT NULL
+          AND base_category_elo > 1500.0001
           AND address IN ({})
     """.format(','.join('?' * len(eligible))), list(eligible.keys()))
 
     base_elos = dict(cur.fetchall())
-    print(f"  Matched {len(base_elos):,} eligible traders in DB")
+    print(f"  Matched {len(base_elos):,} eligible traders in DB (base_category_elo)")
 
     if not base_elos:
         print("\n  No eligible traders found. Nothing to do.")

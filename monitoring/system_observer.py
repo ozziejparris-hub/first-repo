@@ -561,11 +561,32 @@ class SystemObserver:
 
     def _get_monitoring_activity(self) -> Dict:
         """
-        Get monitoring activity status from database.
+        Get monitoring activity status.
+
+        Primary signal: logs/monitoring.log last-modified time (written every
+        cycle regardless of trade activity).
+        Fallback: monitoring_status table (only updated when trades are found).
 
         Returns:
             dict: Activity status including last_activity timestamp
         """
+        # --- Primary: log file mtime (reliable heartbeat) ---
+        log_path = 'logs/monitoring.log'
+        try:
+            import os
+            if os.path.exists(log_path):
+                mtime = os.path.getmtime(log_path)
+                last_activity = datetime.fromtimestamp(mtime)
+                minutes_since = (datetime.now().timestamp() - mtime) / 60
+                return {
+                    'last_activity': last_activity,
+                    'process_id': None,
+                    'minutes_since_activity': minutes_since
+                }
+        except Exception as e:
+            print(f"[OBSERVER] Could not read log mtime: {e}")
+
+        # --- Fallback: monitoring_status table ---
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()

@@ -276,9 +276,10 @@ class ELOBackfill:
             cur.execute("""
                 UPDATE traders
                 SET comprehensive_elo = ?,
+                    base_category_elo = ?,
                     elo_last_updated = ?
                 WHERE address = ?
-            """, (round(elo, 4), now, address))
+            """, (round(elo, 4), round(elo, 4), now, address))
             if cur.rowcount > 0:
                 updated += 1
 
