@@ -99,16 +99,39 @@ def main():
     conn.execute("PRAGMA journal_mode=WAL")
     cur = conn.cursor()
 
+    placeholders = ','.join('?' * len(eligible))
     cur.execute("""
-        SELECT address, base_category_elo
+        SELECT address, base_category_elo, comprehensive_elo, pnl_modifier
         FROM traders
-        WHERE base_category_elo IS NOT NULL
-          AND base_category_elo > 1500.0001
-          AND address IN ({})
-    """.format(','.join('?' * len(eligible))), list(eligible.keys()))
+        WHERE address IN ({})
+    """.format(placeholders), list(eligible.keys()))
 
-    base_elos = dict(cur.fetchall())
-    print(f"  Matched {len(base_elos):,} eligible traders in DB (base_category_elo)")
+    rows = cur.fetchall()
+
+    base_elos = {}       # addr -> base ELO to use
+    skipped_stale = 0    # had a modifier but no safe base — skip to avoid stacking
+
+    for addr, base_cat, comp_elo, pnl_mod in rows:
+        # Prefer base_category_elo when it was set by backfill (meaningfully != 1500)
+        if base_cat is not None and abs(base_cat - 1500.0) > 0.0001:
+            base_elos[addr] = base_cat
+        # Fallback: comprehensive_elo is safe to use only if no modifier has been
+        # applied yet (pnl_modifier == 1.0 or NULL), otherwise we'd stack
+        elif comp_elo is not None and (pnl_mod is None or abs(pnl_mod - 1.0) < 0.0001):
+            base_elos[addr] = comp_elo
+        else:
+            # Modifier already applied and no clean base available — skip
+            skipped_stale += 1
+
+    from_backfill = sum(1 for a, b, c, p in rows
+                        if b is not None and abs(b - 1500.0) > 0.0001 and a in base_elos)
+    from_comp = len(base_elos) - from_backfill
+
+    print(f"  Matched {len(base_elos):,} eligible traders in DB")
+    print(f"    From base_category_elo (backfilled) : {from_backfill:,}")
+    print(f"    From comprehensive_elo  (unmodified): {from_comp:,}")
+    if skipped_stale:
+        print(f"    Skipped (modified, no clean base)  : {skipped_stale:,}")
 
     if not base_elos:
         print("\n  No eligible traders found. Nothing to do.")
