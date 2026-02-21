@@ -292,7 +292,7 @@ class SystemObserver:
                         mon_activity = metrics['monitoring_activity']
                         minutes_since = mon_activity.get('minutes_since_activity', 0)
 
-                        if minutes_since > 240:
+                        if minutes_since > 60:
                             print(f"[OBSERVER] ⚠️ MONITORING FROZEN DETECTED: {minutes_since:.0f} minutes silence")
 
                             # Send dedicated freeze alert with diagnostics
