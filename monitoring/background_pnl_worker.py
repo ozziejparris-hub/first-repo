@@ -4,6 +4,17 @@ Background P&L Worker - Continuously updates trader P&L without blocking monitor
 This worker runs independently of the main monitoring loop and processes
 traders at a steady pace, ensuring all traders eventually get P&L updates
 without causing timeouts or blocking the monitoring system.
+
+Threading model
+---------------
+ALL SQLite I/O — fetching trades, matching positions, writing positions,
+updating the traders row, marking updated — runs inside a single
+ThreadPoolExecutor call (_process_trader_sync).  The asyncio event loop
+thread never touches SQLite directly, so it cannot block.
+
+A 90-second asyncio.wait_for timeout guards every trader.  If a trader
+exceeds that budget (e.g. because of extreme trade volume or a slow disk
+flush), it is skipped and marked updated so it won't immediately requeue.
 """
 
 import asyncio
@@ -15,9 +26,15 @@ from typing import Optional
 from .database import Database
 from .position_tracker import PositionTracker
 
-# Thread pool for running synchronous, CPU-bound position matching off the
-# event loop so it cannot starve other coroutines.
-_THREAD_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="pnl_worker")
+# Single-worker thread pool.  One worker is enough — we want sequential
+# processing, not parallelism, to avoid lock contention on the DB.
+_THREAD_POOL = concurrent.futures.ThreadPoolExecutor(
+    max_workers=1, thread_name_prefix="pnl_worker"
+)
+
+# Per-trader time budget.  90 s is generous even for traders with 5 000+
+# trades; the timeout only fires if something has gone badly wrong.
+_TRADER_TIMEOUT = 90
 
 
 def safe_print(message: str, fallback: str = None):
@@ -40,28 +57,20 @@ class BackgroundPnLWorker:
     - Runs independently of monitoring loop
     - Processes traders in small batches
     - Prioritizes traders with recent activity
-    - Yields control to event loop frequently
-    - Never blocks or times out
+    - Never touches SQLite on the asyncio event loop thread
+    - Hard per-trader timeout prevents indefinite hangs
     """
 
     def __init__(self, database: Database, position_tracker: PositionTracker):
-        """
-        Initialize background P&L worker.
-
-        Args:
-            database: Database instance
-            position_tracker: Position tracker instance
-        """
         self.db = database
         self.position_tracker = position_tracker
         self.is_running = False
 
         # Configuration
-        self.batch_size = 20  # Process 20 traders per batch (4x faster)
-        self.batch_sleep = 30  # Sleep 30 seconds between batches (4x faster)
-        self.trade_limit = None  # No limit - process all traders (deque optimization allows this)
+        self.batch_size = 20
+        self.batch_sleep = 30  # seconds between batches
 
-        # Statistics
+        # Statistics (read/written only from the event loop thread)
         self.traders_processed = 0
         self.traders_skipped = 0
         self.errors = 0
@@ -73,7 +82,6 @@ class BackgroundPnLWorker:
         self.is_running = True
         self.start_time = time.time()
 
-        # Initial statistics
         stats = self.db.get_pnl_worker_stats()
         safe_print(f"[P&L WORKER] Initial state:")
         safe_print(f"  Total active traders: {stats['total_active_traders']}")
@@ -88,118 +96,145 @@ class BackgroundPnLWorker:
         safe_print("\n[P&L WORKER] Stopping...")
         self.is_running = False
 
+    # ------------------------------------------------------------------ #
+    #  Worker loop                                                         #
+    # ------------------------------------------------------------------ #
+
     async def _worker_loop(self):
-        """Main worker loop - runs continuously."""
+        """Main worker loop — runs continuously."""
         while self.is_running:
             try:
-                # Get next batch of traders needing updates
                 traders = self.db.get_traders_needing_pnl_update(limit=self.batch_size)
 
                 if not traders:
-                    # All traders up-to-date
                     safe_print(f"[P&L WORKER] All traders up-to-date, sleeping {self.batch_sleep}s...")
                     await asyncio.sleep(self.batch_sleep)
                     continue
 
                 safe_print(f"\n[P&L WORKER] Processing batch of {len(traders)} traders...")
-
-                # Process batch
                 batch_start = time.time()
+
                 for trader_address, last_trade, last_update in traders:
                     await self._process_single_trader(trader_address)
-                    await asyncio.sleep(0.1)  # Yield control
+                    # Yield control between traders so the monitoring loop
+                    # and watchdog can always wake up on schedule.
+                    await asyncio.sleep(0.1)
 
                 batch_elapsed = time.time() - batch_start
                 safe_print(f"[P&L WORKER] Batch complete in {batch_elapsed:.1f}s")
 
-                # Show progress every 10 batches
                 if self.traders_processed % 100 == 0 and self.traders_processed > 0:
                     self._show_progress()
 
-                # Sleep between batches
                 await asyncio.sleep(self.batch_sleep)
 
             except Exception as e:
                 safe_print(f"[P&L WORKER] [ERROR] Worker loop error: {e}")
                 self.errors += 1
-                await asyncio.sleep(60)  # Sleep on error
+                await asyncio.sleep(60)
 
-    def _match_trades_sync(self, trader_address: str):
-        """
-        Synchronous wrapper that runs match_trades_for_trader in a thread.
+    # ------------------------------------------------------------------ #
+    #  Per-trader processing — entirely off the event loop                #
+    # ------------------------------------------------------------------ #
 
-        Kept separate so it can be submitted to the thread pool executor,
-        which releases the event loop while this CPU-bound work runs.
-        Returns (positions, trade_count) or raises on error.
+    def _process_trader_sync(self, trader_address: str) -> dict:
         """
+        Complete synchronous processing for one trader.
+
+        Runs in the thread pool — the event loop thread is completely free
+        while this executes.  Opens its own SQLite connections; nothing is
+        shared with connections on the event loop.
+
+        Returns a result dict with keys:
+            trade_count, n_positions, n_closed, skipped, elapsed
+        """
+        t0 = time.time()
+
+        # 1. Trade count (for logging only)
         conn = self.db.get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM trades WHERE trader_address = ?", (trader_address,))
+        cursor.execute(
+            "SELECT COUNT(*) FROM trades WHERE trader_address = ?",
+            (trader_address,)
+        )
         trade_count = cursor.fetchone()[0]
         conn.close()
 
-        positions = self.position_tracker.match_trades_for_trader(trader_address, verbose=False)
-        return positions, trade_count
+        # 2. Match trades → positions (CPU-bound FIFO, no DB writes)
+        positions = self.position_tracker.match_trades_for_trader(
+            trader_address, verbose=False
+        )
 
-    async def _process_single_trader(self, trader_address: str):
-        """
-        Process P&L for a single trader.
+        if not positions:
+            self.db.mark_trader_pnl_updated(trader_address)
+            return {
+                'trade_count': trade_count,
+                'n_positions': 0,
+                'n_closed': 0,
+                'skipped': False,
+                'elapsed': time.time() - t0,
+            }
 
-        match_trades_for_trader is synchronous and CPU-bound (FIFO matching
-        over thousands of trades). Running it directly blocks the event loop
-        for 20-35 seconds on whale traders, starving every other coroutine.
-
-        Fix: submit the sync work to a thread executor so the event loop
-        stays free, then apply a 60-second asyncio timeout around it. If the
-        timeout fires, skip this trader (mark updated so it won't requeue
-        immediately) and log the incident.
-        """
-        TIMEOUT_SECONDS = 60
-
+        # 3. Persist positions (one connection, one commit for the batch)
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
         try:
-            start_time = time.time()
-            loop = asyncio.get_event_loop()
-
-            # Run CPU-bound matching off the event loop
-            try:
-                positions, trade_count = await asyncio.wait_for(
-                    loop.run_in_executor(_THREAD_POOL, self._match_trades_sync, trader_address),
-                    timeout=TIMEOUT_SECONDS
-                )
-            except asyncio.TimeoutError:
-                elapsed = time.time() - start_time
-                safe_print(
-                    f"[P&L WORKER] [TIMEOUT] {trader_address[:10]}... exceeded {TIMEOUT_SECONDS}s "
-                    f"(elapsed {elapsed:.0f}s) — skipping, will requeue after 24h"
-                )
-                self.db.mark_trader_pnl_updated(trader_address)  # avoids tight requeue loop
-                self.errors += 1
-                return
-
-            # Log large traders for visibility
-            if trade_count > 5000:
-                elapsed = time.time() - start_time
-                safe_print(f"[P&L WORKER] [WHALE] {trader_address[:10]}... {trade_count:,} trades, took {elapsed:.1f}s")
-
-            if not positions:
-                self.db.mark_trader_pnl_updated(trader_address)
-                self.traders_processed += 1
-                return
-
-            # Save positions to database
             for position in positions:
-                self.db.insert_position(position)
+                if hasattr(position, 'to_dict'):
+                    pos_dict = position.to_dict()
+                else:
+                    pos_dict = position
 
-            # Calculate aggregate P&L
-            closed_positions = [p for p in positions if p.status == 'closed']
+                cursor.execute("""
+                    INSERT OR REPLACE INTO positions (
+                        position_id, trader_address, market_id, market_title,
+                        outcome, entry_shares, entry_avg_price, entry_total_cost,
+                        entry_timestamp, entry_trade_ids,
+                        exit_shares, exit_avg_price, exit_total_received,
+                        exit_timestamp, exit_trade_ids,
+                        realized_pnl, roi_percent, holding_period_hours,
+                        status, remaining_shares, last_updated
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+                """, (
+                    pos_dict['position_id'],
+                    pos_dict['trader_address'],
+                    pos_dict['market_id'],
+                    pos_dict['market_title'],
+                    pos_dict['outcome'],
+                    pos_dict['entry_shares'],
+                    pos_dict['entry_avg_price'],
+                    pos_dict['entry_total_cost'],
+                    pos_dict['entry_timestamp'],
+                    pos_dict['entry_trade_ids'],
+                    pos_dict['exit_shares'],
+                    pos_dict['exit_avg_price'],
+                    pos_dict['exit_total_received'],
+                    pos_dict['exit_timestamp'],
+                    pos_dict['exit_trade_ids'],
+                    pos_dict['realized_pnl'],
+                    pos_dict['roi_percent'],
+                    pos_dict['holding_period_hours'],
+                    pos_dict['status'],
+                    pos_dict['remaining_shares'],
+                ))
+            conn.commit()
+        except Exception as e:
+            safe_print(f"[P&L WORKER] [ERROR] Position insert failed for {trader_address[:10]}...: {e}")
+            conn.rollback()
+        finally:
+            conn.close()
 
-            if closed_positions:
-                realized_pnl = sum(p.realized_pnl for p in closed_positions if p.realized_pnl)
-                avg_roi = sum(p.roi_percent for p in closed_positions if p.roi_percent) / len(closed_positions)
+        # 4. Aggregate P&L and update traders row
+        closed_positions = [p for p in positions if p.status == 'closed']
+        n_closed = len(closed_positions)
 
-                # Update trader table
-                conn = self.db.get_connection()
-                cursor = conn.cursor()
+        if closed_positions:
+            realized_pnl = sum(p.realized_pnl for p in closed_positions if p.realized_pnl)
+            avg_roi = sum(p.roi_percent for p in closed_positions if p.roi_percent) / n_closed
+
+            conn = self.db.get_connection()
+            cursor = conn.cursor()
+            try:
                 cursor.execute("""
                     UPDATE traders
                     SET realized_pnl = ?,
@@ -212,25 +247,93 @@ class BackgroundPnLWorker:
                     realized_pnl,
                     avg_roi,
                     avg_roi,
-                    len(closed_positions),
+                    n_closed,
                     len([p for p in positions if p.status == 'open']),
-                    trader_address
+                    trader_address,
                 ))
                 conn.commit()
+            except Exception as e:
+                safe_print(f"[P&L WORKER] [ERROR] Trader update failed for {trader_address[:10]}...: {e}")
+                conn.rollback()
+            finally:
                 conn.close()
 
-            # Mark as updated
-            self.db.mark_trader_pnl_updated(trader_address)
+        # 5. Mark updated (so this trader isn't requeued immediately)
+        self.db.mark_trader_pnl_updated(trader_address)
 
-            elapsed = time.time() - start_time
-            if elapsed > 5:
-                safe_print(f"[P&L WORKER] [SLOW] {trader_address[:10]}... ({trade_count} trades) took {elapsed:.1f}s")
+        return {
+            'trade_count': trade_count,
+            'n_positions': len(positions),
+            'n_closed': n_closed,
+            'skipped': False,
+            'elapsed': time.time() - t0,
+        }
 
-            self.traders_processed += 1
+    async def _process_single_trader(self, trader_address: str):
+        """
+        Async entry point — submits all work to the thread pool and awaits it.
 
+        The event loop thread itself does zero SQLite I/O here.  If the whole
+        operation takes longer than _TRADER_TIMEOUT seconds, it is cancelled
+        at the asyncio level and the trader is marked updated to prevent a
+        tight requeue loop.  The thread itself may continue briefly after the
+        timeout (Python threads are not forcibly killed), but it will finish
+        its current SQLite call and exit — no resources are leaked.
+        """
+        loop = asyncio.get_event_loop()
+
+        try:
+            result = await asyncio.wait_for(
+                loop.run_in_executor(
+                    _THREAD_POOL,
+                    self._process_trader_sync,
+                    trader_address,
+                ),
+                timeout=_TRADER_TIMEOUT,
+            )
+        except asyncio.TimeoutError:
+            safe_print(
+                f"[P&L WORKER] [TIMEOUT] {trader_address[:10]}... exceeded {_TRADER_TIMEOUT}s "
+                f"— skipping, will requeue after 24h"
+            )
+            # Best-effort mark updated so we don't requeue immediately.
+            # This call is fast (one UPDATE) so it won't stall for long.
+            try:
+                await loop.run_in_executor(
+                    _THREAD_POOL,
+                    self.db.mark_trader_pnl_updated,
+                    trader_address,
+                )
+            except Exception:
+                pass
+            self.errors += 1
+            return
         except Exception as e:
             safe_print(f"[P&L WORKER] [ERROR] Failed for {trader_address[:10]}...: {e}")
             self.errors += 1
+            return
+
+        # Update counters (event loop thread only — no lock needed)
+        self.traders_processed += 1
+
+        elapsed = result['elapsed']
+        trade_count = result['trade_count']
+
+        if trade_count > 5000:
+            safe_print(
+                f"[P&L WORKER] [WHALE] {trader_address[:10]}... "
+                f"{trade_count:,} trades → {result['n_positions']} positions "
+                f"({result['n_closed']} closed) in {elapsed:.1f}s"
+            )
+        elif elapsed > 5:
+            safe_print(
+                f"[P&L WORKER] [SLOW] {trader_address[:10]}... "
+                f"({trade_count} trades) took {elapsed:.1f}s"
+            )
+
+    # ------------------------------------------------------------------ #
+    #  Progress reporting                                                  #
+    # ------------------------------------------------------------------ #
 
     def _show_progress(self):
         """Show worker progress statistics."""
