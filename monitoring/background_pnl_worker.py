@@ -7,12 +7,17 @@ without causing timeouts or blocking the monitoring system.
 """
 
 import asyncio
+import concurrent.futures
 import time
 from datetime import datetime
 from typing import Optional
 
 from .database import Database
 from .position_tracker import PositionTracker
+
+# Thread pool for running synchronous, CPU-bound position matching off the
+# event loop so it cannot starve other coroutines.
+_THREAD_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="pnl_worker")
 
 
 def safe_print(message: str, fallback: str = None):
@@ -119,34 +124,62 @@ class BackgroundPnLWorker:
                 self.errors += 1
                 await asyncio.sleep(60)  # Sleep on error
 
+    def _match_trades_sync(self, trader_address: str):
+        """
+        Synchronous wrapper that runs match_trades_for_trader in a thread.
+
+        Kept separate so it can be submitted to the thread pool executor,
+        which releases the event loop while this CPU-bound work runs.
+        Returns (positions, trade_count) or raises on error.
+        """
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM trades WHERE trader_address = ?", (trader_address,))
+        trade_count = cursor.fetchone()[0]
+        conn.close()
+
+        positions = self.position_tracker.match_trades_for_trader(trader_address, verbose=False)
+        return positions, trade_count
+
     async def _process_single_trader(self, trader_address: str):
         """
         Process P&L for a single trader.
 
-        Args:
-            trader_address: Trader address
+        match_trades_for_trader is synchronous and CPU-bound (FIFO matching
+        over thousands of trades). Running it directly blocks the event loop
+        for 20-35 seconds on whale traders, starving every other coroutine.
+
+        Fix: submit the sync work to a thread executor so the event loop
+        stays free, then apply a 60-second asyncio timeout around it. If the
+        timeout fires, skip this trader (mark updated so it won't requeue
+        immediately) and log the incident.
         """
+        TIMEOUT_SECONDS = 60
+
         try:
             start_time = time.time()
+            loop = asyncio.get_event_loop()
 
-            # Check trade count first (skip whales)
-            conn = self.db.get_connection()
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT COUNT(*) FROM trades
-                WHERE trader_address = ?
-            """, (trader_address,))
-            trade_count = cursor.fetchone()[0]
-            conn.close()
+            # Run CPU-bound matching off the event loop
+            try:
+                positions, trade_count = await asyncio.wait_for(
+                    loop.run_in_executor(_THREAD_POOL, self._match_trades_sync, trader_address),
+                    timeout=TIMEOUT_SECONDS
+                )
+            except asyncio.TimeoutError:
+                elapsed = time.time() - start_time
+                safe_print(
+                    f"[P&L WORKER] [TIMEOUT] {trader_address[:10]}... exceeded {TIMEOUT_SECONDS}s "
+                    f"(elapsed {elapsed:.0f}s) — skipping, will requeue after 24h"
+                )
+                self.db.mark_trader_pnl_updated(trader_address)  # avoids tight requeue loop
+                self.errors += 1
+                return
 
-            # Log warning for very large traders but process them anyway
+            # Log large traders for visibility
             if trade_count > 5000:
-                safe_print(f"[P&L WORKER] [WHALE] {trader_address[:10]}... has {trade_count:,} trades (processing, may take 1-2 min)")
-
-            # Continue processing regardless of trade count
-
-            # Match trades into positions
-            positions = self.position_tracker.match_trades_for_trader(trader_address, verbose=False)
+                elapsed = time.time() - start_time
+                safe_print(f"[P&L WORKER] [WHALE] {trader_address[:10]}... {trade_count:,} trades, took {elapsed:.1f}s")
 
             if not positions:
                 self.db.mark_trader_pnl_updated(trader_address)

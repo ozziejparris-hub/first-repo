@@ -911,6 +911,32 @@ class PolymarketMonitor:
 
         safe_print("\n[STOP] Monitoring loop stopped")
 
+    async def _watchdog_loop(self):
+        """
+        Heartbeat loop that writes to the log every 5 minutes unconditionally.
+
+        This runs as a separate asyncio task and is completely independent of
+        the monitoring and P&L loops. Its sole purpose is to ensure that
+        logs/monitoring.log gets an mtime update every 5 minutes even when
+        another coroutine is blocked or slow — so the System Observer can
+        distinguish a true freeze from a slow-but-alive cycle.
+        """
+        import logging
+        watchdog_logger = logging.getLogger('watchdog')
+        safe_print("[WATCHDOG] Heartbeat loop started (every 5 minutes)")
+
+        while self.is_running:
+            try:
+                await asyncio.sleep(300)  # 5 minutes
+                if self.is_running:
+                    msg = f"[WATCHDOG] Heartbeat — monitor alive at {datetime.now().strftime('%H:%M:%S')}"
+                    safe_print(msg)
+                    watchdog_logger.info(msg)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                safe_print(f"[WATCHDOG] Error: {e}")
+
     async def start(self):
         """
         Start the monitoring service.
@@ -929,6 +955,10 @@ class PolymarketMonitor:
 
         # Perform initial scan
         await self.initial_scan()
+
+        # Start watchdog heartbeat (independent of all other loops)
+        asyncio.create_task(self._watchdog_loop())
+        safe_print("[MONITOR] Watchdog heartbeat started\n")
 
         # NEW: Start background P&L worker (non-blocking)
         asyncio.create_task(self.pnl_worker.start())
