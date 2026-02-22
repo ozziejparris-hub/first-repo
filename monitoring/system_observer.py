@@ -307,6 +307,9 @@ class SystemObserver:
                     # Check for high-value trades (runs every hour with the report)
                     await self._check_high_value_trades()
 
+                    # Priority alerts for Elite (>=2000) and Legendary (>=2500) traders
+                    await self._check_legendary_trades()
+
                     # Check for smart money consensus (runs every hour)
                     await self._check_consensus_positions()
 
@@ -901,6 +904,129 @@ https://polymarket.com/profile/{address}
             print(f"[OBSERVER] Error checking high-value trades: {e}")
             import traceback
             traceback.print_exc()
+
+    async def _check_legendary_trades(self):
+        """
+        Priority alerts for traders with comprehensive_elo >= 2000.
+
+        Tiers:
+          2000 - 2499  =>  Elite    (star badge)
+          2500+        =>  Legendary (trophy badge)
+
+        Runs every hour with a 2-hour lookback window so no trades are
+        missed between observer restarts.  Deduplicates by trade_id.
+        """
+        try:
+            from datetime import timedelta
+
+            cutoff = datetime.now() - timedelta(hours=2)
+
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            query = """
+            SELECT
+                t.address,
+                t.comprehensive_elo,
+                t.avg_roi,
+                t.realized_pnl,
+                t.closed_positions,
+                tr.trade_id,
+                tr.outcome,
+                tr.shares,
+                tr.price,
+                tr.side,
+                tr.timestamp,
+                COALESCE(m.title, tr.market_title) AS market_title
+            FROM trades tr
+            JOIN traders t ON tr.trader_address = t.address
+            LEFT JOIN markets m ON tr.market_id = m.market_id
+            WHERE
+                t.comprehensive_elo >= 2000
+                AND tr.timestamp >= ?
+                AND tr.shares > 0
+            ORDER BY t.comprehensive_elo DESC, tr.timestamp DESC
+            """
+
+            cursor.execute(query, (cutoff.isoformat(),))
+            trades = cursor.fetchall()
+            conn.close()
+
+            for trade in trades:
+                (address, elo, avg_roi, realized_pnl, closed_positions,
+                 trade_id, outcome, shares, price, side, timestamp,
+                 market_title) = trade
+
+                # Deduplicate by trade_id
+                if self._already_alerted_legendary(trade_id):
+                    continue
+
+                # Determine tier
+                if elo >= 2500:
+                    tier_badge = "LEGENDARY"
+                    tier_icon = "🏆"
+                else:
+                    tier_badge = "ELITE"
+                    tier_icon = "⭐"
+
+                # Format trader stats
+                elo_str = f"{elo:.0f}"
+                n_closed = int(closed_positions) if closed_positions else 0
+
+                if avg_roi is not None:
+                    roi_val = avg_roi if avg_roi > 1 else avg_roi * 100
+                    roi_str = f"+{roi_val:.1f}%" if roi_val >= 0 else f"{roi_val:.1f}%"
+                else:
+                    roi_str = "No data"
+
+                if realized_pnl is not None:
+                    pnl_str = f"+${realized_pnl:,.2f}" if realized_pnl >= 0 else f"-${abs(realized_pnl):,.2f}"
+                else:
+                    pnl_str = "No data"
+
+                # Format trade details
+                size = shares * price
+                addr_short = f"{address[:6]}...{address[-4:]}"
+                market_str = market_title if market_title else "Unknown market"
+
+                message = (
+                    f"{tier_icon} {tier_badge} TRADER — NEW POSITION\n\n"
+                    f"Trader: {addr_short}\n"
+                    f"ELO: {elo_str}  |  Tier: {tier_badge}\n\n"
+                    f"📊 Track Record\n"
+                    f"   Closed Positions: {n_closed}\n"
+                    f"   Avg ROI: {roi_str}\n"
+                    f"   Realized P&L: {pnl_str}\n\n"
+                    f"🎯 New Trade\n"
+                    f"   Market: {market_str}\n"
+                    f"   Outcome: {outcome}\n"
+                    f"   Price: ${price:.4f}\n"
+                    f"   Shares: {shares:,.0f}\n"
+                    f"   Size: ${size:,.2f}\n\n"
+                    f"⏰ {timestamp}\n\n"
+                    f"🔗 https://polymarket.com/profile/{address}"
+                )
+
+                await self.telegram.send_message(message)
+                self._mark_legendary_alerted(trade_id)
+                print(f"[OBSERVER] [{tier_badge}] Alert sent for {addr_short} (ELO {elo_str})")
+
+        except Exception as e:
+            print(f"[OBSERVER] Error checking legendary trades: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _already_alerted_legendary(self, trade_id: str) -> bool:
+        """Check if we already sent a legendary/elite alert for this trade."""
+        if not hasattr(self, '_alerted_legendary_trades'):
+            self._alerted_legendary_trades = set()
+        return trade_id in self._alerted_legendary_trades
+
+    def _mark_legendary_alerted(self, trade_id: str):
+        """Mark trade as alerted to prevent duplicate sends."""
+        if not hasattr(self, '_alerted_legendary_trades'):
+            self._alerted_legendary_trades = set()
+        self._alerted_legendary_trades.add(trade_id)
 
     async def _send_weekly_summary(self):
         """
