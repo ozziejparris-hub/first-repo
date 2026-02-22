@@ -1176,6 +1176,138 @@ https://polymarket.com/profile/{address}
             import traceback
             traceback.print_exc()
 
+    def _compute_consensus_weights(self, trader_rows: list) -> dict:
+        """
+        Compute price-convergence, time-clustering, and recency weights for a
+        consensus group.  Each element of trader_rows is a tuple:
+            (address, elo, price, timestamp_str)
+
+        Returns a dict with keys:
+            price_mult      – price-convergence multiplier
+            time_mult       – time-clustering multiplier
+            weighted_count  – recency-weighted trader count
+            avg_price       – mean entry price across all traders (or None)
+            price_stddev    – price std-dev in dollars (or None)
+            spread_days     – days between earliest and latest entry (or None)
+            most_recent_str – human-readable time-since for the most recent trade
+            earliest_ts     – earliest entry datetime (or None)
+            latest_ts       – latest entry datetime (or None)
+            price_label     – "tight ✅" / "wide ⚠️" / "N/A"
+            time_label      – human-readable clustering label
+        """
+        import math
+        from datetime import timezone
+
+        now = datetime.now()
+
+        # ── Parse timestamps ────────────────────────────────────────────────
+        parsed = []
+        for addr, elo, price, ts_str in trader_rows:
+            ts = None
+            if ts_str:
+                for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S",
+                            "%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S"):
+                    try:
+                        ts = datetime.strptime(ts_str, fmt)
+                        break
+                    except ValueError:
+                        continue
+            parsed.append((addr, float(elo) if elo else 1500.0,
+                           float(price) if price is not None else None, ts))
+
+        # ── Price convergence ───────────────────────────────────────────────
+        prices = [p for _, _, p, _ in parsed if p is not None]
+        if len(prices) >= 2:
+            avg_price = sum(prices) / len(prices)
+            variance = sum((p - avg_price) ** 2 for p in prices) / len(prices)
+            price_stddev = math.sqrt(variance)
+            if price_stddev < 0.10:
+                price_mult = 1.3
+                price_label = "tight ✅"
+            elif price_stddev > 0.20:
+                price_mult = 0.8
+                price_label = "wide ⚠️"
+            else:
+                price_mult = 1.0
+                price_label = "moderate"
+        else:
+            avg_price = prices[0] if prices else None
+            price_stddev = None
+            price_mult = 1.0
+            price_label = "N/A"
+
+        # ── Time clustering ─────────────────────────────────────────────────
+        timestamps = [ts for _, _, _, ts in parsed if ts is not None]
+        if len(timestamps) >= 2:
+            earliest_ts = min(timestamps)
+            latest_ts = max(timestamps)
+            spread_days = (latest_ts - earliest_ts).total_seconds() / 86400
+            if spread_days <= 2:
+                time_mult = 1.4
+                time_label = f"{spread_days:.1f}d (strong convergence ✅)"
+            elif spread_days <= 7:
+                time_mult = 1.0
+                time_label = f"{spread_days:.1f}d (within 1 week)"
+            elif spread_days <= 30:
+                time_mult = 0.85
+                time_label = f"{spread_days:.1f}d (spread out ⚠️)"
+            else:
+                time_mult = 0.7
+                time_label = f"{spread_days:.1f}d (stale ❌)"
+        else:
+            # Only one timestamp or none — neutral
+            earliest_ts = timestamps[0] if timestamps else None
+            latest_ts = timestamps[0] if timestamps else None
+            spread_days = None
+            time_mult = 1.0
+            time_label = "N/A"
+
+        # ── Recency weighting ───────────────────────────────────────────────
+        weighted_count = 0.0
+        most_recent_ts = None
+        for _, elo, _, ts in parsed:
+            if ts is not None:
+                age_hours = (now - ts).total_seconds() / 3600
+                if most_recent_ts is None or ts > most_recent_ts:
+                    most_recent_ts = ts
+                if age_hours <= 24:
+                    w = 2.0
+                elif age_hours <= 168:   # 7 days
+                    w = 1.5
+                elif age_hours <= 720:   # 30 days
+                    w = 1.0
+                else:
+                    w = 0.6
+            else:
+                w = 1.0  # no timestamp → neutral weight
+            weighted_count += w
+
+        # Human-readable most-recent label
+        if most_recent_ts is not None:
+            age_secs = (now - most_recent_ts).total_seconds()
+            if age_secs < 3600:
+                most_recent_str = f"{int(age_secs / 60)} minutes ago"
+            elif age_secs < 86400:
+                most_recent_str = f"{age_secs / 3600:.1f} hours ago"
+            else:
+                most_recent_str = f"{age_secs / 86400:.1f} days ago"
+        else:
+            most_recent_str = "unknown"
+
+        return {
+            'price_mult': price_mult,
+            'time_mult': time_mult,
+            'weighted_count': weighted_count,
+            'avg_price': avg_price,
+            'price_stddev': price_stddev,
+            'spread_days': spread_days,
+            'most_recent_str': most_recent_str,
+            'earliest_ts': earliest_ts,
+            'latest_ts': latest_ts,
+            'price_label': price_label,
+            'time_label': time_label,
+        }
+
     async def _check_consensus_positions(self):
         """
         Detect when multiple elite traders take the same position (smart money consensus).
@@ -1183,110 +1315,190 @@ https://polymarket.com/profile/{address}
         Triggers alert when:
         - 3+ traders with ELO >= 1550
         - All take same position (YES or NO)
-        - Within last 24 hours
+        - At least one trade within last 24 hours
 
-        Signal Strength:
-        - 3 traders = 🔥 MODERATE
-        - 4 traders = 🔥🔥 STRONG
-        - 5+ traders = 🔥🔥🔥 VERY STRONG
+        Conviction scoring (base × price multiplier × time multiplier):
+        - Base: elite_count × (avg_elo / 1500)
+        - Price convergence: std-dev < $0.10 → 1.3x | > $0.20 → 0.8x | else 1.0x
+        - Time clustering: ≤2d → 1.4x | ≤7d → 1.0x | ≤30d → 0.85x | >30d → 0.7x
+        - Weighted count uses per-trader recency weights (last 24h → 2.0, etc.)
         """
         try:
             from datetime import timedelta
 
-            # Look for consensus within last 24 hours
-            cutoff = datetime.now() - timedelta(hours=24)
+            # Broad window: fetch all trades for candidate groups (any age).
+            # We look for groups with at least one trade in the last 24h to stay
+            # current, but gather ALL their trades for scoring.
+            cutoff_recent = datetime.now() - timedelta(hours=24)
 
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
-            # Find markets where 3+ elite traders took same position
-            query = """
+            # Step 1: Find candidate groups — markets where 3+ elite traders
+            # are on the same outcome AND at least one trade is within 24h.
+            candidate_query = """
             SELECT
                 tr.market_id,
-                m.title as market_question,
+                COALESCE(m.title, tr.market_title) AS market_question,
                 tr.outcome,
-                COUNT(DISTINCT tr.trader_address) as trader_count,
-                SUM(tr.shares * tr.price) as total_volume,
-                GROUP_CONCAT(t.address || '|' || CAST(t.comprehensive_elo AS TEXT)) as traders,
-                MIN(tr.timestamp) as first_trade,
-                MAX(tr.timestamp) as last_trade
+                COUNT(DISTINCT tr.trader_address) AS trader_count,
+                SUM(tr.shares * tr.price) AS total_volume
             FROM trades tr
             JOIN traders t ON tr.trader_address = t.address
             LEFT JOIN markets m ON tr.market_id = m.market_id
             WHERE
                 t.comprehensive_elo >= 1550
-                AND tr.timestamp >= ?
                 AND tr.shares > 0
             GROUP BY tr.market_id, tr.outcome
-            HAVING trader_count >= 3
+            HAVING
+                trader_count >= 3
+                AND MAX(tr.timestamp) >= ?
             ORDER BY trader_count DESC, total_volume DESC
-            LIMIT 5
+            LIMIT 10
             """
 
-            cursor.execute(query, (cutoff.isoformat(),))
-            consensuses = cursor.fetchall()
-            conn.close()
+            cursor.execute(candidate_query, (cutoff_recent.isoformat(),))
+            candidates = cursor.fetchall()
 
-            if not consensuses:
+            if not candidates:
+                conn.close()
                 return
 
-            # Send alerts for new consensuses
-            for consensus in consensuses:
-                market_id, question, outcome, count, volume, traders_str, first, last = consensus
+            # Step 2: For each candidate group, fetch per-trader detail rows
+            # (address, elo, price, timestamp) across ALL time so we can score.
+            detail_query = """
+            SELECT
+                t.address,
+                t.comprehensive_elo,
+                tr.price,
+                tr.timestamp
+            FROM trades tr
+            JOIN traders t ON tr.trader_address = t.address
+            WHERE
+                t.comprehensive_elo >= 1550
+                AND tr.market_id = ?
+                AND tr.outcome = ?
+                AND tr.shares > 0
+            ORDER BY tr.timestamp DESC
+            """
 
-                # Check if already alerted
+            results = []
+            for market_id, question, outcome, count, volume in candidates:
+                cursor.execute(detail_query, (market_id, outcome))
+                detail_rows = cursor.fetchall()
+
+                # Collapse to one row per trader (most recent trade wins)
+                seen = {}
+                for addr, elo, price, ts in detail_rows:
+                    if addr not in seen:
+                        seen[addr] = (addr, elo, price, ts)
+                per_trader = list(seen.values())
+
+                weights = self._compute_consensus_weights(per_trader)
+
+                # Conviction scores
+                avg_elo = sum(float(r[1]) for r in per_trader if r[1]) / max(len(per_trader), 1)
+                base_conviction = count * (avg_elo / 1500)
+                weighted_conviction = (
+                    weights['weighted_count'] * (avg_elo / 1500)
+                    * weights['price_mult']
+                    * weights['time_mult']
+                )
+
+                results.append({
+                    'market_id': market_id,
+                    'question': question,
+                    'outcome': outcome,
+                    'count': count,
+                    'volume': volume,
+                    'avg_elo': avg_elo,
+                    'per_trader': per_trader,
+                    'base_conviction': base_conviction,
+                    'weighted_conviction': weighted_conviction,
+                    'weights': weights,
+                })
+
+            conn.close()
+
+            # Sort by weighted conviction descending
+            results.sort(key=lambda x: x['weighted_conviction'], reverse=True)
+
+            # Send alerts for new consensuses
+            for r in results[:5]:
+                market_id = r['market_id']
+                outcome = r['outcome']
+
                 if self._already_alerted_consensus(market_id, outcome):
                     continue
 
-                # Parse trader details
-                traders_list = traders_str.split(',')
-                trader_details = []
-                for t in traders_list[:5]:  # Show top 5
-                    parts = t.split('|')
-                    if len(parts) == 2:
-                        addr, elo = parts
-                        short_addr = addr[:6] + "..." + addr[-4:]
-                        try:
-                            elo_float = float(elo)
-                            trader_details.append(f"  • {short_addr} (ELO: {elo_float:.0f})")
-                        except ValueError:
-                            trader_details.append(f"  • {short_addr}")
+                count = r['count']
+                w = r['weights']
+                question = r['question'] or f"Market ID: {market_id}"
+                volume = r['volume']
+                avg_elo = r['avg_elo']
+                base_conv = r['base_conviction']
+                wt_conv = r['weighted_conviction']
 
-                traders_text = "\n".join(trader_details)
-                if len(traders_list) > 5:
-                    traders_text += f"\n  • ...and {len(traders_list) - 5} more"
+                # Format trader list (sorted by ELO desc, show up to 5)
+                sorted_traders = sorted(r['per_trader'], key=lambda x: float(x[1]) if x[1] else 0, reverse=True)
+                trader_lines = []
+                for addr, elo, price, ts in sorted_traders[:5]:
+                    short = f"{addr[:6]}...{addr[-4:]}"
+                    elo_s = f"ELO {float(elo):.0f}" if elo else "ELO ?"
+                    price_s = f" @ ${float(price):.3f}" if price is not None else ""
+                    trader_lines.append(f"  • {short} ({elo_s}{price_s})")
+                if len(sorted_traders) > 5:
+                    trader_lines.append(f"  • ...and {len(sorted_traders) - 5} more")
+                traders_text = "\n".join(trader_lines)
 
-                # Determine signal strength
-                if count >= 5:
-                    signal_strength = "🔥🔥🔥 VERY STRONG"
-                elif count >= 4:
-                    signal_strength = "🔥🔥 STRONG"
+                # Price analysis line
+                if w['avg_price'] is not None:
+                    price_line = f"  Avg price: ${w['avg_price']:.3f}"
+                    if w['price_stddev'] is not None:
+                        price_line += f" | Spread: ±${w['price_stddev']:.3f} ({w['price_label']})"
+                    else:
+                        price_line += f" ({w['price_label']})"
                 else:
-                    signal_strength = "🔥 MODERATE"
+                    price_line = "  Avg price: N/A"
 
-                # Format market title
-                market_str = question if question else f"Market ID: {market_id}"
+                # Time window line
+                time_line = f"  Time window: {w['time_label']}"
 
-                message = f"""🎯 SMART MONEY CONSENSUS DETECTED
+                # Most recent
+                recent_line = f"  Most recent: {w['most_recent_str']}"
 
-📊 Market: {market_str}
-🎲 Position: {outcome}
-👥 Elite Traders: {count}
-💰 Combined Size: ${volume:,.0f}
+                # Signal strength label (based on weighted conviction)
+                if wt_conv >= 5.0:
+                    signal_label = "VERY STRONG"
+                elif wt_conv >= 3.5:
+                    signal_label = "STRONG"
+                elif wt_conv >= 2.0:
+                    signal_label = "MODERATE"
+                else:
+                    signal_label = "WEAK"
 
-Top Traders:
-{traders_text}
-
-⏰ Time Window: {first} → {last}
-
-🔗 Market: https://polymarket.com/event/{market_id}
-
-💡 Signal Strength: {signal_strength}
-"""
+                message = (
+                    f"📊 CONSENSUS SIGNAL — {count} ELITE TRADERS\n\n"
+                    f"Market: {question}\n"
+                    f"Outcome: {outcome}\n"
+                    f"Avg ELO: {avg_elo:.0f} | Conviction: {wt_conv:.2f} (weighted)\n"
+                    f"(Base conviction: {base_conv:.2f} | Volume: ${volume:,.0f})\n\n"
+                    f"Entry Analysis:\n"
+                    f"{price_line}\n"
+                    f"{time_line}\n"
+                    f"{recent_line}\n\n"
+                    f"Traders:\n"
+                    f"{traders_text}\n\n"
+                    f"Signal: {signal_label}\n"
+                    f"🔗 https://polymarket.com/event/{market_id}"
+                )
 
                 await self.telegram.send_message(message)
                 self._mark_consensus_alerted(market_id, outcome)
-                print(f"[OBSERVER] Sent consensus alert: {market_id} {outcome} ({count} traders)")
+                print(
+                    f"[OBSERVER] Sent consensus alert: {market_id} {outcome} "
+                    f"({count} traders, conviction {wt_conv:.2f})"
+                )
 
         except Exception as e:
             print(f"[OBSERVER] Error checking consensus positions: {e}")
