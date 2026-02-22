@@ -188,8 +188,14 @@ class PolymarketMonitor:
             # SPORTS LEAGUES & CHAMPIONSHIPS
             'nfl', 'nba', 'mlb', 'nhl', 'mls',
             'premier league', 'champions league',
+            'serie a', 'bundesliga', 'ligue 1', 'la liga',
             'super bowl', 'world series', 'stanley cup',
             'win the championship', 'make the playoffs',
+            'australian open', 'wimbledon', 'french open', 'us open',
+            'wta', 'tennis championship', 'tennis open',
+            'ufc', 'mma', 'nascar', 'pga tour',
+            'formula 1', 'formula one', 'f1 ',
+            'grand prix', 'grand slam',
 
             # SOCCER/FOOTBALL - Major teams
             'barcelona', 'manchester', 'real madrid', 'bayern',
@@ -258,11 +264,12 @@ class PolymarketMonitor:
             'blast', 'esl', 'pgl', 'faceit', 'dreamhack',
             'worlds', 'masters', 'champions', 'the international',
             'epic league', 'weplay', 'gamers galaxy', 'rog',
+            'bo3', 'bo5', 'map winner',
 
             # ESPORTS - Common team names (CS:GO, Valorant, LoL, Dota 2)
             'g2 esports', 'team vitality', 'fnatic', 'astralis',
             'natus vincere', "na'vi", 'navi', 'furia',
-            'team falcons', 'ninjas in pyjamas', 'faze clan',
+            'team falcons', 'ninjas in pyjamas', 'faze clan', 'faze',
             'cloud9', 'team liquid', 'team spirit', 'heroic',
             'mousesports', 'mouz', 'complexity', 'parivision',
             'tyloo', 'eternal fire', 'saw', 'imperial',
@@ -270,10 +277,12 @@ class PolymarketMonitor:
             'ence', 'big', 'godsent', 'og esports',
             't1 esports', 'gen.g', 'drx', 'jd gaming',
             'edward gaming', 'royal never give up', 'fpx',
+            'nongshim', 'kt rolster', 'dplus', 'geng', 'kwangdong',
+            'hanwha', 'diplus', 'sandbox gaming',
 
             # ESPORTS - Game titles
-            'cs:go', 'csgo', 'counter-strike', 'counter strike',
-            'league of legends', 'valorant', 'dota 2', 'dota2',
+            'cs:go', 'csgo', 'counter-strike', 'counter strike', 'cs2',
+            'league of legends', 'lol:', 'valorant', 'dota 2', 'dota2', 'dota',
             'overwatch', 'fortnite', 'rocket league', 'apex legends',
             'call of duty', 'rainbow six',
 
