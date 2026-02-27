@@ -193,6 +193,8 @@ class PolymarketMonitor:
             'win the championship', 'make the playoffs',
             'australian open', 'wimbledon', 'french open', 'us open',
             'wta', 'tennis championship', 'tennis open',
+            'merida open', 'rio open', 'open akron',
+            'atp 250', 'atp 500', 'wta 250',
             'ufc', 'mma', 'nascar', 'pga tour',
             'formula 1', 'formula one', 'f1 ',
             'grand prix', 'grand slam',

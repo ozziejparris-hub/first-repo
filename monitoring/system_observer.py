@@ -919,7 +919,7 @@ https://polymarket.com/profile/{address}
         try:
             from datetime import timedelta
 
-            cutoff = datetime.now() - timedelta(hours=2)
+            cutoff = datetime.now() - timedelta(hours=48)
 
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
