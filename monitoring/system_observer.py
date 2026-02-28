@@ -907,13 +907,12 @@ https://polymarket.com/profile/{address}
 
     async def _check_legendary_trades(self):
         """
-        Priority alerts for traders with comprehensive_elo >= 2000.
+        Priority alerts for high-tier traders:
+          - ELO >= 2500  =>  Legendary (trophy badge)
+          - ELO 2000-2499 =>  Elite    (star badge)
+          - watched = 1  =>  Watched Trader (eye badge), regardless of ELO
 
-        Tiers:
-          2000 - 2499  =>  Elite    (star badge)
-          2500+        =>  Legendary (trophy badge)
-
-        Runs every hour with a 2-hour lookback window so no trades are
+        Runs every hour with a 48-hour lookback window so no trades are
         missed between observer restarts.  Deduplicates by trade_id.
         """
         try:
@@ -931,6 +930,8 @@ https://polymarket.com/profile/{address}
                 t.avg_roi,
                 t.realized_pnl,
                 t.closed_positions,
+                COALESCE(t.watched, 0) AS watched,
+                COALESCE(t.username, '') AS username,
                 tr.trade_id,
                 tr.outcome,
                 tr.shares,
@@ -942,10 +943,10 @@ https://polymarket.com/profile/{address}
             JOIN traders t ON tr.trader_address = t.address
             LEFT JOIN markets m ON tr.market_id = m.market_id
             WHERE
-                t.comprehensive_elo >= 2000
+                (t.comprehensive_elo >= 2000 OR COALESCE(t.watched, 0) = 1)
                 AND tr.timestamp >= ?
                 AND tr.shares > 0
-            ORDER BY t.comprehensive_elo DESC, tr.timestamp DESC
+            ORDER BY COALESCE(t.watched, 0) DESC, t.comprehensive_elo DESC, tr.timestamp DESC
             """
 
             cursor.execute(query, (cutoff.isoformat(),))
@@ -954,23 +955,42 @@ https://polymarket.com/profile/{address}
 
             for trade in trades:
                 (address, elo, avg_roi, realized_pnl, closed_positions,
-                 trade_id, outcome, shares, price, side, timestamp,
-                 market_title) = trade
+                 watched, username, trade_id, outcome, shares, price,
+                 side, timestamp, market_title) = trade
 
                 # Deduplicate by trade_id
                 if self._already_alerted_legendary(trade_id):
                     continue
 
-                # Determine tier
-                if elo >= 2500:
+                # Determine tier: watched traders below ELO threshold get WATCHED badge
+                is_watched = bool(watched)
+                if is_watched and (elo is None or elo < 2000):
+                    tier_badge = "WATCHED"
+                    tier_icon  = "👁"
+                elif elo is not None and elo >= 2500:
                     tier_badge = "LEGENDARY"
-                    tier_icon = "🏆"
+                    tier_icon  = "🏆"
                 else:
                     tier_badge = "ELITE"
-                    tier_icon = "⭐"
+                    tier_icon  = "⭐"
+
+                # Format trader identity
+                addr_short = f"{address[:6]}...{address[-4:]}"
+                if username:
+                    trader_display = f"{username} ({addr_short})"
+                else:
+                    trader_display = addr_short
+
+                # Format ELO
+                elo_str = f"{elo:.0f}" if elo is not None else "N/A"
+
+                # ELO source line
+                if is_watched and (elo is None or elo < 2000):
+                    elo_line = f"ELO: {elo_str}  |  Source: Manual watchlist"
+                else:
+                    elo_line = f"ELO: {elo_str}  |  Tier: {tier_badge}"
 
                 # Format trader stats
-                elo_str = f"{elo:.0f}"
                 n_closed = int(closed_positions) if closed_positions else 0
 
                 if avg_roi is not None:
@@ -986,13 +1006,12 @@ https://polymarket.com/profile/{address}
 
                 # Format trade details
                 size = shares * price
-                addr_short = f"{address[:6]}...{address[-4:]}"
                 market_str = market_title if market_title else "Unknown market"
 
                 message = (
                     f"{tier_icon} {tier_badge} TRADER — NEW POSITION\n\n"
-                    f"Trader: {addr_short}\n"
-                    f"ELO: {elo_str}  |  Tier: {tier_badge}\n\n"
+                    f"Trader: {trader_display}\n"
+                    f"{elo_line}\n\n"
                     f"📊 Track Record\n"
                     f"   Closed Positions: {n_closed}\n"
                     f"   Avg ROI: {roi_str}\n"

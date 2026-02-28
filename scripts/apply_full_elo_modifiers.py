@@ -95,7 +95,7 @@ def main():
 
     # Load base ELOs from DB
     print("\n[2/3] Loading base ELO from database...")
-    conn = sqlite3.connect(args.db)
+    conn = sqlite3.connect(args.db, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     cur = conn.cursor()
 
@@ -146,6 +146,8 @@ def main():
     now = datetime.now().isoformat()
     skipped_excluded = 0
 
+    MAX_FINAL_ELO = 3000.0
+
     for addr, base_elo in base_elos.items():
         try:
             pnl_data = system.calculate_pnl_multiplier(addr)
@@ -156,7 +158,13 @@ def main():
                 skipped_excluded += 1
                 continue
 
-            new_elo = base_elo * mult
+            # Fix 3: single-trade lucky spike — cap base at 1600 for multiplier calc
+            pnl_entry = eligible.get(addr, {})
+            closed_pos = pnl_entry.get('closed_positions', 0)
+            effective_base = min(base_elo, 1600.0) if closed_pos == 1 else base_elo
+
+            # Fix 2: hard cap on final ELO
+            new_elo = min(effective_base * mult, MAX_FINAL_ELO)
             updates.append((addr, base_elo, mult, new_elo, pnl_data['breakdown']))
         except Exception as e:
             print(f"  WARNING: could not compute P&L for {addr[:10]}...: {e}")
@@ -182,21 +190,42 @@ def main():
         conn.close()
         return
 
-    # Write updates
-    cur.executemany("""
-        UPDATE traders
-        SET comprehensive_elo = ?,
-            pnl_modifier = ?,
-            elo_last_updated = ?
-        WHERE address = ?
-    """, [
+    # Write updates — retry on lock
+    import time as _time
+    write_rows = [
         (round(new_elo, 4), round(mult, 4), now, addr)
         for addr, base_elo, mult, new_elo, _ in updates
-    ])
-    conn.commit()
+    ]
+    written = 0
+    for row in write_rows:
+        for _attempt in range(15):
+            try:
+                cur.execute("""
+                    UPDATE traders
+                    SET comprehensive_elo = ?,
+                        pnl_modifier = ?,
+                        elo_last_updated = ?
+                    WHERE address = ?
+                """, row)
+                written += cur.rowcount
+                break
+            except sqlite3.OperationalError as e:
+                if "locked" in str(e):
+                    _time.sleep(2)
+                else:
+                    raise
+    for _attempt in range(15):
+        try:
+            conn.commit()
+            break
+        except sqlite3.OperationalError as e:
+            if "locked" in str(e):
+                _time.sleep(2)
+            else:
+                raise
 
     # Final stats
-    print(f"\n  Written {cur.rowcount} updates to database")
+    print(f"\n  Written {written} updates to database")
 
     cur.execute("""
         SELECT
@@ -213,7 +242,7 @@ def main():
     print(f"    Total traders : {n:,}")
     print(f"    ELO range     : {lo:.0f} – {hi:.0f}")
     print(f"    Average ELO   : {avg:.0f}")
-    print(f"    Elite (≥1550) : {elite:,}")
+    print(f"    Elite (>=1550): {elite:,}")
 
     conn.close()
     print()

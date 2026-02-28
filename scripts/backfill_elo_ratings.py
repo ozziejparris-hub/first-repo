@@ -178,7 +178,7 @@ class ELOBackfill:
         self.elo: dict[str, float] = defaultdict(lambda: STARTING_ELO)
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30)
         conn.execute("PRAGMA journal_mode=WAL")
         return conn
 
@@ -268,22 +268,51 @@ class ELOBackfill:
 
     def save_elos(self, conn: sqlite3.Connection):
         """Write all computed ELOs back to traders.comprehensive_elo."""
+        import time as _time
         cur = conn.cursor()
         now = datetime.now().isoformat()
 
         updated = 0
+        batch = 0
         for address, elo in self.elo.items():
-            cur.execute("""
-                UPDATE traders
-                SET comprehensive_elo = ?,
-                    base_category_elo = ?,
-                    elo_last_updated = ?
-                WHERE address = ?
-            """, (round(elo, 4), round(elo, 4), now, address))
-            if cur.rowcount > 0:
-                updated += 1
+            for _attempt in range(10):
+                try:
+                    cur.execute("""
+                        UPDATE traders
+                        SET comprehensive_elo = ?,
+                            base_category_elo = ?,
+                            elo_last_updated = ?
+                        WHERE address = ?
+                    """, (round(elo, 4), round(elo, 4), now, address))
+                    if cur.rowcount > 0:
+                        updated += 1
+                    break
+                except sqlite3.OperationalError as e:
+                    if "locked" in str(e):
+                        _time.sleep(2)
+                    else:
+                        raise
+            batch += 1
+            if batch % 500 == 0:
+                for _attempt in range(10):
+                    try:
+                        conn.commit()
+                        break
+                    except sqlite3.OperationalError as e:
+                        if "locked" in str(e):
+                            _time.sleep(2)
+                        else:
+                            raise
 
-        conn.commit()
+        for _attempt in range(10):
+            try:
+                conn.commit()
+                break
+            except sqlite3.OperationalError as e:
+                if "locked" in str(e):
+                    _time.sleep(2)
+                else:
+                    raise
         return updated
 
     # ── Step 4: Statistics ────────────────────────────────────────────────
@@ -304,7 +333,7 @@ class ELOBackfill:
         print(f"  Average ELO            : {avg:.0f}")
         print()
 
-        for label, threshold in [('Elite (≥1550)', 1550), ('Expert (≥1600)', 1600), ('Master (≥1700)', 1700)]:
+        for label, threshold in [('Elite (>=1550)', 1550), ('Expert (>=1600)', 1600), ('Master (>=1700)', 1700)]:
             cur.execute("SELECT COUNT(*) FROM traders WHERE comprehensive_elo >= ?", (threshold,))
             cnt = cur.fetchone()[0]
             pct = cnt / n * 100 if n else 0
