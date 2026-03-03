@@ -119,6 +119,7 @@ class SystemObserver:
         print(f"[OBSERVER] Analysis scheduler: enabled (daily 01:00 UTC)")
         print(f"[OBSERVER] Trend analysis: enabled (every 6 hours)")
         print(f"[OBSERVER] Comprehensive diagnostics: every 6h")
+        print(f"[OBSERVER] Insider detection: enabled (every 15 minutes)")
         print(f"[OBSERVER] Auto ELO updates: enabled (direct call, no subprocess)")
         print()
 
@@ -135,7 +136,8 @@ class SystemObserver:
             asyncio.create_task(self._analysis_report_loop()),
             asyncio.create_task(self._trend_analysis_loop()),
             asyncio.create_task(self._elo_update_loop()),
-            asyncio.create_task(self._comprehensive_diagnostic_loop())
+            asyncio.create_task(self._comprehensive_diagnostic_loop()),
+            asyncio.create_task(self._insider_detection_loop()),
         ]
 
         try:
@@ -2962,5 +2964,113 @@ def find_monitoring_process() -> Optional[int]:
 
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
+
+    async def _insider_detection_loop(self):
+        """
+        Scan for insider trading patterns every 15 minutes.
+
+        Two patterns detected:
+          - Individual: fresh wallet + large bet + low-odds entry + single market
+          - Cluster: 3+ fresh wallets same outcome same market within 6h
+
+        Results stored in insider_signals / insider_clusters tables and sent
+        via Telegram immediately.  Runs a 2-hour lookback on each cycle so
+        short windows (the Feb 28 Iran pattern had a 71-minute window) are
+        never missed between restarts.
+        """
+        from scripts.detect_insider_activity import (
+            _connect as _ins_connect,
+            _ensure_tables as _ins_ensure_tables,
+            detect_individual_signals,
+            detect_cluster_signals,
+            save_signals,
+            format_signal_alert,
+            format_cluster_alert,
+            _already_stored_signal,
+            _already_stored_cluster,
+        )
+        from datetime import timedelta
+
+        print("[OBSERVER] Insider detection loop started (every 15 min, 2h lookback)")
+        CHECK_INTERVAL = 900  # 15 minutes
+
+        # Track alerted IDs in memory to avoid re-sending between restarts
+        alerted_signals:  set = set()
+        alerted_clusters: set = set()
+
+        # Seed from DB on startup
+        try:
+            conn = _ins_connect(self.db_path)
+            _ins_ensure_tables(conn)
+            cur = conn.cursor()
+            cur.execute("SELECT market_id, trader_address, trade_timestamp FROM insider_signals WHERE alerted = 1")
+            for mid, addr, ts in cur.fetchall():
+                alerted_signals.add((mid, addr, ts))
+            cur.execute("SELECT market_id, outcome, window_start FROM insider_clusters WHERE alerted = 1")
+            for mid, out, ws in cur.fetchall():
+                alerted_clusters.add((mid, out, ws))
+            conn.close()
+        except Exception as e:
+            print(f"[INSIDER] Seed error: {e}")
+
+        while self.running:
+            try:
+                since = datetime.now() - timedelta(hours=2)
+                conn  = _ins_connect(self.db_path)
+                _ins_ensure_tables(conn)
+
+                signals  = detect_individual_signals(conn, since)
+                clusters = detect_cluster_signals(conn, since)
+                save_signals(conn, signals, clusters, dry_run=False)
+
+                # Fire Telegram alerts for genuinely new signals
+                for sig in signals:
+                    key = (sig["market_id"], sig["trader_address"], sig["trade_timestamp"])
+                    if key in alerted_signals:
+                        continue
+                    alerted_signals.add(key)
+                    try:
+                        msg = format_signal_alert(sig)
+                        await self.telegram._send_message(msg)
+                        # Mark alerted in DB
+                        conn.execute("""
+                            UPDATE insider_signals SET alerted = 1
+                            WHERE trader_address = ? AND market_id = ? AND trade_timestamp = ?
+                        """, (sig["trader_address"], sig["market_id"], sig["trade_timestamp"]))
+                        conn.commit()
+                        print(f"[INSIDER] Signal alerted: {sig['trader_address'][:10]}... "
+                              f"${sig['position_size']:,.0f} on {sig['market_title'][:40]}")
+                    except Exception as e:
+                        print(f"[INSIDER] Alert send error: {e}")
+
+                for cl in clusters:
+                    key = (cl["market_id"], cl["outcome"], cl["window_start"])
+                    if key in alerted_clusters:
+                        continue
+                    alerted_clusters.add(key)
+                    try:
+                        msg = format_cluster_alert(cl)
+                        await self.telegram._send_message(msg)
+                        conn.execute("""
+                            UPDATE insider_clusters SET alerted = 1
+                            WHERE market_id = ? AND outcome = ? AND window_start = ?
+                        """, (cl["market_id"], cl["outcome"], cl["window_start"]))
+                        conn.commit()
+                        print(f"[INSIDER] Cluster alerted: {cl['wallet_count']} wallets "
+                              f"${cl['combined_size']:,.0f} on {cl['market_title'][:40]}")
+                    except Exception as e:
+                        print(f"[INSIDER] Cluster alert send error: {e}")
+
+                conn.close()
+
+                if signals or clusters:
+                    print(f"[INSIDER] Scan complete: {len(signals)} individual, {len(clusters)} cluster")
+
+            except Exception as e:
+                print(f"[INSIDER] Error in detection loop: {e}")
+                import traceback
+                traceback.print_exc()
+
+            await asyncio.sleep(CHECK_INTERVAL)
 
     return None
