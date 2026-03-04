@@ -113,6 +113,11 @@ def _ensure_tables(conn: sqlite3.Connection):
         CREATE INDEX IF NOT EXISTS ix_insider_clusters_market
             ON insider_clusters(market_id, detected_at);
     """)
+    # Migration: add pattern column if table was created before it was added
+    try:
+        conn.execute("ALTER TABLE insider_signals ADD COLUMN pattern TEXT")
+    except Exception:
+        pass  # column already exists
     conn.commit()
 
 

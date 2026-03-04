@@ -328,8 +328,12 @@ class ELOSystemDiagnostics:
             cursor = conn.cursor()
 
             # 1. Check trade data freshness
+            # Filter out future-dated rows (Polymarket sometimes stores settlement/expiry
+            # dates in the timestamp field, producing timestamps months in the future
+            # which corrupt MAX() and make the staleness calculation wildly negative).
             cursor.execute("""
                 SELECT MAX(timestamp) FROM trades
+                WHERE timestamp <= datetime('now')
             """)
             last_trade = cursor.fetchone()[0]
 
