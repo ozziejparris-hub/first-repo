@@ -52,7 +52,7 @@ class TraderAnalyzer:
 
             if should_flag:
                 newly_flagged += 1
-                print(f"✅ Flagged trader {address[:10]}... "
+                print(f"[FLAG] Flagged trader {address[:10]}... "
                       f"(Volume: ${total_volume:.2f}, Trades: {total_trades})")
 
         return newly_flagged

@@ -945,7 +945,11 @@ https://polymarket.com/profile/{address}
             JOIN traders t ON tr.trader_address = t.address
             LEFT JOIN markets m ON tr.market_id = m.market_id
             WHERE
-                (t.comprehensive_elo >= 2000 OR COALESCE(t.watched, 0) = 1)
+                (
+                    t.comprehensive_elo >= 2000
+                    OR COALESCE(t.watched, 0) = 1
+                    OR (t.discovery_source = 'leaderboard' AND t.comprehensive_elo >= 1500)
+                )
                 AND tr.timestamp >= ?
                 AND tr.shares > 0
             ORDER BY COALESCE(t.watched, 0) DESC, t.comprehensive_elo DESC, tr.timestamp DESC
@@ -2887,9 +2891,86 @@ Sellers:
             cur.execute("SELECT market_id, outcome, window_start FROM insider_clusters WHERE alerted = 1")
             for mid, out, ws in cur.fetchall():
                 alerted_clusters.add((mid, out, ws))
+
+            # Catch-up: send any signals/clusters that were stored but never alerted
+            # (e.g. observer was restarted before the send completed)
+            cur.execute("""
+                SELECT trader_address, username, market_id, market_title, outcome,
+                       position_size, entry_price, wallet_age_days, markets_count,
+                       trade_timestamp, pattern
+                FROM insider_signals WHERE alerted = 0
+                ORDER BY detected_at ASC
+            """)
+            pending_signals = cur.fetchall()
+            cur.execute("""
+                SELECT market_id, market_title, outcome, wallet_count, combined_size,
+                       window_start, window_end
+                FROM insider_clusters WHERE alerted = 0
+                ORDER BY detected_at ASC
+            """)
+            pending_clusters = cur.fetchall()
             conn.close()
         except Exception as e:
             print(f"[INSIDER] Seed error: {e}")
+            pending_signals = []
+            pending_clusters = []
+
+        # Fire catch-up alerts before entering the regular loop
+        if pending_signals or pending_clusters:
+            print(f"[INSIDER] Catch-up: {len(pending_signals)} signal(s) and "
+                  f"{len(pending_clusters)} cluster(s) pending from previous run")
+        for row in pending_signals:
+            (addr, username, mid, title, outcome,
+             pos_size, price, age, mkts, ts, pattern) = row
+            sig = {
+                "trader_address": addr, "username": username,
+                "market_id": mid, "market_title": title, "outcome": outcome,
+                "position_size": pos_size, "entry_price": price,
+                "wallet_age_days": age, "markets_count": mkts,
+                "trade_timestamp": ts, "pattern": pattern,
+            }
+            key = (mid, addr, ts)
+            if key in alerted_signals:
+                continue
+            alerted_signals.add(key)
+            try:
+                msg = format_signal_alert(sig)
+                await self.telegram._send_message(msg)
+                conn2 = _ins_connect(self.db_path)
+                conn2.execute(
+                    "UPDATE insider_signals SET alerted = 1 WHERE trader_address = ? AND market_id = ? AND trade_timestamp = ?",
+                    (addr, mid, ts)
+                )
+                conn2.commit()
+                conn2.close()
+                print(f"[INSIDER] Catch-up alert sent: {addr[:10]}... ${pos_size:,.0f} on {title[:40]}")
+            except Exception as e:
+                print(f"[INSIDER] Catch-up send error: {e}")
+
+        for row in pending_clusters:
+            (mid, title, outcome, wcount, csize, ws, we) = row
+            cl = {
+                "market_id": mid, "market_title": title, "outcome": outcome,
+                "wallet_count": wcount, "combined_size": csize,
+                "window_start": ws, "window_end": we,
+            }
+            key = (mid, outcome, ws)
+            if key in alerted_clusters:
+                continue
+            alerted_clusters.add(key)
+            try:
+                msg = format_cluster_alert(cl)
+                await self.telegram._send_message(msg)
+                conn2 = _ins_connect(self.db_path)
+                conn2.execute(
+                    "UPDATE insider_clusters SET alerted = 1 WHERE market_id = ? AND outcome = ? AND window_start = ?",
+                    (mid, outcome, ws)
+                )
+                conn2.commit()
+                conn2.close()
+                print(f"[INSIDER] Catch-up cluster sent: {wcount} wallets ${csize:,.0f} on {title[:40]}")
+            except Exception as e:
+                print(f"[INSIDER] Catch-up cluster send error: {e}")
 
         while self.running:
             try:
