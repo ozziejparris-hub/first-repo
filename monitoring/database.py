@@ -188,6 +188,17 @@ class Database:
             outcome_bet = outcome
 
         try:
+            # Soft dedup: skip if same economic trade already exists (API can return
+            # the same trade with a different trade_id across polling cycles)
+            cursor.execute("""
+                SELECT 1 FROM trades
+                WHERE trader_address = ? AND market_id = ? AND timestamp = ?
+                  AND outcome = ? AND shares = ? AND price = ?
+                LIMIT 1
+            """, (trader_address, market_id, timestamp, outcome, shares, price))
+            if cursor.fetchone():
+                return False
+
             cursor.execute("""
                 INSERT INTO trades (trade_id, trader_address, market_id, market_title,
                                   market_category, outcome, shares, price, side, timestamp, outcome_bet)
@@ -198,7 +209,7 @@ class Database:
             conn.commit()
             return True
         except sqlite3.IntegrityError:
-            # Trade already exists
+            # Trade already exists (same trade_id)
             return False
         finally:
             conn.close()
