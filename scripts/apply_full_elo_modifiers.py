@@ -146,7 +146,17 @@ def main():
     now = datetime.now().isoformat()
     skipped_excluded = 0
 
-    MAX_FINAL_ELO = 3000.0
+    # Change 1: raised hard cap
+    MAX_FINAL_ELO = 3500.0
+
+    # Change 2: confidence gate — max multiplier by closed position count
+    def _confidence_cap(closed: int) -> float:
+        if closed >= 20: return 2.20
+        if closed >= 10: return 2.00
+        if closed >= 5:  return 1.80
+        if closed >= 3:  return 1.60
+        if closed >= 2:  return 1.45
+        return 1.30  # 1 closed position
 
     for addr, base_elo in base_elos.items():
         try:
@@ -158,13 +168,29 @@ def main():
                 skipped_excluded += 1
                 continue
 
-            # Fix 3: single-trade lucky spike — cap base at 1600 for multiplier calc
             pnl_entry = eligible.get(addr, {})
             closed_pos = pnl_entry.get('closed_positions', 0)
-            effective_base = min(base_elo, 1600.0) if closed_pos == 1 else base_elo
 
-            # Fix 2: hard cap on final ELO
-            new_elo = min(effective_base * mult, MAX_FINAL_ELO)
+            # Change 2: gate the multiplier by confidence (closed positions)
+            cap = _confidence_cap(closed_pos)
+            mult = min(mult, cap) if mult > 1.0 else mult
+
+            # Change 4: asymmetric loss penalty at high ELO
+            if mult < 1.0 and base_elo >= 2000:
+                loss_amplifier = 1.30
+                mult = 1.0 - ((1.0 - mult) * loss_amplifier)
+
+            # Change 3: ELO-level K-factor dampening on the gain
+            if base_elo >= 2500:
+                dampening = 0.60
+            elif base_elo >= 2000:
+                dampening = 0.80
+            else:
+                dampening = 1.00
+            new_elo = base_elo + (base_elo * (mult - 1.0) * dampening)
+
+            # Change 1: hard cap at 3500
+            new_elo = min(new_elo, MAX_FINAL_ELO)
             updates.append((addr, base_elo, mult, new_elo, pnl_data['breakdown']))
         except Exception as e:
             print(f"  WARNING: could not compute P&L for {addr[:10]}...: {e}")
@@ -182,7 +208,12 @@ def main():
 
         print("\n  Top 10 after modifiers:")
         for addr, base, mult, new, breakdown in updates[:10]:
-            print(f"    {addr[:6]}...{addr[-4:]}  base={base:.0f}  ×{mult:.3f}  →  {new:.0f}")
+            pnl_entry = eligible.get(addr, {})
+            closed = pnl_entry.get('closed_positions', 0)
+            damp = 0.60 if base >= 2500 else (0.80 if base >= 2000 else 1.00)
+            conf_cap = _confidence_cap(closed)
+            print(f"    {addr[:6]}...{addr[-4:]}  base={base:.0f}  closed={closed}  "
+                  f"conf_cap={conf_cap:.2f}x  damp={damp:.2f}  ×{mult:.3f}  ->  {new:.0f}")
             print(f"      {breakdown}")
 
     if args.dry_run:
