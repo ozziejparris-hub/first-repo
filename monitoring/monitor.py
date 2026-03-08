@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import re
 import time
 from datetime import datetime
@@ -10,6 +11,8 @@ from .position_tracker import PositionTracker
 from .background_pnl_worker import BackgroundPnLWorker
 
 # Telegram imports removed - all notifications handled by System Observer
+
+_monitor_logger = logging.getLogger('monitor')
 
 # AI Filtering Configuration
 AI_FILTERING_ENABLED = True  # Toggle AI filtering on/off
@@ -485,6 +488,7 @@ class PolymarketMonitor:
         all_recent_trades = self.polymarket.get_market_trades(market_id=None, limit=500)
 
         safe_print(f"[OK] Fetched {len(all_recent_trades)} recent trades")
+        _monitor_logger.info(f"Fetched {len(all_recent_trades)} recent trades")
 
         # Convert flagged traders to a set for fast lookup
         flagged_set = set(flagged_traders)
@@ -895,6 +899,7 @@ class PolymarketMonitor:
                 self._update_activity_timestamp()
 
                 safe_print(f"\n[OK] Cycle complete. Next check in {self.check_interval // 60} minutes.")
+                _monitor_logger.info(f"Cycle complete. Next check in {self.check_interval // 60} minutes.")
 
             except Exception as e:
                 import traceback
