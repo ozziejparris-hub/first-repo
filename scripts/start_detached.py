@@ -61,7 +61,7 @@ def _is_running(pid_file: Path) -> bool:
         return False
 
 
-def _launch(script: str, log_name: str) -> int:
+def _launch(script: str, log_name: str, extra_args: list = None) -> int:
     """Launch script as a fully detached process. Returns PID."""
     log_path = LOGS / log_name
     log_file = open(log_path, 'a', encoding='utf-8')
@@ -70,8 +70,11 @@ def _launch(script: str, log_name: str) -> int:
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUTF8"] = "1"
+    cmd = [PYTHON, "-u", str(project_root / "scripts" / script)]
+    if extra_args:
+        cmd.extend(extra_args)
     proc = subprocess.Popen(
-        [PYTHON, "-u", str(project_root / "scripts" / script)],
+        cmd,
         cwd=str(project_root),          # always run from project root
         stdout=log_file,
         stderr=log_file,
@@ -82,6 +85,28 @@ def _launch(script: str, log_name: str) -> int:
     )
     # Don't close log_file here — the child process owns the handle on Windows
     return proc.pid
+
+
+def _read_monitor_pid() -> int | None:
+    """Find the running monitor's PID via process search (PID file is locked)."""
+    try:
+        import psutil
+        for p in psutil.process_iter(['pid', 'name', 'cmdline', 'memory_info']):
+            try:
+                if 'python' not in p.info.get('name', '').lower():
+                    continue
+                cmd = ' '.join(p.info.get('cmdline') or [])
+                if 'start_monitoring.py' not in cmd:
+                    continue
+                mem_mb = p.info['memory_info'].rss / 1024 / 1024
+                if mem_mb < 10:
+                    continue   # skip launcher stub
+                return p.info['pid']
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return None
 
 
 def main():
@@ -108,13 +133,20 @@ def main():
     if not mon_running:
         pid = _launch("start_monitoring.py", "monitoring_detached.log")
         print(f"[OK] Monitoring started  (PID {pid})")
-        # Give monitor time to acquire its lock before observer starts
-        time.sleep(3)
+        # Give monitor time to acquire its lock and write PID before observer starts
+        print("     Waiting 8s for monitor to initialise...")
+        time.sleep(8)
     else:
         print("[--] Monitoring already running - skipping")
 
     if not obs_running:
-        pid = _launch("run_system_observer.py", "observer_detached.log")
+        # Pass --pid so the observer skips auto-detect (avoids the input() prompt
+        # that raises EOFError when stdin is DEVNULL in detached mode).
+        mon_pid_val = _read_monitor_pid()
+        obs_args = ["--pid", str(mon_pid_val)] if mon_pid_val else []
+        if mon_pid_val:
+            print(f"[OK] Passing --pid {mon_pid_val} to observer")
+        pid = _launch("run_system_observer.py", "observer_detached.log", obs_args)
         print(f"[OK] Observer started    (PID {pid})")
     else:
         print("[--] Observer already running - skipping")

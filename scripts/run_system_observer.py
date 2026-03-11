@@ -153,7 +153,11 @@ async def main():
             print("[OBSERVER] Health checks will be limited")
             print()
 
-            response = input("Continue anyway? (y/n): ")
+            try:
+                response = input("Continue anyway? (y/n): ")
+            except EOFError:
+                # stdin is /dev/null when launched detached — treat as 'y'
+                response = "y"
             if response.lower() != 'y':
                 print("Exiting...")
                 sys.exit(0)
