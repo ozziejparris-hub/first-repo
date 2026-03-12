@@ -19,7 +19,7 @@ import signal
 import sys
 import sqlite3
 import subprocess
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, List
 from pathlib import Path
 import psutil
@@ -115,7 +115,7 @@ class SystemObserver:
         print(f"[OBSERVER] Health check interval: 60s")
         print(f"[OBSERVER] Hourly reports: enabled")
         print(f"[OBSERVER] Daily reports: enabled (23:00 UTC)")
-        print(f"[OBSERVER] Weekly reports: enabled (Sunday 23:00 UTC)")
+        print(f"[OBSERVER] Weekly reports: enabled (Sunday 20:00 UTC)")
         print(f"[OBSERVER] Analysis scheduler: enabled (daily 01:00 UTC)")
         print(f"[OBSERVER] Trend analysis: enabled (every 6 hours)")
         print(f"[OBSERVER] Comprehensive diagnostics: every 6h")
@@ -187,7 +187,9 @@ class SystemObserver:
                 await asyncio.sleep(60)
 
             except Exception as e:
+                import traceback
                 print(f"[OBSERVER] Error in health check loop: {e}")
+                traceback.print_exc()
                 await asyncio.sleep(60)
 
     async def _log_monitor_loop(self):
@@ -327,7 +329,9 @@ class SystemObserver:
                 await asyncio.sleep(60)
 
             except Exception as e:
+                import traceback
                 print(f"[OBSERVER] Error in hourly report loop: {e}")
+                traceback.print_exc()
                 await asyncio.sleep(60)
 
     async def _daily_report_loop(self):
@@ -345,7 +349,7 @@ class SystemObserver:
 
         while self.running:
             try:
-                now = datetime.now()
+                now = datetime.now(timezone.utc)
 
                 # Check if it's 23:00 UTC
                 if now.hour == 23 and now.minute == 0:
@@ -375,7 +379,7 @@ class SystemObserver:
 
     async def _weekly_report_loop(self):
         """
-        Send comprehensive weekly report every Sunday at 23:00 UTC.
+        Send comprehensive weekly report every Sunday at 20:00 UTC.
 
         Report includes:
         - Top 20 traders leaderboard
@@ -387,11 +391,11 @@ class SystemObserver:
         - Markets resolved
         - System performance
         """
-        print("[OBSERVER] Weekly report loop started (triggers Sunday 23:00 UTC)")
+        print("[OBSERVER] Weekly report loop started (triggers Sunday 20:00 UTC)")
 
         while self.running:
             try:
-                now = datetime.now()
+                now = datetime.now(timezone.utc)
 
                 # Check if it's Sunday (weekday 6) at 20:00 UTC (changed from 23:00 for better timing)
                 if now.weekday() == 6 and now.hour == 20 and now.minute == 0:
@@ -403,7 +407,7 @@ class SystemObserver:
                     # Wait 7 days before next report
                     await asyncio.sleep(604800)  # 7 days
                 else:
-                    # Check every hour to catch the Sunday 23:00 window
+                    # Check every hour to catch the Sunday 20:00 window
                     await asyncio.sleep(3600)
 
             except Exception as e:
@@ -426,7 +430,7 @@ class SystemObserver:
 
         while self.running:
             try:
-                now = datetime.now()
+                now = datetime.now(timezone.utc)
 
                 # Check if it's 01:00 UTC (low activity time)
                 if now.hour == 1 and now.minute == 0:
@@ -2283,8 +2287,13 @@ Sellers:
             print("[OBSERVER] Data sufficient, proceeding with analysis...")
 
             # Step 2: Run full analysis
-            print("[OBSERVER] Running full analysis (this may take 5-10 minutes)...")
-            scheduler.run_full_analysis()
+            # IMPORTANT: run_full_analysis() calls correlation_matrix.build_correlation_matrix()
+            # which is a synchronous O(n²) computation over 70M+ pairs.  Calling it directly
+            # on the event loop freezes ALL other tasks (hourly reports, health checks, Telegram)
+            # for the duration.  Offload to a thread pool executor so the event loop stays free.
+            print("[OBSERVER] Running full analysis in thread executor (non-blocking)...")
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, scheduler.run_full_analysis)
 
             # Step 3: Get generated reports
             reports_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'reports')
@@ -2741,8 +2750,9 @@ Sellers:
                 if should_run:
                     print("\n[DIAGNOSTIC] Running comprehensive health check...")
 
-                    # Run full diagnostic
-                    report = self.diagnostics.run_full_diagnostic()
+                    # Run full diagnostic in executor to avoid blocking the event loop
+                    loop = asyncio.get_event_loop()
+                    report = await loop.run_in_executor(None, self.diagnostics.run_full_diagnostic)
 
                     # Update timestamp
                     self.last_full_diagnostic = datetime.now()
