@@ -175,6 +175,15 @@ class BackgroundPnLWorker:
                 'elapsed': time.time() - t0,
             }
 
+        # 2b. Apply synthetic resolution closes for any open positions in resolved markets
+        resolved_markets = self.db.get_resolved_markets_for_trader(trader_address)
+        if resolved_markets:
+            n_synthetic = self.position_tracker.apply_synthetic_closes(
+                positions, resolved_markets
+            )
+        else:
+            n_synthetic = 0
+
         # 3. Persist positions (one connection, one commit for the batch)
         conn = self.db.get_connection()
         cursor = conn.cursor()
@@ -193,8 +202,8 @@ class BackgroundPnLWorker:
                         exit_shares, exit_avg_price, exit_total_received,
                         exit_timestamp, exit_trade_ids,
                         realized_pnl, roi_percent, holding_period_hours,
-                        status, remaining_shares, last_updated
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+                        status, remaining_shares, is_synthetic_close, last_updated
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
                 """, (
                     pos_dict['position_id'],
                     pos_dict['trader_address'],
@@ -216,6 +225,7 @@ class BackgroundPnLWorker:
                     pos_dict['holding_period_hours'],
                     pos_dict['status'],
                     pos_dict['remaining_shares'],
+                    pos_dict.get('is_synthetic_close', 0),
                 ))
             conn.commit()
         except Exception as e:
@@ -265,6 +275,7 @@ class BackgroundPnLWorker:
             'trade_count': trade_count,
             'n_positions': len(positions),
             'n_closed': n_closed,
+            'n_synthetic': n_synthetic,
             'skipped': False,
             'elapsed': time.time() - t0,
         }

@@ -335,12 +335,16 @@ class TelegramHealthBot:
         # P&L Stats
         if 'pnl_stats' in metrics:
             pnl_stats = metrics['pnl_stats']
-            traders_with_roi = pnl_stats.get('traders_with_roi', 0)
-            closed_positions = pnl_stats.get('closed_positions', 0)
+            traders_with_real_pnl = pnl_stats.get('traders_with_real_pnl', 0)
+            closed_positions_calculated = pnl_stats.get('closed_positions_calculated', 0)
+            synthetic_closes = pnl_stats.get('synthetic_closes', 0)
+            worker_backlog = pnl_stats.get('worker_backlog', 0)
 
             message_parts.append(f"💰 P&L Coverage:")
-            message_parts.append(f"  • Traders with ROI: {traders_with_roi}")
-            message_parts.append(f"  • Closed positions: {closed_positions}")
+            message_parts.append(f"  • Traders with real closed P&L: {traders_with_real_pnl}")
+            message_parts.append(f"  • Closed positions calculated: {closed_positions_calculated}")
+            message_parts.append(f"  • Of which synthetic (resolution): {synthetic_closes}")
+            message_parts.append(f"  • Worker backlog (unvisited): {worker_backlog}")
             message_parts.append("")
 
         # Top 5 Traders Mini Leaderboard
@@ -953,7 +957,7 @@ class TelegramHealthBot:
         minutes_since = diagnostics.get('minutes_since_activity', 0)
         last_activity = diagnostics.get('last_activity')
         closed_positions = diagnostics.get('closed_positions', 0)
-        traders_with_roi = diagnostics.get('traders_with_roi', 0)
+        traders_with_real_pnl = diagnostics.get('traders_with_real_pnl', 0)
 
         message_parts = [
             "🔴 MONITORING SYSTEM FROZEN",
@@ -967,8 +971,8 @@ class TelegramHealthBot:
         message_parts.extend([
             "",
             "📊 Current State:",
-            f"  • Closed positions: {closed_positions}",
-            f"  • Traders with ROI: {traders_with_roi}"
+            f"  • Closed positions calculated: {closed_positions}",
+            f"  • Traders with real closed P&L: {traders_with_real_pnl}"
         ])
 
         # Likely cause

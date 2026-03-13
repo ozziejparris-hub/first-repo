@@ -303,8 +303,8 @@ class SystemObserver:
                             freeze_diagnostics = {
                                 'minutes_since_activity': minutes_since,
                                 'last_activity': mon_activity.get('last_activity'),
-                                'closed_positions': metrics.get('pnl_stats', {}).get('closed_positions', 0),
-                                'traders_with_roi': metrics.get('pnl_stats', {}).get('traders_with_roi', 0)
+                                'closed_positions': metrics.get('pnl_stats', {}).get('closed_positions_calculated', 0),
+                                'traders_with_real_pnl': metrics.get('pnl_stats', {}).get('traders_with_real_pnl', 0),
                             }
                             await self.telegram.send_monitoring_freeze_alert(freeze_diagnostics)
 
@@ -654,36 +654,65 @@ class SystemObserver:
         """
         Get P&L coverage statistics.
 
-        Returns:
-            dict: P&L stats including coverage percentage
+        Returns three distinct, accurate metrics:
+          - traders_with_real_pnl: traders that have at least one computed
+            closed position (the only meaningful P&L figure)
+          - closed_positions_calculated: total rows in the positions table
+          - worker_backlog: traders the worker has never visited yet
         """
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
+            # Traders with at least one real computed closed position
             cursor.execute("""
-                SELECT COUNT(*) FROM traders
-                WHERE roi_percentage IS NOT NULL
-                AND total_trades >= 10
+                SELECT COUNT(DISTINCT trader_address)
+                FROM positions
+                WHERE status = 'closed'
             """)
-            traders_with_roi = cursor.fetchone()[0]
+            traders_with_real_pnl = cursor.fetchone()[0]
 
+            # Total closed position records computed
             cursor.execute("""
                 SELECT COUNT(*) FROM positions
                 WHERE status = 'closed'
             """)
-            closed_positions = cursor.fetchone()[0]
+            closed_positions_calculated = cursor.fetchone()[0]
+
+            # Worker backlog: traders never visited (pnl_last_updated IS NULL)
+            cursor.execute("""
+                SELECT COUNT(*) FROM traders
+                WHERE pnl_last_updated IS NULL
+            """)
+            worker_backlog = cursor.fetchone()[0]
+
+            # Synthetic closes: positions closed by resolution (not real SELLs)
+            cursor.execute("""
+                SELECT COUNT(*) FROM positions
+                WHERE status = 'closed' AND COALESCE(is_synthetic_close, 0) = 1
+            """)
+            synthetic_closes = cursor.fetchone()[0]
 
             conn.close()
 
             return {
-                'traders_with_roi': traders_with_roi,
-                'closed_positions': closed_positions
+                'traders_with_real_pnl': traders_with_real_pnl,
+                'closed_positions_calculated': closed_positions_calculated,
+                'synthetic_closes': synthetic_closes,
+                'worker_backlog': worker_backlog,
+                # Keep legacy key so nothing else breaks
+                'closed_positions': closed_positions_calculated,
             }
 
         except Exception as e:
             print(f"[OBSERVER] Error getting P&L stats: {e}")
-            return {'traders_with_roi': 0, 'closed_positions': 0}
+            return {
+                'traders_with_real_pnl': 0,
+                'closed_positions_calculated': 0,
+                'synthetic_closes': 0,
+                'worker_backlog': 0,
+                'closed_positions': 0,
+            }
 
     def _check_background_worker_health(self) -> Dict:
         """

@@ -129,6 +129,15 @@ class Database:
         except sqlite3.OperationalError:
             pass  # Column already exists
 
+        # Migration: Add is_synthetic_close flag to positions table
+        try:
+            cursor.execute("""
+                ALTER TABLE positions ADD COLUMN is_synthetic_close BOOLEAN DEFAULT 0
+            """)
+            print("[DATABASE] Added 'is_synthetic_close' column to positions table")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         # Create index for efficient P&L worker queries
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_traders_pnl_priority
@@ -1083,3 +1092,45 @@ class Database:
             'recently_updated': recently_updated,
             'up_to_date': total_active - never_updated - stale
         }
+
+    def get_resolved_markets_for_trader(self, trader_address: str) -> List[Dict]:
+        """
+        Get resolved markets where a trader has open BUY positions.
+
+        Returns markets whose condition_id appears in the trader's trades table
+        and where the market is resolved with a known winning_outcome.
+
+        NOTE: trades.market_id stores the market's conditionId —
+        joined on markets.condition_id.
+
+        Returns:
+            List of dicts with keys: market_id (conditionId), winning_outcome, resolution_date
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT DISTINCT
+                m.condition_id AS market_id,
+                m.winning_outcome,
+                m.resolution_date
+            FROM markets m
+            INNER JOIN trades t ON m.condition_id = t.market_id
+            WHERE t.trader_address = ?
+              AND m.resolved = 1
+              AND m.winning_outcome IS NOT NULL
+              AND m.winning_outcome != ''
+              AND m.condition_id IS NOT NULL
+        """, (trader_address,))
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        return [
+            {
+                'market_id': row[0],
+                'winning_outcome': row[1],
+                'resolution_date': row[2],
+            }
+            for row in rows
+        ]

@@ -61,6 +61,9 @@ class Position:
         self.roi_percent = None
         self.holding_period_hours = None
 
+        # Flag: True if this position was closed by synthetic resolution, not a real SELL trade
+        self.is_synthetic_close = False
+
     def close_position(self, exit_shares: float, exit_avg_price: float,
                       exit_timestamp: datetime, exit_trade_ids: List[str]):
         """Close or partially close the position."""
@@ -113,7 +116,8 @@ class Position:
             'roi_percent': self.roi_percent,
             'holding_period_hours': self.holding_period_hours,
             'status': self.status,
-            'remaining_shares': self.remaining_shares
+            'remaining_shares': self.remaining_shares,
+            'is_synthetic_close': 1 if self.is_synthetic_close else 0
         }
 
 
@@ -287,6 +291,69 @@ class PositionTracker:
             positions.append(position)
 
         return positions
+
+    def apply_synthetic_closes(self, positions: List['Position'],
+                               resolved_markets: List[Dict]) -> int:
+        """
+        Apply synthetic resolution closes to open positions in resolved markets.
+
+        For each open position whose market has resolved:
+        - Winning outcome: close at $1.00/share (full redemption value)
+        - Losing outcome: close at $0.00/share (worthless)
+
+        Args:
+            positions: List of Position objects (modified in-place)
+            resolved_markets: List of dicts from get_resolved_markets_for_trader(),
+                              each with keys: market_id, winning_outcome, resolution_date
+
+        Returns:
+            Number of synthetic closes applied
+        """
+        # Build lookup: market_id -> (winning_outcome, resolution_datetime)
+        market_map = {}
+        for m in resolved_markets:
+            mid = m['market_id']
+            raw_date = m.get('resolution_date')
+            if raw_date:
+                try:
+                    if isinstance(raw_date, str):
+                        res_dt = datetime.fromisoformat(raw_date)
+                    else:
+                        res_dt = raw_date
+                except (ValueError, TypeError):
+                    res_dt = datetime.now()
+            else:
+                res_dt = datetime.now()
+            market_map[mid] = (m['winning_outcome'], res_dt)
+
+        applied = 0
+        for pos in positions:
+            if pos.status != 'open':
+                continue
+            if pos.market_id not in market_map:
+                continue
+
+            winning_outcome, res_dt = market_map[pos.market_id]
+
+            # Normalize outcome comparison (case-insensitive)
+            pos_outcome = (pos.outcome or '').strip().lower()
+            win_outcome = (winning_outcome or '').strip().lower()
+
+            if pos_outcome == win_outcome:
+                close_price = 1.0   # Winning outcome redeems at $1.00
+            else:
+                close_price = 0.0   # Losing outcome is worthless
+
+            pos.close_position(
+                exit_shares=pos.remaining_shares,
+                exit_avg_price=close_price,
+                exit_timestamp=res_dt,
+                exit_trade_ids=[],
+            )
+            pos.is_synthetic_close = True
+            applied += 1
+
+        return applied
 
     def calculate_trader_pnl(self, trader_address: str) -> Dict:
         """
