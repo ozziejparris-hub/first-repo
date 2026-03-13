@@ -3642,38 +3642,63 @@ class UnifiedELOSystem:
                 # Cache for all traders
                 self.pnl_cache = {}  # trader -> {realized_pnl, avg_roi, etc}
 
-                # Get all flagged traders
+                # Read aggregated P&L directly from the positions table.
+                # This picks up both real SELL closes and synthetic resolution
+                # closes written by BackgroundPnLWorker, avoiding a full
+                # per-trader FIFO re-run that would miss synthetic closes.
                 conn = self.get_db_connection()
                 cursor = conn.cursor()
-                cursor.execute("SELECT address FROM traders WHERE is_flagged = 1")
-                traders = [row[0] for row in cursor.fetchall()]
+
+                # Closed positions: realized P&L, ROI, win-rate
+                cursor.execute("""
+                    SELECT
+                        trader_address,
+                        SUM(realized_pnl)                                    AS realized_pnl,
+                        AVG(roi_percent)                                      AS avg_roi,
+                        COUNT(*)                                              AS closed_positions,
+                        SUM(entry_total_cost)                                 AS total_invested,
+                        SUM(CASE WHEN realized_pnl > 0 THEN 1 ELSE 0 END) * 1.0
+                            / COUNT(*)                                        AS profitable_rate
+                    FROM positions
+                    WHERE status = 'closed'
+                    GROUP BY trader_address
+                """)
+                closed_rows = {row[0]: row for row in cursor.fetchall()}
+
+                # Open positions: cost basis and count (for open_cost_basis drag)
+                cursor.execute("""
+                    SELECT
+                        trader_address,
+                        COUNT(*)              AS open_positions,
+                        SUM(entry_total_cost) AS open_cost_basis
+                    FROM positions
+                    WHERE status = 'open'
+                    GROUP BY trader_address
+                """)
+                open_rows = {row[0]: row for row in cursor.fetchall()}
                 conn.close()
 
-                print(f"[P&L] Loading data for {len(traders)} traders...")
-
-                # Load P&L for each trader
+                # Merge into pnl_cache
+                all_traders = set(closed_rows) | set(open_rows)
                 loaded_count = 0
-                for trader in traders:
-                    try:
-                        pnl_stats = tracker.calculate_trader_pnl(trader)
-
-                        # Only cache if trader has positions
-                        if pnl_stats['closed_positions'] > 0 or pnl_stats['open_positions'] > 0:
-                            self.pnl_cache[trader] = {
-                                'realized_pnl': pnl_stats['realized_pnl'],
-                                'avg_roi': pnl_stats['avg_roi'],
-                                'closed_positions': pnl_stats['closed_positions'],
-                                'open_positions': pnl_stats['open_positions'],
-                                'open_cost_basis': pnl_stats.get('open_cost_basis', 0.0),
-                                'total_invested': pnl_stats['total_invested'],
-                                # position_tracker returns profitable_rate as 0-100;
-                                # convert to 0.0-1.0 fraction for quality modifier
-                                'profitable_rate': pnl_stats['profitable_rate'] / 100.0
-                            }
-                            loaded_count += 1
-                    except Exception as e:
-                        # Skip traders with no P&L data
+                for trader in all_traders:
+                    cr = closed_rows.get(trader)
+                    op = open_rows.get(trader)
+                    closed_pos = cr[3] if cr else 0
+                    open_pos   = op[1] if op else 0
+                    if closed_pos == 0 and open_pos == 0:
                         continue
+                    self.pnl_cache[trader] = {
+                        'realized_pnl':   (cr[1] or 0.0) if cr else 0.0,
+                        'avg_roi':        (cr[2] or 0.0) if cr else 0.0,
+                        'closed_positions': closed_pos,
+                        'open_positions':   open_pos,
+                        'open_cost_basis':  (op[2] or 0.0) if op else 0.0,
+                        'total_invested':   (cr[4] or 0.0) if cr else 0.0,
+                        # profitable_rate stored as 0.0-1.0 fraction
+                        'profitable_rate':  (cr[5] or 0.0) if cr else 0.0,
+                    }
+                    loaded_count += 1
 
                 self.pnl_cache_timestamp = datetime.now()
 
