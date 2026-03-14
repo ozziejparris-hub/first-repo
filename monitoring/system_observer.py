@@ -1806,17 +1806,29 @@ Sellers:
             """)
             has_positions = cursor.fetchone() is not None
             # 1. Top 10 traders by composite ELO
+            # ROI and realized_pnl come from the positions table (same source as
+            # the hourly report and ELO modifier), not traders.roi_percentage which
+            # is initialised to 0.0 and not reliably updated.
             cursor.execute("""
                 SELECT
-                    address,
-                    comprehensive_elo,
-                    roi_percentage,
-                    total_trades,
-                    realized_pnl,
-                    win_rate
-                FROM traders
-                WHERE comprehensive_elo IS NOT NULL
-                ORDER BY comprehensive_elo DESC
+                    t.address,
+                    t.comprehensive_elo,
+                    COALESCE(p.avg_roi, 0)       AS roi,
+                    t.total_trades,
+                    COALESCE(p.realized_pnl, 0)  AS realized_pnl,
+                    t.win_rate
+                FROM traders t
+                LEFT JOIN (
+                    SELECT
+                        trader_address,
+                        AVG(roi_percent)  AS avg_roi,
+                        SUM(realized_pnl) AS realized_pnl
+                    FROM positions
+                    WHERE status = 'closed'
+                    GROUP BY trader_address
+                ) p ON t.address = p.trader_address
+                WHERE t.comprehensive_elo IS NOT NULL
+                ORDER BY t.comprehensive_elo DESC
                 LIMIT 10
             """)
 
@@ -2000,17 +2012,27 @@ Sellers:
             has_positions = cursor.fetchone() is not None
 
             # 1. Top 20 traders by comprehensive ELO (extended leaderboard)
+            # ROI and realized_pnl sourced from positions table (not traders.roi_percentage).
             cursor.execute("""
                 SELECT
-                    address,
-                    comprehensive_elo,
-                    roi_percentage,
-                    total_trades,
-                    realized_pnl,
-                    win_rate
-                FROM traders
-                WHERE comprehensive_elo IS NOT NULL
-                ORDER BY comprehensive_elo DESC
+                    t.address,
+                    t.comprehensive_elo,
+                    COALESCE(p.avg_roi, 0)       AS roi,
+                    t.total_trades,
+                    COALESCE(p.realized_pnl, 0)  AS realized_pnl,
+                    t.win_rate
+                FROM traders t
+                LEFT JOIN (
+                    SELECT
+                        trader_address,
+                        AVG(roi_percent)  AS avg_roi,
+                        SUM(realized_pnl) AS realized_pnl
+                    FROM positions
+                    WHERE status = 'closed'
+                    GROUP BY trader_address
+                ) p ON t.address = p.trader_address
+                WHERE t.comprehensive_elo IS NOT NULL
+                ORDER BY t.comprehensive_elo DESC
                 LIMIT 20
             """)
 
