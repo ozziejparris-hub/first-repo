@@ -2681,6 +2681,38 @@ Sellers:
 
             print("[ELO] Integration complete")
 
+            # --- P&L modifier pass ---
+            # integrate_behavioral_elo writes comprehensive_elo without P&L
+            # modifiers (apply_pnl=False).  Immediately re-apply the P&L
+            # multiplier on top so the leaderboard always reflects real P&L data.
+            print("[ELO] Applying P&L modifiers (second pass)...")
+            pnl_script_path = scripts_dir / 'apply_full_elo_modifiers.py'
+            if pnl_script_path.exists():
+                pnl_spec = importlib.util.spec_from_file_location(
+                    "apply_full_elo_modifiers",
+                    str(pnl_script_path)
+                )
+                if pnl_spec and pnl_spec.loader:
+                    pnl_module = importlib.util.module_from_spec(pnl_spec)
+                    sys.modules['apply_full_elo_modifiers'] = pnl_module
+                    pnl_spec.loader.exec_module(pnl_module)
+                    if hasattr(pnl_module, 'main'):
+                        # main() uses argparse; patch sys.argv so it sees no flags
+                        import sys as _sys
+                        _saved_argv = _sys.argv
+                        _sys.argv = ['apply_full_elo_modifiers.py']
+                        try:
+                            await loop.run_in_executor(None, pnl_module.main)
+                        finally:
+                            _sys.argv = _saved_argv
+                        print("[ELO] P&L modifier pass complete")
+                    else:
+                        print("[ELO] WARNING: apply_full_elo_modifiers.py has no main() — skipping P&L pass")
+                else:
+                    print("[ELO] WARNING: could not load apply_full_elo_modifiers spec — skipping P&L pass")
+            else:
+                print(f"[ELO] WARNING: {pnl_script_path} not found — skipping P&L pass")
+
             # Update timestamp
             self.last_elo_update = datetime.now()
 
