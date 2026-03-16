@@ -29,7 +29,7 @@ import seaborn as sns
 from scipy import stats
 
 # Configure console encoding for Windows
-if sys.platform == 'win32':
+if sys.platform == 'win32' and hasattr(sys.stdout, 'buffer'):
     import codecs
     sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'ignore')
 
@@ -517,10 +517,10 @@ class CalibrationAnalyzer:
                 results[trader] = {
                     'brier_score': metrics.brier_score,
                     'expected_calibration_error': metrics.expected_calibration_error,
-                    'num_predictions': metrics.num_predictions,
+                    'num_predictions': metrics.total_predictions,
                     'confidence_bias': metrics.confidence_bias,
                     'avg_predicted_prob': metrics.avg_predicted_prob,
-                    'avg_actual_prob': metrics.avg_actual_prob
+                    'avg_actual_prob': metrics.actual_win_rate
                 }
 
         logger.info(f"Analyzed calibration for {len(results)} traders")

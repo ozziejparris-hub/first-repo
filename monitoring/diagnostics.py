@@ -61,21 +61,28 @@ class ELOSystemDiagnostics:
                 warnings.append(f"Moderate ELO coverage: {elo_coverage*100:.1f}%")
 
             # 2. Check behavioral metrics coverage
+            # Denominator: traders with >=30 local trade rows (behavioral analyzer
+            # can only score traders with rows in the trades table, not just
+            # traders.total_trades which counts API-fetched trades not stored locally)
             cursor.execute("""
-                SELECT COUNT(*) FROM traders
-                WHERE total_trades >= 30
+                SELECT COUNT(*) FROM traders t
+                WHERE (SELECT COUNT(*) FROM trades tr WHERE tr.trader_address = t.address) >= 30
+            """)
+            qualified_behavioral = cursor.fetchone()[0]
+
+            cursor.execute("""
+                SELECT COUNT(*) FROM traders t
+                WHERE (SELECT COUNT(*) FROM trades tr WHERE tr.trader_address = t.address) >= 30
                 AND kelly_alignment_score IS NOT NULL
                 AND patience_score IS NOT NULL
                 AND timing_score IS NOT NULL
             """)
             with_behavioral = cursor.fetchone()[0]
 
-            behavioral_coverage = with_behavioral / max(1, qualified_traders)
+            behavioral_coverage = with_behavioral / max(1, qualified_behavioral)
 
-            # Behavioral scores (kelly_alignment_score etc.) are not yet computed
-            # by the production pipeline — demoted to info-only, not a CRITICAL issue.
             if behavioral_coverage < 0.20:
-                warnings.append(f"Low behavioral coverage: {behavioral_coverage*100:.1f}% (not yet implemented)")
+                warnings.append(f"Low behavioral coverage: {behavioral_coverage*100:.1f}% ({with_behavioral}/{qualified_behavioral} traders with local trade data)")
 
             # 3. Check ROI data quality — use avg_roi, which is populated by the
             # background P&L worker (roi_percentage is the old market-scanner column

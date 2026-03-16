@@ -30,7 +30,7 @@ from typing import Dict, List, Tuple, Optional
 from collections import defaultdict
 import statistics
 
-from unified_elo_system import UnifiedELOSystem
+from analysis.unified_elo_system import UnifiedELOSystem
 
 
 class CompositeSkillScoreSystem:

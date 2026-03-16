@@ -241,20 +241,89 @@ class AnalysisScheduler:
             self.errors.append(error_msg)
             self.results['behavior'] = None
 
-        # 2. Correlation Matrix
+        # 2. Correlation Matrix (7-day TTL cache + trader cap)
         try:
             print("\n[2/2] Running Correlation Matrix Analysis...")
 
             from analysis.correlation_matrix import TraderCorrelationMatrix
+            import json as _json
+            import os as _os
 
             correlation = TraderCorrelationMatrix(self.db.db_path)
-            matrix = correlation.build_correlation_matrix()
-            corr_results = correlation.export_for_integration()
+
+            # --- 7-day TTL cache check ---
+            cache_path = _os.path.join(
+                _os.path.dirname(_os.path.dirname(__file__)), 'reports', 'correlation_cache.json'
+            )
+            cache_valid = False
+            corr_results = None
+            if _os.path.exists(cache_path):
+                age_days = (datetime.now() - datetime.fromtimestamp(
+                    _os.path.getmtime(cache_path)
+                )).total_seconds() / 86400
+                if age_days < 7:
+                    try:
+                        with open(cache_path) as _f:
+                            cached_data = _json.load(_f)
+                        cached_count = cached_data.get('total_traders', 0)
+                        # Use filtered count for drift check (same population as cap)
+                        conn = self.db.get_connection()
+                        cur = conn.cursor()
+                        cur.execute("""
+                            SELECT COUNT(*) FROM traders t
+                            WHERE is_flagged = 1
+                            AND (comprehensive_elo >= 1500 OR total_trades >= 30)
+                            AND EXISTS (
+                                SELECT 1 FROM trades tr
+                                WHERE tr.trader_address = t.address LIMIT 1
+                            )
+                        """)
+                        current_count = cur.fetchone()[0]
+                        conn.close()
+                        drift = abs(current_count - cached_count) / max(1, cached_count)
+                        if drift <= 0.05:
+                            cache_valid = True
+                            corr_results = cached_data
+                            print(f"   Using cached matrix ({cached_count} traders, "
+                                  f"built {cached_data.get('timestamp','')[:10]}, "
+                                  f"age {age_days:.1f}d, drift {drift*100:.1f}%)")
+                    except Exception:
+                        pass
+
+            if not cache_valid:
+                # --- Trader cap: flagged + meaningful activity + local trade data ---
+                print("   Cache stale or missing - recalculating with trader cap...")
+                conn = self.db.get_connection()
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT t.address FROM traders t
+                    WHERE t.is_flagged = 1
+                    AND (t.comprehensive_elo >= 1500 OR t.total_trades >= 30)
+                    AND EXISTS (
+                        SELECT 1 FROM trades tr
+                        WHERE tr.trader_address = t.address LIMIT 1
+                    )
+                """)
+                capped_traders = [row[0] for row in cur.fetchall()]
+                conn.close()
+
+                pairs = (len(capped_traders) * (len(capped_traders) - 1)) // 2
+                print(f"   Trader cap applied: {len(capped_traders):,} traders, "
+                      f"{pairs:,} pairs (was {len(self.db.get_flagged_traders()):,} flagged total)")
+
+                # Patch the trader list used by build_correlation_matrix
+                original_get_flagged = correlation.db.get_flagged_traders
+                correlation.db.get_flagged_traders = lambda: capped_traders
+
+                matrix = correlation.build_correlation_matrix()
+                corr_results = correlation.export_for_integration()
+
+                correlation.db.get_flagged_traders = original_get_flagged
+
+                print(f"   Built matrix for {matrix.get('total_traders', len(capped_traders))} traders")
+                print(f"   Found {len(corr_results['high_correlation_pairs'])} high-correlation pairs")
 
             self.results['correlation'] = corr_results
-
-            print(f"   ✅ Built matrix for {len(matrix)} traders")
-            print(f"   ✅ Found {len(corr_results['high_correlation_pairs'])} high-correlation pairs")
             tools_run += 1
 
         except Exception as e:
@@ -647,6 +716,343 @@ class AnalysisScheduler:
 
         return unified_file
 
+    def run_phase_3b_composite_scores(self):
+        """
+        Phase 3b: Calculate composite skill scores for all flagged traders.
+        Synthesises ELO, behavioural, network, and advanced metrics into
+        a single 0-100 score with tier classification (ELITE/STRONG/etc).
+        Runs after Phase 3. Gracefully degrades when upstream data is missing.
+        """
+        print("\n" + "="*70)
+        print("  PHASE 3b: COMPOSITE SKILL SCORES")
+        print("="*70 + "\n")
+
+        try:
+            from collections import Counter
+            import csv as _csv
+            import json as _json
+
+            # --- Bulk-load all inputs from DB and cache files in one pass ---
+
+            conn = self.db.get_connection()
+            cur = conn.cursor()
+
+            # 1. ELO scores
+            cur.execute("""
+                SELECT address, comprehensive_elo
+                FROM traders
+                WHERE comprehensive_elo IS NOT NULL AND is_flagged = 1
+                ORDER BY comprehensive_elo DESC
+            """)
+            elo_map = {row[0]: row[1] for row in cur.fetchall()}
+
+            # 2. Behavioral scores from DB
+            cur.execute("""
+                SELECT address, kelly_alignment_score, patience_score, timing_score
+                FROM traders
+                WHERE is_flagged = 1
+            """)
+            behavior_map = {row[0]: (row[1], row[2], row[3]) for row in cur.fetchall()}
+
+            conn.close()
+
+            # 3. Network independence from correlation cache
+            independence_map = {}
+            copy_followers = set()
+            corr_data = self.results.get('correlation') or {}
+            if not corr_data:
+                cache_path = os.path.join(
+                    os.path.dirname(os.path.dirname(__file__)), 'reports', 'correlation_cache.json'
+                )
+                if os.path.exists(cache_path):
+                    with open(cache_path) as _f:
+                        corr_data = _json.load(_f)
+            if corr_data:
+                independence_map = corr_data.get('independence_scores', {})
+                for pair in corr_data.get('high_correlation_pairs', []):
+                    if pair.get('correlation_score', 0) >= 0.7:
+                        copy_followers.add(pair['trader_b'])
+
+            print(f"   ELO data: {len(elo_map)} traders")
+            print(f"   Behavioral data: {sum(1 for v in behavior_map.values() if any(x is not None for x in v))} traders with scores")
+            print(f"   Network data: {len(independence_map)} independence scores, {len(copy_followers)} copy followers")
+
+            # --- Score each trader using lightweight inline logic ---
+            def _elo_points(elo):
+                if elo >= 2400: return 25.0
+                if elo >= 2200: return 23.0
+                if elo >= 2000: return 21.0
+                if elo >= 1800: return 19.0
+                if elo >= 1700: return 17.0
+                if elo >= 1600: return 15.0
+                if elo >= 1500: return 13.0
+                if elo >= 1400: return 11.0
+                if elo >= 1300: return 9.0
+                if elo >= 1200: return 7.0
+                return 5.0
+
+            def _behavioral_points(kelly, patience, timing):
+                # Kelly (0-5 pts): higher is better, 0.5+ is good
+                kelly_pts = 2.5  # neutral default
+                if kelly is not None:
+                    if kelly >= 0.8: kelly_pts = 5.0
+                    elif kelly >= 0.6: kelly_pts = 4.0
+                    elif kelly >= 0.4: kelly_pts = 3.0
+                    elif kelly >= 0.2: kelly_pts = 2.0
+                    else: kelly_pts = 1.0
+                # Patience (0-5 pts): 0-1 scale, higher is more patient
+                patience_pts = 2.5
+                if patience is not None:
+                    if patience >= 0.7: patience_pts = 5.0
+                    elif patience >= 0.5: patience_pts = 4.0
+                    elif patience >= 0.3: patience_pts = 3.0
+                    elif patience >= 0.1: patience_pts = 2.0
+                    else: patience_pts = 1.0
+                # Timing (0-5 pts): 0-1 scale
+                timing_pts = 2.5
+                if timing is not None:
+                    if timing >= 0.7: timing_pts = 5.0
+                    elif timing >= 0.5: timing_pts = 4.0
+                    elif timing >= 0.3: timing_pts = 3.0
+                    elif timing >= 0.1: timing_pts = 2.0
+                    else: timing_pts = 1.0
+                return kelly_pts + patience_pts + timing_pts
+
+            def _network_points(addr):
+                ind = independence_map.get(addr)
+                if ind is None:
+                    return 6.0  # neutral default (50/100 independence assumed)
+                ind = int(ind) if not isinstance(ind, int) else ind
+                if ind >= 90: return 10.0
+                if ind >= 80: return 9.0
+                if ind >= 70: return 8.0
+                if ind >= 60: return 7.0
+                if ind >= 50: return 6.0
+                if ind >= 40: return 5.0
+                if ind >= 30: return 4.0
+                if ind >= 20: return 3.0
+                if ind >= 10: return 2.0
+                return 1.0
+
+            def _copy_penalty(addr):
+                if addr in copy_followers:
+                    return -10.0  # moderate penalty (score is 0.7-0.8 range)
+                return 0.0
+
+            def _classify_tier(score):
+                if score >= 85: return 'ELITE'
+                if score >= 70: return 'STRONG'
+                if score >= 55: return 'ABOVE AVERAGE'
+                if score >= 40: return 'AVERAGE'
+                if score >= 25: return 'BELOW AVERAGE'
+                return 'WEAK/NOISE'
+
+            # Load Sharpe map from Phase 2b results
+            sharpe_map = (self.results.get('risk_metrics') or {}).get('sharpe_map', {})
+            if sharpe_map:
+                print(f"   Loaded Sharpe ratios for {len(sharpe_map)} traders from Phase 2b")
+
+            # Load Brier map from Phase 2c results
+            brier_map = (self.results.get('calibration') or {}).get('brier_map', {})
+            if brier_map:
+                print(f"   Loaded Brier scores for {len(brier_map)} traders from Phase 2c")
+
+            trader_addresses = list(elo_map.keys())
+            print(f"   Scoring {len(trader_addresses)} flagged traders...")
+
+            ranked = []
+            for addr in trader_addresses:
+                elo = elo_map[addr]
+                kelly, patience, timing = behavior_map.get(addr, (None, None, None))
+
+                elo_pts = _elo_points(elo)
+                behav_pts = _behavioral_points(kelly, patience, timing)
+                network_pts = _network_points(addr)
+                copy_pen = _copy_penalty(addr)
+                # Forecasting: use Brier score from Phase 2c if available
+                brier = brier_map.get(addr)
+                if brier is None:      forecast_pts = 13.0
+                elif brier < 0.10:     forecast_pts = 25.0
+                elif brier < 0.15:     forecast_pts = 20.0
+                elif brier < 0.20:     forecast_pts = 15.0
+                elif brier < 0.25:     forecast_pts = 10.0
+                else:                  forecast_pts = 5.0
+                exec_pts = 7.0        # execution: neutral (no regret analysis yet)
+                contrarian_pts = 0.0  # contrarian: no bonus by default
+
+                # Consistency: use Sharpe ratio from Phase 2b if available
+                sharpe = sharpe_map.get(addr)
+                if sharpe is None:
+                    consist_pts = 7.0
+                elif sharpe > 3.0:   consist_pts = 15.0
+                elif sharpe >= 2.5:  consist_pts = 14.0
+                elif sharpe >= 2.0:  consist_pts = 13.0
+                elif sharpe >= 1.5:  consist_pts = 11.0
+                elif sharpe >= 1.0:  consist_pts = 9.0
+                elif sharpe >= 0.5:  consist_pts = 7.0
+                elif sharpe >= 0.0:  consist_pts = 5.0
+                else:                consist_pts = 3.0
+
+                total = elo_pts + forecast_pts + exec_pts + consist_pts + behav_pts + network_pts + contrarian_pts + copy_pen
+                score = max(0, min(100, int(round(total))))
+                tier = _classify_tier(score)
+
+                ranked.append({
+                    'trader_address': addr,
+                    'composite_score': score,
+                    'tier': tier,
+                    'elo_points': elo_pts,
+                    'forecasting_points': forecast_pts,
+                    'execution_points': exec_pts,
+                    'consistency_points': consist_pts,
+                    'behavioral_points': round(behav_pts, 1),
+                    'network_points': network_pts,
+                    'contrarian_points': contrarian_pts,
+                    'copy_penalty': copy_pen,
+                    'breakdown': (f"ELO:{elo_pts:.0f}/25 Forecast:{forecast_pts:.0f}/25 "
+                                  f"Exec:{exec_pts:.0f}/15 Consist:{consist_pts:.0f}/15 "
+                                  f"Behav:{behav_pts:.0f}/15 Net:{network_pts:.0f}/10 "
+                                  f"Copy:{copy_pen:.0f} = {score}/100 ({tier})"),
+                })
+
+            ranked.sort(key=lambda x: x['composite_score'], reverse=True)
+            for rank, t in enumerate(ranked, 1):
+                t['rank'] = rank
+
+            self.results['composite_scores'] = ranked
+
+            # Save CSV
+            reports_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'reports')
+            os.makedirs(reports_dir, exist_ok=True)
+            csv_path = os.path.join(reports_dir, f"composite_scores_{datetime.now().strftime('%Y%m%d')}.csv")
+            with open(csv_path, 'w', newline='', encoding='utf-8') as f:
+                writer = _csv.writer(f)
+                writer.writerow(['Rank', 'Address', 'Score', 'Tier', 'ELO', 'Forecast',
+                                  'Exec', 'Consist', 'Behav', 'Network', 'Contrarian',
+                                  'CopyPenalty', 'Breakdown'])
+                for t in ranked:
+                    writer.writerow([
+                        t['rank'], t['trader_address'], t['composite_score'], t['tier'],
+                        f"{t['elo_points']:.1f}", f"{t['forecasting_points']:.1f}",
+                        f"{t['execution_points']:.1f}", f"{t['consistency_points']:.1f}",
+                        f"{t['behavioral_points']:.1f}", f"{t['network_points']:.1f}",
+                        f"{t['contrarian_points']:.1f}", f"{t['copy_penalty']:.1f}",
+                        t['breakdown'],
+                    ])
+
+            tier_counts = Counter(t['tier'] for t in ranked)
+            print(f"\n   Scored {len(ranked)} traders")
+            print(f"   ELITE (85-100):        {tier_counts.get('ELITE', 0)}")
+            print(f"   STRONG (70-84):        {tier_counts.get('STRONG', 0)}")
+            print(f"   ABOVE AVERAGE (55-69): {tier_counts.get('ABOVE AVERAGE', 0)}")
+            print(f"   AVERAGE (40-54):       {tier_counts.get('AVERAGE', 0)}")
+            print(f"   BELOW AVERAGE (25-39): {tier_counts.get('BELOW AVERAGE', 0)}")
+            print(f"   WEAK/NOISE (0-24):     {tier_counts.get('WEAK/NOISE', 0)}")
+            print(f"   Report: {csv_path}")
+
+        except Exception as e:
+            import traceback
+            print(f"   Composite score calculation failed: {e}")
+            traceback.print_exc()
+            self.results['composite_scores'] = None
+
+    def run_phase_2b_risk_metrics(self):
+        """
+        Phase 2b: Compute risk-adjusted returns (Sharpe, Sortino, drawdown)
+        for all traders with sufficient resolved-market trade history.
+        Results feed into Phase 3b's consistency component.
+        """
+        print("\n" + "="*70)
+        print("  PHASE 2b: RISK-ADJUSTED RETURNS")
+        print("="*70 + "\n")
+
+        try:
+            from analysis.risk_adjusted_returns import RiskAdjustedAnalyzer
+            import logging as _logging
+            # Suppress per-trader WARNING spam — we only want summary output
+            _logging.getLogger().setLevel(_logging.ERROR)
+
+            with RiskAdjustedAnalyzer(self.db.db_path) as analyzer:
+                df = analyzer.compare_all_traders()
+
+            _logging.getLogger().setLevel(_logging.WARNING)
+
+            sharpe_map = {}
+            if df is not None and len(df) > 0:
+                sharpe_map = {
+                    row['trader_address']: row['sharpe_ratio']
+                    for _, row in df.iterrows()
+                    if row['sharpe_ratio'] is not None and str(row['sharpe_ratio']) != 'nan'
+                }
+
+            self.results['risk_metrics'] = {
+                'sharpe_map': sharpe_map,
+                'trader_count': len(sharpe_map),
+            }
+
+            print(f"   Traders with Sharpe data: {len(sharpe_map)}")
+            if sharpe_map:
+                vals = [v for v in sharpe_map.values()]
+                print(f"   Sharpe range: {min(vals):.2f} to {max(vals):.2f}")
+                above_1 = sum(1 for v in vals if v >= 1.0)
+                above_2 = sum(1 for v in vals if v >= 2.0)
+                print(f"   Sharpe >= 1.0: {above_1}  |  Sharpe >= 2.0: {above_2}")
+
+        except Exception as e:
+            import traceback
+            print(f"   Risk-adjusted analysis failed: {e}")
+            traceback.print_exc()
+            self.results['risk_metrics'] = None
+
+    def run_phase_2c_calibration(self):
+        """
+        Phase 2c: Compute Brier scores and calibration metrics for all traders
+        with sufficient resolved-market predictions.
+        Results feed into Phase 3b's forecasting component.
+        """
+        print("\n" + "="*70)
+        print("  PHASE 2c: CALIBRATION ANALYSIS")
+        print("="*70 + "\n")
+
+        try:
+            import matplotlib
+            matplotlib.use('Agg')
+            import logging as _logging
+            from analysis.calibration_analysis import CalibrationAnalyzer
+
+            # Suppress per-trader WARNING spam
+            _logging.getLogger().setLevel(_logging.ERROR)
+            analyzer = CalibrationAnalyzer(self.db.db_path)
+            results = analyzer.analyze_all_traders()
+            _logging.getLogger().setLevel(_logging.WARNING)
+
+            brier_map = {}
+            if results:
+                brier_map = {
+                    addr: r['brier_score']
+                    for addr, r in results.items()
+                    if r.get('brier_score') is not None
+                }
+
+            self.results['calibration'] = {
+                'brier_map': brier_map,
+                'trader_count': len(brier_map),
+            }
+
+            print(f"   Traders with Brier data: {len(brier_map)}")
+            if brier_map:
+                vals = list(brier_map.values())
+                print(f"   Brier range: {min(vals):.4f} to {max(vals):.4f}")
+                excellent = sum(1 for v in vals if v < 0.10)
+                good = sum(1 for v in vals if 0.10 <= v < 0.20)
+                print(f"   Brier < 0.10 (excellent): {excellent}  |  0.10-0.20 (good): {good}")
+
+        except Exception as e:
+            import traceback
+            print(f"   Calibration analysis failed: {e}")
+            traceback.print_exc()
+            self.results['calibration'] = None
+
     def run_phase_4_reporting(self):
         """
         Phase 4: Generate unified reports and send alerts.
@@ -693,6 +1099,12 @@ class AnalysisScheduler:
             print("  PHASE 2: SKIPPED (Insufficient resolved markets)")
             print("="*70 + "\n")
 
+        # Phase 2b: Risk-adjusted returns (always run — only needs resolved trades)
+        self.run_phase_2b_risk_metrics()
+
+        # Phase 2c: Calibration analysis (always run — only needs resolved trades)
+        self.run_phase_2c_calibration()
+
         # Phase 3: Only if prerequisites met
         if sufficient and self.results.get('correlation'):
             self.run_phase_3_integration()
@@ -700,6 +1112,9 @@ class AnalysisScheduler:
             print("\n" + "="*70)
             print("  PHASE 3: SKIPPED (Missing prerequisites)")
             print("="*70 + "\n")
+
+        # Phase 3b: Composite scores (always run — graceful degradation)
+        self.run_phase_3b_composite_scores()
 
         # Phase 4: Always run (generates reports from available data)
         self.run_phase_4_reporting()

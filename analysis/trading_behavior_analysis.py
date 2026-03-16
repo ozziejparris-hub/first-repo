@@ -912,7 +912,7 @@ class TradingBehaviorAnalyzer:
         # Add timestamp
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        with open(filename, 'w', newline='') as f:
+        with open(filename, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
 
             # Write header
