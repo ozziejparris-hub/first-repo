@@ -469,7 +469,7 @@ class AnalysisScheduler:
 
             from analysis.copy_trade_detector import CopyTradeDetector
 
-            detector = CopyTradeDetector(self.db.db_path)
+            detector = CopyTradeDetector(self.db.db_path, max_cache_age_hours=168)
             relationships = detector.detect_copy_relationships()
             network = detector.build_copy_network()
 

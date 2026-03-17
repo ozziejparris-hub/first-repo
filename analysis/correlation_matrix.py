@@ -264,9 +264,26 @@ class TraderCorrelationMatrix:
         """
         print("[CORRELATION MATRIX] Building correlation matrix...")
 
-        # Get all flagged traders
-        traders = self.db.get_flagged_traders()
-        print(f"[CORRELATION MATRIX] Analyzing {len(traders)} traders...")
+        # Apply trader cap: flagged traders with meaningful ELO/trade history AND
+        # local trade data — avoids O(n²) blowup on 13k+ flagged traders.
+        try:
+            conn = self.db.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT address FROM traders
+                WHERE is_flagged = 1
+                  AND (comprehensive_elo >= 1500 OR total_trades >= 30)
+                  AND EXISTS (
+                      SELECT 1 FROM trades tr WHERE tr.trader_address = traders.address
+                  )
+            """)
+            traders = [row[0] for row in cursor.fetchall()]
+            all_flagged = self.db.get_flagged_traders()
+            print(f"[CORRELATION MATRIX] Analyzing {len(traders)} traders "
+                  f"(capped from {len(all_flagged)} flagged total)...")
+        except Exception:
+            traders = self.db.get_flagged_traders()
+            print(f"[CORRELATION MATRIX] Analyzing {len(traders)} traders...")
 
         matrix = {}
         trader_correlations = defaultdict(list)

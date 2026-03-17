@@ -34,7 +34,7 @@ class CopyTradeDetector:
     Uses time-lagged position analysis to identify who copies who.
     """
 
-    def __init__(self, db_path: str = None, max_cache_age_hours: int = 24):
+    def __init__(self, db_path: str = None, max_cache_age_hours: int = 168):
         """
         Initialize with database and correlation matrix integration.
 
