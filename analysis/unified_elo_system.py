@@ -684,7 +684,7 @@ class UnifiedELOSystem:
                 print("[BEHAVIORAL] Continuing with neutral behavioral multipliers")
                 self.behavior_cache = {}
         else:
-            print(f"[BEHAVIORAL] Using cached behavioral data (age: {cache_age/3600:.1f} hours)")
+            pass  # Cache hit — suppress repeated log noise
 
         return self.behavior_cache
 

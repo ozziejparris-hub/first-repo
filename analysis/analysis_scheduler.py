@@ -490,52 +490,15 @@ class AnalysisScheduler:
             self.errors.append(error_msg)
             self.results['copy_trading'] = None
 
-        # 2. Market Confidence Meter (needs performance data)
-        try:
-            if not self.results.get('performance'):
-                print("\n[2/3] Skipping Confidence Meter - needs performance data")
-            else:
-                print("\n[2/3] Running Market Confidence Meter...")
+        # 2. Market Confidence Meter — delegated to run_phase_3c_confidence()
+        # (called separately after Phase 3 to keep this block clean)
 
-                from market_confidence_meter import MarketConfidenceMeter
-
-                confidence = MarketConfidenceMeter(self.db.db_path)
-
-                # Get unresolved markets
-                conn = self.db.get_connection()
-                cursor = conn.cursor()
-                cursor.execute("SELECT market_id FROM markets WHERE resolved = 0 LIMIT 10")
-                markets = [row[0] for row in cursor.fetchall()]
-                conn.close()
-
-                confidence_results = []
-                for market_id in markets:
-                    result = confidence.calculate_confidence(market_id)
-                    if result:
-                        confidence_results.append(result)
-
-                self.results['confidence'] = {
-                    'total_markets': len(confidence_results),
-                    'high_confidence': len([r for r in confidence_results if r.get('confidence_score', 0) >= 85]),
-                    'data': confidence_results
-                }
-
-                print(f"   ✅ Analyzed {len(confidence_results)} markets")
-                print(f"   ✅ Found {self.results['confidence']['high_confidence']} high-confidence signals")
-                tools_run += 1
-
-        except Exception as e:
-            error_msg = f"Confidence Meter failed: {str(e)}"
-            print(f"   ❌ {error_msg}")
-            self.errors.append(error_msg)
-            self.results['confidence'] = None
-
-        # 3. Consensus Divergence Detector
+        # 2. Consensus Divergence Detector
         try:
             if not self.results.get('consensus'):
-                print("\n[3/3] Skipping Divergence Detector - needs consensus data")
+                print("\n[2/2] Skipping Divergence Detector - needs consensus data")
             else:
-                print("\n[3/3] Running Consensus Divergence Detector...")
+                print("\n[2/2] Running Consensus Divergence Detector...")
 
                 from consensus_divergence_detector import ConsensusDivergenceDetector
 
@@ -569,7 +532,57 @@ class AnalysisScheduler:
             self.results['divergence'] = None
 
         duration = (datetime.now() - phase_start).total_seconds()
-        print(f"\n✅ Phase 3 Complete: {tools_run}/3 tools run ({duration:.1f}s)")
+        print(f"\n✅ Phase 3 Complete: {tools_run}/2 tools run ({duration:.1f}s)")
+
+    def run_phase_3c_confidence(self):
+        """
+        Phase 3c: Market confidence scores — combines ELO consensus, specialist
+        agreement, trader quality, and volume into a 0-100 signal per active market.
+        Market-level output; does not feed per-trader composite scores.
+        """
+        print("\n" + "="*70)
+        print("  PHASE 3c: MARKET CONFIDENCE METER")
+        print("="*70 + "\n")
+
+        try:
+            import sys, io
+            # market_confidence_meter.py prints emoji — force UTF-8 for this block
+            _orig_stdout = sys.stdout
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+
+            from analysis.market_confidence_meter import MarketConfidenceMeter
+
+            meter = MarketConfidenceMeter(self.db.db_path)
+            meter.run_all_analyses()
+            meter.calculate_all_confidence_scores()
+
+            scores = meter.market_confidence_scores
+            high_conf = [m for m in scores.values() if m.get('confidence_score', 0) >= 70]
+
+            self.results['confidence'] = {
+                'total_markets': len(scores),
+                'high_confidence': len(high_conf),
+                'data': list(scores.values()),
+            }
+
+            sys.stdout = _orig_stdout
+            print(f"   Markets analyzed: {len(scores)}")
+            print(f"   High confidence (>=70): {len(high_conf)}")
+            if high_conf:
+                top = sorted(high_conf, key=lambda x: x['confidence_score'], reverse=True)[:3]
+                for m in top:
+                    title = m.get('market_title', '')[:55].encode('ascii', 'replace').decode()
+                    print(f"   {m['confidence_score']:.0f}/100  {title}")
+
+        except Exception as e:
+            import traceback
+            try:
+                sys.stdout = _orig_stdout
+            except Exception:
+                pass
+            print(f"   Confidence meter failed: {e}")
+            traceback.print_exc()
+            self.results['confidence'] = None
 
     def generate_unified_report(self) -> Dict:
         """
@@ -857,6 +870,11 @@ class AnalysisScheduler:
             if brier_map:
                 print(f"   Loaded Brier scores for {len(brier_map)} traders from Phase 2c")
 
+            # Load regret map from Phase 2d results
+            regret_map = (self.results.get('regret') or {}).get('regret_map', {})
+            if regret_map:
+                print(f"   Loaded regret rates for {len(regret_map)} traders from Phase 2d")
+
             trader_addresses = list(elo_map.keys())
             print(f"   Scoring {len(trader_addresses)} flagged traders...")
 
@@ -877,7 +895,14 @@ class AnalysisScheduler:
                 elif brier < 0.20:     forecast_pts = 15.0
                 elif brier < 0.25:     forecast_pts = 10.0
                 else:                  forecast_pts = 5.0
-                exec_pts = 7.0        # execution: neutral (no regret analysis yet)
+                # Execution: use regret rate from Phase 2d if available
+                regret = regret_map.get(addr)
+                if regret is None:    exec_pts = 7.0
+                elif regret < 20:     exec_pts = 14.0
+                elif regret < 40:     exec_pts = 11.0
+                elif regret < 60:     exec_pts = 8.0
+                elif regret < 80:     exec_pts = 5.0
+                else:                 exec_pts = 2.0
                 contrarian_pts = 0.0  # contrarian: no bonus by default
 
                 # Consistency: use Sharpe ratio from Phase 2b if available
@@ -1053,6 +1078,121 @@ class AnalysisScheduler:
             traceback.print_exc()
             self.results['calibration'] = None
 
+    def run_phase_2d_regret(self):
+        """
+        Phase 2d: Compute regret metrics (actual vs optimal returns) for all
+        traders with trades in resolved markets.
+        Uses bulk SQL (2 queries) to avoid O(traders x markets) query storm.
+        Results feed into Phase 3b's execution component.
+        """
+        print("\n" + "="*70)
+        print("  PHASE 2d: REGRET ANALYSIS")
+        print("="*70 + "\n")
+
+        try:
+            from collections import defaultdict
+
+            conn = self.db.get_connection()
+            cursor = conn.cursor()
+
+            # Single bulk query: all trades in resolved markets with outcome
+            cursor.execute("""
+                SELECT t.trader_address, t.market_id, t.outcome,
+                       t.shares, t.price, t.side, m.winning_outcome
+                FROM trades t
+                JOIN markets m ON t.market_id = m.market_id
+                WHERE m.resolved = 1
+                  AND m.winning_outcome IS NOT NULL
+                  AND m.winning_outcome != ''
+            """)
+            rows = cursor.fetchall()
+
+            # Second query: best (lowest) buy price per (market_id, winning_outcome)
+            # for optimal return calculation
+            cursor.execute("""
+                SELECT t.market_id, m.winning_outcome, MIN(t.price) AS best_price
+                FROM trades t
+                JOIN markets m ON t.market_id = m.market_id
+                WHERE m.resolved = 1
+                  AND m.winning_outcome IS NOT NULL
+                  AND m.winning_outcome != ''
+                  AND t.side = 'BUY'
+                  AND t.outcome = m.winning_outcome
+                GROUP BY t.market_id, m.winning_outcome
+            """)
+            best_price_rows = cursor.fetchall()
+            best_price_map = {(r[0], r[1]): r[2] for r in best_price_rows}
+
+            # Group trades by (trader, market)
+            trader_market = defaultdict(list)
+            for row in rows:
+                trader_market[(row[0], row[1])].append(row)
+
+            # Compute regret per trader
+            trader_stats = defaultdict(lambda: {
+                'actual': 0.0, 'optimal': 0.0, 'invested': 0.0, 'trades': 0
+            })
+
+            for (trader, market_id), trade_rows in trader_market.items():
+                winning_outcome = trade_rows[0][6]
+
+                total_cost = 0.0
+                positions = defaultdict(float)
+
+                for r in trade_rows:
+                    _, _, outcome, shares, price, side, _ = r
+                    cost = shares * price
+                    if side.upper() == 'BUY':
+                        total_cost += cost
+                        positions[outcome] += shares
+                    else:
+                        total_cost -= cost
+                        positions[outcome] -= shares
+
+                payout = positions.get(winning_outcome, 0.0)
+                if payout < 0:
+                    payout = 0.0
+                actual_profit = payout - total_cost
+                invested = abs(total_cost)
+
+                optimal_profit = 0.0
+                best_price = best_price_map.get((market_id, winning_outcome))
+                if best_price and best_price > 0 and invested > 0:
+                    shares_optimal = invested / best_price
+                    optimal_profit = shares_optimal - invested
+
+                s = trader_stats[trader]
+                s['actual'] += actual_profit
+                s['optimal'] += optimal_profit
+                s['invested'] += invested
+                s['trades'] += len(trade_rows)
+
+            regret_map = {}
+            for trader, s in trader_stats.items():
+                if s['optimal'] > 0:
+                    regret_rate = ((s['optimal'] - s['actual']) / s['optimal']) * 100
+                    regret_rate = max(0.0, regret_rate)
+                    regret_map[trader] = round(regret_rate, 2)
+
+            self.results['regret'] = {
+                'regret_map': regret_map,
+                'trader_count': len(regret_map),
+            }
+
+            print(f"   Traders with regret data: {len(regret_map)}")
+            if regret_map:
+                vals = list(regret_map.values())
+                print(f"   Regret rate range: {min(vals):.1f}% to {max(vals):.1f}%")
+                excellent = sum(1 for v in vals if v < 20)
+                good = sum(1 for v in vals if 20 <= v < 40)
+                print(f"   Regret < 20% (excellent): {excellent}  |  20-40% (good): {good}")
+
+        except Exception as e:
+            import traceback
+            print(f"   Regret analysis failed: {e}")
+            traceback.print_exc()
+            self.results['regret'] = None
+
     def run_phase_4_reporting(self):
         """
         Phase 4: Generate unified reports and send alerts.
@@ -1104,6 +1244,9 @@ class AnalysisScheduler:
 
         # Phase 2c: Calibration analysis (always run — only needs resolved trades)
         self.run_phase_2c_calibration()
+
+        # Phase 2d: Regret analysis (always run — only needs resolved trades)
+        self.run_phase_2d_regret()
 
         # Phase 3: Only if prerequisites met
         if sufficient and self.results.get('correlation'):
