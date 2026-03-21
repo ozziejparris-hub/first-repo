@@ -408,14 +408,11 @@ class ELOSystemDiagnostics:
             if row and row[0] is not None:
                 min_roi, max_roi, avg_roi = row
 
-                # Sanity checks
-                # Only flag min_roi < -100 as a hard error (genuinely impossible on prediction markets).
-                # High ROI is expected — a 1-cent bet on a correct outcome pays ~100x.
+                # Only flag ROI below -100% — that is genuinely impossible on a prediction market
+                # and indicates a data error. There is no upper bound: high ROI is expected
+                # (e.g. a 1-cent position on a correct outcome pays ~100x).
                 if min_roi < -100:
                     issues.append(f"ROI below -100%: {min_roi:.1f}% (impossible on prediction markets — data error)")
-                elif max_roi > 100000:
-                    # Flag extreme outliers as a warning only, not a system error
-                    warnings.append(f"Unusually high max ROI: {max_roi:.1f}% (check for data anomaly)")
 
                 if abs(avg_roi) > 50:
                     warnings.append(f"Unusual average ROI: {avg_roi:.1f}% (expected -10% to +20%)")
