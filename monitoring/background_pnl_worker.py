@@ -8,7 +8,7 @@ without causing timeouts or blocking the monitoring system.
 Threading model
 ---------------
 ALL SQLite I/O — fetching trades, matching positions, writing positions,
-updating the traders row, marking updated — runs inside a single
+updating the tr222222aders row, marking updated — runs inside a single
 ThreadPoolExecutor call (_process_trader_sync).  The asyncio event loop
 thread never touches SQLite directly, so it cannot block.
 
