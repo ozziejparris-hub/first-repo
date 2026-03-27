@@ -112,8 +112,10 @@ def main():
     skipped_stale = 0    # had a modifier but no safe base — skip to avoid stacking
 
     for addr, base_cat, comp_elo, pnl_mod in rows:
-        # Prefer base_category_elo when it was set by backfill (meaningfully != 1500)
-        if base_cat is not None and abs(base_cat - 1500.0) > 0.0001:
+        # Prefer base_category_elo when it has been explicitly set (backfilled OR
+        # recorded at first-modifier-write time by this script).  NULL means never
+        # set; any stored value — including 1500.0 — is a valid clean base.
+        if base_cat is not None:
             base_elos[addr] = base_cat
         # Fallback: comprehensive_elo is safe to use only if no modifier has been
         # applied yet (pnl_modifier == 1.0 or NULL), otherwise we'd stack
@@ -124,7 +126,7 @@ def main():
             skipped_stale += 1
 
     from_backfill = sum(1 for a, b, c, p in rows
-                        if b is not None and abs(b - 1500.0) > 0.0001 and a in base_elos)
+                        if b is not None and a in base_elos)
     from_comp = len(base_elos) - from_backfill
 
     print(f"  Matched {len(base_elos):,} eligible traders in DB")
@@ -224,7 +226,7 @@ def main():
     # Write updates — retry on lock
     import time as _time
     write_rows = [
-        (round(new_elo, 4), round(mult, 4), now, addr)
+        (round(new_elo, 4), round(mult, 4), now, round(base_elo, 6), addr)
         for addr, base_elo, mult, new_elo, _ in updates
     ]
     written = 0
@@ -235,7 +237,13 @@ def main():
                     UPDATE traders
                     SET comprehensive_elo = ?,
                         pnl_modifier = ?,
-                        elo_last_updated = ?
+                        elo_last_updated = ?,
+                        base_category_elo = CASE
+                            WHEN base_category_elo IS NULL
+                              OR ABS(base_category_elo - 1500.0) <= 0.0001
+                            THEN ?
+                            ELSE base_category_elo
+                        END
                     WHERE address = ?
                 """, row)
                 written += cur.rowcount
