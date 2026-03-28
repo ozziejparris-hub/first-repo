@@ -120,6 +120,7 @@ class SystemObserver:
         print(f"[OBSERVER] Trend analysis: enabled (every 6 hours)")
         print(f"[OBSERVER] Comprehensive diagnostics: every 6h")
         print(f"[OBSERVER] Insider detection: enabled (every 15 minutes)")
+        print(f"[OBSERVER] Pre-resolution intelligence: enabled (daily 08:00 UTC)")
         print(f"[OBSERVER] Auto ELO updates: enabled (direct call, no subprocess)")
         print()
 
@@ -138,6 +139,7 @@ class SystemObserver:
             asyncio.create_task(self._elo_update_loop()),
             asyncio.create_task(self._comprehensive_diagnostic_loop()),
             asyncio.create_task(self._insider_detection_loop()),
+            asyncio.create_task(self._pre_resolution_loop()),
         ]
 
         try:
@@ -471,6 +473,47 @@ class SystemObserver:
                 import traceback
                 traceback.print_exc()
                 await asyncio.sleep(3600)  # Wait 1 hour on error
+
+    async def _pre_resolution_loop(self):
+        """
+        Run pre-resolution intelligence daily at 08:00 UTC.
+
+        Scans open markets resolving within 7 days, identifies divergence
+        between smart money positioning and market price, and sends one
+        Telegram message per high-conviction signal.
+        """
+        print("[OBSERVER] Pre-resolution intelligence loop started (triggers at 08:00 UTC)")
+
+        while self.running:
+            try:
+                now = datetime.now(timezone.utc)
+
+                if now.hour == 8 and now.minute == 0:
+                    print("[OBSERVER] Triggering pre-resolution intelligence scan...")
+
+                    loop = asyncio.get_event_loop()
+                    from scripts.pre_resolution_intelligence import run_pre_resolution_intelligence
+                    result = await loop.run_in_executor(
+                        None, run_pre_resolution_intelligence
+                    )
+
+                    print(
+                        f"[OBSERVER] Pre-resolution scan complete — "
+                        f"{result['markets_checked']} markets checked, "
+                        f"{result['signals_found']} signal(s) sent"
+                    )
+
+                    # Wait 24 hours before next run
+                    await asyncio.sleep(86400)
+                else:
+                    # Check every hour to catch the 08:00 window
+                    await asyncio.sleep(3600)
+
+            except Exception as e:
+                print(f"[OBSERVER] Error in pre-resolution loop: {e}")
+                import traceback
+                traceback.print_exc()
+                await asyncio.sleep(3600)
 
     async def _trend_analysis_loop(self):
         """
