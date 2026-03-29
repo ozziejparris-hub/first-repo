@@ -420,17 +420,136 @@ class AnalysisScheduler:
         try:
             print("\n[3/3] Running Trader Specialization Analysis...")
 
-            from trader_specialization_analysis import TraderSpecializationAnalyzer
+            import sqlite3 as _sqlite3
+            import os as _os
+            from analysis.trader_specialization_analysis import TraderSpecializationAnalyzer
 
             specialization = TraderSpecializationAnalyzer(self.db.db_path)
-            spec_results = specialization.analyze_all_traders()
+
+            # Step 1: compute category-specific ELO ratings (no return value)
+            specialization.calculate_category_elos()
+
+            # Step 2: classify traders into specialists/generalists
+            trader_classifications = specialization.identify_specialists()
+
+            # Step 3: generate CSV/TXT reports into reports/
+            reports_dir = _os.path.join(
+                _os.path.dirname(_os.path.dirname(self.db.db_path)), 'reports'
+            )
+            _os.makedirs(reports_dir, exist_ok=True)
+            correlations = specialization.calculate_category_correlations(trader_classifications)
+            predictions  = specialization.generate_context_aware_predictions(trader_classifications)
+            specialization.generate_reports(trader_classifications, predictions, correlations, reports_dir)
+
+            # ----------------------------------------------------------------
+            # Fix 2: persist per-category ELO to trader_categories table
+            # ----------------------------------------------------------------
+            _spec_conn = _sqlite3.connect(self.db.db_path)
+            _spec_conn.execute("PRAGMA journal_mode=WAL")
+            _spec_cur = _spec_conn.cursor()
+
+            _spec_cur.execute("""
+                CREATE TABLE IF NOT EXISTS trader_categories (
+                    trader_address     TEXT NOT NULL,
+                    category           TEXT NOT NULL,
+                    category_elo       REAL,
+                    trade_count        INTEGER,
+                    win_rate           REAL,
+                    specialisation_ratio REAL,
+                    is_specialist      BOOLEAN DEFAULT 0,
+                    last_updated       TEXT,
+                    PRIMARY KEY (trader_address, category),
+                    FOREIGN KEY (trader_address) REFERENCES traders(address)
+                )
+            """)
+
+            # ----------------------------------------------------------------
+            # Fix 3: add specialist_category and specialisation_ratio columns
+            #         to traders table if they don't already exist
+            # ----------------------------------------------------------------
+            _existing_cols = {
+                r[1] for r in _spec_cur.execute("PRAGMA table_info(traders)").fetchall()
+            }
+            if 'specialist_category' not in _existing_cols:
+                _spec_cur.execute(
+                    "ALTER TABLE traders ADD COLUMN specialist_category TEXT"
+                )
+            if 'specialisation_ratio' not in _existing_cols:
+                _spec_cur.execute(
+                    "ALTER TABLE traders ADD COLUMN specialisation_ratio REAL"
+                )
+
+            _now_str = datetime.now().isoformat()
+            _categories = [
+                'Elections', 'Geopolitics', 'Economics',
+                'Crypto', 'Sports', 'Entertainment'
+            ]
+
+            _rows = []
+            for _addr, _tdata in trader_classifications.items():
+                _primary   = _tdata.get('primary_specialty', 'None')
+                _ttype     = _tdata.get('trader_type', '')
+                _cat_elos  = _tdata.get('category_elos', {})
+                for _cat in _categories:
+                    _cdata = _cat_elos.get(_cat, {})
+                    _rows.append((
+                        _addr,
+                        _cat,
+                        _cdata.get('elo'),
+                        _cdata.get('count', 0),
+                        None,                                      # win_rate not computed here
+                        _cdata.get('specialization_score'),
+                        1 if (_ttype == 'Specialist' and _cat == _primary) else 0,
+                        _now_str,
+                    ))
+
+            _spec_cur.executemany("""
+                INSERT OR REPLACE INTO trader_categories
+                    (trader_address, category, category_elo, trade_count,
+                     win_rate, specialisation_ratio, is_specialist, last_updated)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, _rows)
+
+            # Populate traders.specialist_category and traders.specialisation_ratio
+            # from the just-written trader_categories rows
+            _spec_cur.execute("""
+                UPDATE traders
+                SET specialist_category  = (
+                        SELECT tc.category
+                        FROM   trader_categories tc
+                        WHERE  tc.trader_address = traders.address
+                          AND  tc.is_specialist  = 1
+                        LIMIT 1
+                    ),
+                    specialisation_ratio = (
+                        SELECT tc.specialisation_ratio
+                        FROM   trader_categories tc
+                        WHERE  tc.trader_address = traders.address
+                          AND  tc.is_specialist  = 1
+                        LIMIT 1
+                    )
+                WHERE address IN (
+                    SELECT DISTINCT trader_address FROM trader_categories
+                )
+            """)
+
+            _spec_conn.commit()
+            _spec_conn.close()
+
+            _specialist_count = sum(
+                1 for td in trader_classifications.values()
+                if td.get('trader_type') == 'Specialist'
+            )
 
             self.results['specialization'] = {
-                'total_analyzed': len(spec_results),
-                'data': spec_results
+                'total_analyzed':   len(trader_classifications),
+                'specialist_count': _specialist_count,
+                'data':             trader_classifications,
             }
 
-            print(f"   ✅ Analyzed specialization for {len(spec_results)} traders")
+            print(f"   ✅ Analyzed {len(trader_classifications)} traders "
+                  f"({_specialist_count} specialists)")
+            print(f"   ✅ Persisted {len(_rows)} category rows to trader_categories")
             tools_run += 1
 
         except Exception as e:
