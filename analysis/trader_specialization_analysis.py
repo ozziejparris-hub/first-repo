@@ -231,6 +231,51 @@ class TraderSpecializationAnalyzer:
         conn.close()
         return trades
 
+    def _seed_resolutions_from_db(self) -> int:
+        """
+        Pre-populate self.market_resolutions from the local markets table AND
+        from all market_ids present in the trades table.
+
+        - Resolved markets (resolved=1, winning_outcome set) → cached as resolved
+        - All other trade market_ids not already seeded → cached as unresolved
+
+        This eliminates all HTTP round-trips during calculate_category_elos():
+        every market_id seen in trades will already be in the cache, so
+        get_market_resolution() will never fall through to the API.
+        """
+        conn = self.get_db_connection()
+        cursor = conn.cursor()
+
+        # 1. Seed known resolved markets
+        cursor.execute("""
+            SELECT market_id, winning_outcome
+            FROM   markets
+            WHERE  resolved = 1
+              AND  winning_outcome IS NOT NULL
+        """)
+        count = 0
+        for row in cursor.fetchall():
+            mid = row[0]
+            if mid not in self.market_resolutions:
+                self.market_resolutions[mid] = {
+                    "resolved":        True,
+                    "winning_outcome": row[1],
+                }
+                count += 1
+
+        # 2. Pre-cache all trade market_ids not yet seeded as unresolved
+        #    so get_market_resolution() never hits the API for them.
+        cursor.execute("SELECT DISTINCT market_id FROM trades WHERE market_id IS NOT NULL")
+        skipped = 0
+        for (mid,) in cursor.fetchall():
+            if mid not in self.market_resolutions:
+                self.market_resolutions[mid] = {"resolved": False}
+                skipped += 1
+
+        conn.close()
+        print(f"  Seeded {count} resolved + {skipped} unresolved (API calls suppressed)")
+        return count
+
     def get_market_resolution(self, market_id: str) -> Optional[Dict]:
         """Get market resolution status from Polymarket API."""
         if market_id in self.market_resolutions:
@@ -310,6 +355,9 @@ class TraderSpecializationAnalyzer:
 
         print(f"\nChecking resolution status...")
 
+        # Seed cache from local DB first — avoids 6,000+ API calls for already-known markets
+        self._seed_resolutions_from_db()
+
         # Get resolutions
         resolved_markets = 0
         for i, market_id in enumerate(market_trades.keys(), 1):
@@ -334,8 +382,12 @@ class TraderSpecializationAnalyzer:
             winning_outcome = resolution.get('winning_outcome')
             if not winning_outcome:
                 continue
+            winning_outcome_lower = winning_outcome.lower()
 
-            category = self.market_categories.get(market_id, 'Other')
+            # Prefer market_category from the trade record (already classified at ingest time)
+            # Fall back to keyword-matched category stored in market_categories
+            trade_category = trades_list[0].get('market_category') if trades_list else None
+            category = trade_category if trade_category and trade_category != 'Other' else self.market_categories.get(market_id, 'Other')
 
             # Separate winners and losers
             winners = []
@@ -361,7 +413,7 @@ class TraderSpecializationAnalyzer:
 
                 bet_size = shares * price
 
-                if outcome == winning_outcome:
+                if outcome == winning_outcome_lower:
                     winners.append({'trader': trader, 'bet_size': bet_size, 'timestamp': timestamp})
                 else:
                     losers.append({'trader': trader, 'bet_size': bet_size, 'timestamp': timestamp})
@@ -676,7 +728,7 @@ class TraderSpecializationAnalyzer:
 
     def _generate_specializations_csv(self, trader_classifications: Dict, output_path: str):
         """Generate trader specializations CSV."""
-        with open(output_path, 'w', newline='') as f:
+        with open(output_path, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow([
                 'Trader Address',
@@ -723,7 +775,7 @@ class TraderSpecializationAnalyzer:
 
     def _generate_leaderboards_csv(self, trader_classifications: Dict, output_path: str):
         """Generate category leaderboards CSV."""
-        with open(output_path, 'w', newline='') as f:
+        with open(output_path, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
 
             categories = ['Elections', 'Geopolitics', 'Economics', 'Crypto', 'Sports', 'Entertainment']
@@ -764,7 +816,7 @@ class TraderSpecializationAnalyzer:
     def _generate_insights_txt(self, trader_classifications: Dict, correlations: Dict,
                                output_path: str):
         """Generate category insights text report."""
-        with open(output_path, 'w') as f:
+        with open(output_path, 'w', encoding='utf-8') as f:
             f.write("="*70 + "\n")
             f.write("CATEGORY INSIGHTS REPORT\n")
             f.write("="*70 + "\n\n")
@@ -840,7 +892,7 @@ class TraderSpecializationAnalyzer:
 
     def _generate_predictions_csv(self, predictions: List[Dict], output_path: str):
         """Generate context-aware predictions CSV."""
-        with open(output_path, 'w', newline='') as f:
+        with open(output_path, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow([
                 'Market Title',

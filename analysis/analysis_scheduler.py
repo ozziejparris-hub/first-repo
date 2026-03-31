@@ -499,7 +499,7 @@ class AnalysisScheduler:
                         _cdata.get('count', 0),
                         None,                                      # win_rate not computed here
                         _cdata.get('specialization_score'),
-                        1 if (_ttype == 'Specialist' and _cat == _primary) else 0,
+                        1 if (_ttype in ('Specialist', 'Focused Expert') and _cat == _primary) else 0,
                         _now_str,
                     ))
 

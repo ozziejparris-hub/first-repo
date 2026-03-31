@@ -1,0 +1,64 @@
+======================================================================
+CATEGORY INSIGHTS REPORT
+======================================================================
+
+Analysis Date: 2026-03-30 23:29:57
+
+CATEGORY STATISTICS:
+----------------------------------------------------------------------
+
+Elections:
+  Established Traders: 320
+  Specialists: 0
+  Average ELO: 584.11
+
+Geopolitics:
+  Established Traders: 816
+  Specialists: 0
+  Average ELO: 874.29
+
+Economics:
+  Established Traders: 77
+  Specialists: 0
+  Average ELO: 1253.07
+
+Crypto:
+  Established Traders: 62
+  Specialists: 0
+  Average ELO: 1385.93
+
+Sports:
+  Established Traders: 164
+  Specialists: 0
+  Average ELO: 1188.96
+
+Entertainment:
+  Established Traders: 11
+  Specialists: 0
+  Average ELO: 1382.63
+
+======================================================================
+TRADER TYPE DISTRIBUTION:
+----------------------------------------------------------------------
+  Generalist: 760 (60.7%)
+  Insufficient Data: 266 (21.2%)
+  Jack of All Trades: 152 (12.1%)
+  Focused Expert: 75 (6.0%)
+
+======================================================================
+CATEGORY CORRELATIONS:
+----------------------------------------------------------------------
+  Elections-Economics: 0.303 (Moderate positive) [n=67]
+  Elections-Sports: 0.287 (Weak/No) [n=141]
+  Geopolitics-Economics: 0.278 (Weak/No) [n=52]
+  Economics-Sports: 0.234 (Weak/No) [n=50]
+  Elections-Geopolitics: 0.201 (Weak/No) [n=164]
+  Elections-Entertainment: 0.176 (Weak/No) [n=7]
+  Geopolitics-Crypto: -0.012 (Weak/No) [n=37]
+  Geopolitics-Sports: -0.047 (Weak/No) [n=119]
+  Crypto-Sports: -0.194 (Weak/No) [n=38]
+  Elections-Crypto: -0.282 (Weak/No) [n=52]
+  Economics-Crypto: -0.440 (Moderate negative) [n=47]
+  Crypto-Entertainment: -0.838 (Strong negative) [n=6]
+
+======================================================================
