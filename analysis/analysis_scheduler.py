@@ -538,7 +538,7 @@ class AnalysisScheduler:
 
             _specialist_count = sum(
                 1 for td in trader_classifications.values()
-                if td.get('trader_type') == 'Specialist'
+                if td.get('trader_type') in ('Specialist', 'Focused Expert')
             )
 
             self.results['specialization'] = {
