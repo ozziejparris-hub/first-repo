@@ -340,8 +340,6 @@ class AnalysisScheduler:
         Phase 2: Run performance-based analysis (needs resolved markets).
 
         Tools:
-        - trader_performance_analysis.py
-        - weighted_consensus_system.py
         - trader_specialization_analysis.py
         """
         print("\n" + "="*70)
@@ -359,66 +357,9 @@ class AnalysisScheduler:
         phase_start = datetime.now()
         tools_run = 0
 
-        # 1. Trader Performance Analysis
+        # 1. Trader Specialization Analysis
         try:
-            print("[1/3] Running Trader Performance Analysis...")
-
-            from trader_performance_analysis import TraderPerformanceAnalyzer
-
-            performance = TraderPerformanceAnalyzer(self.db.db_path)
-            performance_results = performance.analyze_all_traders()
-
-            self.results['performance'] = {
-                'total_analyzed': len(performance_results),
-                'data': performance_results
-            }
-
-            print(f"   ✅ Analyzed {len(performance_results)} traders")
-            tools_run += 1
-
-        except Exception as e:
-            error_msg = f"Performance Analysis failed: {str(e)}"
-            print(f"   ❌ {error_msg}")
-            self.errors.append(error_msg)
-            self.results['performance'] = None
-
-        # 2. Weighted Consensus System
-        try:
-            print("\n[2/3] Running Weighted Consensus System...")
-
-            from weighted_consensus_system import WeightedConsensusSystem
-
-            consensus = WeightedConsensusSystem(self.db.db_path)
-            # Get unresolved markets and calculate consensus
-            conn = self.db.get_connection()
-            cursor = conn.cursor()
-            cursor.execute("SELECT DISTINCT market_id FROM markets WHERE resolved = 0")
-            unresolved = [row[0] for row in cursor.fetchall()]
-            conn.close()
-
-            consensus_results = []
-            for market_id in unresolved[:10]:  # Limit to avoid long runtime
-                result = consensus.calculate_weighted_consensus(market_id)
-                if result:
-                    consensus_results.append(result)
-
-            self.results['consensus'] = {
-                'total_markets': len(consensus_results),
-                'data': consensus_results
-            }
-
-            print(f"   ✅ Calculated consensus for {len(consensus_results)} markets")
-            tools_run += 1
-
-        except Exception as e:
-            error_msg = f"Consensus System failed: {str(e)}"
-            print(f"   ❌ {error_msg}")
-            self.errors.append(error_msg)
-            self.results['consensus'] = None
-
-        # 3. Trader Specialization Analysis
-        try:
-            print("\n[3/3] Running Trader Specialization Analysis...")
+            print("\n[1/1] Running Trader Specialization Analysis...")
 
             import sqlite3 as _sqlite3
             import os as _os
@@ -559,7 +500,7 @@ class AnalysisScheduler:
             self.results['specialization'] = None
 
         duration = (datetime.now() - phase_start).total_seconds()
-        print(f"\n✅ Phase 2 Complete: {tools_run}/3 tools run ({duration:.1f}s)")
+        print(f"\n✅ Phase 2 Complete: {tools_run}/1 tools run ({duration:.1f}s)")
 
     def run_phase_3_integration(self):
         """
