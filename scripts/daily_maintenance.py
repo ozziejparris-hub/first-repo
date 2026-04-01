@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
 Daily maintenance wrapper.
-Runs requeue_resolved_market_traders.py then apply_full_elo_modifiers.py in order.
-Stops after step 1 if it fails — does not apply modifiers on bad data.
+Runs fast_resolution_check.py, requeue_resolved_market_traders.py, then
+apply_full_elo_modifiers.py in order.
+Stops after any failed step — does not continue on bad data.
 """
 
 import subprocess
@@ -13,6 +14,7 @@ from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).parent
 STEPS = [
+    ("Fetch new market resolutions",    SCRIPTS_DIR / "fast_resolution_check.py"),
     ("Requeue resolved market traders", SCRIPTS_DIR / "requeue_resolved_market_traders.py"),
     ("Apply full ELO modifiers",        SCRIPTS_DIR / "apply_full_elo_modifiers.py"),
 ]
@@ -22,9 +24,19 @@ def run_step(label, script_path):
     print(f"    {script_path.name}")
     step_start = time.time()
 
+    import os
+    env = os.environ.copy()
+    env['PYTHONUTF8'] = '1'
+    # fast_resolution_check.py does `from database import Database` so needs
+    # the monitoring/ directory on PYTHONPATH
+    monitoring_dir = str(SCRIPTS_DIR.parent / 'monitoring')
+    existing = env.get('PYTHONPATH', '')
+    env['PYTHONPATH'] = f"{monitoring_dir}{os.pathsep}{existing}" if existing else monitoring_dir
+
     result = subprocess.run(
         [sys.executable, str(script_path)],
         cwd=str(SCRIPTS_DIR.parent),
+        env=env,
     )
 
     elapsed = time.time() - step_start
