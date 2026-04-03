@@ -996,12 +996,13 @@ class Database:
             FROM trades t
             LEFT JOIN traders tr ON t.trader_address = tr.address
             WHERE t.timestamp > datetime('now', '-30 days')
+               OR tr.pnl_last_updated IS NULL
             GROUP BY t.trader_address
             ORDER BY
                 CASE
                     -- Priority 1: Recent trades (last hour)
                     WHEN MAX(t.timestamp) > datetime('now', '-1 hour') THEN 1
-                    -- Priority 2: Stale P&L (>24h old)
+                    -- Priority 2: Stale P&L (>24h old) or never updated
                     WHEN tr.pnl_last_updated IS NULL
                          OR tr.pnl_last_updated < datetime('now', '-24 hours') THEN 2
                     -- Priority 3: Everything else

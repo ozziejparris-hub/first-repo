@@ -67,8 +67,8 @@ class BackgroundPnLWorker:
         self.is_running = False
 
         # Configuration
-        self.batch_size = 20
-        self.batch_sleep = 30  # seconds between batches
+        self.batch_size = 100
+        self.batch_sleep = 10  # seconds between batches
 
         # Statistics (read/written only from the event loop thread)
         self.traders_processed = 0
