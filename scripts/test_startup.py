@@ -71,7 +71,7 @@ print("="*70 + "\n")
 
 print("✅ System is ready to start!")
 print("\nTo start the complete system, run:")
-print("   scripts\\start_everything.bat")
+print("   scripts/start_server.sh")
 print("\nThis will start:")
 print("   1. Monitoring (python -m monitoring)")
 print("   2. System Observer (automatic health checks + ELO)")

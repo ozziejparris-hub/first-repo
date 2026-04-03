@@ -31,7 +31,7 @@ def find_monitoring_processes():
             cmdline = proc.info['cmdline']
             if cmdline and any('monitoring' in str(arg) for arg in cmdline):
                 # Check if it's actually monitoring.main
-                if any('monitoring.main' in str(arg) or 'monitoring\\main.py' in str(arg) for arg in cmdline):
+                if any('monitoring.main' in str(arg) or 'monitoring/main.py' in str(arg) for arg in cmdline):
                     create_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(proc.info['create_time']))
                     monitoring_pids.append({
                         'pid': proc.info['pid'],

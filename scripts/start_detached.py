@@ -44,17 +44,29 @@ def _is_running(pid_file: Path) -> bool:
     if not pid_file.exists():
         return False
     try:
-        # Try to open for exclusive write — will fail if already locked
-        import msvcrt
+        # Try to acquire exclusive lock — will fail if already locked by running process
         f = open(pid_file, 'r+')
         try:
-            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
-            # Acquired the lock → process is dead, file was stale
-            msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
-            f.close()
-            return False
-        except OSError:
-            # Could not acquire → locked by running process
+            try:
+                import fcntl
+                fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fcntl.flock(f, fcntl.LOCK_UN)
+                f.close()
+                return False
+            except ImportError:
+                import msvcrt
+                try:
+                    msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+                    msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+                    f.close()
+                    return False
+                except OSError:
+                    f.close()
+                    return True
+            except IOError:
+                f.close()
+                return True
+        except Exception:
             f.close()
             return True
     except Exception:

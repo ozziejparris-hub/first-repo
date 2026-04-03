@@ -987,7 +987,7 @@ class TelegramHealthBot:
         message_parts.extend([
             "",
             "✅ FIX:",
-            "  1. Run: scripts\\restart_monitoring_telegram_safe.bat",
+            "  1. Run: scripts/start_server.sh",
             "  2. This version sends NO Telegram messages",
             "  3. System Observer handles all notifications",
             "",

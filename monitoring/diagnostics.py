@@ -589,7 +589,7 @@ class FixSuggestionEngine:
 
         fixes = {
             # Monitoring issues
-            'No activity for': "Restart monitoring: `scripts\\restart_monitoring_telegram_safe.bat`",
+            'No activity for': "Restart monitoring: `scripts/start_server.sh`",
             'No trades in': "1. Check if Polymarket API is down\n2. Restart monitoring if API is up",
             'monitoring may be stopped': "Restart monitoring system immediately",
 

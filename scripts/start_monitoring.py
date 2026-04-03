@@ -37,11 +37,13 @@ try:
     # Open PID file for writing
     pid_lock_file = open(pid_file_path, 'w')
 
-    # Try to acquire exclusive lock (Windows)
-    if os.name == 'nt':
+    # Try to acquire exclusive lock (cross-platform)
+    try:
+        import fcntl
+        fcntl.flock(pid_lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except ImportError:
         import msvcrt
         try:
-            # LK_NBLCK = non-blocking exclusive lock
             msvcrt.locking(pid_lock_file.fileno(), msvcrt.LK_NBLCK, 1)
         except OSError:
             print("\n" + "="*70)
@@ -54,20 +56,15 @@ try:
             print("  python scripts/check_processes.py")
             print("\n" + "="*70 + "\n")
             sys.exit(1)
-    else:
-        # Unix-like systems
-        import fcntl
-        try:
-            fcntl.flock(pid_lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except IOError:
-            print("\n" + "="*70)
-            print("  [ERROR] Monitoring already running")
-            print("="*70)
-            print("\nAnother monitoring instance is currently running.")
-            print("\nTo stop it, use:")
-            print("  python scripts/kill_all.py")
-            print("\n" + "="*70 + "\n")
-            sys.exit(1)
+    except IOError:
+        print("\n" + "="*70)
+        print("  [ERROR] Monitoring already running")
+        print("="*70)
+        print("\nAnother monitoring instance is currently running.")
+        print("\nTo stop it, use:")
+        print("  python scripts/kill_all.py")
+        print("\n" + "="*70 + "\n")
+        sys.exit(1)
 
     # Write our PID to the locked file
     pid_lock_file.write(str(os.getpid()))
@@ -105,18 +102,14 @@ finally:
 
     if pid_lock_file:
         try:
-            # Release the lock
-            if os.name == 'nt':
+            # Release the lock (cross-platform)
+            try:
+                import fcntl
+                fcntl.flock(pid_lock_file, fcntl.LOCK_UN)
+            except ImportError:
                 import msvcrt
                 try:
-                    # LK_UNLCK = unlock
                     msvcrt.locking(pid_lock_file.fileno(), msvcrt.LK_UNLCK, 1)
-                except:
-                    pass  # Lock may already be released
-            else:
-                import fcntl
-                try:
-                    fcntl.flock(pid_lock_file, fcntl.LOCK_UN)
                 except:
                     pass
 

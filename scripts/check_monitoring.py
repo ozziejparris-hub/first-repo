@@ -27,17 +27,35 @@ def _is_running(pid_file: Path) -> tuple[bool, int | None]:
     if not pid_file.exists():
         return False, None
     try:
-        import msvcrt
         f = open(pid_file, 'r+')
+        locked = False
         try:
-            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
-            # Lock acquired → process is dead, read stale PID for info
-            pid_str = f.read(32).strip()
-            pid = int(pid_str) if pid_str.isdigit() else None
-            msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
-            f.close()
-            return False, pid
-        except OSError:
+            try:
+                import fcntl
+                fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                # Lock acquired → process is dead
+                pid_str = f.read(32).strip()
+                pid = int(pid_str) if pid_str.isdigit() else None
+                fcntl.flock(f, fcntl.LOCK_UN)
+                f.close()
+                return False, pid
+            except ImportError:
+                import msvcrt
+                try:
+                    msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+                    # Lock acquired → process is dead, read stale PID for info
+                    pid_str = f.read(32).strip()
+                    pid = int(pid_str) if pid_str.isdigit() else None
+                    msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+                    f.close()
+                    return False, pid
+                except OSError:
+                    locked = True
+            except IOError:
+                locked = True
+        except Exception:
+            locked = True
+        if locked:
             # Locked → process alive; find PID via psutil by script name
             f.close()
             try:
