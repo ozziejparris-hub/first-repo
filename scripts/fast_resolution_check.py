@@ -81,7 +81,9 @@ class FastResolutionChecker:
                 params = {
                     "limit": batch_size,
                     "offset": offset,
-                    "closed": "true"  # Only fetch closed markets
+                    "closed": "true",   # Only fetch closed markets
+                    "order": "endDate",
+                    "ascending": "false"
                 }
 
                 response = self.session.get(url, params=params, timeout=30)
@@ -124,8 +126,8 @@ class FastResolutionChecker:
 
                 # Safety limit: stop after fetching 10,000 closed markets
                 # (prevents infinite loops and excessive API calls)
-                if offset >= 10000:
-                    print(f"\n   [INFO] Reached safety limit of 10,000 closed markets")
+                if offset >= 20000:
+                    print(f"\n   [INFO] Reached safety limit of 20,000 closed markets")
                     break
 
             except Exception as e:
