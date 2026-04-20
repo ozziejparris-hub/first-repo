@@ -428,18 +428,42 @@ class SystemObserver:
         - Generates unified reports
         - Sends summary to Telegram
         """
-        print("[OBSERVER] Analysis scheduler loop started (triggers at 01:00 UTC)")
+        print("[OBSERVER] Analysis scheduler loop started (triggers at 01:00 UTC; correlation matrix at 03:00 UTC)")
 
         while self.running:
             try:
                 now = datetime.now(timezone.utc)
 
-                # Check if it's 01:00 UTC (low activity time)
-                if now.hour == 1 and now.minute == 0:
-                    print("[OBSERVER] Triggering daily analysis...")
+                # Check if it's 03:00 UTC — run correlation matrix only
+                if now.hour == 3 and now.minute == 0:
+                    print("[OBSERVER] Triggering daily correlation matrix computation...")
+                    loop = asyncio.get_event_loop()
+                    try:
+                        from analysis.analysis_scheduler import AnalysisScheduler
+                        import sys, os as _os
+                        scheduler = AnalysisScheduler(
+                            db_path=self.db_path,
+                            send_alerts=False
+                        )
+                        await loop.run_in_executor(
+                            None,
+                            lambda: scheduler.run_phase_1_independent(skip_correlation=False)
+                        )
+                        print("[OBSERVER] Correlation matrix computation complete")
+                        if self.telegram:
+                            await self.telegram._send_message(
+                                "✅ **Correlation Matrix Updated** (03:00 UTC scheduled run)"
+                            )
+                    except Exception as e:
+                        print(f"[OBSERVER] Correlation matrix run failed: {e}")
+                    await asyncio.sleep(3600)  # Skip the rest of this hour
 
-                    # Run analysis scheduler
-                    results = await self._run_analysis_scheduler()
+                # Check if it's 01:00 UTC (low activity time) — full analysis without correlation
+                elif now.hour == 1 and now.minute == 0:
+                    print("[OBSERVER] Triggering daily analysis (correlation matrix deferred to 03:00 UTC)...")
+
+                    # Run analysis scheduler, skipping the expensive correlation matrix
+                    results = await self._run_analysis_scheduler(skip_correlation=True)
 
                     # Send results via Telegram
                     if self.telegram:
@@ -462,10 +486,10 @@ class SystemObserver:
                     else:
                         print("[OBSERVER] [WARNING] Telegram not configured, skipping report")
 
-                    # Wait 24 hours before next analysis
-                    await asyncio.sleep(86400)  # 24 hours
+                    # Sleep until after 03:00 UTC so both triggers fire in the same day
+                    await asyncio.sleep(3600)  # wake at 02:00, then again at 03:00
                 else:
-                    # Check every hour to catch the 01:00 window
+                    # Check every hour to catch the trigger windows
                     await asyncio.sleep(3600)
 
             except Exception as e:
@@ -2335,7 +2359,7 @@ Sellers:
 
         return metrics
 
-    async def _run_analysis_scheduler(self) -> Dict:
+    async def _run_analysis_scheduler(self, skip_correlation=False) -> Dict:
         """
         Run the comprehensive analysis scheduler.
 
@@ -2387,7 +2411,7 @@ Sellers:
             # for the duration.  Offload to a thread pool executor so the event loop stays free.
             print("[OBSERVER] Running full analysis in thread executor (non-blocking)...")
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, scheduler.run_full_analysis)
+            await loop.run_in_executor(None, lambda: scheduler.run_full_analysis(skip_correlation=skip_correlation))
 
             # Step 3: Get generated reports
             reports_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'reports')
@@ -2831,7 +2855,7 @@ Sellers:
         if not elo_results.get('success'):
             msg = "❌ **ELO Update Failed**\n\n"
             msg += f"Error: {elo_results.get('error', 'Unknown')}"
-            await self.telegram.send_message(msg)
+            await self.telegram._send_message(msg)
             return
 
         # Success notification
@@ -2843,7 +2867,7 @@ Sellers:
         msg += f"⏰ Updated: {datetime.now().strftime('%H:%M')}\n\n"
         msg += leaderboard
 
-        await self.telegram.send_message(msg)
+        await self.telegram._send_message(msg)
 
     async def _comprehensive_diagnostic_loop(self):
         """
