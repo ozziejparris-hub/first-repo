@@ -1031,6 +1031,69 @@ class Database:
         conn.close()
         return results
 
+    def get_priority1_traders(self, limit: int) -> list:
+        """Traders with a trade in the last hour — highest priority."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT t.trader_address, MAX(t.timestamp) as last_trade, tr.pnl_last_updated
+            FROM trades t
+            LEFT JOIN traders tr ON t.trader_address = tr.address
+            WHERE t.timestamp > datetime('now', '-1 hour')
+            GROUP BY t.trader_address
+            ORDER BY last_trade DESC
+            LIMIT ?
+        """, (limit,))
+        results = cursor.fetchall()
+        conn.close()
+        return results
+
+    def get_backlog_traders(self, limit: int, exclude: list = None) -> list:
+        """Traders never updated or stale >24 h, excluding any addresses already in the batch."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        exclude = exclude or []
+        # Build exclusion clause only when there are addresses to exclude.
+        # NOT IN (NULL) evaluates to UNKNOWN in SQLite and would filter everything.
+        if exclude:
+            ph = ','.join('?' * len(exclude))
+            excl_clause = f"AND tr.address NOT IN ({ph})"
+            excl_clause2 = f"AND t.trader_address NOT IN ({ph})"
+            params = (*exclude, *exclude, limit)
+        else:
+            excl_clause = ""
+            excl_clause2 = ""
+            params = (limit,)
+        cursor.execute(f"""
+            SELECT trader_address, last_trade, pnl_last_updated
+            FROM (
+                -- never-updated traders from the traders table
+                SELECT tr.address AS trader_address,
+                       NULL      AS last_trade,
+                       tr.pnl_last_updated
+                FROM traders tr
+                WHERE tr.pnl_last_updated IS NULL
+                  {excl_clause}
+
+                UNION
+
+                -- stale traders (>24 h since last update) with any-age trades
+                SELECT t.trader_address,
+                       MAX(t.timestamp) AS last_trade,
+                       tr.pnl_last_updated
+                FROM trades t
+                INNER JOIN traders tr ON t.trader_address = tr.address
+                WHERE tr.pnl_last_updated < datetime('now', '-24 hours')
+                  {excl_clause2}
+                GROUP BY t.trader_address
+            )
+            ORDER BY pnl_last_updated ASC NULLS FIRST
+            LIMIT ?
+        """, params)
+        results = cursor.fetchall()
+        conn.close()
+        return results
+
     def mark_trader_pnl_updated(self, trader_address: str):
         """
         Mark trader's P&L as recently updated.

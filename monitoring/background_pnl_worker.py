@@ -70,6 +70,11 @@ class BackgroundPnLWorker:
         self.batch_size = 10
         self.batch_sleep = 1  # seconds between batches
 
+        # Split-batch configuration: reserve slots for backlog so Priority 1
+        # traders (recent trades) cannot permanently starve never-updated traders.
+        self.priority1_slots = 7   # slots for traders with trades in last hour
+        self.backlog_slots = 3     # slots reserved for never-updated / stale >24 h
+
         # Statistics (read/written only from the event loop thread)
         self.traders_processed = 0
         self.traders_skipped = 0
@@ -100,18 +105,47 @@ class BackgroundPnLWorker:
     #  Worker loop                                                         #
     # ------------------------------------------------------------------ #
 
+    def _build_batch(self) -> tuple:
+        """
+        Assemble a fair batch: up to priority1_slots recent-trade traders plus
+        up to backlog_slots never-updated/stale traders.  Unused slots in either
+        group are filled from the other so the total stays at batch_size.
+
+        Returns (traders, p1_count, backlog_count).
+        """
+        p1 = self.db.get_priority1_traders(limit=self.priority1_slots)
+        p1_addresses = [row[0] for row in p1]
+
+        # Fill reserved backlog slots; expand if P1 was short
+        backlog_limit = self.batch_size - len(p1)
+        backlog = self.db.get_backlog_traders(limit=backlog_limit, exclude=p1_addresses) if backlog_limit > 0 else []
+
+        # If backlog is also short, use remaining capacity for extra P1 traders
+        remaining = self.batch_size - len(p1) - len(backlog)
+        if remaining > 0:
+            extra_p1 = self.db.get_priority1_traders(limit=self.priority1_slots + remaining)
+            seen = set(p1_addresses) | {row[0] for row in backlog}
+            for row in extra_p1:
+                if row[0] not in seen and remaining > 0:
+                    p1.append(row)
+                    seen.add(row[0])
+                    remaining -= 1
+
+        return p1 + backlog, len(p1), len(backlog)
+
     async def _worker_loop(self):
         """Main worker loop — runs continuously."""
         while self.is_running:
             try:
-                traders = self.db.get_traders_needing_pnl_update(limit=self.batch_size)
+                traders, p1_count, backlog_count = self._build_batch()
 
                 if not traders:
                     safe_print(f"[P&L WORKER] All traders up-to-date, sleeping {self.batch_sleep}s...")
                     await asyncio.sleep(self.batch_sleep)
                     continue
 
-                safe_print(f"\n[P&L WORKER] Processing batch of {len(traders)} traders...")
+                safe_print(f"\n[P&L WORKER] Processing batch of {len(traders)} traders "
+                           f"(priority1={p1_count}, backlog={backlog_count})...")
                 batch_start = time.time()
 
                 for trader_address, last_trade, last_update in traders:
