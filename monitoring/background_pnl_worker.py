@@ -19,12 +19,15 @@ flush), it is skipped and marked updated so it won't immediately requeue.
 
 import asyncio
 import concurrent.futures
+import logging
 import time
 from datetime import datetime
 from typing import Optional
 
 from .database import Database
 from .position_tracker import PositionTracker
+
+logger = logging.getLogger('pnl_worker')
 
 # Single-worker thread pool.  One worker is enough — we want sequential
 # processing, not parallelism, to avoid lock contention on the DB.
@@ -35,18 +38,6 @@ _THREAD_POOL = concurrent.futures.ThreadPoolExecutor(
 # Per-trader time budget.  90 s is generous even for traders with 5 000+
 # trades; the timeout only fires if something has gone badly wrong.
 _TRADER_TIMEOUT = 90
-
-
-def safe_print(message: str, fallback: str = None):
-    """Safe print that handles Windows console encoding errors."""
-    try:
-        print(message)
-    except (OSError, UnicodeEncodeError):
-        if fallback:
-            try:
-                print(fallback)
-            except (OSError, UnicodeEncodeError):
-                pass
 
 
 class BackgroundPnLWorker:
@@ -83,22 +74,22 @@ class BackgroundPnLWorker:
 
     async def start(self):
         """Start the background P&L worker."""
-        safe_print("\n[P&L WORKER] Starting background P&L worker...")
+        logger.info("Starting background P&L worker")
         self.is_running = True
         self.start_time = time.time()
 
         stats = self.db.get_pnl_worker_stats()
-        safe_print(f"[P&L WORKER] Initial state:")
-        safe_print(f"  Total active traders: {stats['total_active_traders']}")
-        safe_print(f"  Never updated: {stats['never_updated']}")
-        safe_print(f"  Stale P&L (>24h): {stats['stale_pnl']}")
-        safe_print(f"  Up to date: {stats['up_to_date']}")
+        logger.info(
+            "Initial state — total: %d | never updated: %d | stale >24h: %d | up-to-date: %d",
+            stats['total_active_traders'], stats['never_updated'],
+            stats['stale_pnl'], stats['up_to_date'],
+        )
 
         await self._worker_loop()
 
     def stop(self):
         """Stop the background P&L worker."""
-        safe_print("\n[P&L WORKER] Stopping...")
+        logger.info("Stopping")
         self.is_running = False
 
     # ------------------------------------------------------------------ #
@@ -140,12 +131,14 @@ class BackgroundPnLWorker:
                 traders, p1_count, backlog_count = self._build_batch()
 
                 if not traders:
-                    safe_print(f"[P&L WORKER] All traders up-to-date, sleeping {self.batch_sleep}s...")
+                    logger.debug("All traders up-to-date, sleeping %ss", self.batch_sleep)
                     await asyncio.sleep(self.batch_sleep)
                     continue
 
-                safe_print(f"\n[P&L WORKER] Processing batch of {len(traders)} traders "
-                           f"(priority1={p1_count}, backlog={backlog_count})...")
+                logger.info(
+                    "Batch start: %d traders (priority1=%d, backlog=%d)",
+                    len(traders), p1_count, backlog_count,
+                )
                 batch_start = time.time()
 
                 for trader_address, last_trade, last_update in traders:
@@ -155,7 +148,7 @@ class BackgroundPnLWorker:
                     await asyncio.sleep(0.1)
 
                 batch_elapsed = time.time() - batch_start
-                safe_print(f"[P&L WORKER] Batch complete in {batch_elapsed:.1f}s")
+                logger.debug("Batch complete in %.1fs", batch_elapsed)
 
                 if self.traders_processed % 100 == 0 and self.traders_processed > 0:
                     self._show_progress()
@@ -163,7 +156,7 @@ class BackgroundPnLWorker:
                 await asyncio.sleep(self.batch_sleep)
 
             except Exception as e:
-                safe_print(f"[P&L WORKER] [ERROR] Worker loop error: {e}")
+                logger.exception("Worker loop error")
                 self.errors += 1
                 await asyncio.sleep(60)
 
@@ -263,7 +256,7 @@ class BackgroundPnLWorker:
                 ))
             conn.commit()
         except Exception as e:
-            safe_print(f"[P&L WORKER] [ERROR] Position insert failed for {trader_address[:10]}...: {e}")
+            logger.exception("Position insert failed for %s", trader_address[:10])
             conn.rollback()
         finally:
             conn.close()
@@ -297,7 +290,7 @@ class BackgroundPnLWorker:
                 ))
                 conn.commit()
             except Exception as e:
-                safe_print(f"[P&L WORKER] [ERROR] Trader update failed for {trader_address[:10]}...: {e}")
+                logger.exception("Trader update failed for %s", trader_address[:10])
                 conn.rollback()
             finally:
                 conn.close()
@@ -337,9 +330,9 @@ class BackgroundPnLWorker:
                 timeout=_TRADER_TIMEOUT,
             )
         except asyncio.TimeoutError:
-            safe_print(
-                f"[P&L WORKER] [TIMEOUT] {trader_address[:10]}... exceeded {_TRADER_TIMEOUT}s "
-                f"— skipping, will requeue after 24h"
+            logger.warning(
+                "Timeout: %s exceeded %ds — skipping, will requeue after 24h",
+                trader_address[:10], _TRADER_TIMEOUT,
             )
             # Best-effort mark updated so we don't requeue immediately.
             # This call is fast (one UPDATE) so it won't stall for long.
@@ -354,7 +347,7 @@ class BackgroundPnLWorker:
             self.errors += 1
             return
         except Exception as e:
-            safe_print(f"[P&L WORKER] [ERROR] Failed for {trader_address[:10]}...: {e}")
+            logger.exception("Failed for %s", trader_address[:10])
             self.errors += 1
             return
 
@@ -365,15 +358,15 @@ class BackgroundPnLWorker:
         trade_count = result['trade_count']
 
         if trade_count > 5000:
-            safe_print(
-                f"[P&L WORKER] [WHALE] {trader_address[:10]}... "
-                f"{trade_count:,} trades → {result['n_positions']} positions "
-                f"({result['n_closed']} closed) in {elapsed:.1f}s"
+            logger.info(
+                "Whale: %s — %s trades, %d positions (%d closed) in %.1fs",
+                trader_address[:10], f"{trade_count:,}",
+                result['n_positions'], result['n_closed'], elapsed,
             )
         elif elapsed > 5:
-            safe_print(
-                f"[P&L WORKER] [SLOW] {trader_address[:10]}... "
-                f"({trade_count} trades) took {elapsed:.1f}s"
+            logger.warning(
+                "Slow: %s — %d trades took %.1fs",
+                trader_address[:10], trade_count, elapsed,
             )
 
     # ------------------------------------------------------------------ #
@@ -384,15 +377,10 @@ class BackgroundPnLWorker:
         """Show worker progress statistics."""
         uptime = time.time() - self.start_time
         stats = self.db.get_pnl_worker_stats()
-
-        safe_print(f"\n[P&L WORKER] === PROGRESS REPORT ===")
-        safe_print(f"  Uptime: {uptime/3600:.1f} hours")
-        safe_print(f"  Processed: {self.traders_processed}")
-        safe_print(f"  Skipped: {self.traders_skipped}")
-        safe_print(f"  Errors: {self.errors}")
-        safe_print(f"  Rate: {self.traders_processed/(uptime/60):.1f} traders/min")
-        safe_print(f"\n  Current state:")
-        safe_print(f"    Up to date: {stats['up_to_date']}")
-        safe_print(f"    Stale (>24h): {stats['stale_pnl']}")
-        safe_print(f"    Never updated: {stats['never_updated']}")
-        safe_print(f"  ========================\n")
+        logger.info(
+            "Progress — uptime: %.1fh | processed: %d | skipped: %d | errors: %d | "
+            "rate: %.1f/min | up-to-date: %d | stale: %d | never-updated: %d",
+            uptime / 3600, self.traders_processed, self.traders_skipped, self.errors,
+            self.traders_processed / (uptime / 60),
+            stats['up_to_date'], stats['stale_pnl'], stats['never_updated'],
+        )
