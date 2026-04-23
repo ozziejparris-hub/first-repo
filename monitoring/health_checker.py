@@ -46,6 +46,36 @@ class HealthChecker:
         self.last_check_time = None
         self.check_history = []
 
+    def _find_monitoring_process_by_name(self) -> Optional[int]:
+        """Search for the monitoring process by cmdline when the tracked PID is stale."""
+        patterns = [
+            'start_monitoring.py',
+            '-m monitoring',
+            'monitoring.main',
+            'main_telegram_safe.py',
+            'monitoring.__main__',
+            'monitor.py',
+        ]
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                if proc.info['name'] not in ['python.exe', 'python', 'py.exe']:
+                    continue
+                cmdline = proc.info.get('cmdline', [])
+                if not cmdline:
+                    continue
+                cmdline_str = ' '.join(str(c) for c in cmdline).lower()
+                if any(p in cmdline_str for p in patterns) and 'observer' not in cmdline_str:
+                    try:
+                        memory_mb = proc.memory_info().rss / (1024 * 1024)
+                        if memory_mb < 10:
+                            continue
+                    except Exception:
+                        pass
+                    return proc.info['pid']
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        return None
+
     def check_process_alive(self, pid: Optional[int] = None) -> Dict:
         """
         Check if monitoring process is alive.
@@ -71,9 +101,11 @@ class HealthChecker:
                 'message': 'No monitoring PID provided - cannot check process'
             }
 
+        pid_valid = False
         try:
             process = psutil.Process(target_pid)
             if process.is_running():
+                pid_valid = True
                 return {
                     'status': 'healthy',
                     'alive': True,
@@ -81,26 +113,43 @@ class HealthChecker:
                     'name': process.name(),
                     'message': f'Process {target_pid} is running ({process.name()})'
                 }
-            else:
-                return {
-                    'status': 'critical',
-                    'alive': False,
-                    'pid': target_pid,
-                    'message': f'Process {target_pid} is not running'
-                }
-        except psutil.NoSuchProcess:
-            return {
-                'status': 'critical',
-                'alive': False,
-                'pid': target_pid,
-                'message': f'Process {target_pid} does not exist'
-            }
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
         except Exception as e:
             return {
                 'status': 'warning',
                 'alive': False,
                 'pid': target_pid,
                 'message': f'Error checking process: {str(e)}'
+            }
+
+        if not pid_valid:
+            # Stale PID — check if monitoring process exists under a new PID
+            new_pid = self._find_monitoring_process_by_name()
+            if new_pid is not None:
+                print(f"[HEALTH] PID {target_pid} is stale; found monitoring process at new PID {new_pid}, updating reference")
+                self.monitoring_pid = new_pid
+                try:
+                    proc = psutil.Process(new_pid)
+                    return {
+                        'status': 'healthy',
+                        'alive': True,
+                        'pid': new_pid,
+                        'name': proc.name(),
+                        'message': f'Process restarted; updated PID {target_pid}→{new_pid} ({proc.name()})'
+                    }
+                except Exception:
+                    return {
+                        'status': 'healthy',
+                        'alive': True,
+                        'pid': new_pid,
+                        'message': f'Process restarted; updated PID {target_pid}→{new_pid}'
+                    }
+            return {
+                'status': 'critical',
+                'alive': False,
+                'pid': target_pid,
+                'message': f'Process {target_pid} does not exist and monitoring process not found by name'
             }
 
     def check_database_accessible(self) -> Dict:
