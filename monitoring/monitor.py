@@ -68,10 +68,10 @@ class PolymarketMonitor:
         self.analyzer = TraderAnalyzer(self.db, self.polymarket)
         self.position_tracker = PositionTracker(self.db)  # CRITICAL: P&L tracking
 
-        # NEW: Initialize background P&L worker
+        # Flat logger name mirrors the watchdog pattern (direct child of root).
         self.pnl_worker = BackgroundPnLWorker(
             self.db, self.position_tracker,
-            logger=logging.getLogger('monitor.pnl_worker'),
+            logger=logging.getLogger('pnl_worker'),
         )
 
         self.ai_agent = ai_agent  # Store AI agent
@@ -976,12 +976,22 @@ class PolymarketMonitor:
         await self.initial_scan()
 
         # Start watchdog heartbeat (independent of all other loops)
-        asyncio.create_task(self._watchdog_loop())
+        # Store reference: Python 3.12 keeps only weak refs to tasks; discarding
+        # the return value allows GC to collect the task before it runs.
+        self._watchdog_task = asyncio.create_task(
+            self._watchdog_loop(), name='watchdog'
+        )
         safe_print("[MONITOR] Watchdog heartbeat started\n")
 
-        # NEW: Start background P&L worker (non-blocking)
-        asyncio.create_task(self.pnl_worker.start())
+        # Start background P&L worker (non-blocking)
+        self._pnl_task = asyncio.create_task(
+            self.pnl_worker.start(), name='pnl_worker'
+        )
         safe_print("[MONITOR] Background P&L worker started\n")
+
+        # Give both tasks one event-loop iteration to run their startup code
+        # (log their first INFO line) before the monitoring loop takes over.
+        await asyncio.sleep(0)
 
         # Start monitoring loop
         await self.monitoring_loop()
