@@ -924,10 +924,17 @@ class SystemObserver:
         except FileNotFoundError:
             pass
 
+        elo_updates = (
+            1
+            if self.last_elo_update is not None
+            and self.last_elo_update >= cutoff_time
+            else 0
+        )
+
         return {
             'trades_checked': trades_fetched,
             'markets_scanned': cycle_count,  # Each cycle scans markets
-            'elo_updates': 0,  # Not tracked in logs currently
+            'elo_updates': elo_updates,
             'api_calls': api_calls if api_calls > 0 else trades_fetched  # Estimate: ~1 API call per trade
         }
 
@@ -2783,13 +2790,14 @@ Sellers:
             # Update timestamp
             self.last_elo_update = datetime.now()
 
+            print(f"[ELO] ELO integration completed successfully at {self.last_elo_update.strftime('%Y-%m-%d %H:%M:%S')}")
             return {
                 'success': True,
-                'timestamp': datetime.now()
+                'timestamp': self.last_elo_update
             }
 
         except Exception as e:
-            print(f"[ELO] Error: {e}")
+            print(f"[ELO] ELO integration failed: {e}")
             import traceback
             traceback.print_exc()
             return {'success': False, 'error': str(e)}
