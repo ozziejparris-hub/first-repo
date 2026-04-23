@@ -27,8 +27,6 @@ from typing import Optional
 from .database import Database
 from .position_tracker import PositionTracker
 
-logger = logging.getLogger('pnl_worker')
-
 # Single-worker thread pool.  One worker is enough — we want sequential
 # processing, not parallelism, to avoid lock contention on the DB.
 _THREAD_POOL = concurrent.futures.ThreadPoolExecutor(
@@ -52,10 +50,12 @@ class BackgroundPnLWorker:
     - Hard per-trader timeout prevents indefinite hangs
     """
 
-    def __init__(self, database: Database, position_tracker: PositionTracker):
+    def __init__(self, database: Database, position_tracker: PositionTracker,
+                 logger: Optional[logging.Logger] = None):
         self.db = database
         self.position_tracker = position_tracker
         self.is_running = False
+        self.logger = logger or logging.getLogger('pnl_worker')
 
         # Configuration
         self.batch_size = 10
@@ -74,12 +74,12 @@ class BackgroundPnLWorker:
 
     async def start(self):
         """Start the background P&L worker."""
-        logger.info("Starting background P&L worker")
+        self.logger.info("Starting background P&L worker")
         self.is_running = True
         self.start_time = time.time()
 
         stats = self.db.get_pnl_worker_stats()
-        logger.info(
+        self.logger.info(
             "Initial state — total: %d | never updated: %d | stale >24h: %d | up-to-date: %d",
             stats['total_active_traders'], stats['never_updated'],
             stats['stale_pnl'], stats['up_to_date'],
@@ -89,7 +89,7 @@ class BackgroundPnLWorker:
 
     def stop(self):
         """Stop the background P&L worker."""
-        logger.info("Stopping")
+        self.logger.info("Stopping")
         self.is_running = False
 
     # ------------------------------------------------------------------ #
@@ -131,11 +131,11 @@ class BackgroundPnLWorker:
                 traders, p1_count, backlog_count = self._build_batch()
 
                 if not traders:
-                    logger.debug("All traders up-to-date, sleeping %ss", self.batch_sleep)
+                    self.logger.debug("All traders up-to-date, sleeping %ss", self.batch_sleep)
                     await asyncio.sleep(self.batch_sleep)
                     continue
 
-                logger.info(
+                self.logger.info(
                     "Batch start: %d traders (priority1=%d, backlog=%d)",
                     len(traders), p1_count, backlog_count,
                 )
@@ -148,7 +148,7 @@ class BackgroundPnLWorker:
                     await asyncio.sleep(0.1)
 
                 batch_elapsed = time.time() - batch_start
-                logger.debug("Batch complete in %.1fs", batch_elapsed)
+                self.logger.debug("Batch complete in %.1fs", batch_elapsed)
 
                 if self.traders_processed % 100 == 0 and self.traders_processed > 0:
                     self._show_progress()
@@ -156,7 +156,7 @@ class BackgroundPnLWorker:
                 await asyncio.sleep(self.batch_sleep)
 
             except Exception as e:
-                logger.exception("Worker loop error")
+                self.logger.exception("Worker loop error")
                 self.errors += 1
                 await asyncio.sleep(60)
 
@@ -256,7 +256,7 @@ class BackgroundPnLWorker:
                 ))
             conn.commit()
         except Exception as e:
-            logger.exception("Position insert failed for %s", trader_address[:10])
+            self.logger.exception("Position insert failed for %s", trader_address[:10])
             conn.rollback()
         finally:
             conn.close()
@@ -290,7 +290,7 @@ class BackgroundPnLWorker:
                 ))
                 conn.commit()
             except Exception as e:
-                logger.exception("Trader update failed for %s", trader_address[:10])
+                self.logger.exception("Trader update failed for %s", trader_address[:10])
                 conn.rollback()
             finally:
                 conn.close()
@@ -330,7 +330,7 @@ class BackgroundPnLWorker:
                 timeout=_TRADER_TIMEOUT,
             )
         except asyncio.TimeoutError:
-            logger.warning(
+            self.logger.warning(
                 "Timeout: %s exceeded %ds — skipping, will requeue after 24h",
                 trader_address[:10], _TRADER_TIMEOUT,
             )
@@ -347,7 +347,7 @@ class BackgroundPnLWorker:
             self.errors += 1
             return
         except Exception as e:
-            logger.exception("Failed for %s", trader_address[:10])
+            self.logger.exception("Failed for %s", trader_address[:10])
             self.errors += 1
             return
 
@@ -358,13 +358,13 @@ class BackgroundPnLWorker:
         trade_count = result['trade_count']
 
         if trade_count > 5000:
-            logger.info(
+            self.logger.info(
                 "Whale: %s — %s trades, %d positions (%d closed) in %.1fs",
                 trader_address[:10], f"{trade_count:,}",
                 result['n_positions'], result['n_closed'], elapsed,
             )
         elif elapsed > 5:
-            logger.warning(
+            self.logger.warning(
                 "Slow: %s — %d trades took %.1fs",
                 trader_address[:10], trade_count, elapsed,
             )
@@ -377,7 +377,7 @@ class BackgroundPnLWorker:
         """Show worker progress statistics."""
         uptime = time.time() - self.start_time
         stats = self.db.get_pnl_worker_stats()
-        logger.info(
+        self.logger.info(
             "Progress — uptime: %.1fh | processed: %d | skipped: %d | errors: %d | "
             "rate: %.1f/min | up-to-date: %d | stale: %d | never-updated: %d",
             uptime / 3600, self.traders_processed, self.traders_skipped, self.errors,

@@ -69,7 +69,10 @@ class PolymarketMonitor:
         self.position_tracker = PositionTracker(self.db)  # CRITICAL: P&L tracking
 
         # NEW: Initialize background P&L worker
-        self.pnl_worker = BackgroundPnLWorker(self.db, self.position_tracker)
+        self.pnl_worker = BackgroundPnLWorker(
+            self.db, self.position_tracker,
+            logger=logging.getLogger('monitor.pnl_worker'),
+        )
 
         self.ai_agent = ai_agent  # Store AI agent
         self.check_interval = check_interval
