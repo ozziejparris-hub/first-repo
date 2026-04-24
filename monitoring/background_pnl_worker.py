@@ -37,6 +37,10 @@ _THREAD_POOL = concurrent.futures.ThreadPoolExecutor(
 # trades; the timeout only fires if something has gone badly wrong.
 _TRADER_TIMEOUT = 90
 
+# After this many failures a trader is permanently skipped for the session
+# and their pnl_last_updated is stamped to NOW so they won't requeue for 24h.
+_MAX_TRADER_FAILURES = 5
+
 
 class BackgroundPnLWorker:
     """
@@ -65,6 +69,11 @@ class BackgroundPnLWorker:
         # traders (recent trades) cannot permanently starve never-updated traders.
         self.priority1_slots = 7   # slots for traders with trades in last hour
         self.backlog_slots = 3     # slots reserved for never-updated / stale >24 h
+
+        # Permanent skip: address -> consecutive fail count.  Once a trader
+        # reaches _MAX_TRADER_FAILURES it is skipped for the rest of the session
+        # and its pnl_last_updated is stamped so it won't requeue for 24h.
+        self.failed_traders: dict = {}
 
         # Statistics (read/written only from the event loop thread)
         self.traders_processed = 0
@@ -318,6 +327,10 @@ class BackgroundPnLWorker:
         timeout (Python threads are not forcibly killed), but it will finish
         its current SQLite call and exit — no resources are leaked.
         """
+        # Permanently skipped traders are ignored for the rest of the session.
+        if self.failed_traders.get(trader_address, 0) >= _MAX_TRADER_FAILURES:
+            return
+
         loop = asyncio.get_event_loop()
 
         try:
@@ -334,21 +347,13 @@ class BackgroundPnLWorker:
                 "Timeout: %s exceeded %ds — skipping, will requeue after 24h",
                 trader_address[:10], _TRADER_TIMEOUT,
             )
-            # Best-effort mark updated so we don't requeue immediately.
-            # This call is fast (one UPDATE) so it won't stall for long.
-            try:
-                await loop.run_in_executor(
-                    _THREAD_POOL,
-                    self.db.mark_trader_pnl_updated,
-                    trader_address,
-                )
-            except Exception:
-                pass
             self.errors += 1
+            await self._record_failure(trader_address, loop)
             return
-        except Exception as e:
+        except Exception:
             self.logger.exception("Failed for %s", trader_address[:10])
             self.errors += 1
+            await self._record_failure(trader_address, loop)
             return
 
         # Update counters (event loop thread only — no lock needed)
@@ -367,6 +372,38 @@ class BackgroundPnLWorker:
             self.logger.warning(
                 "Slow: %s — %d trades took %.1fs",
                 trader_address[:10], trade_count, elapsed,
+            )
+
+    # ------------------------------------------------------------------ #
+    #  Failure tracking                                                    #
+    # ------------------------------------------------------------------ #
+
+    async def _record_failure(self, trader_address: str, loop):
+        """
+        Increment the failure counter for a trader.  On reaching
+        _MAX_TRADER_FAILURES, stamp pnl_last_updated = NOW so the DB query
+        won't pick this trader up again for 24 hours, then log a single
+        WARNING.  All subsequent calls for this address are no-ops.
+        """
+        count = self.failed_traders.get(trader_address, 0) + 1
+        self.failed_traders[trader_address] = count
+
+        # Best-effort mark updated on every failure so a single surviving
+        # success in the DB layer suppresses the next 24h window.
+        try:
+            await loop.run_in_executor(
+                _THREAD_POOL,
+                self.db.mark_trader_pnl_updated,
+                trader_address,
+            )
+        except Exception:
+            pass
+
+        if count >= _MAX_TRADER_FAILURES:
+            self.logger.warning(
+                "Permanently skipping %s for this session — failed %d times. "
+                "pnl_last_updated stamped to suppress requeue for 24h.",
+                trader_address[:10], count,
             )
 
     # ------------------------------------------------------------------ #
