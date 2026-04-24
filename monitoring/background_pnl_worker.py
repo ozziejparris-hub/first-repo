@@ -397,7 +397,11 @@ class BackgroundPnLWorker:
                 trader_address,
             )
         except Exception:
-            pass
+            self.logger.warning(
+                "Failed to stamp pnl_last_updated for %s (failure %d) — "
+                "trader will reappear after session restart",
+                trader_address[:10], count,
+            )
 
         if count >= _MAX_TRADER_FAILURES:
             self.logger.warning(

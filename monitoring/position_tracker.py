@@ -20,10 +20,13 @@ Key Concepts:
 """
 
 import json
+import logging
 from collections import deque  # O(1) operations for queue
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 from monitoring.database import Database
+
+_logger = logging.getLogger(__name__)
 
 
 class Position:
@@ -176,6 +179,13 @@ class PositionTracker:
             # Parse timestamp
             if isinstance(timestamp, str):
                 timestamp = datetime.fromisoformat(timestamp)
+
+            if market_id is None:
+                _logger.debug(
+                    "Skipping trade %s for %s: market_id is NULL",
+                    trade_id, trader_address[:10],
+                )
+                continue
 
             key = (market_id, outcome)
             if key not in grouped_trades:
