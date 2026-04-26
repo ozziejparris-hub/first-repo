@@ -1036,7 +1036,8 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT t.trader_address, MAX(t.timestamp) as last_trade, tr.pnl_last_updated
+            SELECT t.trader_address, MAX(t.timestamp) as last_trade, tr.pnl_last_updated,
+                   COALESCE(tr.closed_positions, 0) AS closed_positions
             FROM trades t
             LEFT JOIN traders tr ON t.trader_address = tr.address
             WHERE t.timestamp > datetime('now', '-1 hour')
@@ -1065,12 +1066,13 @@ class Database:
             excl_clause2 = ""
             params = (limit,)
         cursor.execute(f"""
-            SELECT trader_address, last_trade, pnl_last_updated
+            SELECT trader_address, last_trade, pnl_last_updated, closed_positions
             FROM (
                 -- never-updated traders from the traders table
                 SELECT tr.address AS trader_address,
                        NULL      AS last_trade,
-                       tr.pnl_last_updated
+                       tr.pnl_last_updated,
+                       COALESCE(tr.closed_positions, 0) AS closed_positions
                 FROM traders tr
                 WHERE tr.pnl_last_updated IS NULL
                   {excl_clause}
@@ -1080,7 +1082,8 @@ class Database:
                 -- stale traders (>24 h since last update) with any-age trades
                 SELECT t.trader_address,
                        MAX(t.timestamp) AS last_trade,
-                       tr.pnl_last_updated
+                       tr.pnl_last_updated,
+                       COALESCE(tr.closed_positions, 0) AS closed_positions
                 FROM trades t
                 INNER JOIN traders tr ON t.trader_address = tr.address
                 WHERE tr.pnl_last_updated < datetime('now', '-24 hours')

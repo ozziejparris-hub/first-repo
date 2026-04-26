@@ -301,7 +301,71 @@ class PolymarketMonitor:
             'rugby championship', 'rugby league',
 
             # GENERIC MATCH TERMS
-            'match on', 'game on', 'fixture', 'vs on', 'versus on'
+            'match on', 'game on', 'fixture', 'vs on', 'versus on',
+
+            # CLIMATE / WEATHER (137 active markets)
+            'hurricane', 'named storm', 'tropical storm', 'tornado',
+            'earthquake', 'wildfire', 'flood', 'drought',
+            'temperature record', 'celsius', 'fahrenheit',
+            'measles', 'pandemic', 'outbreak', 'epidemic',
+
+            # OIL / COMMODITIES (153 active markets — price bets)
+            'wti crude', 'brent crude', 'crude oil price',
+            'oil price', 'price per barrel', 'barrel',
+            'natural gas price', 'lumber price', 'wheat price',
+            'corn price', 'soybean',
+
+            # EQUITY INDICES / STOCKS
+            'spy ', 'qqq ', 's&p 500', 'nasdaq', 'dow jones',
+            'nifty', 'ftse', 'dax ', 'cac 40',
+            'vix ', 'volatility index',
+            'largest company', 'market cap end',
+
+            # IPO MARKETS
+            'ipo closing', 'ipo market cap', 'ipo by',
+            'spacex ipo', 'kraken ipo', 'stripe ipo',
+            'going public',
+
+            # OLYMPICS / INTERNATIONAL GAMES
+            'olympics', 'olympic games', 'medal count',
+            'gold medal', 'podium finish',
+            'commonwealth games', 'asian games', 'pan american',
+
+            # VIDEO GAMES / GAMING (non-esports)
+            'game launch', 'steam sales', 'launch day sales',
+            'game of the year', 'goty',
+            'copies sold', 'day one sales',
+
+            # SOCIAL MEDIA POST COUNT MARKETS
+            'post 200+', 'post 100+', 'posts from april',
+            'posts from may', 'posts this week',
+            'tweets this week', 'truth social posts',
+
+            # REALITY TV / COMPETITION SHOWS
+            'survivor', 'big brother', 'bachelor', 'bachelorette',
+            'dancing with the stars', 'american idol', 'x factor',
+            'love island', 'drag race',
+
+            # AWARDS NOT ALREADY COVERED
+            'booker prize', 'pulitzer', 'nobel prize',
+            'man booker', 'hugo award',
+
+            # MISCELLANEOUS NICHE
+            'alien', 'ufo', 'bigfoot', 'paranormal',
+            'will aliens', 'extraterrestrial',
+            'lottery', 'powerball', 'mega millions',
+
+            # INFLUENCER / YOUTUBE
+            'mrbeast', 'million subscribers', 'subscribers by',
+
+            # BOXING / COMBAT SPORTS (non-MMA)
+            'go the distance', 'fight to go',
+
+            # SPORTS DIVISION / CONFERENCE AWARDS
+            'pro football draft',
+            'pacific division', 'atlantic division',
+            'metropolitan division', 'central division',
+            'pacific conference', 'atlantic conference',
         ]
 
         title_lower = market_title.lower()
@@ -366,9 +430,15 @@ class PolymarketMonitor:
                     'tournament', 'cup', 'league', 'season',
                 ]
 
+                # Words that prove this is geopolitics, not a tournament
+                _geo_guard = ['election', 'president', 'presidential', 'minister',
+                              'parliament', 'vote', 'war', 'treaty', 'senate', 'congress',
+                              'referendum', 'campaign', 'primary', 'ceasefire']
+
                 for indicator in tournament_indicators:
                     if indicator in tournament_part:
-                        return True
+                        if not any(word in tournament_part for word in _geo_guard):
+                            return True
 
                 # Check if the team name (before "win the") contains typical esports markers
                 team_part = parts[0].replace('will ', '')
@@ -422,6 +492,39 @@ class PolymarketMonitor:
             if 'election' not in title_lower and 'vote' not in title_lower:
                 return True  # EXCLUDE match with specific date
 
+        # Structural patterns that catch sports regardless of team/player names
+        sport_patterns = [
+            r'.+:\s*.+\s+vs\s+.+',        # "City/Tournament: Player vs Player"
+            r'^exact score:',              # Exact score betting
+            r'anytime goalscorer',         # Soccer goalscorer markets
+            r'^map \d+:',                  # Esports map betting
+            r'leading at halftime',        # Soccer halftime markets
+            r'xauusd|xagusd|wti crude',   # Commodity tickers
+            r'nhl.*(trophy|division|conference)',  # NHL awards
+            r'nba.*(trophy|division|conference)', # NBA awards
+            r'\d+\s*-\s*\d+.*\?$',       # Score prediction format
+            # Post count markets (Will X post N-M posts from DATE to DATE?)
+            r'post\s+\d+[-–]\d+\s+posts',
+            r'post\s+\d+\+\s+posts',
+            # Price target markets (Will X hit $N by DATE?)
+            r'hit \(high\)',
+            r'hit \(low\)',
+            r'hit \$[\d,]+',
+            # Goalscorer / player performance
+            r'top .* goal scorer',
+            r'anytime (goal|try|touchdown)',
+            r'first (goal|try|touchdown)',
+            # NFL draft pick markets
+            r'drafted \d+(st|nd|rd|th) overall',
+            # "Will X say Y during Z" trivial speech markets
+            r'will .+ say ".+" during',
+            # Press briefing lateness markets
+            r'be \d+[-–]\d+ minutes late',
+        ]
+        for pattern in sport_patterns:
+            if re.search(pattern, title_lower):
+                return True  # EXCLUDE structural sports pattern
+
         return False
 
     async def _should_exclude_market(self, market_title: str) -> bool:
@@ -445,7 +548,8 @@ class PolymarketMonitor:
             'sanctions', 'treaty', 'diplomat', 'congress', 'senate',
             'prime minister', 'parliament', 'government', 'minister',
             'ukraine', 'russia', 'china', 'israel', 'gaza', 'iran',
-            'nato', 'un security', 'policy', 'tariff', 'peace deal'
+            'nato', 'un security', 'policy', 'tariff', 'peace deal',
+            'middle east',
         ]
 
         if any(signal in market_title.lower() for signal in geopolitics_signals):
@@ -532,7 +636,11 @@ class PolymarketMonitor:
             # Parse timestamp
             try:
                 if isinstance(timestamp_raw, (int, float)):
-                    timestamp = datetime.fromtimestamp(timestamp_raw)
+                    # Defend against millisecond timestamps (e.g. if
+                    # Polymarket Data API ever migrates to ms format)
+                    # Values > 1e10 are milliseconds, divide to get seconds
+                    ts = timestamp_raw / 1000 if timestamp_raw > 1e10 else timestamp_raw
+                    timestamp = datetime.fromtimestamp(ts)
                 else:
                     timestamp = datetime.fromisoformat(str(timestamp_raw).replace('Z', '+00:00'))
             except:

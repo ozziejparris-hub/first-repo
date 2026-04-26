@@ -201,7 +201,7 @@ class AnalysisScheduler:
         print("\n✅ SUFFICIENT DATA - Full analysis will proceed\n")
         return True
 
-    def run_phase_1_independent(self):
+    def run_phase_1_independent(self, skip_correlation=False):
         """
         Phase 1: Run independent analysis tools (don't need resolutions).
 
@@ -242,95 +242,99 @@ class AnalysisScheduler:
             self.results['behavior'] = None
 
         # 2. Correlation Matrix (7-day TTL cache + trader cap)
-        try:
-            print("\n[2/2] Running Correlation Matrix Analysis...")
-
-            from analysis.correlation_matrix import TraderCorrelationMatrix
-            import json as _json
-            import os as _os
-
-            correlation = TraderCorrelationMatrix(self.db.db_path)
-
-            # --- 7-day TTL cache check ---
-            cache_path = _os.path.join(
-                _os.path.dirname(_os.path.dirname(__file__)), 'reports', 'correlation_cache.json'
-            )
-            cache_valid = False
-            corr_results = None
-            if _os.path.exists(cache_path):
-                age_days = (datetime.now() - datetime.fromtimestamp(
-                    _os.path.getmtime(cache_path)
-                )).total_seconds() / 86400
-                if age_days < 7:
-                    try:
-                        with open(cache_path) as _f:
-                            cached_data = _json.load(_f)
-                        cached_count = cached_data.get('total_traders', 0)
-                        # Use filtered count for drift check (same population as cap)
-                        conn = self.db.get_connection()
-                        cur = conn.cursor()
-                        cur.execute("""
-                            SELECT COUNT(*) FROM traders t
-                            WHERE is_flagged = 1
-                            AND (comprehensive_elo >= 1500 OR total_trades >= 30)
-                            AND EXISTS (
-                                SELECT 1 FROM trades tr
-                                WHERE tr.trader_address = t.address LIMIT 1
-                            )
-                        """)
-                        current_count = cur.fetchone()[0]
-                        conn.close()
-                        drift = abs(current_count - cached_count) / max(1, cached_count)
-                        if drift <= 0.05:
-                            cache_valid = True
-                            corr_results = cached_data
-                            print(f"   Using cached matrix ({cached_count} traders, "
-                                  f"built {cached_data.get('timestamp','')[:10]}, "
-                                  f"age {age_days:.1f}d, drift {drift*100:.1f}%)")
-                    except Exception:
-                        pass
-
-            if not cache_valid:
-                # --- Trader cap: flagged + meaningful activity + local trade data ---
-                print("   Cache stale or missing - recalculating with trader cap...")
-                conn = self.db.get_connection()
-                cur = conn.cursor()
-                cur.execute("""
-                    SELECT t.address FROM traders t
-                    WHERE t.is_flagged = 1
-                    AND (t.comprehensive_elo >= 1500 OR t.total_trades >= 30)
-                    AND EXISTS (
-                        SELECT 1 FROM trades tr
-                        WHERE tr.trader_address = t.address LIMIT 1
-                    )
-                """)
-                capped_traders = [row[0] for row in cur.fetchall()]
-                conn.close()
-
-                pairs = (len(capped_traders) * (len(capped_traders) - 1)) // 2
-                print(f"   Trader cap applied: {len(capped_traders):,} traders, "
-                      f"{pairs:,} pairs (was {len(self.db.get_flagged_traders()):,} flagged total)")
-
-                # Patch the trader list used by build_correlation_matrix
-                original_get_flagged = correlation.db.get_flagged_traders
-                correlation.db.get_flagged_traders = lambda: capped_traders
-
-                matrix = correlation.build_correlation_matrix()
-                corr_results = correlation.export_for_integration()
-
-                correlation.db.get_flagged_traders = original_get_flagged
-
-                print(f"   Built matrix for {matrix.get('total_traders', len(capped_traders))} traders")
-                print(f"   Found {len(corr_results['high_correlation_pairs'])} high-correlation pairs")
-
-            self.results['correlation'] = corr_results
-            tools_run += 1
-
-        except Exception as e:
-            error_msg = f"Correlation Matrix failed: {str(e)}"
-            print(f"   ❌ {error_msg}")
-            self.errors.append(error_msg)
+        if skip_correlation:
+            print("\n[2/2] Correlation Matrix: skipped on startup (runs daily at 03:00 UTC)")
             self.results['correlation'] = None
+        else:
+            try:
+                print("\n[2/2] Running Correlation Matrix Analysis...")
+
+                from analysis.correlation_matrix import TraderCorrelationMatrix
+                import json as _json
+                import os as _os
+
+                correlation = TraderCorrelationMatrix(self.db.db_path)
+
+                # --- 7-day TTL cache check ---
+                cache_path = _os.path.join(
+                    _os.path.dirname(_os.path.dirname(__file__)), 'reports', 'correlation_cache.json'
+                )
+                cache_valid = False
+                corr_results = None
+                if _os.path.exists(cache_path):
+                    age_days = (datetime.now() - datetime.fromtimestamp(
+                        _os.path.getmtime(cache_path)
+                    )).total_seconds() / 86400
+                    if age_days < 7:
+                        try:
+                            with open(cache_path) as _f:
+                                cached_data = _json.load(_f)
+                            cached_count = cached_data.get('total_traders', 0)
+                            # Use filtered count for drift check (same population as cap)
+                            conn = self.db.get_connection()
+                            cur = conn.cursor()
+                            cur.execute("""
+                                SELECT COUNT(*) FROM traders t
+                                WHERE is_flagged = 1
+                                AND (comprehensive_elo >= 1500 OR total_trades >= 30)
+                                AND EXISTS (
+                                    SELECT 1 FROM trades tr
+                                    WHERE tr.trader_address = t.address LIMIT 1
+                                )
+                            """)
+                            current_count = cur.fetchone()[0]
+                            conn.close()
+                            drift = abs(current_count - cached_count) / max(1, cached_count)
+                            if drift <= 0.05:
+                                cache_valid = True
+                                corr_results = cached_data
+                                print(f"   Using cached matrix ({cached_count} traders, "
+                                      f"built {cached_data.get('timestamp','')[:10]}, "
+                                      f"age {age_days:.1f}d, drift {drift*100:.1f}%)")
+                        except Exception:
+                            pass
+
+                if not cache_valid:
+                    # --- Trader cap: flagged + meaningful activity + local trade data ---
+                    print("   Cache stale or missing - recalculating with trader cap...")
+                    conn = self.db.get_connection()
+                    cur = conn.cursor()
+                    cur.execute("""
+                        SELECT t.address FROM traders t
+                        WHERE t.is_flagged = 1
+                        AND (t.comprehensive_elo >= 1500 OR t.total_trades >= 30)
+                        AND EXISTS (
+                            SELECT 1 FROM trades tr
+                            WHERE tr.trader_address = t.address LIMIT 1
+                        )
+                    """)
+                    capped_traders = [row[0] for row in cur.fetchall()]
+                    conn.close()
+
+                    pairs = (len(capped_traders) * (len(capped_traders) - 1)) // 2
+                    print(f"   Trader cap applied: {len(capped_traders):,} traders, "
+                          f"{pairs:,} pairs (was {len(self.db.get_flagged_traders()):,} flagged total)")
+
+                    # Patch the trader list used by build_correlation_matrix
+                    original_get_flagged = correlation.db.get_flagged_traders
+                    correlation.db.get_flagged_traders = lambda: capped_traders
+
+                    matrix = correlation.build_correlation_matrix()
+                    corr_results = correlation.export_for_integration()
+
+                    correlation.db.get_flagged_traders = original_get_flagged
+
+                    print(f"   Built matrix for {matrix.get('total_traders', len(capped_traders))} traders")
+                    print(f"   Found {len(corr_results['high_correlation_pairs'])} high-correlation pairs")
+
+                self.results['correlation'] = corr_results
+                tools_run += 1
+
+            except Exception as e:
+                error_msg = f"Correlation Matrix failed: {str(e)}"
+                print(f"   ❌ {error_msg}")
+                self.errors.append(error_msg)
+                self.results['correlation'] = None
 
         duration = (datetime.now() - phase_start).total_seconds()
         print(f"\n✅ Phase 1 Complete: {tools_run}/2 tools run ({duration:.1f}s)")
@@ -1272,7 +1276,7 @@ class AnalysisScheduler:
         print(f"\n✅ Phase 4 Complete")
         print(f"   Reports saved to: reports/")
 
-    def run_full_analysis(self):
+    def run_full_analysis(self, skip_correlation=False):
         """
         Run complete analysis workflow.
 
@@ -1289,7 +1293,7 @@ class AnalysisScheduler:
         sufficient = self.run_phase_0_checks()
 
         # Phase 1: Always run (doesn't need resolutions)
-        self.run_phase_1_independent()
+        self.run_phase_1_independent(skip_correlation=skip_correlation)
 
         # Phase 2: Only if sufficient data
         if sufficient:

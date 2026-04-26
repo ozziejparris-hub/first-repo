@@ -12,9 +12,10 @@ updating the tr222222aders row, marking updated — runs inside a single
 ThreadPoolExecutor call (_process_trader_sync).  The asyncio event loop
 thread never touches SQLite directly, so it cannot block.
 
-A 90-second asyncio.wait_for timeout guards every trader.  If a trader
-exceeds that budget (e.g. because of extreme trade volume or a slow disk
-flush), it is skipped and marked updated so it won't immediately requeue.
+A per-trader asyncio.wait_for timeout guards every trader.  Traders with
+more than _LARGE_TRADER_THRESHOLD closed positions get _TRADER_TIMEOUT_LARGE
+seconds; all others get _TRADER_TIMEOUT seconds.  If a trader exceeds its
+budget it is skipped and marked updated so it won't immediately requeue.
 """
 
 import asyncio
@@ -33,9 +34,11 @@ _THREAD_POOL = concurrent.futures.ThreadPoolExecutor(
     max_workers=1, thread_name_prefix="pnl_worker"
 )
 
-# Per-trader time budget.  90 s is generous even for traders with 5 000+
-# trades; the timeout only fires if something has gone badly wrong.
-_TRADER_TIMEOUT = 90
+# Per-trader time budgets.  Traders with many closed positions involve more
+# DB writes and a heavier resolved-markets join, so they get extra headroom.
+_TRADER_TIMEOUT = 90               # default budget (seconds)
+_TRADER_TIMEOUT_LARGE = 180        # budget for large traders
+_LARGE_TRADER_THRESHOLD = 100      # closed_positions threshold for large budget
 
 # After this many failures a trader is permanently skipped for the session
 # and their pnl_last_updated is stamped to NOW so they won't requeue for 24h.
@@ -150,8 +153,8 @@ class BackgroundPnLWorker:
                 )
                 batch_start = time.time()
 
-                for trader_address, last_trade, last_update in traders:
-                    await self._process_single_trader(trader_address)
+                for trader_address, last_trade, last_update, closed_positions in traders:
+                    await self._process_single_trader(trader_address, closed_positions)
                     # Yield control between traders so the monitoring loop
                     # and watchdog can always wake up on schedule.
                     await asyncio.sleep(0.1)
@@ -316,20 +319,26 @@ class BackgroundPnLWorker:
             'elapsed': time.time() - t0,
         }
 
-    async def _process_single_trader(self, trader_address: str):
+    async def _process_single_trader(self, trader_address: str, closed_positions: int = 0):
         """
         Async entry point — submits all work to the thread pool and awaits it.
 
         The event loop thread itself does zero SQLite I/O here.  If the whole
-        operation takes longer than _TRADER_TIMEOUT seconds, it is cancelled
-        at the asyncio level and the trader is marked updated to prevent a
-        tight requeue loop.  The thread itself may continue briefly after the
-        timeout (Python threads are not forcibly killed), but it will finish
-        its current SQLite call and exit — no resources are leaked.
+        operation takes longer than the per-trader budget, it is cancelled at
+        the asyncio level and the trader is marked updated to prevent a tight
+        requeue loop.  The thread itself may continue briefly after the timeout
+        (Python threads are not forcibly killed), but it will finish its current
+        SQLite call and exit — no resources are leaked.
         """
         # Permanently skipped traders are ignored for the rest of the session.
         if self.failed_traders.get(trader_address, 0) >= _MAX_TRADER_FAILURES:
             return
+
+        timeout = (
+            _TRADER_TIMEOUT_LARGE
+            if closed_positions > _LARGE_TRADER_THRESHOLD
+            else _TRADER_TIMEOUT
+        )
 
         loop = asyncio.get_event_loop()
 
@@ -340,12 +349,12 @@ class BackgroundPnLWorker:
                     self._process_trader_sync,
                     trader_address,
                 ),
-                timeout=_TRADER_TIMEOUT,
+                timeout=timeout,
             )
         except asyncio.TimeoutError:
             self.logger.warning(
                 "Timeout: %s exceeded %ds — skipping, will requeue after 24h",
-                trader_address[:10], _TRADER_TIMEOUT,
+                trader_address[:10], timeout,
             )
             self.errors += 1
             await self._record_failure(trader_address, loop)
