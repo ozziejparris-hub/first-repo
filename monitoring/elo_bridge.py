@@ -467,7 +467,8 @@ class UnifiedELOMonitoringBridge:
         return result
 
     def full_elo_recalculation(self, verbose: bool = False,
-                              force_refresh: bool = True) -> Dict:
+                              force_refresh: bool = True,
+                              skip_correlation: bool = False) -> Dict:
         """
         Full ELO recalculation for ALL traders (6/6 dimensions).
 
@@ -475,13 +476,15 @@ class UnifiedELOMonitoringBridge:
         1. Base category ELO (resolution-based) ✓
         2. Behavioral modifiers (fresh calculation) ✓
         3. Advanced metrics (fresh calculation) ✓
-        4. Network analysis (fresh calculation) ✓
+        4. Network analysis (fresh calculation) ✓  [skipped if skip_correlation=True]
         5. Contrarian analysis (fresh calculation) ✓
         6. P&L modifiers (fresh calculation) ✓
 
         Args:
             verbose: Print detailed progress
             force_refresh: Force ELO system re-initialization (default: True)
+            skip_correlation: Skip correlation matrix (8.26M pairs, ~5h). Uses
+                cached/neutral scores instead. Reduces runtime to ~15 minutes.
 
         Returns:
             Dictionary with update results:
@@ -497,7 +500,10 @@ class UnifiedELOMonitoringBridge:
         start_time = time.time()
 
         if verbose:
-            print(f"\n[ELO_BRIDGE] Starting FULL ELO recalculation (6/6 dimensions)...")
+            if skip_correlation:
+                print(f"\n[ELO_BRIDGE] Starting FULL ELO recalculation (5/6 dimensions, correlation skipped)...")
+            else:
+                print(f"\n[ELO_BRIDGE] Starting FULL ELO recalculation (6/6 dimensions)...")
 
         # Get ELO system (force refresh to clear caches)
         elo_system = self._get_elo_system(force_refresh=force_refresh)
@@ -537,11 +543,11 @@ class UnifiedELOMonitoringBridge:
                 # Get comprehensive ELO with ALL modifiers
                 comprehensive_elo = elo_system.get_trader_global_elo(
                     trader_address,
-                    apply_behavioral=True,  # Fresh calculation
-                    apply_advanced=True,     # Fresh calculation
-                    apply_network=True,      # Fresh calculation (expensive)
-                    apply_contrarian=True,   # Fresh calculation (expensive)
-                    apply_pnl=True          # Fresh calculation
+                    apply_behavioral=True,
+                    apply_advanced=True,
+                    apply_network=not skip_correlation,  # skip if --skip-correlation
+                    apply_contrarian=True,
+                    apply_pnl=True
                 )
 
                 # Get base category ELO (without any modifiers)

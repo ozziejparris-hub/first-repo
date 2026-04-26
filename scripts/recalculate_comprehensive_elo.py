@@ -16,6 +16,7 @@ python scripts/recalculate_comprehensive_elo.py
 
 import sys
 import os
+import argparse
 
 # Add project root to path
 project_root = os.path.dirname(os.path.dirname(__file__))
@@ -27,6 +28,22 @@ from datetime import datetime
 import time
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Full 6-dimensional ELO recalculation for all traders."
+    )
+    parser.add_argument(
+        '--skip-correlation',
+        action='store_true',
+        help=(
+            'Skip correlation matrix calculation (use cached/neutral scores). '
+            'Reduces runtime from 5+ hours to ~15 minutes. '
+            'Use when running during active monitoring hours.'
+        )
+    )
+    return parser.parse_args()
+
+
 def print_banner(text):
     """Print formatted banner."""
     print("\n" + "="*70)
@@ -35,6 +52,8 @@ def print_banner(text):
 
 
 def main():
+    args = parse_args()
+
     print_banner("COMPREHENSIVE ELO RECALCULATION")
     print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
@@ -83,15 +102,23 @@ def main():
     print("  1. Base category ELO (resolution-based)")
     print("  2. Behavioral modifiers (consistency, diversity)")
     print("  3. Advanced metrics (calibration, risk, regret)")
-    print("  4. Network analysis (correlation, copy-trade) [EXPENSIVE]")
+    if args.skip_correlation:
+        print("  4. Network analysis (correlation, copy-trade) [SKIPPED]")
+    else:
+        print("  4. Network analysis (correlation, copy-trade) [EXPENSIVE]")
     print("  5. Contrarian analysis (anti-consensus) [EXPENSIVE]")
     print("  6. P&L modifiers (profit, ROI, quality)")
-    print("\nThis may take 5-15 minutes for large datasets...\n")
+    if args.skip_correlation:
+        print("\n[CORRELATION] --skip-correlation active: correlation matrix bypassed.")
+        print("[CORRELATION] Using cached results if available, neutral scores otherwise.\n")
+    else:
+        print("\nThis may take 5-15 minutes for large datasets...\n")
 
     try:
         results = bridge.full_elo_recalculation(
             verbose=True,
-            force_refresh=True  # Force refresh all caches
+            force_refresh=True,  # Force refresh all caches
+            skip_correlation=args.skip_correlation
         )
 
         elapsed = time.time() - start_time

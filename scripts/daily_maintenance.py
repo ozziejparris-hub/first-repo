@@ -19,7 +19,7 @@ STEPS = [
     ("Apply full ELO modifiers",        SCRIPTS_DIR / "apply_full_elo_modifiers.py"),
 ]
 
-def run_step(label, script_path):
+def run_step(label, script_path, extra_args=None):
     print(f"\n--- Step: {label} ---")
     print(f"    {script_path.name}")
     step_start = time.time()
@@ -33,8 +33,12 @@ def run_step(label, script_path):
     existing = env.get('PYTHONPATH', '')
     env['PYTHONPATH'] = f"{monitoring_dir}{os.pathsep}{existing}" if existing else monitoring_dir
 
+    cmd = [sys.executable, str(script_path)]
+    if extra_args:
+        cmd.extend(extra_args)
+
     result = subprocess.run(
-        [sys.executable, str(script_path)],
+        cmd,
         cwd=str(SCRIPTS_DIR.parent),
         env=env,
     )
@@ -53,9 +57,18 @@ def main():
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"=== DAILY MAINTENANCE === {timestamp}")
 
-    for i, (label, script) in enumerate(STEPS, 1):
-        print(f"\n[{i}/{len(STEPS)}] {label}")
-        ok = run_step(label, script)
+    steps = list(STEPS)
+    if datetime.now().weekday() == 6:  # Sunday
+        steps.append(("Weekly full ELO recalculation",
+                       SCRIPTS_DIR / "recalculate_comprehensive_elo.py",
+                       ["--skip-correlation"]))
+        print("\n[WEEKLY] Sunday — full ELO recalculation added to run (--skip-correlation)")
+
+    for i, step in enumerate(steps, 1):
+        label, script = step[0], step[1]
+        extra_args = step[2] if len(step) > 2 else None
+        print(f"\n[{i}/{len(steps)}] {label}")
+        ok = run_step(label, script, extra_args)
         if not ok:
             elapsed = time.time() - start
             print(f"\n=== MAINTENANCE FAILED at step {i} ({elapsed:.1f}s total) ===")
