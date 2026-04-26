@@ -41,6 +41,15 @@ def parse_args():
             'Use when running during active monitoring hours.'
         )
     )
+    parser.add_argument(
+        '--skip-contrarian',
+        action='store_true',
+        help=(
+            'Skip contrarian analysis (bypasses internal ELO recalculation + market '
+            'resolution pass). Uses neutral modifiers instead. '
+            'Use alongside --skip-correlation for fastest runtime (~15 minutes).'
+        )
+    )
     return parser.parse_args()
 
 
@@ -106,19 +115,27 @@ def main():
         print("  4. Network analysis (correlation, copy-trade) [SKIPPED]")
     else:
         print("  4. Network analysis (correlation, copy-trade) [EXPENSIVE]")
-    print("  5. Contrarian analysis (anti-consensus) [EXPENSIVE]")
+    if args.skip_contrarian:
+        print("  5. Contrarian analysis (anti-consensus) [SKIPPED]")
+    else:
+        print("  5. Contrarian analysis (anti-consensus) [EXPENSIVE]")
     print("  6. P&L modifiers (profit, ROI, quality)")
     if args.skip_correlation:
         print("\n[CORRELATION] --skip-correlation active: correlation matrix bypassed.")
-        print("[CORRELATION] Using cached results if available, neutral scores otherwise.\n")
-    else:
-        print("\nThis may take 5-15 minutes for large datasets...\n")
+        print("[CORRELATION] Using cached results if available, neutral scores otherwise.")
+    if args.skip_contrarian:
+        print("[CONTRARIAN] --skip-contrarian active: contrarian analysis bypassed.")
+        print("[CONTRARIAN] Using neutral modifiers instead.")
+    if not args.skip_correlation and not args.skip_contrarian:
+        print("\nThis may take 5-15 minutes for large datasets...")
+    print()
 
     try:
         results = bridge.full_elo_recalculation(
             verbose=True,
             force_refresh=True,  # Force refresh all caches
-            skip_correlation=args.skip_correlation
+            skip_correlation=args.skip_correlation,
+            skip_contrarian=args.skip_contrarian
         )
 
         elapsed = time.time() - start_time

@@ -468,7 +468,8 @@ class UnifiedELOMonitoringBridge:
 
     def full_elo_recalculation(self, verbose: bool = False,
                               force_refresh: bool = True,
-                              skip_correlation: bool = False) -> Dict:
+                              skip_correlation: bool = False,
+                              skip_contrarian: bool = False) -> Dict:
         """
         Full ELO recalculation for ALL traders (6/6 dimensions).
 
@@ -477,7 +478,7 @@ class UnifiedELOMonitoringBridge:
         2. Behavioral modifiers (fresh calculation) ✓
         3. Advanced metrics (fresh calculation) ✓
         4. Network analysis (fresh calculation) ✓  [skipped if skip_correlation=True]
-        5. Contrarian analysis (fresh calculation) ✓
+        5. Contrarian analysis (fresh calculation) ✓  [skipped if skip_contrarian=True]
         6. P&L modifiers (fresh calculation) ✓
 
         Args:
@@ -485,6 +486,8 @@ class UnifiedELOMonitoringBridge:
             force_refresh: Force ELO system re-initialization (default: True)
             skip_correlation: Skip correlation matrix (8.26M pairs, ~5h). Uses
                 cached/neutral scores instead. Reduces runtime to ~15 minutes.
+            skip_contrarian: Skip contrarian analysis (internal ELO recalc + market
+                resolution pass). Uses neutral modifiers instead.
 
         Returns:
             Dictionary with update results:
@@ -500,8 +503,13 @@ class UnifiedELOMonitoringBridge:
         start_time = time.time()
 
         if verbose:
-            if skip_correlation:
-                print(f"\n[ELO_BRIDGE] Starting FULL ELO recalculation (5/6 dimensions, correlation skipped)...")
+            skipped = [name for flag, name in [
+                (skip_correlation, "correlation"), (skip_contrarian, "contrarian")
+            ] if flag]
+            if skipped:
+                label = ", ".join(skipped) + " skipped"
+                dims = 6 - len(skipped)
+                print(f"\n[ELO_BRIDGE] Starting FULL ELO recalculation ({dims}/6 dimensions, {label})...")
             else:
                 print(f"\n[ELO_BRIDGE] Starting FULL ELO recalculation (6/6 dimensions)...")
 
@@ -545,8 +553,8 @@ class UnifiedELOMonitoringBridge:
                     trader_address,
                     apply_behavioral=True,
                     apply_advanced=True,
-                    apply_network=not skip_correlation,  # skip if --skip-correlation
-                    apply_contrarian=True,
+                    apply_network=not skip_correlation,
+                    apply_contrarian=not skip_contrarian,
                     apply_pnl=True
                 )
 
