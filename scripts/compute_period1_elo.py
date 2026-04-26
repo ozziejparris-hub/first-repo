@@ -14,6 +14,7 @@ Usage:
 import sys
 import os
 import argparse
+import sqlite3 as _sqlite3
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -108,10 +109,15 @@ def main():
         return
 
     # --confirm path: write to DB
-    ensure_column(conn)
+    conn.close()
+    DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                           "data", "polymarket_tracker.db")
+    conn2 = _sqlite3.connect(DB_PATH)
+    conn2.execute("PRAGMA journal_mode=WAL")
+    ensure_column(conn2)
 
     written = 0
-    cursor2 = conn.cursor()
+    cursor2 = conn2.cursor()
     for tid in eligible_ids:
         if tid in scores:
             cursor2.execute(
@@ -120,8 +126,8 @@ def main():
             )
             written += 1
 
-    conn.commit()
-    conn.close()
+    conn2.commit()
+    conn2.close()
     print(f"\n  Wrote {written} rows to {COLUMN}.")
     print("  Production comprehensive_elo untouched.")
 
