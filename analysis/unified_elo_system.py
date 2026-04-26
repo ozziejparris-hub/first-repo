@@ -412,11 +412,24 @@ class UnifiedELOSystem:
 
         return max(category_scores.items(), key=lambda x: x[1])[0]
 
-    def get_all_trades(self) -> List[Dict]:
-        """Get all trades from database."""
+    def get_all_trades(self, cutoff_date: str = None) -> List[Dict]:
+        """Get all trades from database.
+
+        Args:
+            cutoff_date: Optional ISO date string (e.g. '2026-04-01').
+                        If provided, only returns trades before this date.
+                        Used for point-in-time ELO calculation in research.
+                        Default None = all trades (production behaviour unchanged).
+        """
         conn = self.get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM trades ORDER BY timestamp ASC")
+        if cutoff_date:
+            cursor.execute(
+                "SELECT * FROM trades WHERE timestamp < ? ORDER BY timestamp ASC",
+                (cutoff_date,)
+            )
+        else:
+            cursor.execute("SELECT * FROM trades ORDER BY timestamp ASC")
         trades = [dict(row) for row in cursor.fetchall()]
         conn.close()
         return trades
@@ -477,7 +490,8 @@ class UnifiedELOSystem:
             self.market_resolutions[market_id] = result
             return result
 
-    def calculate_elo_ratings(self, verbose: bool = True):
+    def calculate_elo_ratings(self, verbose: bool = True,
+                              cutoff_date: str = None):
         """
         Calculate category-specific ELO ratings for all traders based on historical trades.
 
@@ -485,6 +499,9 @@ class UnifiedELOSystem:
 
         Args:
             verbose: Print progress messages
+            cutoff_date: Optional ISO date string for point-in-time ELO.
+                        If provided, only trades before this date are used.
+                        Production system always passes None (unchanged behaviour).
         """
         if verbose:
             print("\n" + "="*70)
@@ -492,7 +509,7 @@ class UnifiedELOSystem:
             print("="*70)
             print("\nLoading historical trades...")
 
-        trades = self.get_all_trades()
+        trades = self.get_all_trades(cutoff_date=cutoff_date)
         if verbose:
             print(f"Found {len(trades)} total trades")
 
