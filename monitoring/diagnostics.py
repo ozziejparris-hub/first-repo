@@ -40,7 +40,7 @@ class ELOSystemDiagnostics:
         warnings = []
 
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30)
             cursor = conn.cursor()
 
             # 1. Check if ELO ratings exist
@@ -230,7 +230,7 @@ class ELOSystemDiagnostics:
         warnings = []
 
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30)
             cursor = conn.cursor()
 
             # 1. Check required tables exist
@@ -331,7 +331,7 @@ class ELOSystemDiagnostics:
         close_rate = 0
 
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30)
             cursor = conn.cursor()
 
             # 1. Check trade data freshness
@@ -494,7 +494,7 @@ class PerformanceMonitor:
         """Collect current performance metrics."""
 
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30)
             cursor = conn.cursor()
 
             # Query performance

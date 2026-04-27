@@ -604,7 +604,7 @@ class SystemObserver:
             list: Top traders with ELO, ROI, address
         """
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30)
             cursor = conn.cursor()
 
             cursor.execute("""
@@ -667,7 +667,7 @@ class SystemObserver:
 
         # --- Fallback: monitoring_status table ---
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30)
             cursor = conn.cursor()
 
             # Check if monitoring_status table exists
@@ -731,7 +731,7 @@ class SystemObserver:
           - worker_backlog: traders the worker has never visited yet
         """
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30)
             cursor = conn.cursor()
 
             # Traders with at least one real computed closed position
@@ -792,7 +792,7 @@ class SystemObserver:
             Dict with worker status and metrics
         """
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30)
             cursor = conn.cursor()
 
             # Get P&L worker statistics
@@ -956,7 +956,7 @@ class SystemObserver:
             # Get trades from last 30 minutes
             cutoff = datetime.now() - timedelta(minutes=30)
 
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30)
             cursor = conn.cursor()
 
             query = """
@@ -1032,7 +1032,7 @@ https://polymarket.com/profile/{address}
 
             cutoff = datetime.now() - timedelta(hours=48)
 
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30)
             cursor = conn.cursor()
 
             query = """
@@ -1179,7 +1179,7 @@ https://polymarket.com/profile/{address}
             # Get data from last 7 days
             week_ago = datetime.now() - timedelta(days=7)
 
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30)
             cursor = conn.cursor()
 
             # Best trader by ELO with ROI
@@ -1466,7 +1466,7 @@ https://polymarket.com/profile/{address}
             # current, but gather ALL their trades for scoring.
             cutoff_recent = datetime.now() - timedelta(hours=24)
 
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30)
             cursor = conn.cursor()
 
             # Step 1: Find candidate groups — markets where 3+ elite traders
@@ -1673,7 +1673,7 @@ https://polymarket.com/profile/{address}
             # Look for sells in last 6 hours
             recent = datetime.now() - timedelta(hours=6)
 
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30)
             cursor = conn.cursor()
 
             # Find markets where elite traders are SELLING positions
@@ -2654,7 +2654,7 @@ Sellers:
             bool: True if update needed
         """
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30)
             cursor = conn.cursor()
 
             # Check P&L coverage
@@ -2718,7 +2718,7 @@ Sellers:
             dict: {'last_recalc': str|None, 'days_stale': int|None}
         """
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30)
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT
@@ -2878,7 +2878,7 @@ Sellers:
             str: Formatted leaderboard message
         """
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30)
             cursor = conn.cursor()
 
             cursor.execute("""

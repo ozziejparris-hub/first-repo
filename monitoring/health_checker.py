@@ -173,7 +173,7 @@ class HealthChecker:
 
         try:
             start = datetime.now()
-            conn = sqlite3.connect(self.db_path, timeout=5.0)
+            conn = sqlite3.connect(self.db_path, timeout=30.0)
             cursor = conn.cursor()
 
             # Simple query test
@@ -435,7 +435,7 @@ class HealthChecker:
             init_ok = True
 
             # Test 3: Check if trader data available
-            conn = sqlite3.connect(self.db_path, timeout=5.0)
+            conn = sqlite3.connect(self.db_path, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*) FROM traders WHERE is_flagged = 1")
             trader_count = cursor.fetchone()[0]
@@ -547,7 +547,7 @@ class HealthChecker:
             init_ok = True
 
             # Test 3: Check trade data available
-            conn = sqlite3.connect(self.db_path, timeout=5.0)
+            conn = sqlite3.connect(self.db_path, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*) FROM trades")
             trade_count = cursor.fetchone()[0]
@@ -726,7 +726,7 @@ class HealthChecker:
 
         try:
             # Test WAL mode
-            conn = sqlite3.connect(self.db_path, timeout=5.0)
+            conn = sqlite3.connect(self.db_path, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute("PRAGMA journal_mode")
             journal_mode = cursor.fetchone()[0]

@@ -1561,7 +1561,7 @@ class UnifiedELOSystem:
                 print("[COPY-TRADE] Detecting copy-trade relationships...")
 
                 # Run copy-trade detection
-                copy_results = self.copy_detector.detect_copy_trading()
+                copy_results = self.copy_detector.detect_copy_relationships()
 
                 if copy_results:
                     # Process results into self.copy_relationships
