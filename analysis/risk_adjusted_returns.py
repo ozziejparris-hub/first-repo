@@ -581,6 +581,26 @@ class RiskAdjustedAnalyzer:
 
         return df
 
+    def analyze_all_traders(self) -> dict:
+        """Return risk metrics as a dict keyed by trader address.
+
+        Adapter for unified_elo_system.py which expects
+        {trader_address: {total_trades, sharpe_ratio, ...}}.
+        """
+        df = self.compare_all_traders()
+        if df.empty:
+            return {}
+        result = {}
+        for _, row in df.iterrows():
+            result[row['trader_address']] = {
+                'total_trades': row.get('total_trades', 0),
+                'sharpe_ratio': row.get('sharpe_ratio', 0.0),
+                'sortino_ratio': row.get('sortino_ratio', 0.0),
+                'win_rate': row.get('win_rate', 0.0),
+                'total_return_pct': row.get('total_return_pct', 0.0),
+            }
+        return result
+
 
 class RiskVisualizer:
     """Handles visualization of risk-adjusted returns."""

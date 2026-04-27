@@ -61,8 +61,8 @@ def main():
     if datetime.now().weekday() == 6:  # Sunday
         steps.append(("Weekly full ELO recalculation",
                        SCRIPTS_DIR / "recalculate_comprehensive_elo.py",
-                       ["--skip-correlation", "--skip-contrarian"]))
-        print("\n[WEEKLY] Sunday — full ELO recalculation added to run (--skip-correlation --skip-contrarian)")
+                       ["--skip-correlation", "--skip-contrarian", "--skip-advanced-metrics"]))
+        print("\n[WEEKLY] Sunday — full ELO recalculation added to run (--skip-correlation --skip-contrarian --skip-advanced-metrics)")
 
     for i, step in enumerate(steps, 1):
         label, script = step[0], step[1]

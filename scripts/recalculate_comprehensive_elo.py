@@ -50,6 +50,15 @@ def parse_args():
             'Use alongside --skip-correlation for fastest runtime (~15 minutes).'
         )
     )
+    parser.add_argument(
+        '--skip-advanced-metrics',
+        action='store_true',
+        help=(
+            'Skip advanced metrics calculation (calibration, risk-adjusted, regret). '
+            'Uses neutral modifiers (1.0x) instead. '
+            'Safety valve if advanced metrics bugs persist.'
+        )
+    )
     return parser.parse_args()
 
 
@@ -110,7 +119,10 @@ def main():
     print("\nThis includes:")
     print("  1. Base category ELO (resolution-based)")
     print("  2. Behavioral modifiers (consistency, diversity)")
-    print("  3. Advanced metrics (calibration, risk, regret)")
+    if args.skip_advanced_metrics:
+        print("  3. Advanced metrics (calibration, risk, regret) [SKIPPED]")
+    else:
+        print("  3. Advanced metrics (calibration, risk, regret)")
     if args.skip_correlation:
         print("  4. Network analysis (correlation, copy-trade) [SKIPPED]")
     else:
@@ -126,6 +138,9 @@ def main():
     if args.skip_contrarian:
         print("[CONTRARIAN] --skip-contrarian active: contrarian analysis bypassed.")
         print("[CONTRARIAN] Using neutral modifiers instead.")
+    if args.skip_advanced_metrics:
+        print("[ADVANCED METRICS] --skip-advanced-metrics active: calibration/risk/regret bypassed.")
+        print("[ADVANCED METRICS] Using neutral modifiers (1.0x) instead.")
     if not args.skip_correlation and not args.skip_contrarian:
         print("\nThis may take 5-15 minutes for large datasets...")
     print()
@@ -135,7 +150,8 @@ def main():
             verbose=True,
             force_refresh=True,  # Force refresh all caches
             skip_correlation=args.skip_correlation,
-            skip_contrarian=args.skip_contrarian
+            skip_contrarian=args.skip_contrarian,
+            skip_advanced_metrics=args.skip_advanced_metrics
         )
 
         elapsed = time.time() - start_time

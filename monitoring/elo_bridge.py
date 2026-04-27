@@ -469,14 +469,15 @@ class UnifiedELOMonitoringBridge:
     def full_elo_recalculation(self, verbose: bool = False,
                               force_refresh: bool = True,
                               skip_correlation: bool = False,
-                              skip_contrarian: bool = False) -> Dict:
+                              skip_contrarian: bool = False,
+                              skip_advanced_metrics: bool = False) -> Dict:
         """
         Full ELO recalculation for ALL traders (6/6 dimensions).
 
         Used for periodic deep analysis (daily). Updates:
         1. Base category ELO (resolution-based) ✓
         2. Behavioral modifiers (fresh calculation) ✓
-        3. Advanced metrics (fresh calculation) ✓
+        3. Advanced metrics (fresh calculation) ✓  [skipped if skip_advanced_metrics=True]
         4. Network analysis (fresh calculation) ✓  [skipped if skip_correlation=True]
         5. Contrarian analysis (fresh calculation) ✓  [skipped if skip_contrarian=True]
         6. P&L modifiers (fresh calculation) ✓
@@ -488,6 +489,8 @@ class UnifiedELOMonitoringBridge:
                 cached/neutral scores instead. Reduces runtime to ~15 minutes.
             skip_contrarian: Skip contrarian analysis (internal ELO recalc + market
                 resolution pass). Uses neutral modifiers instead.
+            skip_advanced_metrics: Skip calibration/risk/regret analysis. Uses
+                neutral modifiers (1.0x) instead. Safety valve for analysis errors.
 
         Returns:
             Dictionary with update results:
@@ -504,7 +507,9 @@ class UnifiedELOMonitoringBridge:
 
         if verbose:
             skipped = [name for flag, name in [
-                (skip_correlation, "correlation"), (skip_contrarian, "contrarian")
+                (skip_correlation, "correlation"),
+                (skip_contrarian, "contrarian"),
+                (skip_advanced_metrics, "advanced_metrics"),
             ] if flag]
             if skipped:
                 label = ", ".join(skipped) + " skipped"
@@ -552,7 +557,7 @@ class UnifiedELOMonitoringBridge:
                 comprehensive_elo = elo_system.get_trader_global_elo(
                     trader_address,
                     apply_behavioral=True,
-                    apply_advanced=True,
+                    apply_advanced=not skip_advanced_metrics,
                     apply_network=not skip_correlation,
                     apply_contrarian=not skip_contrarian,
                     apply_pnl=True

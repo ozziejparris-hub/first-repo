@@ -1186,10 +1186,11 @@ class UnifiedELOSystem:
                 print("[REGRET] Calculating regret rates...")
                 regret_results = self.regret_analyzer.analyze_all_traders()
 
-                if regret_results:
-                    for trader, data in regret_results.items():
-                        if data.get('total_trades', 0) >= 10:  # Minimum trades threshold
-                            self.regret_cache[trader] = data.get('regret_rate', 50.0)
+                if regret_results is not None and not regret_results.empty:
+                    for _, row in regret_results.iterrows():
+                        trader = row['trader_address']
+                        if row.get('total_trades', 0) >= 10:  # Minimum trades threshold
+                            self.regret_cache[trader] = row.get('regret_rate', 50.0)
                     print(f"[REGRET] Loaded {len(self.regret_cache)} traders with regret data")
                 else:
                     print("[REGRET] ⚠️  No resolved markets yet - regret analysis unavailable")
@@ -1209,6 +1210,7 @@ class UnifiedELOSystem:
             except Exception as e:
                 print(f"[ADVANCED METRICS] ❌ Error loading data: {e}")
                 print(f"[ADVANCED METRICS] Continuing with neutral modifiers (1.0x)")
+                self.advanced_metrics_timestamp = datetime.now()  # prevent infinite retry on next call
                 return False
         else:
             print(f"[ADVANCED METRICS] Using cached data (age: {cache_age/3600:.1f} hours)")
