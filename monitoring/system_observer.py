@@ -616,6 +616,7 @@ class SystemObserver:
                     closed_positions
                 FROM traders
                 WHERE comprehensive_elo IS NOT NULL
+                AND research_excluded = 0
                 ORDER BY comprehensive_elo DESC
                 LIMIT ?
             """, (limit,))
@@ -1191,6 +1192,7 @@ https://polymarket.com/profile/{address}
                     total_pnl
                 FROM traders
                 WHERE comprehensive_elo IS NOT NULL
+                AND research_excluded = 0
                 ORDER BY comprehensive_elo DESC
                 LIMIT 1
             """)
@@ -1905,6 +1907,7 @@ Sellers:
                     GROUP BY trader_address
                 ) p ON t.address = p.trader_address
                 WHERE t.comprehensive_elo IS NOT NULL
+                AND t.research_excluded = 0
                 ORDER BY t.comprehensive_elo DESC
                 LIMIT 10
             """)
@@ -2109,6 +2112,7 @@ Sellers:
                     GROUP BY trader_address
                 ) p ON t.address = p.trader_address
                 WHERE t.comprehensive_elo IS NOT NULL
+                AND t.research_excluded = 0
                 ORDER BY t.comprehensive_elo DESC
                 LIMIT 20
             """)
@@ -2537,6 +2541,7 @@ Sellers:
                                 SELECT comprehensive_elo
                                 FROM traders
                                 WHERE comprehensive_elo IS NOT NULL
+                                AND research_excluded = 0
                                 ORDER BY comprehensive_elo DESC
                                 LIMIT 1 OFFSET 9
                             )
@@ -2891,6 +2896,7 @@ Sellers:
                 FROM traders
                 WHERE comprehensive_elo IS NOT NULL
                 AND total_trades >= 30
+                AND research_excluded = 0
                 ORDER BY comprehensive_elo DESC
                 LIMIT ?
             """, (top_n,))
