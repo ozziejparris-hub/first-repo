@@ -3,7 +3,7 @@
 ## What This Is
 
 Real-time Polymarket prediction market monitoring system that:
-- Polls the Polymarket API every 15 minutes to track ~1,957 traders
+- Polls the Polymarket API every 15 minutes to track ~87,000 traders
 - Calculates 6-dimensional ELO ratings with behavioral analysis (Kelly criterion, patience metrics, market difficulty weighting)
 - Sends Telegram alerts for elite trader activity
 - Runs AI-powered health monitoring via Mistral/Ollama (system observer)
@@ -18,7 +18,7 @@ Real-time Polymarket prediction market monitoring system that:
 |----------|-------|
 | **Location** | `data/polymarket_tracker.db` (symlinked at `monitoring/polymarket_tracker.db`) |
 | **Size** | ~1.6 GB (as of April 2026) |
-| **Tables** | `traders` (1,957 rows), `trades` (997K+ rows), `markets` (213K rows), `positions` |
+| **Tables** | `traders` (87,063+ rows), `trades` (1M+ rows), `markets` (220K+ rows), `positions` (1,064K+ rows) |
 
 **WARNING: Do not delete or overwrite the database.** It contains 6+ months of trade history that cannot be recovered from the API. Before any operation that writes to the DB, take a backup: `python scripts/backup_database.py`.
 
@@ -109,27 +109,26 @@ python scripts/kill_all.py   # Stops all monitoring + observer processes, cleans
 
 ---
 
-## Current System State (as of April 18 2026)
+## Current System State (as of April 26 2026)
 
-**Server migration in progress.** A 48-hour parallel run started April 18 2026, with both the old and new server environments running simultaneously to validate the migration.
+**Server migration complete.** The 48-hour parallel run (started April 18, completed ~April 20) finished successfully. Both services are running on the new server.
 
-**Do not stop the monitoring service or observer without first checking whether the parallel run is still active.** Stopping either service mid-parallel-run could invalidate the comparison data and require restarting the 48-hour window from scratch.
-
-To check parallel run status before stopping anything, confirm with the user or check recent logs for any `[PARALLEL]` / `[MIGRATION]` markers:
-
-```bash
-sudo journalctl -u polymarket-monitoring --since "2026-04-18" | grep -i "parallel\|migration\|server"
+**Trade gap on record:** The monitoring service was effectively down April 7–18 2026 (near-zero trade collection: 1–6 trades/day vs 500+ normal). Markets resolving during this window have incomplete trade data. These are flagged in the `markets` table with `trade_gap_flag = 1`. Exclude them from time-series analysis:
+```sql
+AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)
 ```
+
+**ELO recalculation schedule:** Full 6-dimensional recalculation now runs automatically every Sunday via `daily_maintenance.py`. Last manual full recalculation: April 26 2026.
 
 ---
 
 ## Important Warnings
 
 1. **Don't delete `data/polymarket_tracker.db`** — irreplaceable historical data, no API recovery path.
-2. **Don't stop services during the parallel run** (underway as of April 18 2026) without confirming the 48-hour window has completed.
-3. **Don't run duplicate monitoring processes** — the system uses PID file locking, but force-killing and restarting can leave stale locks. Always use `scripts/kill_all.py` to stop cleanly.
-4. **Timing quality is intentionally disabled** — the `created_at` column doesn't exist in the markets table; all traders receive a neutral timing score. Don't re-enable it without adding the column first.
-5. **Telegram is send-only** — no webhooks, no polling. Conflicts were fixed in Jan 2026; don't reintroduce webhook mode.
+2. **Don't run duplicate monitoring processes** — the system uses PID file locking, but force-killing and restarting can leave stale locks. Always use `scripts/kill_all.py` to stop cleanly.
+3. **Timing quality is intentionally disabled** — the `created_at` column doesn't exist in the markets table; all traders receive a neutral timing score. Don't re-enable it without adding the column first.
+4. **Telegram is send-only** — no webhooks, no polling. Conflicts were fixed in Jan 2026; don't reintroduce webhook mode.
+5. **Trade gap April 7–18 2026** — markets resolving during this window are flagged `trade_gap_flag = 1`. Exclude from research with `AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)`.
 
 ---
 

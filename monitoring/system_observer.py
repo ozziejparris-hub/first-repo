@@ -322,6 +322,9 @@ class SystemObserver:
                     # Check for consensus exits (runs every hour)
                     await self._check_consensus_exits()
 
+                    # Log ELO staleness date alongside hourly report
+                    await self._check_elo_staleness()
+
                     # Send report
                     await self.telegram.send_hourly_report(metrics)
 
@@ -2615,6 +2618,9 @@ Sellers:
 
         while self.running:
             try:
+                # Check ELO recalculation staleness and alert if overdue
+                await self._check_elo_staleness()
+
                 # Check if update needed
                 if self._check_elo_update_needed():
                     print("[OBSERVER] ELO update triggered")
@@ -2699,6 +2705,68 @@ Sellers:
         except Exception as e:
             print(f"[OBSERVER] Error checking ELO update: {e}")
             return False
+
+    async def _check_elo_staleness(self) -> Dict:
+        """
+        Check how long since the last full ELO recalculation.
+
+        Sends CRITICAL alert if > 14 days, WARNING if > 7 days.
+        Rate-limited to one alert per 6 hours per severity level.
+        Always logs the staleness state for hourly report visibility.
+
+        Returns:
+            dict: {'last_recalc': str|None, 'days_stale': int|None}
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT
+                    MAX(elo_last_updated) as last_recalc,
+                    CAST(julianday('now') - julianday(MAX(elo_last_updated)) AS INTEGER)
+                        as days_stale
+                FROM traders
+                WHERE elo_last_updated IS NOT NULL
+            """)
+            row = cursor.fetchone()
+            conn.close()
+
+            if not row or row[0] is None:
+                print("[OBSERVER] ELO staleness: no elo_last_updated data found")
+                return {'last_recalc': None, 'days_stale': None}
+
+            last_recalc_str, days_stale = row[0], row[1]
+            last_recalc_date = last_recalc_str[:10] if last_recalc_str else 'unknown'
+
+            print(f"[OBSERVER] ELO staleness: last recalc {last_recalc_date} ({days_stale} day(s) ago)")
+
+            if days_stale is not None and days_stale > 14:
+                if self.telegram._should_send_alert('elo_staleness_critical', minutes=360):
+                    message = (
+                        f"❌ ELO STALENESS CRITICAL\n\n"
+                        f"Last full ELO recalculation: {last_recalc_date} ({days_stale} days ago)\n\n"
+                        f"Action: run python3 scripts/recalculate_comprehensive_elo.py\n"
+                        f"or wait for Sunday automatic run."
+                    )
+                    await self.telegram._send_message(message)
+                    print(f"[OBSERVER] CRITICAL ELO staleness alert sent ({days_stale} days)")
+
+            elif days_stale is not None and days_stale > 7:
+                if self.telegram._should_send_alert('elo_staleness_warning', minutes=360):
+                    message = (
+                        f"⚠️ ELO STALENESS WARNING\n\n"
+                        f"Last full ELO recalculation: {last_recalc_date} ({days_stale} days ago)\n\n"
+                        f"Action: run python3 scripts/recalculate_comprehensive_elo.py\n"
+                        f"or wait for Sunday automatic run."
+                    )
+                    await self.telegram._send_message(message)
+                    print(f"[OBSERVER] WARNING ELO staleness alert sent ({days_stale} days)")
+
+            return {'last_recalc': last_recalc_str, 'days_stale': days_stale}
+
+        except Exception as e:
+            print(f"[OBSERVER] Error checking ELO staleness: {e}")
+            return {'last_recalc': None, 'days_stale': None}
 
     async def _run_elo_integration(self) -> Dict:
         """
