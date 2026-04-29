@@ -97,8 +97,10 @@ class CalibrationAnalyzer:
 
     def __enter__(self):
         """Context manager entry."""
-        self.conn = sqlite3.connect(self.db_path)
+        self.conn = sqlite3.connect(self.db_path, timeout=30)
         self.conn.row_factory = sqlite3.Row
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA busy_timeout=30000")
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -131,7 +133,7 @@ class CalibrationAnalyzer:
                 t.timestamp,
                 m.winning_outcome
             FROM trades t
-            INNER JOIN markets m ON t.market_id = m.condition_id
+            INNER JOIN markets m ON t.market_id = m.market_id
             WHERE t.trader_address = ?
                 AND m.resolved = 1
                 AND m.winning_outcome IS NOT NULL
@@ -432,7 +434,7 @@ class CalibrationAnalyzer:
         cursor.execute("""
             SELECT DISTINCT t.trader_address
             FROM trades t
-            INNER JOIN markets m ON t.market_id = m.condition_id
+            INNER JOIN markets m ON t.market_id = m.market_id
             WHERE m.resolved = 1
                 AND m.winning_outcome IS NOT NULL
                 AND m.winning_outcome != ''
@@ -493,8 +495,10 @@ class CalibrationAnalyzer:
         """
         # Ensure connection is established
         if self.conn is None:
-            self.conn = sqlite3.connect(self.db_path)
+            self.conn = sqlite3.connect(self.db_path, timeout=30)
             self.conn.row_factory = sqlite3.Row
+            self.conn.execute("PRAGMA journal_mode=WAL")
+            self.conn.execute("PRAGMA busy_timeout=30000")
 
         cursor = self.conn.cursor()
 
@@ -502,7 +506,7 @@ class CalibrationAnalyzer:
         cursor.execute("""
             SELECT DISTINCT t.trader_address
             FROM trades t
-            INNER JOIN markets m ON t.market_id = m.condition_id
+            INNER JOIN markets m ON t.market_id = m.market_id
             WHERE m.resolved = 1
                 AND m.winning_outcome IS NOT NULL
                 AND m.winning_outcome != ''

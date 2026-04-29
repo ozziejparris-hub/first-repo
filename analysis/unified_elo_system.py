@@ -531,6 +531,7 @@ class UnifiedELOSystem:
             FROM markets
             WHERE resolved = 1
             AND winning_outcome IS NOT NULL
+            AND (trade_gap_flag = 0 OR trade_gap_flag IS NULL)
         """)
         resolved_markets_db = {row[0]: str(row[1]).lower() for row in cursor.fetchall()}
         conn.close()
@@ -3587,6 +3588,7 @@ class UnifiedELOSystem:
             JOIN markets m ON t.market_id = m.market_id
             WHERE m.resolved = 1
             AND m.winning_outcome IS NOT NULL
+            AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)
             GROUP BY t.trader_address
         """)
 

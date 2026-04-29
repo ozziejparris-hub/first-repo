@@ -103,8 +103,10 @@ class RegretAnalyzer:
 
     def __enter__(self):
         """Context manager entry."""
-        self.conn = sqlite3.connect(self.db_path)
+        self.conn = sqlite3.connect(self.db_path, timeout=30)
         self.conn.row_factory = sqlite3.Row
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA busy_timeout=30000")
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
