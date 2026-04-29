@@ -431,6 +431,7 @@ class Database:
             INNER JOIN trades t ON m.condition_id = t.market_id
             INNER JOIN traders tr ON t.trader_address = tr.address
             WHERE tr.is_flagged = 1
+            AND (tr.research_excluded = 0 OR tr.research_excluded IS NULL)
             AND (m.resolved = 0 OR m.resolved IS NULL)
             ORDER BY m.last_checked ASC
         """)

@@ -2617,27 +2617,20 @@ Sellers:
 
     async def _elo_update_loop(self):
         """
-        ELO update loop - checks every 10 minutes if ELO update is needed.
+        ELO staleness monitor - checks every 10 minutes and alerts if overdue.
+
+        ELO recalculation is owned exclusively by daily_maintenance.py (cron 06:00 UTC):
+          - Daily: apply_full_elo_modifiers.py
+          - Sunday: recalculate_comprehensive_elo.py + apply_full_elo_modifiers.py
+        This loop only monitors staleness and sends Telegram alerts; it does not
+        trigger recalculation itself.
         """
-        print("[OBSERVER] ELO update loop started")
+        print("[OBSERVER] ELO update loop started (staleness monitoring only)")
 
         while self.running:
             try:
                 # Check ELO recalculation staleness and alert if overdue
                 await self._check_elo_staleness()
-
-                # Check if update needed
-                if self._check_elo_update_needed():
-                    print("[OBSERVER] ELO update triggered")
-
-                    # Run ELO integration
-                    elo_results = await self._run_elo_integration()
-
-                    # Generate leaderboard
-                    leaderboard = self._generate_leaderboard(top_n=20)
-
-                    # Send notification
-                    await self._send_elo_update_notification(elo_results, leaderboard)
 
                 # Check every 10 minutes
                 await asyncio.sleep(600)
