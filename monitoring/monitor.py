@@ -2,6 +2,7 @@ import asyncio
 import logging
 import re
 import time
+from collections import OrderedDict
 from datetime import datetime
 from typing import Optional, Dict
 from .database import Database
@@ -78,8 +79,11 @@ class PolymarketMonitor:
         self.check_interval = check_interval
         self.is_running = False
 
-        # Cache for AI categorization to avoid repeated API calls
-        self.ai_cache: Dict[str, bool] = {}
+        # Cache for AI categorization to avoid repeated API calls.
+        # Capped at _AI_CACHE_MAX; oldest 1 000 entries evicted when full.
+        self.ai_cache: OrderedDict = OrderedDict()
+        self._AI_CACHE_MAX = 10_000
+        self._AI_CACHE_EVICT_TO = 9_000
 
         safe_print("[MONITOR] [OK] Telegram disabled - Observer handles all notifications")
 
@@ -94,8 +98,9 @@ class PolymarketMonitor:
 
         Returns True = EXCLUDE, False = INCLUDE
         """
-        # Check cache first
+        # Check cache first (move to end to mark as recently used)
         if market_title in self.ai_cache:
+            self.ai_cache.move_to_end(market_title)
             return self.ai_cache[market_title]
 
         try:
@@ -148,8 +153,14 @@ class PolymarketMonitor:
                     safe_print(f"[AI FILTER] Keeping: {market_title[:50]}... (AI: {response_text.strip()})", f"[AI FILTER] Keeping market (AI: {response_text.strip()})")
                     should_exclude = False
 
-            # Cache the result
+            # Cache the result, then evict oldest entries if cap is reached
             self.ai_cache[market_title] = should_exclude
+            if len(self.ai_cache) >= self._AI_CACHE_MAX:
+                before = len(self.ai_cache)
+                evict_n = before - self._AI_CACHE_EVICT_TO
+                for _ in range(evict_n):
+                    self.ai_cache.popitem(last=False)
+                safe_print(f"[MONITOR] AI cache eviction: trimmed to {len(self.ai_cache)} entries (was {before})")
             return should_exclude
 
         except Exception as e:

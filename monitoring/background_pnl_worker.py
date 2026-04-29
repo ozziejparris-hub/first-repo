@@ -40,8 +40,8 @@ _TRADER_TIMEOUT = 90               # default budget (seconds)
 _TRADER_TIMEOUT_LARGE = 180        # budget for large traders
 _LARGE_TRADER_THRESHOLD = 100      # closed_positions threshold for large budget
 
-# After this many failures a trader is permanently skipped for the session
-# and their pnl_last_updated is stamped to NOW so they won't requeue for 24h.
+# After this many failures a trader is skipped for the rest of this session.
+# pnl_last_updated is NOT stamped — the trader retries on the next restart.
 _MAX_TRADER_FAILURES = 5
 
 
@@ -58,11 +58,13 @@ class BackgroundPnLWorker:
     """
 
     def __init__(self, database: Database, position_tracker: PositionTracker,
-                 logger: Optional[logging.Logger] = None):
+                 logger: Optional[logging.Logger] = None,
+                 telegram_bot=None):
         self.db = database
         self.position_tracker = position_tracker
         self.is_running = False
         self.logger = logger or logging.getLogger('pnl_worker')
+        self.telegram_bot = telegram_bot  # Optional; send skip alerts if provided
 
         # Configuration
         self.batch_size = 10
@@ -73,9 +75,10 @@ class BackgroundPnLWorker:
         self.priority1_slots = 7   # slots for traders with trades in last hour
         self.backlog_slots = 3     # slots reserved for never-updated / stale >24 h
 
-        # Permanent skip: address -> consecutive fail count.  Once a trader
-        # reaches _MAX_TRADER_FAILURES it is skipped for the rest of the session
-        # and its pnl_last_updated is stamped so it won't requeue for 24h.
+        # Session-level skip set: address -> consecutive fail count.  Once a
+        # trader reaches _MAX_TRADER_FAILURES it is skipped for the rest of
+        # this service run; pnl_last_updated is NOT stamped so the trader
+        # re-enters the queue on the next restart.
         self.failed_traders: dict = {}
 
         # Statistics (read/written only from the event loop thread)
@@ -353,7 +356,7 @@ class BackgroundPnLWorker:
             )
         except asyncio.TimeoutError:
             self.logger.warning(
-                "Timeout: %s exceeded %ds — skipping, will requeue after 24h",
+                "Timeout: %s exceeded %ds — recording failure (retry on restart if threshold reached)",
                 trader_address[:10], timeout,
             )
             self.errors += 1
@@ -390,34 +393,29 @@ class BackgroundPnLWorker:
     async def _record_failure(self, trader_address: str, loop):
         """
         Increment the failure counter for a trader.  On reaching
-        _MAX_TRADER_FAILURES, stamp pnl_last_updated = NOW so the DB query
-        won't pick this trader up again for 24 hours, then log a single
-        WARNING.  All subsequent calls for this address are no-ops.
+        _MAX_TRADER_FAILURES the trader is added to the session-level skip
+        set and a Telegram alert (if configured) plus an ERROR log are emitted.
+        pnl_last_updated is NOT stamped — the trader retries on next restart.
+        All subsequent calls for this address within the session are no-ops.
         """
         count = self.failed_traders.get(trader_address, 0) + 1
         self.failed_traders[trader_address] = count
 
-        # Best-effort mark updated on every failure so a single surviving
-        # success in the DB layer suppresses the next 24h window.
-        try:
-            await loop.run_in_executor(
-                _THREAD_POOL,
-                self.db.mark_trader_pnl_updated,
-                trader_address,
-            )
-        except Exception:
-            self.logger.warning(
-                "Failed to stamp pnl_last_updated for %s (failure %d) — "
-                "trader will reappear after session restart",
-                trader_address[:10], count,
-            )
-
         if count >= _MAX_TRADER_FAILURES:
-            self.logger.warning(
-                "Permanently skipping %s for this session — failed %d times. "
-                "pnl_last_updated stamped to suppress requeue for 24h.",
-                trader_address[:10], count,
+            msg = (
+                f"[PNL WORKER] Skipping {trader_address[:8]}... after "
+                f"{_MAX_TRADER_FAILURES} consecutive failures. "
+                f"Will retry on next service restart."
             )
+            self.logger.error(msg)
+            if self.telegram_bot is not None:
+                try:
+                    await self.telegram_bot.send_message(msg)
+                except Exception:
+                    self.logger.warning(
+                        "Failed to send PNL skip Telegram alert for %s",
+                        trader_address[:10],
+                    )
 
     # ------------------------------------------------------------------ #
     #  Progress reporting                                                  #

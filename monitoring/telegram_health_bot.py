@@ -1045,7 +1045,12 @@ class TelegramHealthBot:
 
     async def _send_message(self, message: str) -> bool:
         """
-        Send message via Telegram.
+        Send message via Telegram with one 429 retry.
+
+        On a rate-limit response the retry_after value is read from the
+        exception (capped at 30 s), the method sleeps, then tries once more.
+        If the second attempt also fails the failure is logged and the method
+        returns False — a failed Telegram alert must never crash the observer.
 
         Args:
             message: Message text
@@ -1053,18 +1058,39 @@ class TelegramHealthBot:
         Returns:
             bool: True if sent successfully
         """
-        try:
-            await self.bot.send_message(
-                chat_id=self.chat_id,
-                text=message,
-                parse_mode=None  # Plain text, emojis work fine
-            )
-            return True
+        for attempt in range(2):
+            try:
+                await self.bot.send_message(
+                    chat_id=self.chat_id,
+                    text=message,
+                    parse_mode=None  # Plain text, emojis work fine
+                )
+                return True
 
-        except TelegramError as e:
-            print(f"[TELEGRAM] Error sending message: {e}")
-            return False
+            except TelegramError as e:
+                error_msg = str(e)
+                if "429" in error_msg or "Too Many Requests" in error_msg:
+                    # Read retry_after from the exception if available,
+                    # otherwise fall back to string parsing, then default 5 s.
+                    retry_after = getattr(e, 'retry_time', None)
+                    if retry_after is None:
+                        import re as _re
+                        m = _re.search(r'retry after (\d+)', error_msg, _re.IGNORECASE)
+                        retry_after = int(m.group(1)) if m else 5
+                    retry_after = min(int(retry_after), 30)  # cap at 30 s
 
-        except Exception as e:
-            print(f"[TELEGRAM] Unexpected error: {e}")
-            return False
+                    if attempt == 0:
+                        print(f"[TELEGRAM] Rate limited (429), retrying after {retry_after}s...")
+                        await asyncio.sleep(retry_after)
+                    else:
+                        print(f"[TELEGRAM] Rate limit retry also failed — dropping message")
+                        return False
+                else:
+                    print(f"[TELEGRAM] Error sending message: {e}")
+                    return False
+
+            except Exception as e:
+                print(f"[TELEGRAM] Unexpected error: {e}")
+                return False
+
+        return False
