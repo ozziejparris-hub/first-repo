@@ -91,7 +91,7 @@ class Position:
         self.remaining_shares = self.entry_shares - exit_shares
 
         # Set status
-        if self.remaining_shares <= 0.001:  # Account for floating point
+        if self.remaining_shares <= 0.0001:  # Account for floating point
             self.status = 'closed'
             self.remaining_shares = 0
         else:
