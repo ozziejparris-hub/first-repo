@@ -177,7 +177,7 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT address FROM traders WHERE is_flagged = 1")
+        cursor.execute("SELECT address FROM traders WHERE is_flagged = 1 AND (research_excluded = 0 OR research_excluded IS NULL)")
         traders = [row[0] for row in cursor.fetchall()]
 
         conn.close()
@@ -826,6 +826,7 @@ class Database:
                 elo_last_updated
             FROM traders
             WHERE is_flagged = 1
+            AND (research_excluded = 0 OR research_excluded IS NULL)
             AND comprehensive_elo IS NOT NULL
             AND comprehensive_elo >= ?
             ORDER BY comprehensive_elo DESC
@@ -882,6 +883,7 @@ class Database:
             SELECT COUNT(*) + 1
             FROM traders
             WHERE is_flagged = 1
+            AND (research_excluded = 0 OR research_excluded IS NULL)
             AND comprehensive_elo > ?
         """, (trader_elo,))
 
