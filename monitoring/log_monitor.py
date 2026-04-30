@@ -43,6 +43,9 @@ class LogMonitor:
         """
         self.log_path = log_path
         self.last_position = 0
+        # Start at end of existing log so startup doesn't replay old ERROR lines
+        if os.path.exists(self.log_path):
+            self.last_position = os.path.getsize(self.log_path)
         self.error_history = deque(maxlen=1000)  # Last 1000 errors
         self.pattern_counts = defaultdict(int)
 

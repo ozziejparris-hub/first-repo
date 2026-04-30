@@ -353,11 +353,11 @@ async def _send_messages(messages: list[str], dry_run: bool) -> None:
     try:
         sys.path.insert(0, _REPO_ROOT)
         from dotenv import load_dotenv
-        load_dotenv(os.path.join(_REPO_ROOT, '.env'))
+        load_dotenv(os.path.expanduser('~/.env_trading'))
         token   = os.getenv('telegram_alerts_token')
         chat_id = os.getenv('telegram_chat_id')
         if not token or not chat_id:
-            print("[PRE-RES] ERROR: telegram_alerts_token / telegram_chat_id not in .env")
+            print("[PRE-RES] ERROR: telegram_alerts_token / telegram_chat_id not in ~/.env_trading")
             return
         from monitoring.telegram_health_bot import TelegramHealthBot
         bot = TelegramHealthBot(token=token, chat_id=chat_id)
