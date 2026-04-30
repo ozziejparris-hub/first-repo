@@ -83,7 +83,8 @@ python scripts/kill_all.py   # Stops all monitoring + observer processes, cleans
 | `scripts/integrate_behavioral_elo.py` | Runs full ELO re-integration pipeline |
 | `scripts/update_database_from_csvs.py` | Imports analysis CSV results to DB |
 | `scripts/recalculate_comprehensive_elo.py` | Recalculates all ELO scores |
-| `scripts/daily_maintenance.py` | Daily cleanup and backfill tasks |
+| `scripts/daily_maintenance.py` | Daily cleanup and backfill tasks (Step 0: update_research_exclusions) |
+| `scripts/update_research_exclusions.py` | Propagates `research_excluded` flag — runs as Step 0 of daily_maintenance before any ELO work |
 
 ### Key Modules
 
@@ -109,7 +110,7 @@ python scripts/kill_all.py   # Stops all monitoring + observer processes, cleans
 
 ---
 
-## Current System State (as of April 26 2026)
+## Current System State (as of April 30 2026)
 
 **Server migration complete.** The 48-hour parallel run (started April 18, completed ~April 20) finished successfully. Both services are running on the new server.
 
@@ -118,7 +119,14 @@ python scripts/kill_all.py   # Stops all monitoring + observer processes, cleans
 AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)
 ```
 
-**ELO recalculation schedule:** Full 6-dimensional recalculation now runs automatically every Sunday via `daily_maintenance.py`. Last manual full recalculation: April 26 2026.
+**ELO recalculation schedule:** Full 6-dimensional recalculation now runs automatically every Sunday via `daily_maintenance.py`. Last manual full recalculation: April 30 2026.
+
+**April 30 2026 audit findings (applied):**
+
+- **`research_excluded` clean pool is 857 traders** (not 6,829 or 9,993 — earlier figures included traders whose exclusion flags had not been propagated). `update_research_exclusions.py` now runs as Step 0 of `daily_maintenance.py` before any ELO work, ensuring the flag is always current before analysis begins. Always filter research queries with `AND tr.research_excluded = 0`.
+- **`trade_gap_flag` filter applied in base ELO calculation** — the gap period (Apr 7–18) is now excluded upstream in the ELO pipeline, not just in ad-hoc queries.
+- **Analysis modules returning real data** — calibration, risk, and regret analysis modules were previously returning neutral 1.0× multipliers due to a missing initialisation step. This is fixed; ELO modifier scores now reflect actual trader behaviour.
+- **WAL mode is permanent** — `PRAGMA journal_mode=WAL` is set on connection. Do not remove. Required for concurrent reads during live monitoring.
 
 ---
 
