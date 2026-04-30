@@ -14,9 +14,10 @@ from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).parent
 STEPS = [
-    ("Fetch new market resolutions",    SCRIPTS_DIR / "fast_resolution_check.py"),
-    ("Requeue resolved market traders", SCRIPTS_DIR / "requeue_resolved_market_traders.py"),
-    ("Apply full ELO modifiers",        SCRIPTS_DIR / "apply_full_elo_modifiers.py"),
+    ("Update research exclusions",        SCRIPTS_DIR / "update_research_exclusions.py"),
+    ("Fetch new market resolutions",      SCRIPTS_DIR / "fast_resolution_check.py"),
+    ("Requeue resolved market traders",   SCRIPTS_DIR / "requeue_resolved_market_traders.py"),
+    ("Apply full ELO modifiers",          SCRIPTS_DIR / "apply_full_elo_modifiers.py"),
 ]
 
 def run_step(label, script_path, extra_args=None):
