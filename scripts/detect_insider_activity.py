@@ -48,6 +48,8 @@ EXCLUSION_KEYWORDS = [
     "indian wells", "monte carlo", "rome open", "canadian open",
     "cincinnati open", "stuttgart open", "eastbourne", "birmingham",
     "bad homburg", "queen's club", "upper austria",
+    # Tennis — player name collisions (Ben Shelton vs Judy Shelton)
+    "ben shelton", "shelton vs", "vs shelton", "shelton vs.",
     # Generic match-up marker (catches remaining head-to-head sport markets)
     " vs ",
     # Entertainment
