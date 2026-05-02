@@ -113,45 +113,49 @@ class PolymarketMonitor:
         Runs at startup and every 10 monitoring cycles (~2.5 hours).
         """
         import requests as _req
+        safe_print("[MARKET FILTER] Refreshing event category map...")
         base_url = self.polymarket.base_url
         new_map: Dict[str, Optional[str]] = {}
         offset = 0
         batch = 100
+        n_events = 0
 
-        while True:
-            try:
-                resp = _req.get(
-                    f"{base_url}/events",
-                    params={'limit': batch, 'offset': offset, 'active': 'true'},
-                    timeout=30,
-                )
-                events = resp.json()
-            except Exception as exc:
-                safe_print(f"[CATEGORY MAP] Fetch error at offset {offset}: {exc}")
-                break
+        try:
+            while True:
+                try:
+                    resp = _req.get(
+                        f"{base_url}/events",
+                        params={'limit': batch, 'offset': offset, 'active': 'true'},
+                        timeout=30,
+                    )
+                    events = resp.json()
+                except Exception as exc:
+                    safe_print(f"[CATEGORY MAP] Fetch error at offset {offset}: {exc}")
+                    break
 
-            if not events:
-                break
+                if not events:
+                    break
 
-            for event in events:
-                raw = event.get('category')
-                cat = raw.strip() if raw else None
-                for market in event.get('markets', []):
-                    cid = market.get('conditionId')
-                    if cid:
-                        new_map[cid] = cat
+                for event in events:
+                    raw = event.get('category')
+                    cat = raw.strip() if raw else None
+                    n_events += 1
+                    for market in event.get('markets', []):
+                        cid = market.get('conditionId')
+                        if cid:
+                            new_map[cid] = cat
 
-            offset += batch
-            if len(events) < batch:
-                break
-            await asyncio.sleep(0.3)
+                offset += batch
+                if len(events) < batch:
+                    break
+                await asyncio.sleep(0.3)
 
-        prev = len(self._event_category_map)
-        self._event_category_map = new_map
-        safe_print(
-            f"[CATEGORY MAP] Refreshed — {len(new_map)} markets mapped "
-            f"(was {prev})"
-        )
+            self._event_category_map = new_map
+            safe_print(
+                f"[MARKET FILTER] Category map loaded: {len(new_map)} markets mapped across {n_events} events"
+            )
+        except Exception as e:
+            safe_print(f"[MARKET FILTER] Category map refresh failed: {e} — falling back to keyword filter")
 
     async def _ai_categorization_check(self, market_title: str) -> bool:
         """
