@@ -19,6 +19,18 @@ _monitor_logger = logging.getLogger('monitor')
 AI_FILTERING_ENABLED = True  # Toggle AI filtering on/off
 AI_FILTER_MODE = "hybrid"  # Options: "keywords_only", "hybrid", "ai_only"
 
+# Tag-first category filter — checked before keyword scan or AI call.
+# Categories come from the Gamma /events endpoint (event.category field).
+# Trailing spaces in live data (e.g. 'Pop-Culture ') are stripped before lookup.
+HARD_EXCLUDE_CATEGORIES: frozenset = frozenset({
+    'Sports', 'Crypto', 'Pop-Culture', 'NBA Playoffs',
+    'Chess', 'Art', 'NFTs', 'Olympics', 'Poker',
+})
+HARD_INCLUDE_CATEGORIES: frozenset = frozenset({
+    'Global Politics', 'Ukraine & Russia',
+    'Geopolitics', 'Elections',  # legacy Polymarket API category values
+})
+
 
 def safe_print(message: str, fallback: str = None):
     """
@@ -78,6 +90,8 @@ class PolymarketMonitor:
         self.ai_agent = ai_agent  # Store AI agent
         self.check_interval = check_interval
         self.is_running = False
+        # conditionId → event category (refreshed from Gamma /events on startup + every 10 cycles)
+        self._event_category_map: Dict[str, Optional[str]] = {}
 
         # Cache for AI categorization to avoid repeated API calls.
         # Capped at _AI_CACHE_MAX; oldest 1 000 entries evicted when full.
@@ -91,6 +105,53 @@ class PolymarketMonitor:
         """Request the monitor to stop."""
         safe_print("[STOP] Stop requested via Telegram")
         self.is_running = False
+
+    async def _refresh_event_category_map(self) -> None:
+        """
+        Fetch all active events from Gamma /events and populate the
+        conditionId → category map used by Gate 0 of _should_exclude_market.
+        Runs at startup and every 10 monitoring cycles (~2.5 hours).
+        """
+        import requests as _req
+        base_url = self.polymarket.base_url
+        new_map: Dict[str, Optional[str]] = {}
+        offset = 0
+        batch = 100
+
+        while True:
+            try:
+                resp = _req.get(
+                    f"{base_url}/events",
+                    params={'limit': batch, 'offset': offset, 'active': 'true'},
+                    timeout=30,
+                )
+                events = resp.json()
+            except Exception as exc:
+                safe_print(f"[CATEGORY MAP] Fetch error at offset {offset}: {exc}")
+                break
+
+            if not events:
+                break
+
+            for event in events:
+                raw = event.get('category')
+                cat = raw.strip() if raw else None
+                for market in event.get('markets', []):
+                    cid = market.get('conditionId')
+                    if cid:
+                        new_map[cid] = cat
+
+            offset += batch
+            if len(events) < batch:
+                break
+            await asyncio.sleep(0.3)
+
+        prev = len(self._event_category_map)
+        self._event_category_map = new_map
+        safe_print(
+            f"[CATEGORY MAP] Refreshed — {len(new_map)} markets mapped "
+            f"(was {prev})"
+        )
 
     async def _ai_categorization_check(self, market_title: str) -> bool:
         """
@@ -538,15 +599,34 @@ class PolymarketMonitor:
 
         return False
 
-    async def _should_exclude_market(self, market_title: str) -> bool:
+    async def _should_exclude_market(self, market_title: str,
+                                     event_category: Optional[str] = None) -> bool:
         """
-        HYBRID FILTERING: Two-layer approach for maximum accuracy.
+        THREE-LAYER FILTERING: category gate → keyword check → AI.
 
-        Layer 1: Fast keyword check (catches 80% of cases)
-        Layer 2: AI categorization (catches remaining 20% of ambiguous cases)
+        Gate 0: Hard exclude/include by Gamma event category (fastest path).
+        Layer 1: Fast keyword check (catches ~80% of ambiguous cases).
+        Layer 2: AI categorization via Mistral (remaining ambiguous cases).
 
         Returns True to EXCLUDE, False to INCLUDE.
         """
+        # GATE 0: Tag-first category filter — single set-lookup, no string scanning
+        if event_category:
+            cat = event_category.strip()
+            if cat in HARD_EXCLUDE_CATEGORIES:
+                safe_print(
+                    f"[CAT FILTER] Excluded ({cat}): {market_title[:50]}",
+                    fallback=f"[CAT FILTER] Excluded by category: {cat}",
+                )
+                return True
+            if cat in HARD_INCLUDE_CATEGORIES:
+                safe_print(
+                    f"[CAT FILTER] Included ({cat}): {market_title[:50]}",
+                    fallback=f"[CAT FILTER] Included by category: {cat}",
+                )
+                return False
+            # Ambiguous/unknown category — fall through to keyword + AI
+
         # LAYER 1: Fast keyword filtering (existing comprehensive patterns)
         if self._keyword_exclusion_check(market_title):
             safe_print(f"[KEYWORD FILTER] [EXCLUDED] Excluding: {market_title[:50]}...",
@@ -638,9 +718,11 @@ class PolymarketMonitor:
             side = trade.get('side', 'unknown')
             timestamp_raw = trade.get('timestamp')
             market_title = trade.get('title', 'Unknown Market')
+            # Look up Gamma event category for this market's conditionId
+            event_category = self._event_category_map.get(market_id) if market_id else None
 
             # CHECK: Skip trades from excluded markets (crypto/sports/entertainment)
-            if await self._should_exclude_market(market_title):
+            if await self._should_exclude_market(market_title, event_category):
                 excluded_count += 1
                 continue
 
@@ -658,7 +740,7 @@ class PolymarketMonitor:
                 timestamp = datetime.now()
 
             # Store market information if we haven't seen it before
-            self.db.store_market_from_trade(trade)
+            self.db.store_market_from_trade(trade, event_category=event_category)
 
             # Try to add trade to database
             is_new = self.db.add_trade(
@@ -1014,6 +1096,10 @@ class PolymarketMonitor:
                 #     import traceback
                 #     safe_print(f"[P&L] Traceback: {traceback.format_exc()}")
 
+                # Refresh Gamma event category map (every 10 cycles ≈ every 2.5 hours)
+                if cycle_count % 10 == 0:
+                    await self._refresh_event_category_map()
+
                 # NEW: P&L handled by background worker (no action needed here)
                 safe_print("\n[P&L] Background worker handling position tracking continuously")
 
@@ -1094,6 +1180,10 @@ class PolymarketMonitor:
         # Perform initial scan
         await self.initial_scan()
 
+        # Build event category map before first monitoring cycle
+        safe_print("[CATEGORY MAP] Building initial event category map...")
+        await self._refresh_event_category_map()
+
         # Start watchdog heartbeat (independent of all other loops)
         # Store reference: Python 3.12 keeps only weak refs to tasks; discarding
         # the return value allows GC to collect the task before it runs.
@@ -1132,6 +1222,27 @@ class PolymarketMonitor:
         # (self.telegram = None, self.elo_bot = None)
 
         safe_print("[OK] Monitor stopped successfully\n")
+
+
+def should_include_market(title: str, event_category: Optional[str] = None) -> bool:
+    """
+    Module-level synchronous filter: category gate + keyword check (no AI).
+
+    Used by tests and trading-swarm agents that have the event category available
+    but cannot run async code or construct a full PolymarketMonitor instance.
+
+    Gate 0: HARD_EXCLUDE / HARD_INCLUDE category sets.
+    Gate 1: Full keyword + regex check via PolymarketMonitor._keyword_exclusion_check.
+            The method has no instance-state dependencies; object.__new__ is safe here.
+    """
+    if event_category:
+        cat = event_category.strip()
+        if cat in HARD_EXCLUDE_CATEGORIES:
+            return False
+        if cat in HARD_INCLUDE_CATEGORIES:
+            return True
+    _stub = object.__new__(PolymarketMonitor)
+    return not _stub._keyword_exclusion_check(title)
 
 
 async def main(polymarket_api_key: str, telegram_token: str,

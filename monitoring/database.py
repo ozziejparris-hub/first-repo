@@ -582,11 +582,12 @@ class Database:
         conn.close()
         return exists
 
-    def store_market_from_trade(self, trade: Dict):
+    def store_market_from_trade(self, trade: Dict, event_category: Optional[str] = None):
         """
         Store market information extracted from a trade.
 
-        Handles different market_id field names: 'market_id', 'id', 'conditionId', 'asset_id'
+        Handles different market_id field names: 'market_id', 'id', 'conditionId', 'asset_id'.
+        event_category: real category from Gamma /events (preferred over trade-embedded category).
         """
         # Extract market_id from various possible field names
         market_id = (trade.get('market_id') or
@@ -604,7 +605,8 @@ class Database:
 
         # Extract market information from trade
         title = trade.get('title') or trade.get('market_title') or 'Unknown Market'
-        category = trade.get('category') or trade.get('market_category') or 'Unknown'
+        # Prefer the event_category from Gamma /events; fall back to trade-embedded value
+        category = event_category or trade.get('category') or trade.get('market_category') or 'Unknown'
 
         # Store the market
         self.update_market(
