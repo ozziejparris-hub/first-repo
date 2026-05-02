@@ -40,7 +40,16 @@ EXCLUSION_KEYWORDS = [
     "nba", "nfl", "mlb", "nhl", "ncaa", "ufc", "mma", "f1", "formula 1",
     "premier league", "champions league", "world cup", "super bowl",
     "march madness", "stanley cup", "world series", "kentucky derby",
-    "wimbledon", "us open", "french open", "australian open",
+    # Tennis — Grand Slams
+    "wimbledon", "roland garros", "french open", "australian open",
+    "us open tennis",
+    # Tennis — ATP/WTA tour events
+    "atp", "wta", "madrid open", "miami open", "bnp paribas",
+    "indian wells", "monte carlo", "rome open", "canadian open",
+    "cincinnati open", "stuttgart open", "eastbourne", "birmingham",
+    "bad homburg", "queen's club", "upper austria",
+    # Generic match-up marker (catches remaining head-to-head sport markets)
+    " vs ",
     # Entertainment
     "oscars", "grammy", "emmy", "golden globe", "academy award",
     "box office", "billboard", "spotify", "netflix", "apple tv",
@@ -54,6 +63,9 @@ EXCLUSION_KEYWORDS = [
     "taylor swift", "beyonce", "kardashian", "justin bieber",
     # Markets / finance (non-geo)
     "stock price", "earnings", "ipo", "nasdaq", "s&p 500",
+    # Religious / novelty (not tradeable insider events)
+    "jesus", "christ", "god ", "allah", "bible",
+    "rapture", "antichrist", "second coming",
 ]
 
 
@@ -203,10 +215,16 @@ def detect_individual_signals(conn: sqlite3.Connection,
 
         # 4. Price check — two patterns:
         #    LOW_ODDS: price < max_price (original spec: buying at ~0.35 is high conviction early)
-        #    HIGH_CONVICTION: price >= 0.75 AND position >= 10x min_position (late-stage insider,
-        #      e.g. the Feb 28 Iran wallets bought at $0.875 just before the strike)
-        low_odds      = price < max_price
-        high_conv     = price >= 0.75 and position_size >= min_position * 2
+        #    HIGH_CONVICTION: late-stage insider (e.g. Feb 28 Iran wallets at $0.875 before strike).
+        #      Requires price >= 0.75 AND position >= $10K hard floor.
+        #      Above 0.90 the signal is almost always arb/market-making, so we require $50K+
+        #      to keep only the most anomalous near-certain bets.
+        low_odds  = price < max_price
+        high_conv = (
+            price >= 0.75
+            and position_size >= max(10_000.0, min_position * 2)
+            and (price <= 0.90 or position_size >= 50_000.0)
+        )
         if not (low_odds or high_conv):
             continue
 
