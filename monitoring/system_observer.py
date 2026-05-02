@@ -1010,7 +1010,7 @@ Polymarket Profile:
 https://polymarket.com/profile/{address}
 """
 
-                await self.telegram.send_message(message)
+                await self.telegram._send_message(message)
                 print(f"[OBSERVER] Sent high-value trade alert for {address[:10]}... (${trade_size:,.0f})")
 
         except Exception as e:
@@ -1143,7 +1143,7 @@ https://polymarket.com/profile/{address}
                     f"🔗 https://polymarket.com/profile/{address}"
                 )
 
-                await self.telegram.send_message(message)
+                await self.telegram._send_message(message)
                 self._mark_legendary_alerted(trade_id)
                 print(f"[OBSERVER] [{tier_badge}] Alert sent for {addr_short} (ELO {elo_str})")
 
@@ -1304,7 +1304,7 @@ https://polymarket.com/profile/{address}
                 message_parts.append("")
 
             message = "\n".join(message_parts)
-            await self.telegram.send_message(message)
+            await self.telegram._send_message(message)
 
             print("[OBSERVER] Sent weekly performance summary")
 
@@ -1630,7 +1630,7 @@ https://polymarket.com/profile/{address}
                     f"🔗 https://polymarket.com/event/{market_id}"
                 )
 
-                await self.telegram.send_message(message)
+                await self.telegram._send_message(message)
                 self._mark_consensus_alerted(market_id, outcome)
                 print(
                     f"[OBSERVER] Sent consensus alert: {market_id} {outcome} "
@@ -1751,7 +1751,7 @@ Sellers:
 🔗 Market: https://polymarket.com/event/{market_id}
 """
 
-                await self.telegram.send_message(message)
+                await self.telegram._send_message(message)
                 self._mark_exit_alerted(market_id, outcome)
                 print(f"[OBSERVER] Sent exit alert: {market_id} {outcome} ({count} traders)")
 

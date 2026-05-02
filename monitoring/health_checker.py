@@ -45,6 +45,8 @@ class HealthChecker:
         self.db_path = db_path
         self.last_check_time = None
         self.check_history = []
+        self._elo_system = None
+        self._elo_system_last_init = None
 
     def _find_monitoring_process_by_name(self) -> Optional[int]:
         """Search for the monitoring process by cmdline when the tracked PID is stale."""
@@ -430,8 +432,14 @@ class HealthChecker:
                     }
                 }
 
-            # Test 2: Initialize system
-            elo_system = UnifiedELOSystem(db_path=self.db_path)
+            # Test 2: Initialize system (cached; refreshed every 6 hours to avoid
+            # re-running ConsensusDivergenceDetector.__init__ on every 60s health check)
+            now = datetime.now()
+            if (self._elo_system is None or self._elo_system_last_init is None or
+                    (now - self._elo_system_last_init).total_seconds() > 21600):
+                self._elo_system = UnifiedELOSystem(db_path=self.db_path)
+                self._elo_system_last_init = now
+            elo_system = self._elo_system
             init_ok = True
 
             # Test 3: Check if trader data available
