@@ -125,10 +125,10 @@ def _ensure_tables(conn: sqlite3.Connection):
 
 def detect_individual_signals(conn: sqlite3.Connection,
                                since: datetime,
-                               min_position: float = 5000.0,
+                               min_position: float = 2000.0,
                                max_price: float = 0.35,
                                max_markets: int = 2,
-                               wallet_age_days: int = 30) -> list[dict]:
+                               wallet_age_days: int = 90) -> list[dict]:
     """
     Find trades that match the individual insider signal pattern.
     Returns list of signal dicts.
@@ -235,7 +235,7 @@ def detect_cluster_signals(conn: sqlite3.Connection,
                             min_wallets: int = 3,
                             cluster_window_hours: float = 6.0,
                             min_position: float = 1000.0,
-                            wallet_age_days: int = 30) -> list[dict]:
+                            wallet_age_days: int = 90) -> list[dict]:
     """
     Detect clusters: N+ fresh wallets betting the same outcome on the same
     geopolitics market within a rolling time window.
