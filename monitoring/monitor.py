@@ -136,11 +136,20 @@ class PolymarketMonitor:
                 if not events:
                     break
 
+                if not isinstance(events, list):
+                    safe_print(f"[CATEGORY MAP] Unexpected response type at offset {offset}: {type(events).__name__} — skipping batch")
+                    break
+
                 for event in events:
+                    if not isinstance(event, dict):
+                        safe_print(f"[CATEGORY MAP] Non-dict element in events list ({type(event).__name__}) — skipping")
+                        continue
                     raw = event.get('category')
                     cat = raw.strip() if raw else None
                     n_events += 1
                     for market in event.get('markets', []):
+                        if not isinstance(market, dict):
+                            continue
                         cid = market.get('conditionId')
                         if cid:
                             new_map[cid] = cat
@@ -1186,7 +1195,10 @@ class PolymarketMonitor:
 
         # Build event category map before first monitoring cycle
         safe_print("[CATEGORY MAP] Building initial event category map...")
-        await self._refresh_event_category_map()
+        try:
+            await self._refresh_event_category_map()
+        except Exception as e:
+            safe_print(f"[MARKET FILTER] Non-fatal: category map refresh error at startup: {e} — continuing without map")
 
         # Start watchdog heartbeat (independent of all other loops)
         # Store reference: Python 3.12 keeps only weak refs to tasks; discarding
