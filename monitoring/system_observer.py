@@ -1097,6 +1097,7 @@ class SystemObserver:
 
             query = """
             SELECT
+                tr.trade_id,
                 t.address,
                 t.comprehensive_elo,
                 t.roi_percentage,
@@ -1112,7 +1113,9 @@ class SystemObserver:
             WHERE
                 t.comprehensive_elo >= 1550
                 AND tr.timestamp >= ?
+                AND tr.timestamp <= datetime('now')
                 AND (tr.shares * tr.price) >= 1000
+                AND (tr.notified = 0 OR tr.notified IS NULL)
             ORDER BY tr.timestamp DESC
             """
 
@@ -1122,7 +1125,7 @@ class SystemObserver:
 
             # Send alert for each high-value trade
             for trade in trades:
-                address, elo, roi, market_id, outcome, shares, price, timestamp, market_title = trade
+                trade_id, address, elo, roi, market_id, outcome, shares, price, timestamp, market_title = trade
 
                 trade_size = shares * price
                 roi_str = f"+{roi:.1f}%" if roi and roi > 0 else f"{roi:.1f}%" if roi else "Calculating..."
@@ -1147,6 +1150,15 @@ https://polymarket.com/profile/{address}
 
                 await self.telegram._send_message(message)
                 print(f"[OBSERVER] Sent high-value trade alert for {address[:10]}... (${trade_size:,.0f})")
+
+                # Mark as notified so it is never resent
+                mark_conn = sqlite3.connect(self.db_path, timeout=30)
+                mark_conn.execute(
+                    "UPDATE trades SET notified = 1 WHERE trade_id = ?",
+                    (trade_id,)
+                )
+                mark_conn.commit()
+                mark_conn.close()
 
         except Exception as e:
             print(f"[OBSERVER] Error checking high-value trades: {e}")
