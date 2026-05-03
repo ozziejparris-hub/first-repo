@@ -79,6 +79,10 @@ class SystemObserver:
         self.check_count = 0
         self.error_count = 0
 
+        # Auto-restart state
+        self.last_restart_attempt: Optional[datetime] = None
+        self.monitoring_dead_since: Optional[datetime] = None
+
         # Database path
         self.db_path = 'data/polymarket_tracker.db'
 
@@ -156,14 +160,115 @@ class SystemObserver:
             # Cleanup
             await self._shutdown()
 
+    def _read_monitoring_pid_from_file(self) -> Optional[int]:
+        """Read the current monitoring PID from data/.monitoring.pid."""
+        pid_file = Path('data/.monitoring.pid')
+        try:
+            if pid_file.exists():
+                pid = int(pid_file.read_text().strip())
+                if psutil.pid_exists(pid):
+                    return pid
+        except Exception:
+            pass
+        return None
+
+    def _was_monitoring_recently_stopped(self, within_seconds: int = 300) -> bool:
+        """Return True if systemd reports monitoring stopped within the last N seconds."""
+        try:
+            result = subprocess.run(
+                ['systemctl', 'show', 'polymarket-monitoring',
+                 '--property=InactiveEnterTimestamp'],
+                capture_output=True, text=True, timeout=5
+            )
+            line = result.stdout.strip()
+            # Format: InactiveEnterTimestamp=Sat 2026-05-02 20:35:20 UTC
+            if '=' not in line:
+                return False
+            ts_str = line.split('=', 1)[1].strip()
+            if not ts_str or ts_str == 'n/a':
+                return False
+            # Strip day-of-week prefix (e.g. "Sat ")
+            parts = ts_str.split(' ')
+            if len(parts) >= 4 and parts[0][:3] in ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'):
+                ts_str = ' '.join(parts[1:])
+            stopped_at = datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S %Z').replace(tzinfo=None)
+            age_seconds = (datetime.utcnow() - stopped_at).total_seconds()
+            return age_seconds < within_seconds
+        except Exception:
+            return False
+
+    async def _attempt_monitoring_restart(self) -> bool:
+        """
+        Restart polymarket-monitoring via systemctl.
+
+        Returns True if the service came back up within 30 seconds.
+
+        Requires passwordless sudo for this specific command:
+            parison ALL=(ALL) NOPASSWD: /bin/systemctl restart polymarket-monitoring
+        """
+        timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
+
+        print("[OBSERVER] Monitoring service dead — auto-restarting via systemctl")
+        await self.telegram._send_message(
+            f"🔄 MONITORING AUTO-RESTART\n"
+            f"Observer detected monitoring was dead.\n"
+            f"Automatically restarted via systemctl.\n"
+            f"Time: {timestamp}"
+        )
+
+        self.last_restart_attempt = datetime.utcnow()
+
+        result = subprocess.run(
+            ['sudo', 'systemctl', 'restart', 'polymarket-monitoring'],
+            capture_output=True, text=True, timeout=30
+        )
+
+        if result.returncode != 0:
+            msg = f"[OBSERVER] CRITICAL — systemctl restart failed (code {result.returncode}): {result.stderr.strip()}"
+            print(msg)
+            await self.telegram._send_message(
+                f"❌ MONITORING RESTART FAILED\n"
+                f"systemctl exit code: {result.returncode}\n"
+                f"stderr: {result.stderr.strip()[:200]}\n"
+                f"Manual intervention needed."
+            )
+            return False
+
+        # Give the service 30 seconds to come up
+        await asyncio.sleep(30)
+
+        new_pid = self._read_monitoring_pid_from_file()
+        if new_pid:
+            print(f"[OBSERVER] Monitoring successfully restarted (new PID {new_pid})")
+            self.monitoring_pid = new_pid
+            self.health_checker.monitoring_pid = new_pid
+            self.monitoring_dead_since = None
+            return True
+        else:
+            print("[OBSERVER] CRITICAL — restart failed, manual intervention needed")
+            await self.telegram._send_message(
+                "❌ MONITORING STILL DOWN\n"
+                "Restart was attempted but service did not come back up.\n"
+                "Manual intervention needed."
+            )
+            return False
+
     async def _health_check_loop(self):
         """
         Health check loop - runs every 60 seconds.
+        Includes auto-restart of polymarket-monitoring when dead (once per hour).
         """
         print("[OBSERVER] Health check loop started")
 
         while self.running:
             try:
+                # Refresh PID from file on every cycle so stale startup PID never blocks detection
+                current_pid = self._read_monitoring_pid_from_file()
+                if current_pid and current_pid != self.monitoring_pid:
+                    print(f"[OBSERVER] PID updated from file: {self.monitoring_pid} → {current_pid}")
+                    self.monitoring_pid = current_pid
+                    self.health_checker.monitoring_pid = current_pid
+
                 # Run comprehensive health check
                 health = await self.health_checker.check_all()
                 self.check_count += 1
@@ -184,6 +289,36 @@ class SystemObserver:
                 # Send alert if not healthy
                 if health['status'] != 'healthy':
                     await self.telegram.send_health_alert(health)
+
+                # Auto-restart logic when monitoring process is dead
+                process_check = health.get('checks', {}).get('process', {})
+                monitoring_is_dead = (
+                    process_check.get('status') == 'critical' and
+                    not process_check.get('alive', True)
+                )
+
+                if monitoring_is_dead:
+                    if self.monitoring_dead_since is None:
+                        # First detection — wait one more cycle to confirm
+                        self.monitoring_dead_since = datetime.utcnow()
+                        print("[OBSERVER] Monitoring appears dead — will confirm on next cycle in 60s")
+                    else:
+                        dead_for = (datetime.utcnow() - self.monitoring_dead_since).total_seconds()
+                        print(f"[OBSERVER] Monitoring still dead (confirmed for {dead_for:.0f}s)")
+
+                        # Enforce once-per-hour restart limit
+                        if (self.last_restart_attempt is not None and
+                                (datetime.utcnow() - self.last_restart_attempt).total_seconds() < 3600):
+                            print("[OBSERVER] Skipping restart — already attempted within the last hour")
+                        elif self._was_monitoring_recently_stopped(within_seconds=300):
+                            print("[OBSERVER] Skipping restart — monitoring was deliberately stopped < 5 min ago")
+                        else:
+                            await self._attempt_monitoring_restart()
+                else:
+                    # Monitoring is alive — reset dead tracker
+                    if self.monitoring_dead_since is not None:
+                        print("[OBSERVER] Monitoring is alive again, clearing dead-since marker")
+                    self.monitoring_dead_since = None
 
                 # Wait 60 seconds before next check
                 await asyncio.sleep(60)
