@@ -19,6 +19,7 @@ Key Concepts:
 - FIFO Matching: First In, First Out - oldest BUY trades matched first
 """
 
+import calendar
 import json
 import logging
 from collections import deque  # O(1) operations for queue
@@ -35,7 +36,13 @@ class Position:
     def __init__(self, trader_address: str, market_id: str, market_title: str,
                  outcome: str, entry_shares: float, entry_avg_price: float,
                  entry_timestamp: datetime, entry_trade_ids: List[str]):
-        self.position_id = f"{trader_address[:8]}_{market_id[:8]}_{outcome}_{int(entry_timestamp.timestamp())}"
+        # Use calendar.timegm so naive datetimes are always treated as UTC,
+        # making position_id stable regardless of server timezone.
+        if entry_timestamp.tzinfo is not None:
+            ts = int(entry_timestamp.timestamp())
+        else:
+            ts = calendar.timegm(entry_timestamp.timetuple())
+        self.position_id = f"{trader_address[:8]}_{market_id[:8]}_{outcome}_{ts}"
         self.trader_address = trader_address
         self.market_id = market_id
         self.market_title = market_title
@@ -439,6 +446,19 @@ class PositionTracker:
         stored = 0
         for pos in positions:
             data = pos.to_dict()
+
+            # Dedup guard: if a row already exists for the same logical position
+            # (same trader/market/outcome/entry_timestamp) but with a different
+            # position_id (timezone artifact from the April 2026 server migration),
+            # reuse the existing position_id so we update rather than duplicate.
+            existing = cursor.execute("""
+                SELECT position_id FROM positions
+                WHERE trader_address = ? AND market_id = ? AND outcome = ? AND entry_timestamp = ?
+                LIMIT 1
+            """, (data['trader_address'], data['market_id'], data['outcome'],
+                  data['entry_timestamp'])).fetchone()
+            if existing and existing[0] != data['position_id']:
+                data['position_id'] = existing[0]
 
             cursor.execute("""
                 INSERT OR REPLACE INTO positions (

@@ -236,6 +236,19 @@ class BackgroundPnLWorker:
                 else:
                     pos_dict = position
 
+                # Dedup guard: if a row already exists for the same logical position
+                # (same trader/market/outcome/entry_timestamp) but with a different
+                # position_id (timezone artifact from the April 2026 server migration),
+                # reuse the existing position_id so we update rather than duplicate.
+                existing = cursor.execute("""
+                    SELECT position_id FROM positions
+                    WHERE trader_address = ? AND market_id = ? AND outcome = ? AND entry_timestamp = ?
+                    LIMIT 1
+                """, (pos_dict['trader_address'], pos_dict['market_id'],
+                      pos_dict['outcome'], pos_dict['entry_timestamp'])).fetchone()
+                if existing and existing[0] != pos_dict['position_id']:
+                    pos_dict['position_id'] = existing[0]
+
                 cursor.execute("""
                     INSERT OR REPLACE INTO positions (
                         position_id, trader_address, market_id, market_title,
