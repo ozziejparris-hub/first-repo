@@ -1003,6 +1003,7 @@ class PolymarketMonitor:
                         cursor.execute("""
                             UPDATE traders
                             SET realized_pnl = ?,
+                                total_pnl = ?,
                                 avg_roi = ?,
                                 roi_percentage = ?,
                                 closed_positions = ?,
@@ -1010,6 +1011,7 @@ class PolymarketMonitor:
                             WHERE address = ?
                         """, (
                             realized_pnl,
+                            realized_pnl,  # total_pnl = realized_pnl (unrealized_pnl is always 0)
                             avg_roi,
                             avg_roi,  # roi_percentage
                             len(closed_positions),
