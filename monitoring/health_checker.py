@@ -230,15 +230,15 @@ class HealthChecker:
             age = datetime.now() - log_mtime
             age_minutes = int(age.total_seconds() / 60)
 
-            if age_minutes < 45:
+            if age_minutes < 90:
                 status = 'healthy'
                 message = f'Recent activity {age_minutes}m ago'
-            elif age_minutes < 60:
+            elif age_minutes < 120:
                 status = 'warning'
-                message = f'Last activity {age_minutes}m ago (>45m, may have missed cycle)'
+                message = f'Last activity {age_minutes}m ago (>90m, may have missed cycle)'
             else:
                 status = 'critical'
-                message = f'No activity for {age_minutes}m (>60m, likely stuck)'
+                message = f'No activity for {age_minutes}m (>120m, likely stuck)'
 
             return {
                 'status': status,
