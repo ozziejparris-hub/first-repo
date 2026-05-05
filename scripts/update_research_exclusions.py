@@ -11,41 +11,48 @@ Exclusion criteria (ANY of these → excluded):
   - bot_suspect = 1
   - wash_trade_suspect = 1
   - bot_type IN ('LP_ARTIFACT', 'THIN_SAMPLE_ARTIFACT')
-  - LP focus ratio > 20 with resolved_trades_count > 50 (tagged LP_ARTIFACT below)
 
 Clear criteria (ALL must hold → cleared):
   - resolved_trades_count >= 20
   - bot_suspect = 0 or NULL
   - wash_trade_suspect = 0 or NULL
   - bot_type IS NULL
+
+LP focus ratio flagging (report only — no automatic exclusion):
+  Traders with >20 resolved trades per distinct market are candidates for
+  LP_ARTIFACT tagging, but require manual review before exclusion. Flagged
+  traders are written to logs/focus_ratio_review.json for Oscar to approve.
+  Do NOT set bot_type = 'LP_ARTIFACT' here — that triggers automatic exclusion.
 """
 
+import json
 import sqlite3
 import sys
+from datetime import datetime
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent.parent / "data" / "polymarket_tracker.db"
+LOGS_DIR = Path(__file__).parent.parent / "logs"
+FOCUS_RATIO_REPORT = LOGS_DIR / "focus_ratio_review.json"
 
-# Hubble focus ratio: traders with >20 resolved trades per distinct market are
-# market-making bots, not directional traders. Genuine traders rarely exceed 5×
-# even in their most active markets. Threshold 20× is deliberately conservative.
-# Minimum 50 resolved trades avoids penalising new traders with thin history.
-# Runs before EXCLUDE_SQL so newly tagged LP_ARTIFACTs are caught in the same pass.
-LP_FOCUS_RATIO_TAG_SQL = """
-UPDATE traders
-SET bot_type = 'LP_ARTIFACT'
-WHERE bot_type IS NULL
-  AND resolved_trades_count > 50
-  AND address IN (
-    SELECT p.trader_address
-    FROM positions p
-    JOIN traders t ON t.address = p.trader_address
-    WHERE t.resolved_trades_count > 50
-      AND t.bot_type IS NULL
-    GROUP BY p.trader_address
-    HAVING COUNT(DISTINCT p.market_id) > 0
-      AND t.resolved_trades_count * 1.0 / COUNT(DISTINCT p.market_id) > 20
-  )
+# Report-only query: identifies traders whose focus ratio exceeds 20× but does
+# NOT update the DB. Results go to logs/focus_ratio_review.json for manual review.
+# Traders must have >50 resolved trades to avoid thin-sample noise.
+LP_FOCUS_RATIO_SELECT_SQL = """
+SELECT
+    t.address,
+    t.resolved_trades_count,
+    COUNT(DISTINCT p.market_id) AS distinct_markets,
+    ROUND(t.resolved_trades_count * 1.0 / COUNT(DISTINCT p.market_id), 2) AS focus_ratio
+FROM traders t
+JOIN positions p ON p.trader_address = t.address
+WHERE t.resolved_trades_count > 50
+  AND t.bot_type IS NULL
+  AND t.research_excluded = 0
+GROUP BY t.address
+HAVING COUNT(DISTINCT p.market_id) > 0
+   AND t.resolved_trades_count * 1.0 / COUNT(DISTINCT p.market_id) > 20
+ORDER BY focus_ratio DESC
 """
 
 EXCLUDE_SQL = """
@@ -88,8 +95,11 @@ def main():
     conn.execute("PRAGMA busy_timeout=30000")
 
     try:
+        # Identify focus-ratio candidates for review — NO DB write.
+        focus_ratio_rows = conn.execute(LP_FOCUS_RATIO_SELECT_SQL).fetchall()
+        lp_flagged = len(focus_ratio_rows)
+
         with conn:
-            lp_tagged      = conn.execute(LP_FOCUS_RATIO_TAG_SQL).rowcount
             newly_excluded = conn.execute(EXCLUDE_SQL).rowcount
             newly_cleared  = conn.execute(CLEAR_SQL).rowcount
 
@@ -103,8 +113,21 @@ def main():
     finally:
         conn.close()
 
+    # Write focus-ratio candidates to review file (no DB changes made for these).
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    report = {
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "note": "Traders flagged by focus ratio > 20x. No DB exclusion applied — requires manual approval.",
+        "count": lp_flagged,
+        "traders": [
+            {"address": r[0], "resolved_trades": r[1], "distinct_markets": r[2], "focus_ratio": r[3]}
+            for r in focus_ratio_rows
+        ],
+    }
+    FOCUS_RATIO_REPORT.write_text(json.dumps(report, indent=2))
+
     print("research_excluded update complete:")
-    print(f"  LP focus ratio tagged : {lp_tagged:,} traders")
+    print(f"  LP focus ratio flagged (review only): {lp_flagged:,} traders → {FOCUS_RATIO_REPORT}")
     print(f"  Newly excluded        : {newly_excluded:,} traders")
     print(f"  Newly cleared         : {newly_cleared:,} traders")
     print(f"  Total clean pool      : {total_clean:,} traders")
