@@ -28,10 +28,12 @@ Importable:
 
 import argparse
 import asyncio
+import json
 import os
 import sqlite3
 import sys
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -39,6 +41,9 @@ from datetime import datetime, timezone, timedelta
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _DB_PATH   = os.path.join(_REPO_ROOT, 'data', 'polymarket_tracker.db')
+
+OUTPUT_DIR = Path("/home/parison/trading-swarm/brain/agent-outputs/pre-resolution")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -362,7 +367,7 @@ async def _send_messages(messages: list[str], dry_run: bool) -> None:
         from monitoring.telegram_health_bot import TelegramHealthBot
         bot = TelegramHealthBot(token=token, chat_id=chat_id)
         for msg in messages:
-            bot._send_message(msg)
+            await bot._send_message(msg)
     except Exception as e:
         print(f"[PRE-RES] Telegram dispatch error: {e}")
 
@@ -415,6 +420,37 @@ def run_pre_resolution_intelligence(dry_run: bool = False) -> dict:
     conn.close()
 
     print(f"[PRE-RES] {len(signals)} signal(s) meet criteria")
+
+    # Write JSON output file
+    scan_ts = datetime.now(timezone.utc)
+    output_signals = []
+    for s in signals:
+        mkt    = s["market"]
+        sig    = s["signal"]
+        mp     = s["market_price"]
+        direction = "YES" if sig["elite_yes_pct"] >= 50 else "NO"
+        output_signals.append({
+            "market":           mkt["title"],
+            "tier":             sig["tier"],
+            "direction":        direction,
+            "smart_money_pct":  round(sig["elite_yes_pct"] / 100, 4),
+            "market_price_pct": round(mp, 4) if mp is not None else None,
+            "gap_pt":           round(abs(sig["elite_yes_pct"] - mp * 100), 1) if mp is not None else None,
+            "elite_traders":    sig["elite_count"],
+            "legendary_traders": sig["legendary_count"],
+            "resolution_date":  mkt["end_date"][:10] if mkt["end_date"] else None,
+        })
+    output_data = {
+        "date":             scan_ts.strftime("%Y-%m-%d"),
+        "markets_checked":  len(upcoming),
+        "signals_found":    len(signals),
+        "signals":          output_signals,
+        "scan_timestamp":   scan_ts.isoformat(),
+    }
+    out_file = OUTPUT_DIR / f"{scan_ts.strftime('%Y-%m-%d')}-pre-res-scan.json"
+    with open(out_file, "w") as fh:
+        json.dump(output_data, fh, indent=2)
+    print(f"[PRE-RES] Output written → {out_file}")
 
     # Build messages ordered by days_left ascending (already sorted from query)
     if signals:
