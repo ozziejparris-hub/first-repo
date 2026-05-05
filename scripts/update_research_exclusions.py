@@ -11,6 +11,7 @@ Exclusion criteria (ANY of these → excluded):
   - bot_suspect = 1
   - wash_trade_suspect = 1
   - bot_type IN ('LP_ARTIFACT', 'THIN_SAMPLE_ARTIFACT')
+  - LP focus ratio > 20 with resolved_trades_count > 50 (tagged LP_ARTIFACT below)
 
 Clear criteria (ALL must hold → cleared):
   - resolved_trades_count >= 20
@@ -24,6 +25,28 @@ import sys
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent.parent / "data" / "polymarket_tracker.db"
+
+# Hubble focus ratio: traders with >20 resolved trades per distinct market are
+# market-making bots, not directional traders. Genuine traders rarely exceed 5×
+# even in their most active markets. Threshold 20× is deliberately conservative.
+# Minimum 50 resolved trades avoids penalising new traders with thin history.
+# Runs before EXCLUDE_SQL so newly tagged LP_ARTIFACTs are caught in the same pass.
+LP_FOCUS_RATIO_TAG_SQL = """
+UPDATE traders
+SET bot_type = 'LP_ARTIFACT'
+WHERE bot_type IS NULL
+  AND resolved_trades_count > 50
+  AND address IN (
+    SELECT p.trader_address
+    FROM positions p
+    JOIN traders t ON t.address = p.trader_address
+    WHERE t.resolved_trades_count > 50
+      AND t.bot_type IS NULL
+    GROUP BY p.trader_address
+    HAVING COUNT(DISTINCT p.market_id) > 0
+      AND t.resolved_trades_count * 1.0 / COUNT(DISTINCT p.market_id) > 20
+  )
+"""
 
 EXCLUDE_SQL = """
 UPDATE traders
@@ -66,6 +89,7 @@ def main():
 
     try:
         with conn:
+            lp_tagged      = conn.execute(LP_FOCUS_RATIO_TAG_SQL).rowcount
             newly_excluded = conn.execute(EXCLUDE_SQL).rowcount
             newly_cleared  = conn.execute(CLEAR_SQL).rowcount
 
@@ -80,10 +104,11 @@ def main():
         conn.close()
 
     print("research_excluded update complete:")
-    print(f"  Newly excluded : {newly_excluded:,} traders")
-    print(f"  Newly cleared  : {newly_cleared:,} traders")
-    print(f"  Total clean pool  : {total_clean:,} traders")
-    print(f"  Total excluded    : {total_excluded:,} traders")
+    print(f"  LP focus ratio tagged : {lp_tagged:,} traders")
+    print(f"  Newly excluded        : {newly_excluded:,} traders")
+    print(f"  Newly cleared         : {newly_cleared:,} traders")
+    print(f"  Total clean pool      : {total_clean:,} traders")
+    print(f"  Total excluded        : {total_excluded:,} traders")
 
 
 if __name__ == "__main__":
