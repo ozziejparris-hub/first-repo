@@ -13,12 +13,15 @@ from datetime import datetime
 from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).parent
+SCRIPTS_DIR = Path(__file__).parent
+TRADING_SWARM_SCRIPTS = Path("/home/parison/trading-swarm/scripts")
 STEPS = [
     ("Update research exclusions",        SCRIPTS_DIR / "update_research_exclusions.py"),
     ("Fetch new market resolutions",      SCRIPTS_DIR / "fast_resolution_check.py"),
     ("Requeue resolved market traders",   SCRIPTS_DIR / "requeue_resolved_market_traders.py"),
     ("Apply full ELO modifiers",          SCRIPTS_DIR / "apply_full_elo_modifiers.py"),
     ("Resync position counts",            SCRIPTS_DIR / "resync_position_counts.py"),
+    ("Write integration health",          TRADING_SWARM_SCRIPTS / "write_integration_health.py"),
 ]
 
 def run_step(label, script_path, extra_args=None):
