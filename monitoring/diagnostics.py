@@ -348,9 +348,9 @@ class ELOSystemDiagnostics:
                 last_trade_dt = datetime.fromisoformat(last_trade)
                 hours_since = (datetime.now() - last_trade_dt).total_seconds() / 3600
 
-                if hours_since > 2:
+                if hours_since > 2.0:
                     issues.append(f"No trades in {hours_since:.1f} hours (monitoring may be stopped)")
-                elif hours_since > 1:
+                elif hours_since > 1.5:
                     warnings.append(f"Last trade {hours_since:.1f}h ago")
 
             # 2. Check market resolution rate
