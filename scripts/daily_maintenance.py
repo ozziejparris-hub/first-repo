@@ -15,8 +15,11 @@ from pathlib import Path
 SCRIPTS_DIR = Path(__file__).parent
 SCRIPTS_DIR = Path(__file__).parent
 TRADING_SWARM_SCRIPTS = Path("/home/parison/trading-swarm/scripts")
+# Each entry: (label, script_path [, extra_args] [, non_blocking])
+# non_blocking=True  → log WARNING on failure but continue; don't abort.
 STEPS = [
     ("Update research exclusions",        SCRIPTS_DIR / "update_research_exclusions.py"),
+    ("Verify market titles",              SCRIPTS_DIR / "verify_market_titles.py",        None, True),
     ("Fetch new market resolutions",      SCRIPTS_DIR / "fast_resolution_check.py"),
     ("Requeue resolved market traders",   SCRIPTS_DIR / "requeue_resolved_market_traders.py"),
     ("Apply full ELO modifiers",          SCRIPTS_DIR / "apply_full_elo_modifiers.py"),
@@ -70,15 +73,20 @@ def main():
         print("\n[WEEKLY] Sunday — full ELO recalculation added to run (--skip-correlation --skip-contrarian --skip-advanced-metrics)")
 
     for i, step in enumerate(steps, 1):
-        label, script = step[0], step[1]
-        extra_args = step[2] if len(step) > 2 else None
+        label        = step[0]
+        script       = step[1]
+        extra_args   = step[2] if len(step) > 2 else None
+        non_blocking = step[3] if len(step) > 3 else False
         print(f"\n[{i}/{len(steps)}] {label}")
         ok = run_step(label, script, extra_args)
         if not ok:
-            elapsed = time.time() - start
-            print(f"\n=== MAINTENANCE FAILED at step {i} ({elapsed:.1f}s total) ===")
-            print(f"    Step {i} ({label}) failed — remaining steps skipped.")
-            sys.exit(1)
+            if non_blocking:
+                print(f"    WARNING — step {i} ({label}) failed; continuing anyway (non-blocking).")
+            else:
+                elapsed = time.time() - start
+                print(f"\n=== MAINTENANCE FAILED at step {i} ({elapsed:.1f}s total) ===")
+                print(f"    Step {i} ({label}) failed — remaining steps skipped.")
+                sys.exit(1)
 
     elapsed = time.time() - start
     print(f"\n=== MAINTENANCE COMPLETE === {elapsed:.1f}s total — all steps succeeded ===")
