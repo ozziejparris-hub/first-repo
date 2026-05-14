@@ -147,6 +147,7 @@ SYNC_IS_FLAGGED_EXCLUDED_SQL = """
 UPDATE traders
 SET is_flagged = 0
 WHERE research_excluded = 1
+  AND (watched = 0 OR watched IS NULL)
 """
 
 
@@ -176,6 +177,9 @@ def main():
         with conn:
             synced_flagged   = conn.execute(SYNC_IS_FLAGGED_CLEAN_SQL).rowcount
             synced_unflagged = conn.execute(SYNC_IS_FLAGGED_EXCLUDED_SQL).rowcount
+        watched_preserved = conn.execute(
+            "SELECT COUNT(*) FROM traders WHERE research_excluded = 1 AND watched = 1"
+        ).fetchone()[0]
 
         rows = {r[0]: r[1] for r in conn.execute(SUMMARY_SQL)}
         total_clean    = rows.get(0, 0)
@@ -208,7 +212,7 @@ def main():
     print(f"  Newly cleared         : {newly_cleared:,} traders")
     print(f"  Total clean pool      : {total_clean:,} traders")
     print(f"  Total excluded        : {total_excluded:,} traders")
-    print(f"  Synced is_flagged: {synced_flagged:,} traders flagged, {synced_unflagged:,} traders unflagged")
+    print(f"  Synced is_flagged: {synced_flagged:,} traders flagged, {synced_unflagged:,} traders unflagged ({watched_preserved:,} watched traders preserved)")
 
 
 if __name__ == "__main__":
