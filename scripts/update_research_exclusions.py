@@ -131,6 +131,24 @@ FROM traders
 GROUP BY research_excluded
 """
 
+# Sync is_flagged to match research_excluded state.
+# Run after all exclusion logic so is_flagged is always consistent.
+SYNC_IS_FLAGGED_CLEAN_SQL = """
+UPDATE traders
+SET is_flagged = 1
+WHERE research_excluded = 0
+  AND resolved_trades_count >= 20
+  AND bot_type IS NULL
+  AND wash_trade_suspect = 0
+  AND bot_suspect = 0
+"""
+
+SYNC_IS_FLAGGED_EXCLUDED_SQL = """
+UPDATE traders
+SET is_flagged = 0
+WHERE research_excluded = 1
+"""
+
 
 def main():
     if not DB_PATH.exists():
@@ -153,6 +171,11 @@ def main():
 
             newly_excluded = conn.execute(EXCLUDE_SQL).rowcount
             newly_cleared  = conn.execute(CLEAR_SQL).rowcount
+
+        # Sync is_flagged after all exclusion logic is complete.
+        with conn:
+            synced_flagged   = conn.execute(SYNC_IS_FLAGGED_CLEAN_SQL).rowcount
+            synced_unflagged = conn.execute(SYNC_IS_FLAGGED_EXCLUDED_SQL).rowcount
 
         rows = {r[0]: r[1] for r in conn.execute(SUMMARY_SQL)}
         total_clean    = rows.get(0, 0)
@@ -185,6 +208,7 @@ def main():
     print(f"  Newly cleared         : {newly_cleared:,} traders")
     print(f"  Total clean pool      : {total_clean:,} traders")
     print(f"  Total excluded        : {total_excluded:,} traders")
+    print(f"  Synced is_flagged: {synced_flagged:,} traders flagged, {synced_unflagged:,} traders unflagged")
 
 
 if __name__ == "__main__":

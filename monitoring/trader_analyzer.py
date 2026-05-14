@@ -59,12 +59,24 @@ class TraderAnalyzer:
 
     def scan_for_successful_traders(self) -> int:
         """
-        Scan geopolitics markets for active traders and identify successful ones.
-        Returns the number of newly flagged traders.
+        Scan markets across all relevant categories for active traders and
+        identify successful ones. Returns the number of newly flagged traders.
         """
-        print("Fetching geopolitics markets...")
-        markets = self.polymarket.get_markets(category="Geopolitics")
-        print(f"Found {len(markets)} geopolitics markets")
+        categories = ["Geopolitics", "Global Politics", "Ukraine & Russia",
+                      "Elections", "Economics", "Unknown"]
+
+        seen_ids: dict = {}
+        for category in categories:
+            print(f"Fetching {category} markets...")
+            cat_markets = self.polymarket.get_markets(category=category)
+            print(f"Found {len(cat_markets)} {category} markets")
+            for market in cat_markets:
+                condition_id = market.get('conditionId')
+                if condition_id and condition_id not in seen_ids:
+                    seen_ids[condition_id] = market
+
+        markets = list(seen_ids.values())
+        print(f"Combined {len(markets)} unique markets across all categories")
 
         # Store market information from the markets we discovered
         print("Storing market information...")

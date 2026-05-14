@@ -32,7 +32,7 @@ class PolymarketClient:
 
         self.session.headers.update(headers)
 
-    def get_markets(self, category: str = "Geopolitics", limit: int = 100) -> List[Dict]:
+    def get_markets(self, category: str = "Geopolitics", limit: int = 500) -> List[Dict]:
         """
         Fetch markets from Polymarket and filter by category.
 
