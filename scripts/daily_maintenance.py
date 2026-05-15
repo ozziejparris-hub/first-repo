@@ -21,7 +21,7 @@ STEPS = [
     ("Update research exclusions",        SCRIPTS_DIR / "update_research_exclusions.py"),
     ("Verify market titles",              SCRIPTS_DIR / "verify_market_titles.py",        None, True),
     ("Fetch new market resolutions",      SCRIPTS_DIR / "fast_resolution_check.py"),
-    ("Evaluate trade results",            SCRIPTS_DIR / "backfill_trade_results.py",    None, True),
+    ("Evaluate new trader results",        SCRIPTS_DIR / "evaluate_new_trader_results.py", None, True),
     ("Recalculate trader stats",          SCRIPTS_DIR / "recalculate_trader_stats.py",  None, True),
     ("Requeue resolved market traders",   SCRIPTS_DIR / "requeue_resolved_market_traders.py"),
     ("Apply full ELO modifiers",          SCRIPTS_DIR / "apply_full_elo_modifiers.py"),
