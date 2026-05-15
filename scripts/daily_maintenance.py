@@ -19,6 +19,7 @@ TRADING_SWARM_SCRIPTS = Path("/home/parison/trading-swarm/scripts")
 # non_blocking=True  → log WARNING on failure but continue; don't abort.
 STEPS = [
     ("Update research exclusions",        SCRIPTS_DIR / "update_research_exclusions.py"),
+    ("Promote high-P&L traders",          SCRIPTS_DIR / "promote_high_pnl_traders.py",    None, True),
     ("Verify market titles",              SCRIPTS_DIR / "verify_market_titles.py",        None, True),
     ("Fetch new market resolutions",      SCRIPTS_DIR / "fast_resolution_check.py"),
     ("Evaluate new trader results",        SCRIPTS_DIR / "evaluate_new_trader_results.py", None, True),
