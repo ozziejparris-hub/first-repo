@@ -102,6 +102,21 @@ HAVING COUNT(DISTINCT p.market_id) > 0
 ORDER BY focus_ratio DESC
 """
 
+# Clear leaderboard-discovered traders to clean pool before the exclusion pass.
+# These traders were validated by discover_leaderboard_traders.py (3+ geo markets,
+# 10+ trades, $1K+ volume) and qualify for research regardless of resolved_trades_count.
+# bot_type / wash_trade_suspect / bot_suspect checks below ensure genuine bad actors
+# (caught by auto-taggers above) are not inadvertently cleared.
+LEADERBOARD_CLEAR_SQL = """
+UPDATE traders
+SET research_excluded = 0
+WHERE discovery_source = 'leaderboard'
+  AND is_flagged = 1
+  AND bot_type IS NULL
+  AND wash_trade_suspect = 0
+  AND bot_suspect = 0
+"""
+
 EXCLUDE_SQL = """
 UPDATE traders
 SET research_excluded = 1
@@ -171,6 +186,9 @@ def main():
             lp_artifact_tagged = conn.execute(LP_ARTIFACT_TIER1B_TAG_SQL).rowcount
             arb_bot_tagged     = conn.execute(ARB_BOT_TAG_SQL).rowcount
 
+            # Restore leaderboard traders to clean pool before exclusion queries run.
+            leaderboard_cleared = conn.execute(LEADERBOARD_CLEAR_SQL).rowcount
+
             newly_excluded = conn.execute(EXCLUDE_SQL).rowcount
             newly_cleared  = conn.execute(CLEAR_SQL).rowcount
 
@@ -212,6 +230,7 @@ def main():
     print(f"  LP focus ratio flagged (review only): {lp_flagged:,} traders → {FOCUS_RATIO_REPORT}")
     print(f"  LP_ARTIFACT (Tier 1b) auto-tagged   : {lp_artifact_tagged:,} traders")
     print(f"  ARB_BOT auto-tagged                 : {arb_bot_tagged:,} traders")
+    print(f"  Leaderboard traders cleared to clean pool: {leaderboard_cleared:,} traders")
     print(f"  Newly excluded        : {newly_excluded:,} traders")
     print(f"  Newly cleared         : {newly_cleared:,} traders")
     print(f"  Total clean pool      : {total_clean:,} traders")
