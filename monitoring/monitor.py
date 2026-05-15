@@ -10,6 +10,7 @@ from .polymarket_client import PolymarketClient
 from .trader_analyzer import TraderAnalyzer
 from .position_tracker import PositionTracker
 from .background_pnl_worker import BackgroundPnLWorker
+from .background_backfill_worker import BackgroundBackfillWorker
 
 # Telegram imports removed - all notifications handled by System Observer
 
@@ -85,6 +86,10 @@ class PolymarketMonitor:
         self.pnl_worker = BackgroundPnLWorker(
             self.db, self.position_tracker,
             logger=logging.getLogger('pnl_worker'),
+        )
+        self.backfill_worker = BackgroundBackfillWorker(
+            self.db,
+            logger=logging.getLogger('backfill_worker'),
         )
 
         self.ai_agent = ai_agent  # Store AI agent
@@ -1216,6 +1221,11 @@ class PolymarketMonitor:
         )
         safe_print("[MONITOR] Background P&L worker started\n")
 
+        self._backfill_task = asyncio.create_task(
+            self.backfill_worker.start(), name='backfill_worker'
+        )
+        safe_print("[MONITOR] Background historical trade backfill worker started\n")
+
         # Give both tasks one event-loop iteration to run their startup code
         # (log their first INFO line) before the monitoring loop takes over.
         await asyncio.sleep(0)
@@ -1235,6 +1245,9 @@ class PolymarketMonitor:
         # NEW: Stop background P&L worker
         if hasattr(self, 'pnl_worker'):
             self.pnl_worker.stop()
+
+        if hasattr(self, 'backfill_worker'):
+            self.backfill_worker.stop()
 
         # Telegram completely disabled - no bot cleanup needed
         # (self.telegram = None, self.elo_bot = None)
