@@ -186,11 +186,12 @@ def main():
             lp_artifact_tagged = conn.execute(LP_ARTIFACT_TIER1B_TAG_SQL).rowcount
             arb_bot_tagged     = conn.execute(ARB_BOT_TAG_SQL).rowcount
 
-            # Restore leaderboard traders to clean pool before exclusion queries run.
-            leaderboard_cleared = conn.execute(LEADERBOARD_CLEAR_SQL).rowcount
-
             newly_excluded = conn.execute(EXCLUDE_SQL).rowcount
             newly_cleared  = conn.execute(CLEAR_SQL).rowcount
+
+            # Restore leaderboard traders after the exclusion pass so the
+            # resolved_trades_count filter in EXCLUDE_SQL cannot re-exclude them.
+            leaderboard_cleared = conn.execute(LEADERBOARD_CLEAR_SQL).rowcount
 
         # Sync is_flagged after all exclusion logic is complete.
         with conn:
