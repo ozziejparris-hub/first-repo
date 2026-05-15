@@ -128,10 +128,14 @@ class PolymarketMonitor:
         try:
             while True:
                 try:
-                    resp = _req.get(
-                        f"{base_url}/events",
-                        params={'limit': batch, 'offset': offset, 'active': 'true'},
-                        timeout=30,
+                    loop = asyncio.get_event_loop()
+                    resp = await loop.run_in_executor(
+                        None,
+                        lambda: _req.get(
+                            f"{base_url}/events",
+                            params={'limit': batch, 'offset': offset, 'active': 'true'},
+                            timeout=30,
+                        ),
                     )
                     events = resp.json()
                 except Exception as exc:
@@ -682,7 +686,8 @@ class PolymarketMonitor:
         """
         safe_print("Starting initial scan for successful traders...")
 
-        newly_flagged = self.analyzer.scan_for_successful_traders()
+        loop = asyncio.get_event_loop()
+        newly_flagged = await loop.run_in_executor(None, self.analyzer.scan_for_successful_traders)
         summary = self.analyzer.get_flagged_traders_summary()
 
         safe_print(f"[OK] Initial scan complete. Flagged {newly_flagged} traders.")
