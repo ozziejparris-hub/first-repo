@@ -70,6 +70,9 @@ def main():
         steps.append(("Weekly full ELO recalculation",
                        SCRIPTS_DIR / "recalculate_comprehensive_elo.py",
                        ["--skip-correlation", "--skip-contrarian", "--skip-advanced-metrics"]))
+        # Weekly trader discovery — scans top geopolitics markets for new participants not yet in DB.
+        # API-rate-limited so runs weekly only.
+        steps.append(("Discover leaderboard traders", SCRIPTS_DIR / "discover_leaderboard_traders.py", ["--limit", "100"], True))
         print("\n[WEEKLY] Sunday — full ELO recalculation added to run (--skip-correlation --skip-contrarian --skip-advanced-metrics)")
 
     for i, step in enumerate(steps, 1):
