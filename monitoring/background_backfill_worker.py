@@ -36,7 +36,7 @@ _THREAD_POOL = concurrent.futures.ThreadPoolExecutor(
     max_workers=1, thread_name_prefix="backfill_worker"
 )
 
-_TRADER_TIMEOUT = 60          # per-trader budget (seconds)
+_TRADER_TIMEOUT = 120         # per-trader budget (seconds)
 _MAX_FAILURES = 3             # skip trader for the session after this many consecutive failures
 _DATA_API_LIMIT = 500         # page size for the Data API
 _SLEEP_BETWEEN_TRADERS = 5   # seconds — keeps Data API rate-limit safe
@@ -360,6 +360,16 @@ class BackgroundBackfillWorker:
                 "will retry on next service restart.",
                 trader_address[:8], _MAX_FAILURES,
             )
+            try:
+                conn = self.db.get_connection()
+                conn.execute(
+                    "UPDATE traders SET backfill_attempted = ? WHERE address = ?",
+                    (datetime.utcnow().isoformat() + 'Z', trader_address)
+                )
+                conn.commit()
+                conn.close()
+            except Exception:
+                pass  # Best effort — don't crash the worker over a stamp failure
 
     # ------------------------------------------------------------------ #
     #  Progress reporting                                                  #
