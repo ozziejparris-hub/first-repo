@@ -1202,8 +1202,19 @@ class PolymarketMonitor:
 
         self.is_running = True
 
-        # Perform initial scan
-        await self.initial_scan()
+        # Skip initial scan if traders are already flagged — the periodic re-scan
+        # every 10 cycles handles ongoing discovery. Initial scan only needed on
+        # a truly fresh database.
+        conn = self.db.get_connection()
+        flagged_count = conn.execute(
+            "SELECT COUNT(*) FROM traders WHERE is_flagged = 1"
+        ).fetchone()[0]
+        conn.close()
+
+        if flagged_count > 100:
+            safe_print(f"[MONITOR] Skipping initial scan — {flagged_count} traders already flagged")
+        else:
+            await self.initial_scan()
 
         # Build event category map before first monitoring cycle
         safe_print("[CATEGORY MAP] Building initial event category map...")
