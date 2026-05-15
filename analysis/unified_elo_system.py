@@ -3963,8 +3963,20 @@ class UnifiedELOSystem:
         # because the trader is active — unfairly penalising good traders whose
         # positions simply haven't resolved yet.
         open_cost_basis = pnl_data.get('open_cost_basis', 0.0)
-        if open_cost_basis > 0 and closed_positions >= 1:
-            unrealized_drag = -(open_cost_basis * 0.5)
+        open_positions = pnl_data['open_positions']
+        if open_cost_basis > 0 and closed_positions > 0 and open_positions > 0:
+            open_to_closed_ratio = open_positions / closed_positions
+            # Full drag at 1:1 ratio, reduced as open positions dominate closed ones.
+            # A trader with many more open than closed positions likely has unresolved
+            # backfilled markets, not actual losses.
+            drag_weight = min(0.5, 1.0 / open_to_closed_ratio)
+            unrealized_drag = -(open_cost_basis * drag_weight)
+            # Hard cap: drag cannot exceed realized P&L
+            if realized_pnl > 0:
+                unrealized_drag = max(unrealized_drag, -realized_pnl)
+        elif open_cost_basis > 0 and closed_positions == 0:
+            # No closed baseline — cannot assess drag fairly
+            unrealized_drag = 0.0
         else:
             unrealized_drag = 0.0
 
