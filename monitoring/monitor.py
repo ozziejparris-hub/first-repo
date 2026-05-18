@@ -1242,9 +1242,9 @@ class PolymarketMonitor:
         )
         safe_print("[MONITOR] Background historical trade backfill worker started\n")
 
-        # Give both tasks one event-loop iteration to run their startup code
-        # (log their first INFO line) before the monitoring loop takes over.
-        await asyncio.sleep(0)
+        # Give all background tasks a full second to log their startup messages
+        # before monitoring_loop() takes over.
+        await asyncio.sleep(1)
 
         # Start monitoring loop
         await self.monitoring_loop()

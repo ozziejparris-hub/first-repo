@@ -91,24 +91,9 @@ class BackgroundBackfillWorker:
 
     async def start(self):
         """Start the background backfill worker."""
-        self.logger.info("Backfill worker task started — checking queue...")
-        self.logger.info("Starting background historical trade backfill worker")
+        self.logger.info("Backfill worker task started — entering worker loop")
         self.is_running = True
         self.start_time = time.time()
-
-        conn = self.db.get_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT COUNT(*) FROM traders
-            WHERE is_flagged = 1
-            AND research_excluded = 0
-            AND (SELECT COUNT(*) FROM trades WHERE trader_address = traders.address) = 0
-            AND backfill_attempted IS NULL
-        """)
-        pending = cursor.fetchone()[0]
-        conn.close()
-        self.logger.info("Backfill queue: %d traders with zero trades awaiting fetch", pending)
-
         await self._worker_loop()
 
     def stop(self):
@@ -149,9 +134,23 @@ class BackgroundBackfillWorker:
     async def _worker_loop(self):
         """Main worker loop — processes one trader per cycle."""
         consecutive_empty = 0
+        first_iteration = True
         while self.is_running:
             try:
                 batch = self._build_batch()
+
+                if first_iteration:
+                    first_iteration = False
+                    conn = self.db.get_connection()
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "SELECT COUNT(*) FROM traders"
+                        " WHERE is_flagged = 1 AND research_excluded = 0"
+                        " AND backfill_attempted IS NULL"
+                    )
+                    pending = cursor.fetchone()[0]
+                    conn.close()
+                    self.logger.info("Backfill queue: %d traders awaiting fetch", pending)
 
                 if not batch:
                     consecutive_empty += 1
