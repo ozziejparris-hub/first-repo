@@ -79,14 +79,10 @@ def main():
         print("  2. python monitoring/fast_resolution_check.py")
         return
 
-    # Confirm before proceeding
+    # Auto-proceed in non-interactive mode
     print(f"\nThis will recalculate win rates for {flagged_count} flagged traders.")
     print(f"Minimum threshold: {stats_calculator.min_resolved_trades} resolved trades")
-    proceed = input("Proceed? (yes/no): ").strip().lower()
-
-    if proceed != 'yes':
-        print("Cancelled.")
-        return
+    print("Auto-proceeding (non-interactive mode)")
 
     # Run recalculation
     results = stats_calculator.recalculate_all_flagged_traders(verbose=True)
