@@ -36,7 +36,7 @@ _THREAD_POOL = concurrent.futures.ThreadPoolExecutor(
     max_workers=1, thread_name_prefix="backfill_worker"
 )
 
-_TRADER_TIMEOUT = 120         # per-trader budget (seconds)
+_TRADER_TIMEOUT = 45          # per-trader budget (seconds) — pagination capped at 2000 trades
 _MAX_FAILURES = 3             # skip trader for the session after this many consecutive failures
 _DATA_API_LIMIT = 500         # page size for the Data API
 _SLEEP_BETWEEN_TRADERS = 5   # seconds — keeps Data API rate-limit safe
@@ -91,6 +91,7 @@ class BackgroundBackfillWorker:
 
     async def start(self):
         """Start the background backfill worker."""
+        self.logger.info("Backfill worker task started — checking queue...")
         self.logger.info("Starting background historical trade backfill worker")
         self.is_running = True
         self.start_time = time.time()
@@ -147,17 +148,46 @@ class BackgroundBackfillWorker:
 
     async def _worker_loop(self):
         """Main worker loop — processes one trader per cycle."""
+        consecutive_empty = 0
         while self.is_running:
             try:
                 batch = self._build_batch()
 
                 if not batch:
+                    consecutive_empty += 1
+                    if consecutive_empty >= 20:
+                        self.logger.warning(
+                            "Backfill stall detected (%d consecutive empty batches) — resetting failed_traders",
+                            consecutive_empty,
+                        )
+                        self.failed_traders = {}
+                        consecutive_empty = 0
                     self.logger.debug("No traders pending backfill, sleeping %ds", self.batch_sleep)
                     await asyncio.sleep(self.batch_sleep)
                     continue
 
                 trader_address = batch[0]
+                prev_processed = self.traders_processed
                 await self._process_single_trader(trader_address)
+
+                if self.traders_processed > prev_processed:
+                    consecutive_empty = 0
+                    if self.traders_processed % 50 == 0:
+                        conn = self.db.get_connection()
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                            SELECT COUNT(*) FROM traders
+                            WHERE is_flagged = 1
+                            AND research_excluded = 0
+                            AND (SELECT COUNT(*) FROM trades WHERE trader_address = traders.address) = 0
+                            AND backfill_attempted IS NULL
+                        """)
+                        remaining_count = cursor.fetchone()[0]
+                        conn.close()
+                        self.logger.info(
+                            "Backfill progress: %d traders this session, ~%d remaining in queue",
+                            self.traders_processed, remaining_count,
+                        )
 
                 if self.traders_processed % 100 == 0 and self.traders_processed > 0:
                     self._show_progress()
@@ -195,6 +225,10 @@ class BackgroundBackfillWorker:
                 break
 
             all_trades.extend(data)
+
+            if len(all_trades) >= 2000:
+                all_trades = all_trades[:2000]
+                break
 
             if len(data) < _DATA_API_LIMIT:
                 break
