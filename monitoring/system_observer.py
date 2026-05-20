@@ -445,11 +445,11 @@ class SystemObserver:
                             }
                             await self.telegram.send_monitoring_freeze_alert(freeze_diagnostics)
 
-                    # Check for high-value trades (runs every hour with the report)
-                    await self._check_high_value_trades()
+                    # DISABLED 2026-05-20 — pre-Phase 5, not actioning individual trade alerts
+                    # await self._check_high_value_trades()
 
-                    # Priority alerts for Elite (>=2000) and Legendary (>=2500) traders
-                    await self._check_legendary_trades()
+                    # DISABLED 2026-05-20 — pre-Phase 5, not actioning individual trade alerts
+                    # await self._check_legendary_trades()
 
                     # Check for smart money consensus (runs every hour)
                     await self._check_consensus_positions()
