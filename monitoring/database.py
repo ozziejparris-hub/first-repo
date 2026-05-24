@@ -144,8 +144,10 @@ class Database:
             ON traders(pnl_update_priority DESC, pnl_last_updated ASC)
         """)
 
-        conn.commit()
-        conn.close()
+        try:
+            conn.commit()
+        finally:
+            conn.close()
 
     @retry_on_locked(max_retries=3, delay=1)
     def add_or_update_trader(self, address: str, total_trades: int,
@@ -169,8 +171,10 @@ class Database:
         """, (address, total_trades, successful_trades, win_rate,
               total_volume, is_flagged, datetime.now()))
 
-        conn.commit()
-        conn.close()
+        try:
+            conn.commit()
+        finally:
+            conn.close()
 
     def get_flagged_traders(self) -> List[str]:
         """Get list of all flagged trader addresses."""
@@ -315,8 +319,10 @@ class Database:
 
         cursor.execute("UPDATE trades SET notified = 1 WHERE trade_id = ?", (trade_id,))
 
-        conn.commit()
-        conn.close()
+        try:
+            conn.commit()
+        finally:
+            conn.close()
 
     def get_unnotified_trades(self) -> List[Dict]:
         """Get all trades that haven't been notified yet."""
@@ -372,8 +378,10 @@ class Database:
         """, (market_id, title, category, end_date, resolved, winning_outcome,
               resolution_date, datetime.now(), condition_id))
 
-        conn.commit()
-        conn.close()
+        try:
+            conn.commit()
+        finally:
+            conn.close()
 
     @retry_on_locked(max_retries=3, delay=1)
     def update_market_resolution(self, market_id: str, winning_outcome: str):
@@ -396,8 +404,10 @@ class Database:
             WHERE market_id = ?
         """, (winning_outcome, datetime.now(), datetime.now(), market_id))
 
-        conn.commit()
-        conn.close()
+        try:
+            conn.commit()
+        finally:
+            conn.close()
 
         print(f"[DATABASE] Marked market {market_id} as resolved: {winning_outcome}")
 
@@ -501,8 +511,10 @@ class Database:
             WHERE trade_id = ?
         """, (result, trade_id))
 
-        conn.commit()
-        conn.close()
+        try:
+            conn.commit()
+        finally:
+            conn.close()
 
     def get_markets_with_trades(self) -> List[str]:
         """Get list of market_ids that have trades from flagged traders."""
@@ -1132,8 +1144,10 @@ class Database:
             WHERE address = ?
         """, (trader_address,))
 
-        conn.commit()
-        conn.close()
+        try:
+            conn.commit()
+        finally:
+            conn.close()
 
     def get_pnl_worker_stats(self) -> dict:
         """
