@@ -155,10 +155,22 @@ class BackgroundBackfillWorker:
                 if not batch:
                     consecutive_empty += 1
                     if consecutive_empty >= 20:
-                        self.logger.warning(
-                            "Backfill stall detected (%d consecutive empty batches) — resetting failed_traders",
-                            consecutive_empty,
+                        conn = self.db.get_connection()
+                        cursor = conn.cursor()
+                        cursor.execute(
+                            "SELECT COUNT(*) FROM traders"
+                            " WHERE is_flagged = 1 AND research_excluded = 0"
+                            " AND backfill_attempted IS NULL"
                         )
+                        pending_count = cursor.fetchone()[0]
+                        conn.close()
+                        if pending_count == 0:
+                            self.logger.debug("Backfill complete — queue empty, worker idle")
+                        else:
+                            self.logger.debug(
+                                "Backfill stall detected (%d consecutive empty batches) — resetting failed_traders",
+                                consecutive_empty,
+                            )
                         self.failed_traders = {}
                         consecutive_empty = 0
                     self.logger.debug("No traders pending backfill, sleeping %ds", self.batch_sleep)
