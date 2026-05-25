@@ -763,10 +763,13 @@ class PolymarketMonitor:
                 timestamp = datetime.now()
 
             # Store market information if we haven't seen it before
-            self.db.store_market_from_trade(trade, event_category=event_category)
+            # FIX-2 2026-05-25: moved to thread pool to unblock event loop
+            await asyncio.to_thread(self.db.store_market_from_trade, trade, event_category=event_category)
 
             # Try to add trade to database
-            is_new = self.db.add_trade(
+            # FIX-2 2026-05-25: moved to thread pool to unblock event loop
+            is_new = await asyncio.to_thread(
+                self.db.add_trade,
                 trade_id=trade_id,
                 trader_address=trader_address,
                 market_id=market_id,
@@ -833,7 +836,8 @@ class PolymarketMonitor:
 
     async def notify_new_trades(self):
         """Send bundled notifications for trades that haven't been notified yet."""
-        unnotified_trades = self.db.get_unnotified_trades()
+        # FIX-2 2026-05-25: moved to thread pool to unblock event loop
+        unnotified_trades = await asyncio.to_thread(self.db.get_unnotified_trades)
 
         if not unnotified_trades:
             return
@@ -852,7 +856,8 @@ class PolymarketMonitor:
         # Get trader stats for all traders
         trader_stats_map = {}
         for trader in trades_by_trader.keys():
-            stats = self.db.get_trader_stats(trader)
+            # FIX-2 2026-05-25: moved to thread pool to unblock event loop
+            stats = await asyncio.to_thread(self.db.get_trader_stats, trader)
             if stats:
                 trader_stats_map[trader] = stats
 
@@ -862,7 +867,8 @@ class PolymarketMonitor:
 
         # Mark all as notified
         for trade in unnotified_trades:
-            self.db.mark_trade_notified(trade['trade_id'])
+            # FIX-2 2026-05-25: moved to thread pool to unblock event loop
+            await asyncio.to_thread(self.db.mark_trade_notified, trade['trade_id'])
 
     def _update_activity_timestamp(self):
         """
@@ -1083,13 +1089,17 @@ class PolymarketMonitor:
                     safe_print("\nPeriodic resolution check (cycle #{})...".format(cycle_count))
 
                     # Get statistics before resolution check
-                    conn = self.db.get_connection()
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT COUNT(*) FROM markets")
-                    total_markets = cursor.fetchone()[0]
-                    cursor.execute("SELECT COUNT(*) FROM markets WHERE resolved = 1")
-                    resolved_count = cursor.fetchone()[0]
-                    conn.close()
+                    # FIX-2 2026-05-25: moved to thread pool to unblock event loop
+                    def _fetch_market_counts():
+                        _conn = self.db.get_connection()
+                        _cur = _conn.cursor()
+                        _cur.execute("SELECT COUNT(*) FROM markets")
+                        _total = _cur.fetchone()[0]
+                        _cur.execute("SELECT COUNT(*) FROM markets WHERE resolved = 1")
+                        _resolved = _cur.fetchone()[0]
+                        _conn.close()
+                        return _total, _resolved
+                    total_markets, resolved_count = await asyncio.to_thread(_fetch_market_counts)
 
                     safe_print(f"[MONITOR] Current DB state: {total_markets} total markets, {resolved_count} resolved")
 
@@ -1129,7 +1139,8 @@ class PolymarketMonitor:
                 safe_print("\n[P&L] Background worker handling position tracking continuously")
 
                 # Update activity timestamp for system observer
-                self._update_activity_timestamp()
+                # FIX-2 2026-05-25: moved to thread pool to unblock event loop
+                await asyncio.to_thread(self._update_activity_timestamp)
 
                 safe_print(f"\n[OK] Cycle complete. Next check in {self.check_interval // 60} minutes.")
                 _monitor_logger.info(f"Cycle complete. Next check in {self.check_interval // 60} minutes.")
