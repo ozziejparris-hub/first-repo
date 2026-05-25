@@ -95,6 +95,7 @@ class PolymarketMonitor:
         self.ai_agent = ai_agent  # Store AI agent
         self.check_interval = check_interval
         self.is_running = False
+        self.last_trade_timestamp: Optional[datetime] = None
         # conditionId → event category (refreshed from Gamma /events on startup + every 10 cycles)
         self._event_category_map: Dict[str, Optional[str]] = {}
 
@@ -706,10 +707,28 @@ class PolymarketMonitor:
         # Strategy: Fetch all recent trades and filter for our flagged traders
         # This is more efficient than calling get_trader_history() for each trader
         safe_print("Fetching recent trades from Polymarket...")
-        all_recent_trades = self.polymarket.get_market_trades(market_id=None, limit=500)
+        all_recent_trades = self.polymarket.get_market_trades(
+            market_id=None, limit=500, after_timestamp=self.last_trade_timestamp
+        )
 
         safe_print(f"[OK] Fetched {len(all_recent_trades)} recent trades")
         _monitor_logger.info(f"Fetched {len(all_recent_trades)} recent trades")
+
+        # Compute max timestamp across ALL fetched trades so the cursor advances
+        # even when no flagged traders appear in this batch.
+        batch_max_ts: Optional[datetime] = None
+        for _t in all_recent_trades:
+            _ts_raw = _t.get('timestamp')
+            try:
+                if isinstance(_ts_raw, (int, float)):
+                    _ts = _ts_raw / 1000 if _ts_raw > 1e10 else _ts_raw
+                    _ts_dt = datetime.fromtimestamp(_ts)
+                else:
+                    _ts_dt = datetime.fromisoformat(str(_ts_raw).replace('Z', '+00:00'))
+                if batch_max_ts is None or _ts_dt > batch_max_ts:
+                    batch_max_ts = _ts_dt
+            except Exception:
+                pass
 
         # Convert flagged traders to a set for fast lookup
         flagged_set = set(flagged_traders)
@@ -761,6 +780,12 @@ class PolymarketMonitor:
                     timestamp = datetime.fromisoformat(str(timestamp_raw).replace('Z', '+00:00'))
             except:
                 timestamp = datetime.now()
+
+            # Client-side cursor filter — definitive safety net against duplicates
+            # regardless of whether the API honoured the after_timestamp param.
+            if self.last_trade_timestamp is not None and timestamp <= self.last_trade_timestamp:
+                duplicate_count += 1
+                continue
 
             # Store market information if we haven't seen it before
             # FIX-2 2026-05-25: moved to thread pool to unblock event loop
@@ -830,6 +855,11 @@ class PolymarketMonitor:
                                   fallback="[BETTING INTEL] Warning: Alert failed")
             else:
                 duplicate_count += 1
+
+        # Advance the cursor to the max timestamp seen in this batch so the next
+        # cycle skips everything we just processed.
+        if batch_max_ts is not None:
+            self.last_trade_timestamp = batch_max_ts
 
         safe_print(f"[OK] New trades: {new_trades_count} | Already seen: {duplicate_count} | Excluded (crypto/sports): {excluded_count}")
         return new_trades_count

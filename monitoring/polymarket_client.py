@@ -212,11 +212,15 @@ class PolymarketClient:
             print(f"Error fetching all markets: {e}")
             return []
 
-    def get_market_trades(self, market_id: str, limit: int = 100) -> List[Dict]:
+    def get_market_trades(self, market_id: str, limit: int = 100,
+                          after_timestamp: Optional[datetime] = None) -> List[Dict]:
         """
         Fetch recent trades for a specific market using the Data API.
 
         Uses the public Data API which doesn't require authentication.
+        after_timestamp: if provided, passed to the API as "after" (ISO format) as a
+        best-effort server-side filter; client-side filtering in check_for_new_trades()
+        is the definitive safety net regardless.
         """
         try:
             url = f"{self.data_api_url}/trades"
@@ -227,6 +231,10 @@ class PolymarketClient:
             # Add market filter if provided (use conditionId for Data API)
             if market_id:
                 params["market"] = market_id
+
+            # Best-effort server-side timestamp filter (ignored if API doesn't support it)
+            if after_timestamp is not None:
+                params["after"] = after_timestamp.isoformat()
 
             # Data API is public, no auth needed
             response = requests.get(url, params=params, timeout=30)
