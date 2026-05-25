@@ -183,11 +183,38 @@ WHERE research_excluded = 0
   AND bot_suspect = 0
 """
 
+# --- Pool C: geopolitics accuracy pool ---
+# Geo-specialists often have <20 total resolved trades (research_excluded=1)
+# but may have ≥5 geo-specific resolved trades. This pool enables geo_elo
+# tier accuracy validation and STR-003 signal qualification independent of
+# the general research pool (Pool A/B).
+ACCURACY_POOL_GEO_RESET_SQL = "UPDATE traders SET geo_accuracy_pool = 0"
+
+ACCURACY_POOL_GEO_POPULATE_SQL = """
+UPDATE traders
+SET geo_accuracy_pool = 1
+WHERE geo_elo IS NOT NULL
+  AND geo_resolved_trades_count >= 5
+  AND geo_directionality_score IS NOT NULL
+  AND bot_type IS NULL
+  AND wash_trade_suspect = 0
+  AND bot_suspect = 0
+"""
+
 
 def _ensure_accuracy_pool_column(conn):
     """Add accuracy_pool column if it doesn't exist yet (idempotent)."""
     try:
         conn.execute("ALTER TABLE traders ADD COLUMN accuracy_pool BOOLEAN DEFAULT 0")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
+
+def _ensure_geo_accuracy_pool_column(conn):
+    """Add geo_accuracy_pool column if it doesn't exist yet (idempotent)."""
+    try:
+        conn.execute("ALTER TABLE traders ADD COLUMN geo_accuracy_pool BOOLEAN DEFAULT 0")
         conn.commit()
     except sqlite3.OperationalError:
         pass  # Column already exists
@@ -202,6 +229,7 @@ def main():
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=30000")
     _ensure_accuracy_pool_column(conn)
+    _ensure_geo_accuracy_pool_column(conn)
 
     try:
         # Identify focus-ratio candidates for review — NO DB write.
@@ -240,6 +268,11 @@ def main():
             conn.execute(ACCURACY_POOL_RESET_SQL)
             accuracy_pool_count = conn.execute(ACCURACY_POOL_POPULATE_SQL).rowcount
 
+        # Populate Pool C (geopolitics accuracy pool).
+        with conn:
+            conn.execute(ACCURACY_POOL_GEO_RESET_SQL)
+            geo_accuracy_pool_count = conn.execute(ACCURACY_POOL_GEO_POPULATE_SQL).rowcount
+
     except Exception as e:
         print(f"[ERROR] research_excluded update failed, rolled back: {e}", file=sys.stderr)
         sys.exit(1)
@@ -270,6 +303,7 @@ def main():
     print(f"  Total excluded        : {total_excluded:,} traders")
     print(f"  Synced is_flagged: {synced_flagged:,} traders flagged, {synced_unflagged:,} traders unflagged ({watched_preserved:,} watched + {leaderboard_preserved:,} leaderboard traders preserved)")
     print(f"  accuracy_pool (Pool A): {accuracy_pool_count:,} traders  (resolved>=10, P&L>$1K, no bot/wash)")
+    print(f"  geo_accuracy_pool (Pool C): {geo_accuracy_pool_count:,} traders  (geo_elo IS NOT NULL, geo_resolved>=5, no bot/wash)")
 
 
 if __name__ == "__main__":
