@@ -194,13 +194,15 @@ class BackgroundPnLWorker:
 
         # 1. Trade count (for logging only)
         conn = self.db.get_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT COUNT(*) FROM trades WHERE trader_address = ?",
-            (trader_address,)
-        )
-        trade_count = cursor.fetchone()[0]
-        conn.close()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT COUNT(*) FROM trades WHERE trader_address = ?",
+                (trader_address,)
+            )
+            trade_count = cursor.fetchone()[0]
+        finally:
+            conn.close()
 
         # 2. Match trades → positions (CPU-bound FIFO, no DB writes)
         positions = self.position_tracker.match_trades_for_trader(
