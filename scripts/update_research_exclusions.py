@@ -166,6 +166,32 @@ WHERE research_excluded = 1
   AND (discovery_source != 'leaderboard' OR discovery_source IS NULL)
 """
 
+# --- Pool A: accuracy/validation pool ---
+# Strict criteria for ELO calibration, feedback-loop accuracy, and Phase 5 gates.
+# Requires resolved history, positive P&L, and clean bot/wash-trade status.
+# Populated after all exclusion + is_flagged sync logic so research_excluded is final.
+ACCURACY_POOL_RESET_SQL = "UPDATE traders SET accuracy_pool = 0"
+
+ACCURACY_POOL_POPULATE_SQL = """
+UPDATE traders
+SET accuracy_pool = 1
+WHERE research_excluded = 0
+  AND resolved_trades_count >= 10
+  AND realized_pnl > 1000
+  AND bot_type IS NULL
+  AND wash_trade_suspect = 0
+  AND bot_suspect = 0
+"""
+
+
+def _ensure_accuracy_pool_column(conn):
+    """Add accuracy_pool column if it doesn't exist yet (idempotent)."""
+    try:
+        conn.execute("ALTER TABLE traders ADD COLUMN accuracy_pool BOOLEAN DEFAULT 0")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
 
 def main():
     if not DB_PATH.exists():
@@ -175,6 +201,7 @@ def main():
     conn = sqlite3.connect(str(DB_PATH), timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=30000")
+    _ensure_accuracy_pool_column(conn)
 
     try:
         # Identify focus-ratio candidates for review — NO DB write.
@@ -208,6 +235,11 @@ def main():
         total_clean    = rows.get(0, 0)
         total_excluded = rows.get(1, 0)
 
+        # Populate Pool A (accuracy/validation pool) after all exclusion logic is final.
+        with conn:
+            conn.execute(ACCURACY_POOL_RESET_SQL)
+            accuracy_pool_count = conn.execute(ACCURACY_POOL_POPULATE_SQL).rowcount
+
     except Exception as e:
         print(f"[ERROR] research_excluded update failed, rolled back: {e}", file=sys.stderr)
         sys.exit(1)
@@ -234,9 +266,10 @@ def main():
     print(f"  Leaderboard traders cleared to clean pool: {leaderboard_cleared:,} traders")
     print(f"  Newly excluded        : {newly_excluded:,} traders")
     print(f"  Newly cleared         : {newly_cleared:,} traders")
-    print(f"  Total clean pool      : {total_clean:,} traders")
+    print(f"  Total clean pool      : {total_clean:,} traders  (Pool B — signal watch)")
     print(f"  Total excluded        : {total_excluded:,} traders")
     print(f"  Synced is_flagged: {synced_flagged:,} traders flagged, {synced_unflagged:,} traders unflagged ({watched_preserved:,} watched + {leaderboard_preserved:,} leaderboard traders preserved)")
+    print(f"  accuracy_pool (Pool A): {accuracy_pool_count:,} traders  (resolved>=10, P&L>$1K, no bot/wash)")
 
 
 if __name__ == "__main__":

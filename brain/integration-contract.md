@@ -1,7 +1,7 @@
 # Integration Contract — Polymarket Trader Monitoring System
 
-**Version:** 1.3
-**Date:** 2026-05-15
+**Version:** 1.4
+**Date:** 2026-05-25
 **Audience:** Agents and scripts querying or writing trader metadata
 
 ---
@@ -75,6 +75,7 @@ These columns form the stable contract. All have existed since v1.0 unless noted
 | `specialisation_ratio` | REAL | NULL | YES | Fraction of trades in specialist category |
 | `copyable_edge` | BOOLEAN | NULL | YES | 1 = trader has signal worth mirroring |
 | `research_excluded` | BOOLEAN | 0 | NO | 1 = exclude from research/ELO queries; propagated by `update_research_exclusions.py` |
+| `accuracy_pool` | BOOLEAN | 0 | YES | 1 = member of Pool A (strict validation pool); populated by `update_research_exclusions.py` after all exclusion logic |
 
 ---
 
@@ -203,6 +204,52 @@ The clean research pool is **857 traders** (as of 2026-04-30 audit). The `resear
 
 ---
 
+## Section 6b — Research Pool Definitions
+
+The `research_excluded` and `accuracy_pool` flags define two distinct, non-interchangeable pools. Use the correct one for the task.
+
+### Pool B — Signal Watch Pool (permissive)
+
+**Filter:** `research_excluded = 0`
+
+Includes all monitored traders who passed the leaderboard/live-feed intake criteria. Covers low-resolved-trade traders who may exhibit insider or early-signal archetypes. Used for:
+- Live monitoring and Telegram alerts
+- Consensus signal detection
+- Lifecycle heuristic analysis
+
+Do **not** use Pool B for ELO accuracy validation — the resolved-trade threshold is too low to measure calibration.
+
+### Pool A — Accuracy / Validation Pool (strict)
+
+**Filter:** `accuracy_pool = 1`
+
+Subset of Pool B meeting all of:
+- `research_excluded = 0`
+- `resolved_trades_count >= 10`
+- `realized_pnl > 1000` (greater than $1,000)
+- `bot_type IS NULL`
+- `wash_trade_suspect = 0`
+- `bot_suspect = 0`
+
+Used for:
+- ELO calibration and feedback-loop accuracy measurement
+- Phase 5 validation gates
+- Any analysis that requires a track record sufficient to draw statistical conclusions
+
+**Current size:** ~73 traders (as of 2026-05-25). Updated every run of `update_research_exclusions.py`.
+
+### Query reference
+
+```sql
+-- Pool B: signal watch (unchanged from prior contract)
+AND tr.research_excluded = 0
+
+-- Pool A: accuracy/validation (new — strict subset of Pool B)
+AND tr.accuracy_pool = 1
+```
+
+---
+
 ## Section 7 — Critical Warnings
 
 1. **`timing_score` is intentionally neutral (1.0).** The `markets.created_at` column does not exist. All traders receive a neutral timing score. Do not re-enable timing scoring without adding that column first.
@@ -217,6 +264,7 @@ The clean research pool is **857 traders** (as of 2026-04-30 audit). The `resear
 
 | Date | Change | Affected consumers |
 |------|--------|-------------------|
+| 2026-05-25 | `traders.accuracy_pool` column added; Section 6b added documenting Pool A (accuracy) vs Pool B (signal watch) | ELO calibration, Phase 5 gates, any accuracy-validation query |
 | 2026-05-15 | `traders.discovery_source`, `traders.watched`, `traders.elo_period1_cutoff`, `traders.bot_type` columns documented | Agents querying trader metadata |
 | 2026-04-30 | `research_excluded` propagation fixed; clean pool confirmed at 857 traders; `trade_gap_flag` filter applied upstream in ELO pipeline | ELO system, research queries |
 | 2026-04-18 | Server migration complete; WAL mode confirmed permanent | All consumers |
@@ -224,4 +272,4 @@ The clean research pool is **857 traders** (as of 2026-04-30 audit). The `resear
 
 ---
 
-*End of Integration Contract v1.3*
+*End of Integration Contract v1.4*
