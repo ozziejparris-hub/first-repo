@@ -605,7 +605,7 @@ def save_signals(conn: sqlite3.Connection, signals: list[dict],
     for sig in signals:
         # Composite score gate: skip arb bets and low-conviction signals
         composite = sig.get("composite_score", 0.0)
-        if composite < 0.30:
+        if composite < 0.45:
             continue
         if _already_stored_signal(conn, sig):
             continue
