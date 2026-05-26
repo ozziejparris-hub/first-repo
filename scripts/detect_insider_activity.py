@@ -27,6 +27,7 @@ Usage:
 import sys
 import sqlite3
 import argparse
+import json
 from pathlib import Path
 from datetime import datetime, timedelta
 from collections import defaultdict
@@ -138,12 +139,171 @@ def _ensure_tables(conn: sqlite3.Connection):
         "ALTER TABLE insider_signals ADD COLUMN resolved_at TEXT DEFAULT NULL",
         "ALTER TABLE insider_signals ADD COLUMN information_value REAL DEFAULT NULL",
         "ALTER TABLE insider_signals ADD COLUMN scored_at TEXT DEFAULT NULL",
+        "ALTER TABLE insider_signals ADD COLUMN composite_score REAL DEFAULT NULL",
+        "ALTER TABLE insider_signals ADD COLUMN score_breakdown TEXT DEFAULT NULL",
     ]:
         try:
             conn.execute(_col_sql)
         except Exception:
             pass  # column already exists
     conn.commit()
+
+
+# ── Composite scoring (Mitts/Ofir 2026) ───────────────────────────────────────
+
+def calculate_composite_score(
+    trader_address: str,
+    market_id: str,
+    position_size: float,
+    entry_price: float,
+    wallet_age_days: int,
+    markets_count: int,
+    trade_timestamp: str,
+    conn: sqlite3.Connection,
+) -> tuple[float, dict]:
+    """
+    Five-signal Mitts/Ofir composite score (0.0–1.0).
+    Returns (composite_score, breakdown_dict).
+
+    Hard disqualification: entry_price > 0.80 → score = 0.0.
+    This filters near-certainty arb bets that have no information value.
+    """
+    breakdown = {}
+
+    if entry_price > 0.80:
+        breakdown["disqualified"] = "DISQUALIFIED: near-certainty arb bet"
+        breakdown["entry_price"] = entry_price
+        return 0.0, breakdown
+
+    cur = conn.cursor()
+
+    # Signal 1 — Cross-sectional bet size
+    cur.execute(
+        "SELECT SUM(entry_total_cost) FROM positions WHERE market_id = ?",
+        (market_id,),
+    )
+    row = cur.fetchone()
+    total_market_volume = (row[0] or 0.0) if row else 0.0
+    if total_market_volume > 0:
+        cs_ratio = position_size / total_market_volume
+        s1 = min(1.0, max(0.0, (cs_ratio - 0.01) / (0.10 - 0.01)))
+    else:
+        s1 = 0.0
+    breakdown["s1_cross_sectional"] = round(s1, 4)
+    breakdown["s1_market_volume"] = round(total_market_volume, 2)
+
+    # Signal 2 — Within-trader bet size anomaly
+    cur.execute(
+        "SELECT AVG(entry_total_cost) FROM positions WHERE trader_address = ?",
+        (trader_address,),
+    )
+    row = cur.fetchone()
+    trader_avg = (row[0] or 0.0) if row else 0.0
+    if trader_avg > 0:
+        wt_ratio = position_size / trader_avg
+        s2 = min(1.0, max(0.0, (wt_ratio - 2.0) / (10.0 - 2.0)))
+    else:
+        s2 = 0.5  # no history → neutral
+    breakdown["s2_within_trader"] = round(s2, 4)
+    breakdown["s2_trader_avg_position"] = round(trader_avg, 2)
+
+    # Signal 3 — Entry price contrarianism
+    if entry_price <= 0.10:
+        s3 = 1.0
+    elif entry_price <= 0.20:
+        s3 = 0.8
+    elif entry_price <= 0.35:
+        s3 = 0.6
+    elif entry_price <= 0.50:
+        s3 = 0.2
+    else:
+        s3 = 0.0
+    breakdown["s3_price_contrarian"] = round(s3, 4)
+
+    # Signal 4 — Pre-resolution timing
+    cur.execute(
+        "SELECT resolution_date FROM markets WHERE market_id = ?",
+        (market_id,),
+    )
+    row = cur.fetchone()
+    resolution_date_str = (row[0] if row else None) if row else None
+    s4 = 0.0
+    days_before = None
+    if resolution_date_str and trade_timestamp:
+        try:
+            res_dt = datetime.fromisoformat(str(resolution_date_str).replace("Z", "+00:00").rstrip("+00:00") if "Z" in str(resolution_date_str) else str(resolution_date_str))
+            trade_dt = datetime.fromisoformat(str(trade_timestamp))
+            # Strip timezone info for naive comparison
+            if res_dt.tzinfo is not None:
+                res_dt = res_dt.replace(tzinfo=None)
+            if trade_dt.tzinfo is not None:
+                trade_dt = trade_dt.replace(tzinfo=None)
+            days_before = (res_dt - trade_dt).total_seconds() / 86400.0
+            if days_before <= 1:
+                s4 = 1.0
+            elif days_before <= 3:
+                s4 = 0.8
+            elif days_before <= 7:
+                s4 = 0.6
+            elif days_before <= 14:
+                s4 = 0.4
+            elif days_before <= 30:
+                s4 = 0.2
+            else:
+                s4 = 0.0
+        except Exception:
+            s4 = 0.0
+    breakdown["s4_timing"] = round(s4, 4)
+    if days_before is not None:
+        breakdown["s4_days_before_resolution"] = round(days_before, 1)
+
+    # Signal 5 — Directional concentration
+    if markets_count == 1:
+        s5 = 1.0
+    elif markets_count <= 2:
+        s5 = 0.8
+    elif markets_count <= 5:
+        s5 = 0.6
+    elif markets_count <= 10:
+        s5 = 0.2
+    else:
+        s5 = 0.0
+    breakdown["s5_concentration"] = round(s5, 4)
+
+    composite = (s1 + s2 + s3 + s4 + s5) / 5.0
+    breakdown["composite"] = round(composite, 4)
+
+    return round(composite, 4), breakdown
+
+
+def backfill_composite_scores(conn: sqlite3.Connection) -> int:
+    """
+    Calculate and store composite_score + score_breakdown for all
+    insider_signals rows that have composite_score IS NULL.
+    Returns the number of rows updated.
+    """
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, trader_address, market_id, position_size, entry_price,
+               wallet_age_days, markets_count, trade_timestamp
+        FROM insider_signals
+        WHERE composite_score IS NULL
+    """)
+    rows = cur.fetchall()
+    updated = 0
+    for row in rows:
+        sig_id, addr, market_id, pos, price, age, mkts, ts = (
+            row[0], row[1], row[2], row[3] or 0.0,
+            row[4] or 0.0, row[5] or 0, row[6] or 0, row[7],
+        )
+        score, bd = calculate_composite_score(addr, market_id, pos, price, age, mkts, ts, conn)
+        conn.execute(
+            "UPDATE insider_signals SET composite_score = ?, score_breakdown = ? WHERE id = ?",
+            (score, json.dumps(bd), sig_id),
+        )
+        updated += 1
+    conn.commit()
+    return updated
 
 
 # ── Core detection ─────────────────────────────────────────────────────────────
@@ -244,18 +404,25 @@ def detect_individual_signals(conn: sqlite3.Connection,
         pattern = "New wallet, low-odds entry, single market focus" if low_odds else \
                   "New wallet, large high-price bet, single market focus (Iran-strike pattern)"
 
+        composite, breakdown = calculate_composite_score(
+            addr, market_id, round(position_size, 2), round(price, 4),
+            age_days, mkts, ts, conn,
+        )
+
         signals.append({
-            "market_id":      market_id,
-            "market_title":   market_title,
-            "outcome":        outcome,
-            "trader_address": addr,
-            "username":       username,
-            "position_size":  round(position_size, 2),
-            "entry_price":    round(price, 4),
-            "wallet_age_days": age_days,
-            "markets_count":  mkts,
-            "trade_timestamp": ts,
-            "pattern":        pattern,
+            "market_id":        market_id,
+            "market_title":     market_title,
+            "outcome":          outcome,
+            "trader_address":   addr,
+            "username":         username,
+            "position_size":    round(position_size, 2),
+            "entry_price":      round(price, 4),
+            "wallet_age_days":  age_days,
+            "markets_count":    mkts,
+            "trade_timestamp":  ts,
+            "pattern":          pattern,
+            "composite_score":  composite,
+            "score_breakdown":  breakdown,
         })
 
     return signals
@@ -402,23 +569,29 @@ def save_signals(conn: sqlite3.Connection, signals: list[dict],
     new_cls = 0
 
     for sig in signals:
+        # Composite score gate: skip arb bets and low-conviction signals
+        composite = sig.get("composite_score", 0.0)
+        if composite < 0.30:
+            continue
         if _already_stored_signal(conn, sig):
             continue
         if dry_run:
             new_sigs += 1
             continue
+        breakdown_json = json.dumps(sig.get("score_breakdown", {})) if sig.get("score_breakdown") else None
         for _attempt in range(10):
             try:
                 conn.execute("""
                     INSERT INTO insider_signals
                         (detected_at, market_id, market_title, outcome,
                          trader_address, username, position_size, entry_price,
-                         wallet_age_days, markets_count, trade_timestamp, pattern, alerted)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,0)
+                         wallet_age_days, markets_count, trade_timestamp, pattern,
+                         composite_score, score_breakdown, alerted)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)
                 """, (now, sig["market_id"], sig["market_title"], sig["outcome"],
                       sig["trader_address"], sig["username"], sig["position_size"],
                       sig["entry_price"], sig["wallet_age_days"], sig["markets_count"],
-                      sig["trade_timestamp"], sig.get("pattern")))
+                      sig["trade_timestamp"], sig.get("pattern"), composite, breakdown_json))
                 conn.commit()
                 new_sigs += 1
                 break
@@ -507,6 +680,10 @@ def run_detection(db_path: str,
     since = datetime.now() - timedelta(hours=hours)
     conn = _connect(db_path)
     _ensure_tables(conn)
+
+    backfilled = backfill_composite_scores(conn)
+    if verbose and backfilled:
+        print(f"[INSIDER] Backfilled composite scores for {backfilled} existing signal(s)")
 
     signals  = detect_individual_signals(conn, since)
     clusters = detect_cluster_signals(conn, since)

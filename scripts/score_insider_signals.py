@@ -21,6 +21,9 @@ import os
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.dirname(__file__))
+
+from detect_insider_activity import backfill_composite_scores
 
 DB_PATH = "/home/parison/projects/first-repo/data/polymarket_tracker.db"
 
@@ -39,6 +42,8 @@ def _ensure_columns(conn):
         "ALTER TABLE insider_signals ADD COLUMN resolved_at TEXT DEFAULT NULL",
         "ALTER TABLE insider_signals ADD COLUMN information_value REAL DEFAULT NULL",
         "ALTER TABLE insider_signals ADD COLUMN scored_at TEXT DEFAULT NULL",
+        "ALTER TABLE insider_signals ADD COLUMN composite_score REAL DEFAULT NULL",
+        "ALTER TABLE insider_signals ADD COLUMN score_breakdown TEXT DEFAULT NULL",
     ]:
         try:
             conn.execute(sql)
@@ -71,6 +76,9 @@ def _parse_deadline_from_title(title):
 def main():
     conn = _get_connection()
     _ensure_columns(conn)
+    backfilled = backfill_composite_scores(conn)
+    if backfilled:
+        print(f"[score] Backfilled composite scores for {backfilled} signal(s)")
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
 
     rows = conn.execute("""
@@ -79,6 +87,8 @@ def main():
             s.outcome,
             s.entry_price,
             s.market_title,
+            s.composite_score,
+            s.score_breakdown,
             m.resolved,
             m.winning_outcome,
             m.resolution_date
@@ -91,10 +101,21 @@ def main():
     wrong_count = 0
     pending_count = 0
     iv_sum_correct = 0.0
+    high_conviction_count = 0
+    disqualified_count = 0
     best = None
     worst = None
 
     for row in rows:
+        composite = row["composite_score"]
+        if composite is not None:
+            if composite == 0.0:
+                bd_str = row["score_breakdown"] or ""
+                if "DISQUALIFIED" in bd_str:
+                    disqualified_count += 1
+            elif composite >= 0.60:
+                high_conviction_count += 1
+
         resolved = row["resolved"] == 1
         wo = row["winning_outcome"]
         if not resolved or not wo or wo in ("", "unknown"):
@@ -145,8 +166,6 @@ def main():
         if deadline and deadline < today:
             flagged.append((row["id"], row["market_title"], deadline.strftime("%Y-%m-%d")))
 
-    conn.close()
-
     total = scored + pending_count
     raw_accuracy = (correct_count / scored * 100) if scored > 0 else 0.0
     weighted_accuracy = (iv_sum_correct / total) if total > 0 else 0.0
@@ -160,6 +179,31 @@ def main():
     if scored > 0:
         print(f"\nRaw accuracy:        {raw_accuracy:.1f}%  ({correct_count}/{scored})")
         print(f"Weighted accuracy:   {weighted_accuracy:+.4f}  (sum IV correct / total signals)")
+
+    print(f"\nComposite score breakdown:")
+    print(f"  High conviction (>= 0.60):  {high_conviction_count}")
+    print(f"  Disqualified (arb bets):    {disqualified_count}")
+
+    # Per-signal composite detail
+    all_rows = conn.execute("""
+        SELECT id, market_title, entry_price, composite_score, score_breakdown,
+               outcome_correct, information_value
+        FROM insider_signals
+        ORDER BY composite_score DESC NULLS LAST
+    """).fetchall()
+    if any(r["composite_score"] is not None for r in all_rows):
+        print(f"\nPer-signal composite scores:")
+        for r in all_rows:
+            cs = r["composite_score"]
+            cs_str = f"{cs:.3f}" if cs is not None else " n/a "
+            oc = r["outcome_correct"]
+            oc_str = "CORRECT" if oc == 1 else ("WRONG" if oc == 0 else "pending")
+            iv = r["information_value"]
+            iv_str = f"IV={iv:+.4f}" if iv is not None else ""
+            title = (r["market_title"] or "")[:55]
+            print(f"  #{r['id']:2d}  score={cs_str}  {oc_str:7s}  {iv_str:12s}  {title}")
+
+    conn.close()
 
     if best:
         print(f"\nBest signal:  '{best['market_title']}'")
