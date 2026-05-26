@@ -12,8 +12,9 @@ INDIVIDUAL SIGNAL — all five must be true simultaneously:
   5. Geopolitics market: passes keyword filter
 
 CLUSTER ALERT — 3+ fresh wallets betting the same outcome on the same
-geopolitics market within any 6-hour window, each with position > $1,000.
-Fires regardless of individual bet size.
+geopolitics/elections market within any 6-hour window, each with position
+> $500. Only fires if combined position >= $50K AND avg composite_score
+>= 0.35.
 
 Signals are stored in insider_signals and insider_clusters tables.
 Can be called directly (backtest mode) or imported by system_observer.py.
@@ -432,17 +433,20 @@ def detect_cluster_signals(conn: sqlite3.Connection,
                             since: datetime,
                             min_wallets: int = 3,
                             cluster_window_hours: float = 6.0,
-                            min_position: float = 1000.0,
+                            min_position: float = 500.0,        # per-wallet floor
+                            min_combined: float = 50_000.0,     # combined cluster gate
+                            min_avg_composite: float = 0.35,    # composite score gate
                             wallet_age_days: int = 90) -> list[dict]:
     """
     Detect clusters: N+ fresh wallets betting the same outcome on the same
-    geopolitics market within a rolling time window.
+    geopolitics/elections market within a rolling time window.
+    Only fires if combined position >= $50K and avg composite_score >= 0.35.
     """
     cur = conn.cursor()
     wallet_cutoff = (datetime.now() - timedelta(days=wallet_age_days)).isoformat()
     window_secs = cluster_window_hours * 3600
 
-    # Get all recent fresh-wallet trades on geopolitics markets
+    # Get all recent fresh-wallet trades — SQL-level category filter (Geopolitics/Elections)
     cur.execute("""
         SELECT
             tr.trader_address,
@@ -458,6 +462,7 @@ def detect_cluster_signals(conn: sqlite3.Connection,
         WHERE tr.timestamp >= ?
           AND t.first_seen >= ?
           AND tr.shares > 0
+          AND tr.market_category IN ('Geopolitics', 'Elections')
         ORDER BY tr.market_id, tr.outcome, tr.timestamp
     """, (since.isoformat(), wallet_cutoff))
 
@@ -467,17 +472,19 @@ def detect_cluster_signals(conn: sqlite3.Connection,
     bucket: dict = defaultdict(list)
     for row in rows:
         title = row["market_title"] or ""
-        if not _is_geopolitics(title):
+        if not _is_geopolitics(title):  # secondary keyword guard
             continue
         pos = (row["shares"] or 0) * (row["price"] or 0)
         if pos < min_position:
             continue
         key = (row["market_id"], row["outcome"])
         bucket[key].append({
-            "addr":   row["trader_address"],
-            "pos":    pos,
-            "ts":     row["timestamp"],
-            "title":  title,
+            "addr":       row["trader_address"],
+            "pos":        pos,
+            "ts":         row["timestamp"],
+            "title":      title,
+            "price":      row["price"] or 0.0,
+            "first_seen": row["first_seen"] or "",
         })
 
     clusters = []
@@ -504,12 +511,39 @@ def detect_cluster_signals(conn: sqlite3.Connection,
             if len(window) < min_wallets:
                 continue
 
-            # Deduplicate wallets within window
-            seen_addrs = {}
+            # Deduplicate wallets within window (keep first-seen trade per wallet)
+            seen_addrs: dict = {}
             for t in window:
                 if t["addr"] not in seen_addrs:
-                    seen_addrs[t["addr"]] = t["pos"]
+                    seen_addrs[t["addr"]] = t
             if len(seen_addrs) < min_wallets:
+                continue
+
+            # Gate 1: combined position must reach $50K
+            combined_size = sum(e["pos"] for e in seen_addrs.values())
+            if combined_size < min_combined:
+                continue
+
+            # Gate 2: avg composite score of cluster wallets must be >= 0.35
+            wallet_scores = []
+            for addr, entry in seen_addrs.items():
+                try:
+                    age_days = (datetime.now() - datetime.fromisoformat(entry["first_seen"])).days
+                except Exception:
+                    age_days = 0
+                sc = conn.cursor()
+                sc.execute(
+                    "SELECT COUNT(DISTINCT market_id) FROM trades WHERE trader_address = ?",
+                    (addr,),
+                )
+                mkts = sc.fetchone()[0] or 0
+                score, _ = calculate_composite_score(
+                    addr, market_id, entry["pos"], entry["price"],
+                    age_days, mkts, entry["ts"], conn,
+                )
+                wallet_scores.append(score)
+            avg_composite = sum(wallet_scores) / len(wallet_scores) if wallet_scores else 0.0
+            if avg_composite < min_avg_composite:
                 continue
 
             clusters.append({
@@ -517,7 +551,7 @@ def detect_cluster_signals(conn: sqlite3.Connection,
                 "market_title": trades[0]["title"],
                 "outcome":      outcome,
                 "wallet_count": len(seen_addrs),
-                "combined_size": round(sum(seen_addrs.values()), 2),
+                "combined_size": round(combined_size, 2),
                 "window_start": window[0]["ts"],
                 "window_end":   window[-1]["ts"],
                 "wallet_list":  ",".join(seen_addrs.keys()),
