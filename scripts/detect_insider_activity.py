@@ -132,6 +132,17 @@ def _ensure_tables(conn: sqlite3.Connection):
         conn.execute("ALTER TABLE insider_signals ADD COLUMN pattern TEXT")
     except Exception:
         pass  # column already exists
+    # Migration: add outcome tracking columns for signal scoring
+    for _col_sql in [
+        "ALTER TABLE insider_signals ADD COLUMN outcome_correct BOOLEAN DEFAULT NULL",
+        "ALTER TABLE insider_signals ADD COLUMN resolved_at TEXT DEFAULT NULL",
+        "ALTER TABLE insider_signals ADD COLUMN information_value REAL DEFAULT NULL",
+        "ALTER TABLE insider_signals ADD COLUMN scored_at TEXT DEFAULT NULL",
+    ]:
+        try:
+            conn.execute(_col_sql)
+        except Exception:
+            pass  # column already exists
     conn.commit()
 
 
