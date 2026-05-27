@@ -99,6 +99,21 @@ def _ensure_enrichment_columns(conn: sqlite3.Connection):
     conn.commit()
 
 
+def _ensure_trader_wallet_columns(conn: sqlite3.Connection):
+    """Add wallet provenance columns to traders table if not present (migration-safe)."""
+    for col_sql in [
+        "ALTER TABLE traders ADD COLUMN wallet_creation_date TEXT DEFAULT NULL",
+        "ALTER TABLE traders ADD COLUMN true_wallet_age_days INTEGER DEFAULT NULL",
+        "ALTER TABLE traders ADD COLUMN funding_wallet TEXT DEFAULT NULL",
+        "ALTER TABLE traders ADD COLUMN is_contract_wallet BOOLEAN DEFAULT NULL",
+    ]:
+        try:
+            conn.execute(col_sql)
+        except Exception:
+            pass  # column already exists
+    conn.commit()
+
+
 # ── Etherscan API calls ────────────────────────────────────────────────────────
 
 def get_wallet_first_transaction(address: str) -> dict | None:
@@ -326,6 +341,110 @@ def enrich_insider_signals(db_path: str = DB_PATH, dry_run: bool = False) -> int
     return updated
 
 
+# ── Pool C backfill ───────────────────────────────────────────────────────────
+
+def backfill_pool_c_wallet_ages(db_path: str = DB_PATH, dry_run: bool = False) -> dict:
+    """
+    Backfill true wallet creation dates for all Pool C traders
+    (geo_accuracy_pool = 1) who don't have wallet_creation_date yet.
+
+    Adds columns to traders table if not exist:
+    - wallet_creation_date TEXT DEFAULT NULL
+    - true_wallet_age_days INTEGER DEFAULT NULL
+    - funding_wallet TEXT DEFAULT NULL
+    - is_contract_wallet BOOLEAN DEFAULT NULL
+
+    Rate limit: 0.2s between API calls (5/sec max)
+    Reports progress every 50 traders.
+    """
+    conn = _connect(db_path)
+    _ensure_trader_wallet_columns(conn)
+
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT address
+        FROM traders
+        WHERE geo_accuracy_pool = 1
+          AND wallet_creation_date IS NULL
+        ORDER BY geo_elo DESC
+    """)
+    rows = cur.fetchall()
+    total = len(rows)
+
+    if not total:
+        logger.info("[backfill-pool-c] all Pool C traders already enriched")
+        conn.close()
+        return {"found": 0, "updated": 0, "skipped": 0, "dry_run": dry_run}
+
+    logger.info(f"[backfill-pool-c] {total} Pool C trader(s) need wallet enrichment")
+
+    if dry_run:
+        logger.info("[backfill-pool-c] *** DRY RUN — no API calls or DB writes ***")
+        # Sample up to 5 addresses so the caller can sanity-check
+        samples = [r["address"] for r in rows[:5]]
+        for addr in samples:
+            logger.info(f"[dry-run] would enrich: {addr}")
+        conn.close()
+        return {"found": total, "updated": 0, "skipped": 0, "dry_run": True}
+
+    updated = 0
+    skipped = 0
+
+    for i, row in enumerate(rows, 1):
+        address = row["address"]
+
+        tx_info = get_wallet_first_transaction(address)
+        time.sleep(1.0 / RATE_LIMIT)
+
+        usdc_info = get_wallet_usdc_funding_source(address)
+        time.sleep(1.0 / RATE_LIMIT)
+
+        if tx_info is None and usdc_info is None:
+            logger.warning(f"[backfill-pool-c] no on-chain data for {address}")
+            skipped += 1
+        else:
+            wallet_creation_date = tx_info["first_tx_date"] if tx_info else None
+            true_wallet_age_days = tx_info["wallet_age_days"] if tx_info else None
+            is_contract_wallet = tx_info["is_contract_wallet"] if tx_info else None
+
+            funding_wallet = None
+            if usdc_info:
+                funding_wallet = usdc_info.get("usdc_funding_wallet")
+            elif tx_info:
+                funding_wallet = tx_info.get("funding_wallet")
+
+            try:
+                conn.execute("""
+                    UPDATE traders
+                    SET wallet_creation_date = ?,
+                        true_wallet_age_days  = ?,
+                        funding_wallet        = ?,
+                        is_contract_wallet    = ?
+                    WHERE address = ?
+                """, (wallet_creation_date, true_wallet_age_days,
+                      funding_wallet, is_contract_wallet, address))
+                conn.commit()
+                updated += 1
+                logger.info(
+                    f"[backfill-pool-c] {address[:12]}... "
+                    f"created={wallet_creation_date} age={true_wallet_age_days}d "
+                    f"funded_by={funding_wallet} contract={is_contract_wallet}"
+                )
+            except sqlite3.OperationalError as e:
+                logger.error(f"[backfill-pool-c] DB write failed for {address}: {e}")
+                skipped += 1
+
+        if i % 50 == 0:
+            logger.info(
+                f"[backfill-pool-c] progress: {i}/{total} processed, "
+                f"{updated} updated, {skipped} skipped"
+            )
+
+    conn.close()
+    logger.info(f"[backfill-pool-c] done: {updated} updated, {skipped} skipped / {total} total")
+    return {"found": total, "updated": updated, "skipped": skipped, "dry_run": False}
+
+
 # ── Cluster funding analysis ───────────────────────────────────────────────────
 
 def check_cluster_shared_funding(market_id: str, db_path: str = DB_PATH) -> dict:
@@ -440,6 +559,8 @@ def main():
                         help="Preview enrichment without writing to DB")
     parser.add_argument("--market",
                         help="Check shared funding sources for all signals in a market_id")
+    parser.add_argument("--backfill-pool-c", action="store_true",
+                        help="Backfill wallet creation dates for all Pool C (geo_accuracy_pool=1) traders")
     parser.add_argument("--db", default=DB_PATH, help="Path to SQLite database")
     args = parser.parse_args()
 
@@ -462,7 +583,16 @@ def main():
         result = check_cluster_shared_funding(args.market, db_path=args.db)
         print(json.dumps(result, indent=2, default=str))
 
-    if not any([args.address, args.enrich, args.market]):
+    if args.backfill_pool_c:
+        print(f"\n{'='*60}")
+        print("  BACKFILL POOL C — WALLET AGES VIA ETHERSCAN")
+        if args.dry_run:
+            print("  *** DRY RUN — no API calls or DB writes ***")
+        print(f"{'='*60}\n")
+        result = backfill_pool_c_wallet_ages(db_path=args.db, dry_run=args.dry_run)
+        print(f"\n[backfill-pool-c] Result: {json.dumps(result, indent=2)}")
+
+    if not any([args.address, args.enrich, args.market, args.backfill_pool_c]):
         # Default: test on the two known insider signal addresses
         print("\nRunning test on two known insider signal addresses...\n")
         test_addresses = [
