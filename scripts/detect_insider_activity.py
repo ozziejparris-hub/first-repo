@@ -307,6 +307,47 @@ def backfill_composite_scores(conn: sqlite3.Connection) -> int:
     return updated
 
 
+def backfill_wallet_age_days(conn: sqlite3.Connection) -> int:
+    """
+    Recompute wallet_age_days for all insider_signals using:
+        (trade_timestamp - traders.first_seen).days
+    Falls back to (now - first_seen).days if trader not found.
+    Returns number of rows updated.
+    """
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, trader_address, trade_timestamp
+        FROM insider_signals
+        WHERE trade_timestamp IS NOT NULL
+    """)
+    rows = cur.fetchall()
+    updated = 0
+    for row in rows:
+        sig_id = row[0]
+        addr   = row[1]
+        ts     = row[2]
+        try:
+            fs_row = conn.execute(
+                "SELECT first_seen FROM traders WHERE address = ?", (addr,)
+            ).fetchone()
+            if fs_row and fs_row[0]:
+                age_days = (
+                    datetime.fromisoformat(ts) - datetime.fromisoformat(fs_row[0])
+                ).days
+            else:
+                age_days = None  # cannot compute — leave unchanged
+        except Exception:
+            age_days = None
+        if age_days is not None:
+            conn.execute(
+                "UPDATE insider_signals SET wallet_age_days = ? WHERE id = ?",
+                (age_days, sig_id),
+            )
+            updated += 1
+    conn.commit()
+    return updated
+
+
 # ── Core detection ─────────────────────────────────────────────────────────────
 
 def detect_individual_signals(conn: sqlite3.Connection,
@@ -381,9 +422,17 @@ def detect_individual_signals(conn: sqlite3.Connection,
         if mkts > max_markets:
             continue
 
-        # Compute wallet age in days
+        # Compute wallet age: days from first_seen to trade_timestamp (not to now)
         try:
-            age_days = (datetime.now() - datetime.fromisoformat(first_seen)).days
+            fs_row = conn.execute(
+                "SELECT first_seen FROM traders WHERE address = ?", (addr,)
+            ).fetchone()
+            if fs_row and fs_row[0]:
+                age_days = (
+                    datetime.fromisoformat(ts) - datetime.fromisoformat(fs_row[0])
+                ).days
+            else:
+                age_days = (datetime.now() - datetime.fromisoformat(first_seen)).days
         except Exception:
             age_days = 0
 
@@ -528,7 +577,15 @@ def detect_cluster_signals(conn: sqlite3.Connection,
             wallet_scores = []
             for addr, entry in seen_addrs.items():
                 try:
-                    age_days = (datetime.now() - datetime.fromisoformat(entry["first_seen"])).days
+                    fs_row = conn.execute(
+                        "SELECT first_seen FROM traders WHERE address = ?", (addr,)
+                    ).fetchone()
+                    if fs_row and fs_row[0]:
+                        age_days = (
+                            datetime.fromisoformat(entry["ts"]) - datetime.fromisoformat(fs_row[0])
+                        ).days
+                    else:
+                        age_days = (datetime.now() - datetime.fromisoformat(entry["first_seen"])).days
                 except Exception:
                     age_days = 0
                 sc = conn.cursor()
@@ -715,6 +772,10 @@ def run_detection(db_path: str,
     conn = _connect(db_path)
     _ensure_tables(conn)
 
+    age_backfilled = backfill_wallet_age_days(conn)
+    if verbose and age_backfilled:
+        print(f"[INSIDER] Backfilled wallet_age_days for {age_backfilled} existing signal(s)")
+
     backfilled = backfill_composite_scores(conn)
     if verbose and backfilled:
         print(f"[INSIDER] Backfilled composite scores for {backfilled} existing signal(s)")
@@ -760,6 +821,11 @@ def main():
     since = datetime.now() - timedelta(hours=args.hours)
     conn  = _connect(args.db)
     _ensure_tables(conn)
+
+    # ── Backfill wallet_age_days for existing signals ──
+    age_backfilled = backfill_wallet_age_days(conn)
+    if age_backfilled:
+        print(f"  Backfilled wallet_age_days for {age_backfilled} existing signal(s)")
 
     # ── Individual signals ──
     print("[1/2] Scanning for individual insider signals...")
