@@ -2,10 +2,12 @@
 """
 Resolution Sweep — Channel 2 discovery.
 
-When geopolitics/elections markets resolve, sweep ALL significant traders from
+When political/geopolitics markets resolve, sweep ALL significant traders from
 those markets into the monitored pool. Catches event-specific insiders
 (Magamyman archetype) who trade single markets in large size and would never
-appear in leaderboard discovery (which requires 3+ geo markets).
+appear in leaderboard discovery (which requires 3+ markets).
+
+Categories swept: 'Elections', 'Geopolitics', 'Global Politics', 'Politics', 'Ukraine & Russia'
 
 Entry criteria (intentionally permissive — catch small insiders):
   - total position volume >= $500 in the market
@@ -86,13 +88,13 @@ class ResolutionSweep:
         cur  = conn.cursor()
         now  = datetime.now()
 
-        # ── [1/4] Find recently resolved geo/elections markets ────────────────
-        print(f"\n[1/4] Finding geo/elections markets resolved in last {self.days} days...")
+        # ── [1/4] Find recently resolved political/geopolitics markets ──────────
+        print(f"\n[1/4] Finding political/geopolitics markets resolved in last {self.days} days...")
         cur.execute("""
             SELECT market_id, title, resolution_date, winning_outcome
             FROM markets
             WHERE resolved = 1
-              AND category IN ('Geopolitics', 'Elections')
+              AND category IN ('Elections', 'Geopolitics', 'Global Politics', 'Politics', 'Ukraine & Russia')
               AND resolution_date >= datetime('now', ?)
               AND resolution_date <= datetime('now')
             ORDER BY resolution_date DESC
@@ -101,7 +103,7 @@ class ResolutionSweep:
         print(f"      Found {len(markets)} markets.")
 
         if not markets:
-            print(f"\n      No geo/elections markets resolved in the last {self.days} days.")
+            print(f"\n      No political/geopolitics markets resolved in the last {self.days} days.")
             print("      Try --days 30 or --days 60 for a wider window.")
             _print_summary(
                 days=self.days, markets_swept=0, qualifying=0,
@@ -291,7 +293,7 @@ def _print_summary(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Sweep recently resolved geo/elections markets for significant traders."
+        description="Sweep recently resolved political/geopolitics markets for significant traders."
     )
     parser.add_argument("--db", default=DB_DEFAULT,
                         help="Path to SQLite database")
