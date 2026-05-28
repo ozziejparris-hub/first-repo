@@ -97,8 +97,14 @@ class ResolutionSweep:
               AND resolution_date >= datetime('now', ?)
               AND resolution_date <= datetime('now')
               AND market_id IN (
-                SELECT DISTINCT market_id FROM trades
+                SELECT market_id FROM trades
                 WHERE market_category IN ('Geopolitics', 'Elections')
+                GROUP BY market_id
+                HAVING COUNT(*) >= 3
+                  AND COUNT(*) * 2 >= (
+                    SELECT COUNT(*) FROM trades t2
+                    WHERE t2.market_id = trades.market_id
+                  )
               )
             ORDER BY resolution_date DESC
         """, (f"-{self.days} days",))
