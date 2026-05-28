@@ -94,9 +94,12 @@ class ResolutionSweep:
             SELECT market_id, title, resolution_date, winning_outcome
             FROM markets
             WHERE resolved = 1
-              AND category IN ('Elections', 'Geopolitics', 'Global Politics', 'Politics', 'Ukraine & Russia')
               AND resolution_date >= datetime('now', ?)
               AND resolution_date <= datetime('now')
+              AND market_id IN (
+                SELECT DISTINCT market_id FROM trades
+                WHERE market_category IN ('Geopolitics', 'Elections')
+              )
             ORDER BY resolution_date DESC
         """, (f"-{self.days} days",))
         markets = cur.fetchall()
