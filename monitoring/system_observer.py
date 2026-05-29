@@ -1638,6 +1638,7 @@ https://polymarket.com/profile/{address}
             WHERE
                 t.comprehensive_elo >= 1550
                 AND tr.shares > 0
+                AND tr.market_category IN ('Geopolitics', 'Elections')
             GROUP BY tr.market_id, tr.outcome
             HAVING
                 trader_count >= 3
@@ -1846,6 +1847,7 @@ https://polymarket.com/profile/{address}
                 t.comprehensive_elo >= 1550
                 AND tr.timestamp >= ?
                 AND tr.shares < 0
+                AND tr.market_category IN ('Geopolitics', 'Elections')
             GROUP BY tr.market_id, tr.outcome
             HAVING sellers >= 2
             ORDER BY sellers DESC
