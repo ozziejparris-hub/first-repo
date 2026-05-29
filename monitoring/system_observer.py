@@ -433,7 +433,7 @@ class SystemObserver:
                         mon_activity = metrics['monitoring_activity']
                         minutes_since = mon_activity.get('minutes_since_activity', 0)
 
-                        if minutes_since > 60:
+                        if minutes_since > 45:
                             print(f"[OBSERVER] ⚠️ MONITORING FROZEN DETECTED: {minutes_since:.0f} minutes silence")
 
                             # Send dedicated freeze alert with diagnostics
@@ -444,6 +444,11 @@ class SystemObserver:
                                 'traders_with_real_pnl': metrics.get('pnl_stats', {}).get('traders_with_real_pnl', 0),
                             }
                             await self.telegram.send_monitoring_freeze_alert(freeze_diagnostics)
+
+                            if self.last_restart_attempt is None or \
+                               (datetime.utcnow() - self.last_restart_attempt).total_seconds() > 3600:
+                                print("[OBSERVER] Monitoring frozen — triggering auto-restart")
+                                await self._attempt_monitoring_restart()
 
                     # DISABLED 2026-05-20 — pre-Phase 5, not actioning individual trade alerts
                     # await self._check_high_value_trades()

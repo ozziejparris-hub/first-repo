@@ -224,6 +224,47 @@ class PositionTracker:
 
         return all_positions
 
+    def _match_group_simplified(self, trader_address: str, market_id: str,
+                               outcome: str, trades: List[Dict]) -> List[Position]:
+        """
+        Simplified matching for large groups: one aggregated position instead of
+        per-SELL FIFO iteration.  Mathematically equivalent P&L for groups where
+        the FIFO loop would spin O(n²) times on floating-point partial fills.
+        """
+        buys = [t for t in trades if t['side'].upper() == 'BUY']
+        sells = [t for t in trades if t['side'].upper() == 'SELL']
+
+        if not buys:
+            return []
+
+        total_buy_shares = sum(b['shares'] for b in buys)
+        total_entry = sum(b['shares'] * b['price'] for b in buys)
+        entry_avg_price = total_entry / total_buy_shares
+        market_title = buys[0].get('market_title', 'Unknown')
+
+        _logger.debug(
+            "Using simplified matching for large group: %s %s (%.0f shares, %d trades)",
+            market_id, outcome, sum(t['shares'] for t in trades), len(trades),
+        )
+
+        position = Position(
+            trader_address, market_id, market_title, outcome,
+            total_buy_shares, entry_avg_price,
+            buys[0]['timestamp'], [b['trade_id'] for b in buys],
+        )
+
+        if sells:
+            total_sell_shares = sum(s['shares'] for s in sells)
+            total_exit = sum(s['shares'] * s['price'] for s in sells)
+            exit_avg_price = total_exit / total_sell_shares
+            matched_sell_shares = min(total_sell_shares, total_buy_shares)
+            position.close_position(
+                matched_sell_shares, exit_avg_price,
+                sells[-1]['timestamp'], [s['trade_id'] for s in sells],
+            )
+
+        return [position]
+
     def _match_group(self, trader_address: str, market_id: str, outcome: str,
                     trades: List[Dict], verbose: bool = False) -> List[Position]:
         """
@@ -241,6 +282,10 @@ class PositionTracker:
         Returns:
             List of Position objects
         """
+        total_shares = sum(t['shares'] for t in trades)
+        if total_shares > 100_000 or len(trades) > 50:
+            return self._match_group_simplified(trader_address, market_id, outcome, trades)
+
         positions = []
         open_buy_queue = deque()  # O(1) queue operations (was list)
 

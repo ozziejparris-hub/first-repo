@@ -89,6 +89,16 @@ class BackgroundPnLWorker:
 
     async def start(self):
         """Start the background P&L worker."""
+        # Ensure pnl_skip column exists (idempotent — silently ignored if already present)
+        conn = self.db.get_connection()
+        try:
+            conn.execute("ALTER TABLE traders ADD COLUMN pnl_skip BOOLEAN DEFAULT 0")
+            conn.commit()
+        except Exception:
+            pass
+        finally:
+            conn.close()
+
         self.logger.info("Starting background P&L worker")
         self.is_running = True
         self.start_time = time.time()
@@ -191,6 +201,24 @@ class BackgroundPnLWorker:
             trade_count, n_positions, n_closed, skipped, elapsed
         """
         t0 = time.time()
+
+        # 0. Honour pnl_skip flag — skip permanently flagged traders
+        conn = self.db.get_connection()
+        try:
+            row = conn.execute(
+                "SELECT pnl_skip FROM traders WHERE address = ?", (trader_address,)
+            ).fetchone()
+            pnl_skip = row[0] if row else 0
+        finally:
+            conn.close()
+
+        if pnl_skip:
+            self.logger.debug("pnl_skip=1 for %s — skipping", trader_address[:10])
+            self.db.mark_trader_pnl_updated(trader_address)
+            return {
+                'trade_count': 0, 'n_positions': 0, 'n_closed': 0,
+                'n_synthetic': 0, 'skipped': True, 'elapsed': time.time() - t0,
+            }
 
         # 1. Trade count (for logging only)
         conn = self.db.get_connection()
