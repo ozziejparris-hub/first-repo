@@ -21,7 +21,9 @@ STEPS = [
     ("Update research exclusions",        SCRIPTS_DIR / "update_research_exclusions.py"),
     ("Promote high-P&L traders",          SCRIPTS_DIR / "promote_high_pnl_traders.py",    None, True),
     ("Resolution sweep",                  SCRIPTS_DIR / "resolution_sweep.py",            None, True),
+    ("Update geo ELO scores",             SCRIPTS_DIR / "update_geo_elo.py",               None, True),
     ("Score insider signals",             SCRIPTS_DIR / "score_insider_signals.py",        None, True),
+    ("Score STR-003 signals",             SCRIPTS_DIR / "score_str003_signals.py",         None, True),
     ("Verify market titles",              SCRIPTS_DIR / "verify_market_titles.py",        None, True),
     ("Fetch new market resolutions",      SCRIPTS_DIR / "fast_resolution_check.py"),
     ("Evaluate new trader results",        SCRIPTS_DIR / "evaluate_new_trader_results.py", None, True),
@@ -71,6 +73,12 @@ def main():
 
     steps = list(STEPS)
     if datetime.now().weekday() == 6:  # Sunday
+        # Replace incremental geo ELO step with full recalc on Sundays.
+        steps = [
+            ("Update geo ELO scores (full recalc)", s[1], ["--full-recalc"], True)
+            if s[0] == "Update geo ELO scores" else s
+            for s in steps
+        ]
         steps.append(("Weekly full ELO recalculation",
                        SCRIPTS_DIR / "recalculate_comprehensive_elo.py",
                        ["--skip-correlation", "--skip-contrarian", "--skip-advanced-metrics"]))
@@ -78,6 +86,7 @@ def main():
         # API-rate-limited so runs weekly only.
         steps.append(("Discover leaderboard traders", SCRIPTS_DIR / "discover_leaderboard_traders.py", ["--limit", "100"], True))
         print("\n[WEEKLY] Sunday — full ELO recalculation added to run (--skip-correlation --skip-contrarian --skip-advanced-metrics)")
+        print("[WEEKLY] Sunday — geo ELO full recalculation enabled (--full-recalc)")
 
     for i, step in enumerate(steps, 1):
         label        = step[0]
