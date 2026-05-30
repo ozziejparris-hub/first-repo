@@ -57,6 +57,12 @@ V2_GENESIS_BLOCK = 86_000_000  # 0x51F1B40 — safely before V2 launch
 # V1 lookback: ~6 months at 2s/block
 V1_LOOKBACK_BLOCKS = 12_960_000
 
+# Polygon block-time constants for timestamp→block estimation
+POLYGON_GENESIS_TIMESTAMP = 1590824836  # Polygon mainnet genesis, May 30 2020
+POLYGON_GENESIS_BLOCK = 0
+POLYGON_BLOCKS_PER_SECOND = 1.0 / 2.1
+BLOCK_WINDOW_BUFFER = 50_000  # ~29 hours; pad either side of activity window
+
 # Starting chunk size for eth_getLogs calls; adapts down automatically on timeout.
 # Alchemy PAYG supports up to 2000 blocks/call; free tier is capped at 10.
 # Override via --block-chunk on the CLI.
@@ -188,6 +194,40 @@ def get_current_block() -> int:
     return int(result, 16)
 
 
+# --- Function 1b: get_trader_block_range ---
+
+def get_trader_block_range(
+    trader_address: str,
+    db_conn: sqlite3.Connection,
+    exchange_genesis: int,
+    current_block: int,
+) -> tuple[int, int]:
+    """
+    Derive a targeted block scan window from the trader's DB trade history.
+    Converts first/last trade timestamps to estimated Polygon block numbers,
+    adds BLOCK_WINDOW_BUFFER on each side, then clamps to [exchange_genesis, current_block].
+    Falls back to (exchange_genesis, current_block) when trader has no trades in DB.
+    """
+    cursor = db_conn.cursor()
+    cursor.execute(
+        "SELECT MIN(strftime('%s', timestamp)), MAX(strftime('%s', timestamp)) "
+        "FROM trades WHERE LOWER(trader_address) = LOWER(?)",
+        (trader_address,)
+    )
+    row = cursor.fetchone()
+    if row is None or row[0] is None:
+        return exchange_genesis, current_block
+
+    first_ts = int(row[0])
+    last_ts = int(row[1])
+    est_first = int(POLYGON_GENESIS_BLOCK + (first_ts - POLYGON_GENESIS_TIMESTAMP) * POLYGON_BLOCKS_PER_SECOND)
+    est_last = int(POLYGON_GENESIS_BLOCK + (last_ts - POLYGON_GENESIS_TIMESTAMP) * POLYGON_BLOCKS_PER_SECOND)
+
+    from_block = max(exchange_genesis, est_first - BLOCK_WINDOW_BUFFER)
+    to_block = min(current_block, est_last + BLOCK_WINDOW_BUFFER)
+    return from_block, to_block
+
+
 # --- Function 2: get_logs_for_trader ---
 
 def get_logs_for_trader(
@@ -247,14 +287,52 @@ def scan_trader(
 ) -> dict:
     """
     Scan all OrderFilled events for trader_address across both V1 and V2 exchanges.
-    Chunks block range into BLOCK_CHUNK segments.
+    Chunks block range into block_chunk segments.
     Matches events to DB trades and updates transaction_hash + is_taker.
+    When from_block is None, derives a targeted window from the trader's DB activity.
     """
     current = get_current_block()
-    to_block = to_block or current
+    to_block_cap = to_block or current
 
-    v2_from = from_block if from_block is not None else V2_GENESIS_BLOCK
-    v1_from = from_block if from_block is not None else max(0, current - V1_LOOKBACK_BLOCKS)
+    if from_block is not None:
+        v1_from, v1_to = from_block, to_block_cap
+        v2_from, v2_to = max(V2_GENESIS_BLOCK, from_block), to_block_cap
+        skip_v1 = False
+        skip_v2 = v2_from > v2_to
+    else:
+        v2_from, v2_to = get_trader_block_range(trader_address, db_conn, V2_GENESIS_BLOCK, current)
+        v1_from, v1_to = get_trader_block_range(trader_address, db_conn, 0, current)
+        v2_to = min(v2_to, to_block_cap)
+        v1_to = min(v1_to, to_block_cap)
+        skip_v2 = v2_from > v2_to
+        skip_v1 = v1_from > V2_GENESIS_BLOCK
+
+    v1_blocks = max(0, v1_to - v1_from + 1) if not skip_v1 else 0
+    v2_blocks = max(0, v2_to - v2_from + 1) if not skip_v2 else 0
+    chunks_v1 = (v1_blocks + block_chunk - 1) // block_chunk if v1_blocks > 0 else 0
+    chunks_v2 = (v2_blocks + block_chunk - 1) // block_chunk if v2_blocks > 0 else 0
+    total_chunks = chunks_v1 + chunks_v2
+    est_minutes = total_chunks * 2 * RATE_LIMIT_SLEEP / 60
+
+    if skip_v1:
+        print(f"[SCAN_TRADER] {trader_address} V1: SKIP (first trade after V2 genesis)", flush=True)
+    else:
+        print(f"[SCAN_TRADER] {trader_address} V1: blocks {v1_from}..{v1_to} ({v1_blocks:,} blocks)", flush=True)
+    if skip_v2:
+        print(f"[SCAN_TRADER] {trader_address} V2: SKIP (last trade before V2 genesis)", flush=True)
+    else:
+        print(f"[SCAN_TRADER] {trader_address} V2: blocks {v2_from}..{v2_to} ({v2_blocks:,} blocks)", flush=True)
+    print(f"[SCAN_TRADER] estimated chunks: {total_chunks} (~{est_minutes:.1f} min)", flush=True)
+
+    active_ranges = []
+    if not skip_v1:
+        active_ranges.append((v1_from, v1_to))
+    if not skip_v2:
+        active_ranges.append((v2_from, v2_to))
+    block_range = (
+        [min(r[0] for r in active_ranges), max(r[1] for r in active_ranges)]
+        if active_ranges else [0, 0]
+    )
 
     stats = {
         "events_found": 0,
@@ -262,31 +340,22 @@ def scan_trader(
         "taker_events": 0,
         "trades_matched": 0,
         "trades_updated": 0,
-        "block_range": [v2_from, to_block],
+        "block_range": block_range,
     }
 
     cursor = db_conn.cursor()
 
-    exchanges = [
-        (V2_EXCHANGE, V2_ORDER_FILLED, v2_from, "V2"),
-        (V1_EXCHANGE, V1_ORDER_FILLED, v1_from, "V1"),
-    ]
+    exchanges = []
+    if not skip_v2:
+        exchanges.append((V2_EXCHANGE, V2_ORDER_FILLED, v2_from, v2_to, "V2"))
+    if not skip_v1:
+        exchanges.append((V1_EXCHANGE, V1_ORDER_FILLED, v1_from, v1_to, "V1"))
 
-    total_chunks = sum(
-        (to_block - ex_from) // block_chunk + 1
-        for _, _, ex_from, _ in exchanges
-        if ex_from <= to_block
-    )
     chunk_num = 0
-    print(f"[SCAN_TRADER] {trader_address} blocks {v2_from}..{to_block} "
-          f"chunk_size={block_chunk} est_chunks={total_chunks}", flush=True)
-
-    for exchange, topic, ex_from, label in exchanges:
-        if ex_from > to_block:
-            continue  # exchange not yet deployed relative to to_block
+    for exchange, topic, ex_from, ex_to, label in exchanges:
         chunk_start = ex_from
-        while chunk_start <= to_block:
-            chunk_end = min(chunk_start + block_chunk - 1, to_block)
+        while chunk_start <= ex_to:
+            chunk_end = min(chunk_start + block_chunk - 1, ex_to)
             logs, effective_end = get_logs_for_trader(trader_address, exchange, topic, chunk_start, chunk_end)
             if effective_end < chunk_end:
                 block_chunk = effective_end - chunk_start + 1
@@ -299,7 +368,6 @@ def scan_trader(
                       f"events_so_far={stats['events_found']}", flush=True)
 
             if logs:
-                # Prefetch timestamp for first block in this chunk; cache handles the rest
                 first_block_num = int(logs[0].get("blockNumber", "0x0"), 16)
                 _get_block_timestamp(first_block_num)
 
