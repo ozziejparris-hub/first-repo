@@ -11,6 +11,7 @@ import argparse
 import importlib.util
 import json
 import os
+import re
 import sqlite3
 import sys
 import time
@@ -56,10 +57,10 @@ V2_GENESIS_BLOCK = 86_000_000  # 0x51F1B40 — safely before V2 launch
 # V1 lookback: ~6 months at 2s/block
 V1_LOOKBACK_BLOCKS = 12_960_000
 
-# Alchemy free tier: max 10 blocks per eth_getLogs call.
-# Upgrade to PAYG (https://alchemy.com) for 2000 blocks/call (200x faster).
+# Starting chunk size for eth_getLogs calls; adapts down automatically on timeout.
+# Alchemy PAYG supports up to 2000 blocks/call; free tier is capped at 10.
 # Override via --block-chunk on the CLI.
-BLOCK_CHUNK = 10
+BLOCK_CHUNK = 500
 RATE_LIMIT_SLEEP = 0.1   # seconds between RPC calls
 
 
@@ -90,6 +91,66 @@ def _rpc_call(method: str, params: list) -> Optional[object]:
         print(f"  [RPC ERROR] {method}: {e}")
         time.sleep(RATE_LIMIT_SLEEP)
         return None
+
+
+def _rpc_call_raw(method: str, params: list) -> dict:
+    """Returns the full JSON-RPC response dict; never raises. 'error' key present on failure."""
+    payload = json.dumps({
+        "jsonrpc": "2.0",
+        "method": method,
+        "params": params,
+        "id": 1,
+    }).encode()
+    req = urllib.request.Request(
+        ALCHEMY_RPC,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+        time.sleep(RATE_LIMIT_SLEEP)
+        return data
+    except Exception as e:
+        time.sleep(RATE_LIMIT_SLEEP)
+        return {"error": {"code": -1, "message": str(e)}}
+
+
+_TIMEOUT_PATTERN = re.compile(r'\[0x[0-9a-f]+,\s*0x([0-9a-f]+)\]')
+
+
+def _fetch_logs(params: dict) -> tuple[list, int]:
+    """
+    Call eth_getLogs with adaptive timeout retry.
+    Returns (logs, effective_to_block).
+    On -32000 timeout, extracts suggested toBlock from the error message, retries,
+    and returns the smaller effective range so the caller can adapt its chunk size.
+    """
+    from_block = int(params["fromBlock"], 16)
+    to_block = int(params["toBlock"], 16)
+
+    resp = _rpc_call_raw("eth_getLogs", [params])
+    if "result" in resp:
+        return resp["result"], to_block
+
+    error = resp.get("error", {})
+    if error.get("code") == -32000 and "Query timeout exceeded" in error.get("message", ""):
+        match = _TIMEOUT_PATTERN.search(error["message"])
+        if match:
+            suggested_to = int(match.group(1), 16)
+            working_chunk = suggested_to - from_block + 1
+            old_chunk = to_block - from_block + 1
+            print(f"  [ADAPTIVE] chunk reduced from {old_chunk} to {working_chunk} due to timeout",
+                  flush=True)
+            retry_params = dict(params, toBlock=hex(suggested_to))
+            retry_resp = _rpc_call_raw("eth_getLogs", [retry_params])
+            if "result" in retry_resp:
+                return retry_resp["result"], suggested_to
+            error = retry_resp.get("error", {})
+
+    print(f"  [RPC ERROR] eth_getLogs: {error}", flush=True)
+    return [], to_block
 
 
 # --- DB helpers ---
@@ -135,11 +196,12 @@ def get_logs_for_trader(
     topic: str,
     from_block: int,
     to_block: int,
-) -> list:
+) -> tuple[list, int]:
     """
     Call eth_getLogs for trader as maker (topic2) and as taker (topic3).
-    Returns combined list of log dicts with role='maker' or role='taker' added.
-    Handles rate limiting and errors gracefully.
+    Returns (combined_logs, effective_to_block).
+    effective_to_block < to_block when a timeout forced a smaller range;
+    the caller should adapt its chunk size and resume from effective_to_block + 1.
     """
     print(f"  [get_logs_for_trader] from={from_block} to={to_block} "
           f"range={to_block - from_block + 1} exchange=...{exchange[-6:]}", flush=True)
@@ -147,30 +209,30 @@ def get_logs_for_trader(
     results = []
 
     # Maker: trader in topic2
-    maker_logs = _rpc_call("eth_getLogs", [{
+    maker_logs, effective_to = _fetch_logs({
         "address": exchange,
         "topics": [topic, None, padded],
         "fromBlock": hex(from_block),
         "toBlock": hex(to_block),
-    }])
-    if maker_logs:
-        for log in maker_logs:
-            log["role"] = "maker"
-        results.extend(maker_logs)
+    })
+    for log in maker_logs:
+        log["role"] = "maker"
+    results.extend(maker_logs)
 
-    # Taker: trader in topic3
-    taker_logs = _rpc_call("eth_getLogs", [{
+    # Taker: trader in topic3 — honour effective_to from maker to skip a known-bad range
+    taker_logs, taker_effective_to = _fetch_logs({
         "address": exchange,
         "topics": [topic, None, None, padded],
         "fromBlock": hex(from_block),
-        "toBlock": hex(to_block),
-    }])
-    if taker_logs:
-        for log in taker_logs:
-            log["role"] = "taker"
-        results.extend(taker_logs)
+        "toBlock": hex(effective_to),
+    })
+    if taker_effective_to < effective_to:
+        effective_to = taker_effective_to
+    for log in taker_logs:
+        log["role"] = "taker"
+    results.extend(taker_logs)
 
-    return results
+    return results, effective_to
 
 
 # --- Function 3: scan_trader ---
@@ -216,7 +278,10 @@ def scan_trader(
         chunk_start = ex_from
         while chunk_start <= to_block:
             chunk_end = min(chunk_start + block_chunk - 1, to_block)
-            logs = get_logs_for_trader(trader_address, exchange, topic, chunk_start, chunk_end)
+            logs, effective_end = get_logs_for_trader(trader_address, exchange, topic, chunk_start, chunk_end)
+            if effective_end < chunk_end:
+                block_chunk = effective_end - chunk_start + 1
+            chunk_end = effective_end
 
             if logs:
                 # Prefetch timestamp for first block in this chunk; cache handles the rest
@@ -490,8 +555,8 @@ def main():
     parser.add_argument("--to-block", type=lambda x: int(x, 0), metavar="N",
                         help="Override end block (decimal or 0x hex; default: current chain tip)")
     parser.add_argument("--block-chunk", type=int, default=BLOCK_CHUNK, metavar="N",
-                        help=f"Blocks per eth_getLogs call (default: {BLOCK_CHUNK}=free tier; "
-                             f"PAYG tier supports 2000)")
+                        help=f"Blocks per eth_getLogs call (default: {BLOCK_CHUNK}; "
+                             f"adapts down on timeout; PAYG supports up to 2000)")
     args = parser.parse_args()
 
     if args.stats:
