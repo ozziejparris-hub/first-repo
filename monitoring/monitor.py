@@ -96,6 +96,9 @@ class PolymarketMonitor:
         self.check_interval = check_interval
         self.is_running = False
         self.last_trade_timestamp: Optional[datetime] = None
+        saved = self.db.get_monitor_state('last_trade_timestamp')
+        if saved:
+            self.last_trade_timestamp = datetime.fromisoformat(saved)
         # conditionId → event category (refreshed from Gamma /events on startup + every 10 cycles)
         self._event_category_map: Dict[str, Optional[str]] = {}
 
@@ -860,6 +863,7 @@ class PolymarketMonitor:
         # cycle skips everything we just processed.
         if batch_max_ts is not None:
             self.last_trade_timestamp = batch_max_ts
+            self.db.set_monitor_state('last_trade_timestamp', batch_max_ts.isoformat())
 
         safe_print(f"[OK] New trades: {new_trades_count} | Already seen: {duplicate_count} | Excluded (crypto/sports): {excluded_count}")
         return new_trades_count

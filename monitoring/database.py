@@ -144,10 +144,41 @@ class Database:
             ON traders(pnl_update_priority DESC, pnl_last_updated ASC)
         """)
 
+        # monitor_state table — persists key/value pairs across restarts
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS monitor_state (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         try:
             conn.commit()
         finally:
             conn.close()
+
+    def get_monitor_state(self, key: str) -> Optional[str]:
+        """Return the stored value for key, or None if not set."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM monitor_state WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        conn.close()
+        return row[0] if row else None
+
+    def set_monitor_state(self, key: str, value: str) -> None:
+        """Persist key/value pair, overwriting any previous value."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO monitor_state (key, value, updated_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value,
+                                           updated_at = excluded.updated_at
+        """, (key, value))
+        conn.commit()
+        conn.close()
 
     @retry_on_locked(max_retries=3, delay=1)
     def add_or_update_trader(self, address: str, total_trades: int,
