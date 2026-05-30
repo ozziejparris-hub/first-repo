@@ -95,6 +95,7 @@ def _find_traders_to_update(conn, full_recalc: bool) -> list:
           AND tr.market_category IN ('Geopolitics', 'Elections')
           AND tr.trade_result IN ('won', 'lost')
           AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)
+          AND tr.price BETWEEN 0.10 AND 0.80
           AND tr.timestamp <= datetime('now')
         GROUP BY t.address
         HAVING COUNT(tr.trade_id) >= ?
@@ -113,6 +114,7 @@ def _find_traders_to_update(conn, full_recalc: bool) -> list:
           AND tr.market_category IN ('Geopolitics', 'Elections')
           AND tr.trade_result IN ('won', 'lost')
           AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)
+          AND tr.price BETWEEN 0.10 AND 0.80
           AND tr.timestamp <= datetime('now')
         GROUP BY t.address
         HAVING COUNT(tr.trade_id) > COALESCE(t.geo_resolved_trades_count, 0)
@@ -138,6 +140,7 @@ def _fetch_qualifying_trades(conn, address: str) -> list:
           AND tr.market_category IN ('Geopolitics', 'Elections')
           AND tr.trade_result IN ('won', 'lost')
           AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)
+          AND tr.price BETWEEN 0.10 AND 0.80
           AND tr.timestamp <= datetime('now')
         ORDER BY tr.timestamp ASC
     """, (address,)).fetchall()
