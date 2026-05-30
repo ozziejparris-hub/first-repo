@@ -84,11 +84,11 @@ def _rpc_call(method: str, params: list) -> Optional[object]:
             data = json.loads(resp.read())
         time.sleep(RATE_LIMIT_SLEEP)
         if "error" in data:
-            print(f"  [RPC ERROR] {method}: {data['error']}")
+            print(f"  [RPC ERROR] {method}: {data['error']}", flush=True)
             return None
         return data.get("result")
     except Exception as e:
-        print(f"  [RPC ERROR] {method}: {e}")
+        print(f"  [RPC ERROR] {method}: {e}", flush=True)
         time.sleep(RATE_LIMIT_SLEEP)
         return None
 
@@ -272,6 +272,15 @@ def scan_trader(
         (V1_EXCHANGE, V1_ORDER_FILLED, v1_from, "V1"),
     ]
 
+    total_chunks = sum(
+        (to_block - ex_from) // block_chunk + 1
+        for _, _, ex_from, _ in exchanges
+        if ex_from <= to_block
+    )
+    chunk_num = 0
+    print(f"[SCAN_TRADER] {trader_address} blocks {v2_from}..{to_block} "
+          f"chunk_size={block_chunk} est_chunks={total_chunks}", flush=True)
+
     for exchange, topic, ex_from, label in exchanges:
         if ex_from > to_block:
             continue  # exchange not yet deployed relative to to_block
@@ -282,6 +291,12 @@ def scan_trader(
             if effective_end < chunk_end:
                 block_chunk = effective_end - chunk_start + 1
             chunk_end = effective_end
+
+            chunk_num += 1
+            if chunk_num % 50 == 0:
+                print(f"[PROGRESS] chunk {chunk_num}/{total_chunks} | "
+                      f"blocks {chunk_start}-{chunk_end} | "
+                      f"events_so_far={stats['events_found']}", flush=True)
 
             if logs:
                 # Prefetch timestamp for first block in this chunk; cache handles the rest
@@ -519,17 +534,17 @@ def get_scanner_state(db_path: str = DB_PATH) -> dict:
         "legendary_maker": leg_maker,
     }
 
-    print("\n[SCANNER STATE]")
-    print(f"  Total trades:          {total_trades:,}")
-    print(f"  Labeled (is_taker):    {labeled:,} ({label_pct}%)")
-    print(f"    Taker:               {taker_count:,} ({taker_pct}%)")
-    print(f"    Maker:               {maker_count:,} ({maker_pct}%)")
-    print(f"  Unlabeled:             {unlabeled:,}")
-    print(f"\n  LEGENDARY (geo_elo >= 2175, research_excluded=0):")
-    print(f"    Total trades:        {leg_total:,}")
-    print(f"    Labeled:             {leg_labeled:,} ({leg_label_pct}%)")
-    print(f"    Taker:               {leg_taker:,}")
-    print(f"    Maker:               {leg_maker:,}")
+    print("\n[SCANNER STATE]", flush=True)
+    print(f"  Total trades:          {total_trades:,}", flush=True)
+    print(f"  Labeled (is_taker):    {labeled:,} ({label_pct}%)", flush=True)
+    print(f"    Taker:               {taker_count:,} ({taker_pct}%)", flush=True)
+    print(f"    Maker:               {maker_count:,} ({maker_pct}%)", flush=True)
+    print(f"  Unlabeled:             {unlabeled:,}", flush=True)
+    print(f"\n  LEGENDARY (geo_elo >= 2175, research_excluded=0):", flush=True)
+    print(f"    Total trades:        {leg_total:,}", flush=True)
+    print(f"    Labeled:             {leg_labeled:,} ({leg_label_pct}%)", flush=True)
+    print(f"    Taker:               {leg_taker:,}", flush=True)
+    print(f"    Maker:               {leg_maker:,}", flush=True)
 
     return state
 
