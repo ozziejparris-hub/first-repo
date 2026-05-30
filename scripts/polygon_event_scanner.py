@@ -141,6 +141,8 @@ def get_logs_for_trader(
     Returns combined list of log dicts with role='maker' or role='taker' added.
     Handles rate limiting and errors gracefully.
     """
+    print(f"  [get_logs_for_trader] from={from_block} to={to_block} "
+          f"range={to_block - from_block + 1} exchange=...{exchange[-6:]}", flush=True)
     padded = "0x000000000000000000000000" + trader_address[2:].lower()
     results = []
 
@@ -292,6 +294,7 @@ def scan_pool_c(
     dry_run: bool = False,
     tier: str = "legendary",
     block_chunk: int = BLOCK_CHUNK,
+    from_block: int = None,
 ) -> dict:
     """
     Scan all traders in the specified tier for OrderFilled events.
@@ -299,7 +302,11 @@ def scan_pool_c(
     tier='legendary': traders WHERE geo_elo >= 2175 AND research_excluded = 0
     tier='pool_c':    traders WHERE geo_accuracy_pool = 1
     """
+    print(f"[DEBUG] scan_pool_c() starting: tier={tier} dry_run={dry_run} "
+          f"block_chunk={block_chunk} from_block={from_block}", flush=True)
+    print(f"[DEBUG] connecting to DB: {db_path}", flush=True)
     conn = _get_conn(db_path)
+    print("[DEBUG] DB connected, querying traders...", flush=True)
 
     if tier == "legendary":
         sql = """
@@ -315,20 +322,25 @@ def scan_pool_c(
         """
 
     traders = [row[0] for row in conn.execute(sql).fetchall()]
-    print(f"[SCAN] tier={tier} dry_run={dry_run} — {len(traders)} traders to process")
+    print(f"[SCAN] tier={tier} dry_run={dry_run} — {len(traders)} traders to process", flush=True)
     print(f"[SCAN] block_chunk={block_chunk} "
-          f"({'free tier' if block_chunk <= 10 else 'PAYG tier'})")
+          f"({'free tier' if block_chunk <= 10 else 'PAYG tier'})", flush=True)
 
     # Fetch once — all traders scan to the same tip
+    print("[DEBUG] fetching current block via RPC...", flush=True)
     current = get_current_block()
-    print(f"[SCAN] current block: {current} (0x{current:x})")
+    print(f"[SCAN] current block: {current} (0x{current:x})", flush=True)
 
+    scan_from = from_block if from_block is not None else V2_GENESIS_BLOCK
+    v2_range = current - scan_from
+    v1_range = V1_LOOKBACK_BLOCKS if from_block is None else min(V1_LOOKBACK_BLOCKS, current - scan_from)
     # Estimate RPC calls (2 calls per chunk × 2 exchanges × traders)
-    v2_chunks = (current - V2_GENESIS_BLOCK) // block_chunk + 1
-    v1_chunks = V1_LOOKBACK_BLOCKS // block_chunk
+    v2_chunks = v2_range // block_chunk + 1
+    v1_chunks = v1_range // block_chunk
     est_calls = len(traders) * (v2_chunks + v1_chunks) * 2
     est_hours = est_calls * RATE_LIMIT_SLEEP / 3600
-    print(f"[SCAN] estimated RPC calls: ~{est_calls:,} (~{est_hours:.1f} hours at {RATE_LIMIT_SLEEP}s/call)")
+    print(f"[SCAN] from_block={scan_from} (explicit={from_block is not None})", flush=True)
+    print(f"[SCAN] estimated RPC calls: ~{est_calls:,} (~{est_hours:.1f} hours at {RATE_LIMIT_SLEEP}s/call)", flush=True)
 
     totals = {
         "traders": 0,
@@ -340,7 +352,7 @@ def scan_pool_c(
     }
 
     for i, address in enumerate(traders, 1):
-        stats = scan_trader(address, conn, to_block=current, dry_run=dry_run, block_chunk=block_chunk)
+        stats = scan_trader(address, conn, from_block=from_block, to_block=current, dry_run=dry_run, block_chunk=block_chunk)
 
         totals["traders"] += 1
         totals["events_found"] += stats["events_found"]
@@ -354,17 +366,17 @@ def scan_pool_c(
             print(f"  [{i}/{len(traders)}] {address[:20]}... "
                   f"events={stats['events_found']} "
                   f"(M={stats['maker_events']} T={stats['taker_events']}) "
-                  f"matched={stats['trades_matched']} {verb}={stats['trades_updated']}")
+                  f"matched={stats['trades_matched']} {verb}={stats['trades_updated']}", flush=True)
         elif i % 5 == 0:
             print(f"  [{i}/{len(traders)}] {address[:20]}... no events — "
-                  f"running: events={totals['events_found']} matched={totals['trades_matched']}")
+                  f"running: events={totals['events_found']} matched={totals['trades_matched']}", flush=True)
 
     conn.close()
 
     print(f"\n[SCAN DONE] traders={totals['traders']} "
           f"events={totals['events_found']} "
           f"(maker={totals['maker_events']} taker={totals['taker_events']}) "
-          f"matched={totals['trades_matched']} updated={totals['trades_updated']}")
+          f"matched={totals['trades_matched']} updated={totals['trades_updated']}", flush=True)
 
     if not dry_run and totals["trades_updated"] > 0:
         _call_maker_taker_stats()
@@ -460,6 +472,8 @@ def get_scanner_state(db_path: str = DB_PATH) -> dict:
 # --- Main ---
 
 def main():
+    print("[DEBUG] main() starting", flush=True)
+    print(f"[DEBUG] sys.argv: {sys.argv}", flush=True)
     parser = argparse.ArgumentParser(
         description="Scan Polygon blockchain for Polymarket CTF Exchange OrderFilled events"
     )
@@ -495,11 +509,12 @@ def main():
             block_chunk=args.block_chunk,
         )
         conn.close()
-        print(f"\n[RESULT] {stats}")
+        print(f"\n[RESULT] {stats}", flush=True)
         return
 
     if args.tier:
-        scan_pool_c(dry_run=args.dry_run, tier=args.tier, block_chunk=args.block_chunk)
+        scan_pool_c(dry_run=args.dry_run, tier=args.tier, block_chunk=args.block_chunk,
+                    from_block=args.from_block)
         return
 
     parser.print_help()
