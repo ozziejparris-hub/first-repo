@@ -144,6 +144,19 @@ class Database:
             ON traders(pnl_update_priority DESC, pnl_last_updated ASC)
         """)
 
+        # Migration: Add transaction_hash column to trades table
+        try:
+            cursor.execute("ALTER TABLE trades ADD COLUMN transaction_hash TEXT DEFAULT NULL")
+            print("[DATABASE] Added 'transaction_hash' column to trades table")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
+        # Unique index on transaction_hash for dedup
+        cursor.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_trades_tx_hash
+            ON trades(transaction_hash) WHERE transaction_hash IS NOT NULL AND transaction_hash != ''
+        """)
+
         # monitor_state table — persists key/value pairs across restarts
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS monitor_state (
@@ -222,7 +235,7 @@ class Database:
     def add_trade(self, trade_id: str, trader_address: str, market_id: str,
                   market_title: str, market_category: str, outcome: str,
                   shares: float, price: float, side: str, timestamp: datetime,
-                  outcome_bet: str = None):
+                  outcome_bet: str = None, transaction_hash: str = None):
         """Add a new trade to the database."""
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -245,10 +258,12 @@ class Database:
 
             cursor.execute("""
                 INSERT INTO trades (trade_id, trader_address, market_id, market_title,
-                                  market_category, outcome, shares, price, side, timestamp, outcome_bet)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                  market_category, outcome, shares, price, side, timestamp, outcome_bet,
+                                  transaction_hash)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (trade_id, trader_address, market_id, market_title, market_category,
-                  outcome, shares, price, side, timestamp, outcome_bet))
+                  outcome, shares, price, side, timestamp, outcome_bet,
+                  transaction_hash or None))
 
             conn.commit()
             return True

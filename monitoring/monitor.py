@@ -761,6 +761,7 @@ class PolymarketMonitor:
             shares = float(trade.get('size', 0))
             price = float(trade.get('price', 0))
             side = trade.get('side', 'unknown')
+            transaction_hash = trade.get('transactionHash', '') or None
             timestamp_raw = trade.get('timestamp')
             market_title = trade.get('title', 'Unknown Market')
             # Look up Gamma event category for this market's conditionId
@@ -807,7 +808,8 @@ class PolymarketMonitor:
                 shares=shares,
                 price=price,
                 side=side,
-                timestamp=timestamp
+                timestamp=timestamp,
+                transaction_hash=transaction_hash
             )
 
             if is_new:
