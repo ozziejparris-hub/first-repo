@@ -35,6 +35,31 @@ STEPS = [
     ("Write integration health",          TRADING_SWARM_SCRIPTS / "write_integration_health.py"),
 ]
 
+DB_PATH = Path(__file__).parent.parent / "data" / "polymarket_tracker.db"
+
+
+def run_trade_dedup():
+    print("\n--- Step: Deduplicate trades table ---")
+    step_start = time.time()
+    sql = (
+        "DELETE FROM trades WHERE rowid NOT IN ("
+        "SELECT MIN(rowid) FROM trades "
+        "GROUP BY trader_address, market_id, outcome, timestamp, shares, price"
+        "); SELECT changes();"
+    )
+    result = subprocess.run(
+        ["sqlite3", str(DB_PATH), sql],
+        capture_output=True,
+        text=True,
+    )
+    elapsed = time.time() - step_start
+    if result.returncode != 0:
+        print(f"    WARNING — dedup failed: {result.stderr.strip()} ({elapsed:.1f}s)")
+        return
+    deleted = result.stdout.strip() or "0"
+    print(f"    Deleted {deleted} duplicate trade row(s) ({elapsed:.1f}s)")
+
+
 def run_step(label, script_path, extra_args=None):
     print(f"\n--- Step: {label} ---")
     print(f"    {script_path.name}")
@@ -105,6 +130,9 @@ def main():
                 print(f"\n=== MAINTENANCE FAILED at step {i} ({elapsed:.1f}s total) ===")
                 print(f"    Step {i} ({label}) failed — remaining steps skipped.")
                 sys.exit(1)
+
+    if datetime.now().weekday() == 6:  # Sunday
+        run_trade_dedup()
 
     elapsed = time.time() - start
     print(f"\n=== MAINTENANCE COMPLETE === {elapsed:.1f}s total — all steps succeeded ===")
