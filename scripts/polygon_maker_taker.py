@@ -26,6 +26,10 @@ with open(_env_path) as _f:
 
 EXCHANGE_CONTRACT = "0xe111180000d2663c0091e4f400237545b87b996b"
 ORDER_FILLED_TOPIC = "0xd543adfd945773f1a62f74f0ee55a5e3b9b1a28262980ba90b1a89f2ea84d8ee"
+
+V1_EXCHANGE = "0x4bfb41d5b3570defd03c39a9a4d8de6bd8b8982e"
+V1_ORDER_FILLED_TOPIC = "0xd0a08e8c493f9c94f29311604c9de1b4e8c8d4c06bd0c789af57f2d65bfec0f6"
+
 RATE_LIMIT_SLEEP = 0.1
 
 
@@ -100,34 +104,40 @@ def extract_maker_taker(receipt: dict, trader_address: str) -> Optional[str]:
     topic2 = maker      (indexed)
     topic3 = taker      (indexed)
 
+    Checks both V1 and V2 CTF Exchange logs.
     Exchange contract as taker = intermediary sub-event — skip.
     """
     trader = trader_address.lower()
-    exchange = EXCHANGE_CONTRACT.lower()
+    v2_exchange = EXCHANGE_CONTRACT.lower()
+    v1_exchange = V1_EXCHANGE.lower()
+    v2_topic = ORDER_FILLED_TOPIC.lower()
+    v1_topic = V1_ORDER_FILLED_TOPIC.lower()
 
     logs = receipt.get("logs", [])
 
     is_taker_in_tx = False
     is_maker_in_tx = False
 
-    matching_logs = []
     for log in logs:
         topics = log.get("topics", [])
-        if not topics or topics[0].lower() != ORDER_FILLED_TOPIC.lower():
+        if not topics:
             continue
+        topic0 = topics[0].lower()
+
+        if topic0 == v2_topic:
+            exchange = v2_exchange
+        elif topic0 == v1_topic:
+            exchange = v1_exchange
+        else:
+            continue
+
         if len(topics) < 4:
             continue
 
         maker_addr = "0x" + topics[2][-40:]
         taker_addr = "0x" + topics[3][-40:]
 
-        matching_logs.append({
-            "log_index": log.get("logIndex"),
-            "maker": maker_addr,
-            "taker": taker_addr,
-        })
-
-        # Real taker = not the exchange contract itself
+        # Real taker = not the exchange contract itself (intermediary sub-event)
         real_taker = taker_addr.lower() != exchange
 
         if taker_addr.lower() == trader and real_taker:
@@ -190,9 +200,10 @@ def backfill_maker_taker(
 
         if dry_run:
             logs = receipt.get("logs", [])
+            _known_topics = {ORDER_FILLED_TOPIC.lower(), V1_ORDER_FILLED_TOPIC.lower()}
             order_logs = [
                 lg for lg in logs
-                if lg.get("topics", []) and lg["topics"][0].lower() == ORDER_FILLED_TOPIC.lower()
+                if lg.get("topics", []) and lg["topics"][0].lower() in _known_topics
             ]
             print(f"\n  trade_id:        {trade_id}")
             print(f"  trader_address:  {trader_address}")

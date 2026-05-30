@@ -24,6 +24,8 @@ STEPS = [
     ("Update geo ELO scores",             SCRIPTS_DIR / "update_geo_elo.py",               None, True),
     ("Score insider signals",             SCRIPTS_DIR / "score_insider_signals.py",        None, True),
     ("Score STR-003 signals",             SCRIPTS_DIR / "score_str003_signals.py",         None, True),
+    ("Backfill transaction hashes",       SCRIPTS_DIR / "backfill_transaction_hashes.py", ["--tier", "pool_c"], True),
+    ("Label maker/taker roles",           SCRIPTS_DIR / "polygon_maker_taker.py",         ["--backfill", "--limit", "500"], True),
     ("Verify market titles",              SCRIPTS_DIR / "verify_market_titles.py",        None, True),
     ("Fetch new market resolutions",      SCRIPTS_DIR / "fast_resolution_check.py"),
     ("Evaluate new trader results",        SCRIPTS_DIR / "evaluate_new_trader_results.py", None, True),
