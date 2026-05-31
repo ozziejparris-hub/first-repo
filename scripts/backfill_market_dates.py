@@ -35,6 +35,7 @@ import requests
 
 DB_PATH = Path(__file__).parent.parent / "data" / "polymarket_tracker.db"
 GAMMA_API = "https://gamma-api.polymarket.com"
+CLOB_API = "https://clob.polymarket.com"
 
 
 def _get_connection():
@@ -56,6 +57,25 @@ def _parse_end_date(raw) -> str | None:
         return datetime.fromisoformat(str(raw).replace("Z", "+00:00")).isoformat()
     except Exception:
         return None
+
+
+def _fetch_by_clob(session: requests.Session, condition_id: str) -> dict | None:
+    """
+    Strategy 0: CLOB API direct lookup by conditionId.
+    GET https://clob.polymarket.com/markets/{condition_id}
+    Returns the response dict if end_date_iso is present, else None.
+    """
+    if not condition_id:
+        return None
+    try:
+        resp = session.get(f"{CLOB_API}/markets/{condition_id}", timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get("end_date_iso") or data.get("endDateIso"):
+                return data
+    except Exception:
+        pass
+    return None
 
 
 def _fetch_by_api_id(session: requests.Session, api_id: str) -> dict | None:
@@ -164,8 +184,14 @@ def backfill(limit: int, dry_run: bool, geo_only: bool):
 
         market_data = None
 
+        # Strategy 0: CLOB API lookup — market_id IS the conditionId for most markets
+        for cid in filter(None, dict.fromkeys([condition_id, market_id])):
+            market_data = _fetch_by_clob(session, cid)
+            if market_data:
+                break
+
         # Strategy 1: direct lookup via numeric api_id (guaranteed exact match)
-        if api_id:
+        if not market_data and api_id:
             market_data = _fetch_by_api_id(session, api_id)
 
         # Strategy 2: title search (only if we have a usable title)

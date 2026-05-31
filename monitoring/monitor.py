@@ -223,6 +223,62 @@ class PolymarketMonitor:
         finally:
             conn.close()
 
+    def _backfill_clob_end_dates(self, market_ids: set) -> None:
+        """
+        For each market_id in market_ids that has NULL end_date, query the CLOB API
+        once per unique condition_id and write the result to the DB.
+        Called via asyncio.to_thread from check_for_new_trades after each cycle.
+        """
+        if not market_ids:
+            return
+
+        conn = self.db.get_connection()
+        ids_needing_update = []
+        try:
+            ph = ','.join('?' * len(market_ids))
+            rows = conn.execute(
+                f"SELECT market_id FROM markets WHERE market_id IN ({ph}) AND end_date IS NULL",
+                list(market_ids)
+            ).fetchall()
+            ids_needing_update = [r[0] for r in rows]
+        except Exception as e:
+            safe_print(f"[CLOB] DB query error: {e}")
+        finally:
+            conn.close()
+
+        if not ids_needing_update:
+            return
+
+        updates = {}
+        for condition_id in ids_needing_update:
+            end_date = self.polymarket.get_clob_market_end_date(condition_id)
+            if end_date:
+                updates[condition_id] = end_date
+
+        if not updates:
+            return
+
+        conn = self.db.get_connection()
+        updated = 0
+        try:
+            for condition_id, end_date in updates.items():
+                cur = conn.execute("""
+                    UPDATE markets
+                    SET end_date = ?,
+                        resolution_date = COALESCE(resolution_date, ?)
+                    WHERE market_id = ?
+                      AND end_date IS NULL
+                """, (end_date, end_date, condition_id))
+                updated += cur.rowcount
+            conn.commit()
+        except Exception as e:
+            safe_print(f"[CLOB] DB update error: {e}")
+        finally:
+            conn.close()
+
+        if updated:
+            safe_print(f"[CLOB] Updated end_date for {updated} markets from CLOB API")
+
     async def _ai_categorization_check(self, market_title: str) -> bool:
         """
         Use AI to determine if market should be excluded.
@@ -792,6 +848,7 @@ class PolymarketMonitor:
         new_trades_count = 0
         duplicate_count = 0
         excluded_count = 0
+        clob_pending: set = set()
 
         for trader_address, trade in relevant_trades:
             # Extract trade information
@@ -815,6 +872,9 @@ class PolymarketMonitor:
             if await self._should_exclude_market(market_title, event_category):
                 excluded_count += 1
                 continue
+
+            if market_id:
+                clob_pending.add(market_id)
 
             # Parse timestamp
             try:
@@ -904,6 +964,10 @@ class PolymarketMonitor:
                                   fallback="[BETTING INTEL] Warning: Alert failed")
             else:
                 duplicate_count += 1
+
+        # CLOB end_date backfill: one API call per unique condition_id with NULL end_date
+        if clob_pending:
+            await asyncio.to_thread(self._backfill_clob_end_dates, clob_pending)
 
         # Advance the cursor to the max timestamp seen in this batch so the next
         # cycle skips everything we just processed.

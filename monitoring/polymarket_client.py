@@ -14,6 +14,8 @@ class PolymarketClient:
         self.clob_url = "https://clob.polymarket.com"
         self.data_api_url = "https://data-api.polymarket.com"  # Data API works publicly!
         self.session = requests.Session()
+        self._clob_end_date_cache: dict = {}
+        self._clob_last_call: float = 0.0
 
         # Set up headers with multiple authentication formats
         headers = {
@@ -388,6 +390,44 @@ class PolymarketClient:
                 traders.add(trader)
 
         return traders
+
+    def get_clob_market_end_date(self, condition_id: str) -> Optional[str]:
+        """
+        Fetch end_date_iso for a market from the CLOB API.
+
+        GET https://clob.polymarket.com/markets/{condition_id}
+
+        Results are cached in memory. Rate-limited to 0.1s between calls.
+        Returns the end_date_iso string, or None on error/missing field.
+        Uses getattr so it is safe when called via __new__ (bypassing __init__).
+        """
+        cache = getattr(self, '_clob_end_date_cache', None)
+        if cache is None:
+            self._clob_end_date_cache = {}
+            cache = self._clob_end_date_cache
+
+        if condition_id in cache:
+            return cache[condition_id]
+
+        last_call = getattr(self, '_clob_last_call', 0.0)
+        elapsed = time.time() - last_call
+        if elapsed < 0.1:
+            time.sleep(0.1 - elapsed)
+
+        clob_url = getattr(self, 'clob_url', 'https://clob.polymarket.com')
+        try:
+            resp = requests.get(f"{clob_url}/markets/{condition_id}", timeout=10)
+            self._clob_last_call = time.time()
+            if resp.status_code == 200:
+                data = resp.json()
+                end_date = data.get('end_date_iso') or data.get('endDateIso')
+                if end_date:
+                    cache[condition_id] = str(end_date)
+                    return str(end_date)
+        except Exception as e:
+            print(f"[CLOB] Error fetching end_date for {condition_id[:16]}...: {e}")
+
+        return None
 
     def test_connection(self) -> bool:
         """
