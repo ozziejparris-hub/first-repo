@@ -106,14 +106,13 @@ def main():
             if s[0] == "Update geo ELO scores" else s
             for s in steps
         ]
-        steps.append(("Weekly full ELO recalculation",
-                       SCRIPTS_DIR / "recalculate_comprehensive_elo.py",
-                       ["--skip-correlation", "--skip-contrarian", "--skip-advanced-metrics"]))
+        # Full ELO recalculation runs separately at 03:00 UTC via polymarket-sunday-elo.timer
+        # to avoid holding a DB write lock during the 06:00 maintenance window.
         # Weekly trader discovery — scans top geopolitics markets for new participants not yet in DB.
         # API-rate-limited so runs weekly only.
         steps.append(("Discover leaderboard traders", SCRIPTS_DIR / "discover_leaderboard_traders.py", ["--limit", "100"], True))
-        print("\n[WEEKLY] Sunday — full ELO recalculation added to run (--skip-correlation --skip-contrarian --skip-advanced-metrics)")
-        print("[WEEKLY] Sunday — geo ELO full recalculation enabled (--full-recalc)")
+        print("\n[WEEKLY] Sunday — geo ELO full recalculation enabled (--full-recalc)")
+        print("[WEEKLY] Sunday — full ELO recalculation runs at 03:00 UTC via systemd timer (not here)")
 
     for i, step in enumerate(steps, 1):
         label        = step[0]
@@ -133,6 +132,18 @@ def main():
 
     if datetime.now().weekday() == 6:  # Sunday
         run_trade_dedup()
+
+    # WAL checkpoint — clears accumulated WAL pages without blocking readers or writers.
+    print("\n--- Step: WAL checkpoint ---")
+    wal_result = subprocess.run(
+        ["sqlite3", str(DB_PATH), "PRAGMA wal_checkpoint(PASSIVE);"],
+        capture_output=True,
+        text=True,
+    )
+    if wal_result.returncode == 0:
+        print(f"    OK — {wal_result.stdout.strip()}")
+    else:
+        print(f"    WARNING — WAL checkpoint failed: {wal_result.stderr.strip()}")
 
     elapsed = time.time() - start
     print(f"\n=== MAINTENANCE COMPLETE === {elapsed:.1f}s total — all steps succeeded ===")

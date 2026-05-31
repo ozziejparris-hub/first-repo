@@ -598,8 +598,10 @@ class UnifiedELOMonitoringBridge:
                 traders_updated += 1
                 elo_values.append(comprehensive_elo)
 
-                if verbose and (i + 1) % 50 == 0:
-                    print(f"  [{i+1}/{len(trader_addresses)}] Updated")
+                if (i + 1) % 500 == 0:
+                    conn.commit()
+                    if verbose:
+                        print(f"  [{i+1}/{len(trader_addresses)}] Updated (batch commit)")
 
             except Exception as e:
                 traders_failed += 1
@@ -608,7 +610,7 @@ class UnifiedELOMonitoringBridge:
                 if verbose:
                     print(f"  [ERROR] {error_msg}")
 
-        conn.commit()
+        conn.commit()  # final flush for remaining traders
         conn.close()
 
         duration = time.time() - start_time

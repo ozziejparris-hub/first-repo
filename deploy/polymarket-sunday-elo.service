@@ -1,0 +1,11 @@
+[Unit]
+Description=Polymarket Sunday ELO Recalculation
+After=network.target
+
+[Service]
+Type=oneshot
+User=parison
+WorkingDirectory=/home/parison/projects/first-repo
+ExecStart=/home/parison/projects/first-repo/scripts/run_sunday_elo.sh
+StandardOutput=append:/home/parison/projects/first-repo/logs/sunday_elo.log
+StandardError=append:/home/parison/projects/first-repo/logs/sunday_elo.log

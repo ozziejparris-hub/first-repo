@@ -1,0 +1,9 @@
+[Unit]
+Description=Run Polymarket Sunday ELO Recalculation at 03:00 UTC Sunday
+
+[Timer]
+OnCalendar=Sun *-*-* 03:00:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
