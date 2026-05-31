@@ -155,6 +155,8 @@ def _compute_geo_elo(trades: list) -> float:
         expected = price if outcome_bet == 'Yes' else (1.0 - price)
         actual = 1.0 if trade_result == 'won' else 0.0
         elo += _k_factor(i) * (actual - expected)
+    max_geo_elo = 1500.0 + (len(trades) * 150.0)
+    elo = min(elo, max_geo_elo)
     return elo
 
 
