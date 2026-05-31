@@ -100,19 +100,12 @@ def main():
 
     steps = list(STEPS)
     if datetime.now().weekday() == 6:  # Sunday
-        # Replace incremental geo ELO step with full recalc on Sundays.
-        steps = [
-            ("Update geo ELO scores (full recalc)", s[1], ["--full-recalc"], True)
-            if s[0] == "Update geo ELO scores" else s
-            for s in steps
-        ]
-        # Full ELO recalculation runs separately at 03:00 UTC via polymarket-sunday-elo.timer
-        # to avoid holding a DB write lock during the 06:00 maintenance window.
+        # Full ELO recalculation runs at 03:00 UTC via polymarket-sunday-elo.timer
+        # daily_maintenance does NOT run --full-recalc — the timer owns it exclusively.
         # Weekly trader discovery — scans top geopolitics markets for new participants not yet in DB.
         # API-rate-limited so runs weekly only.
         steps.append(("Discover leaderboard traders", SCRIPTS_DIR / "discover_leaderboard_traders.py", ["--limit", "100"], True))
-        print("\n[WEEKLY] Sunday — geo ELO full recalculation enabled (--full-recalc)")
-        print("[WEEKLY] Sunday — full ELO recalculation runs at 03:00 UTC via systemd timer (not here)")
+        print("\n[WEEKLY] Sunday — full ELO recalculation handled by polymarket-sunday-elo.timer (03:00 UTC)")
 
     for i, step in enumerate(steps, 1):
         label        = step[0]
