@@ -75,8 +75,8 @@ def _score_signal(signal: dict, conn) -> dict:
     the original dict unchanged if the market is not yet resolved.
     """
     payload = signal.get('payload', {})
-    market_id = payload.get('market_id')
-    direction = str(payload.get('direction', '')).upper()
+    market_id = payload.get('market_id') or signal.get('market_id')
+    direction = str(payload.get('direction') or signal.get('direction', '')).upper()
 
     if not market_id or direction not in ('YES', 'NO'):
         return signal
@@ -124,7 +124,8 @@ def _write_finding(resolved_signals: list):
     tier_stats = {}
     for sig in resolved_signals:
         payload = sig.get('payload', {})
-        tier = payload.get('geo_elo_tier') or _geo_elo_tier(payload.get('trader_geo_elo'))
+        tier = (payload.get('geo_elo_tier') or sig.get('geo_elo_tier') or
+                _geo_elo_tier(payload.get('trader_geo_elo') or sig.get('trader_geo_elo')))
         if tier not in tier_stats:
             tier_stats[tier] = {'correct': 0, 'total': 0}
         tier_stats[tier]['total'] += 1
@@ -217,8 +218,10 @@ def main():
         changed = True
         newly_scored += 1
 
-        direction = updated.get('payload', {}).get('direction', '?')
-        title = updated.get('payload', {}).get('market_title', signal.get('payload', {}).get('market_id', 'unknown'))
+        p = updated.get('payload', {})
+        direction = p.get('direction') or updated.get('direction', '?')
+        title = (p.get('market_title') or updated.get('market_title') or
+                 p.get('market_id') or updated.get('market_id', 'unknown'))
         result_str = "CORRECT" if updated['outcome_correct'] == 1 else "WRONG"
         print(f"  Scored: {title} | {direction} → {result_str}")
 
@@ -243,7 +246,8 @@ def main():
         tier_counts = {}
         for sig in already_scored:
             payload = sig.get('payload', {})
-            tier = payload.get('geo_elo_tier') or _geo_elo_tier(payload.get('trader_geo_elo'))
+            tier = (payload.get('geo_elo_tier') or sig.get('geo_elo_tier') or
+                _geo_elo_tier(payload.get('trader_geo_elo') or sig.get('trader_geo_elo')))
             if tier not in tier_counts:
                 tier_counts[tier] = {'correct': 0, 'total': 0}
             tier_counts[tier]['total'] += 1
