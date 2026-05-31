@@ -145,6 +145,14 @@ def main():
     else:
         print(f"    WARNING — WAL checkpoint failed: {wal_result.stderr.strip()}")
 
+    # Backfill market dates — gradually fills end_date/resolution_date for geo markets.
+    # Non-blocking: a Gamma API failure here should never abort maintenance.
+    run_step(
+        "Backfill market dates",
+        SCRIPTS_DIR / "backfill_market_dates.py",
+        extra_args=["--geo-only", "--limit", "500"],
+    )
+
     elapsed = time.time() - start
     print(f"\n=== MAINTENANCE COMPLETE === {elapsed:.1f}s total — all steps succeeded ===")
 

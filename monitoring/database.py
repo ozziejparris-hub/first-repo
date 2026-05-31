@@ -110,6 +110,13 @@ class Database:
         except sqlite3.OperationalError:
             pass  # Column already exists
 
+        # Migration: Add end_date field if it doesn't exist (idempotent)
+        try:
+            cursor.execute("ALTER TABLE markets ADD COLUMN end_date TEXT DEFAULT NULL")
+            print("[DATABASE] Added 'end_date' column to markets table")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         # Migration: Add P&L tracking columns for background worker
         try:
             cursor.execute("""
@@ -408,6 +415,11 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
 
+        # Use end_date as proxy for resolution_date when not explicitly provided.
+        # This lets STR-003 and other signals see approaching deadlines even before
+        # the market officially resolves.
+        effective_resolution_date = resolution_date if resolution_date is not None else end_date
+
         cursor.execute("""
             INSERT INTO markets (market_id, title, category, end_date, resolved,
                                winning_outcome, resolution_date, last_checked, condition_id)
@@ -415,14 +427,14 @@ class Database:
             ON CONFLICT(market_id) DO UPDATE SET
                 title = excluded.title,
                 category = excluded.category,
-                end_date = excluded.end_date,
+                end_date = COALESCE(excluded.end_date, end_date),
                 resolved = excluded.resolved,
                 winning_outcome = excluded.winning_outcome,
-                resolution_date = excluded.resolution_date,
+                resolution_date = COALESCE(resolution_date, excluded.resolution_date, excluded.end_date),
                 last_checked = excluded.last_checked,
                 condition_id = COALESCE(excluded.condition_id, condition_id)
         """, (market_id, title, category, end_date, resolved, winning_outcome,
-              resolution_date, datetime.now(), condition_id))
+              effective_resolution_date, datetime.now(), condition_id))
 
         try:
             conn.commit()
@@ -679,12 +691,25 @@ class Database:
         # Prefer the event_category from Gamma /events; fall back to trade-embedded value
         category = event_category or trade.get('category') or trade.get('market_category') or 'Unknown'
 
+        # Extract endDate if the API includes it on the trade object (best-effort)
+        end_date = None
+        end_date_raw = trade.get('endDate') or trade.get('end_date')
+        if end_date_raw:
+            try:
+                if isinstance(end_date_raw, (int, float)):
+                    ts = end_date_raw / 1000 if end_date_raw > 1e10 else end_date_raw
+                    end_date = datetime.fromtimestamp(ts)
+                else:
+                    end_date = datetime.fromisoformat(str(end_date_raw).replace('Z', '+00:00'))
+            except Exception:
+                pass
+
         # Store the market
         self.update_market(
             market_id=market_id,
             title=title,
             category=category,
-            end_date=None,
+            end_date=end_date,
             resolved=False,
             winning_outcome=None
         )

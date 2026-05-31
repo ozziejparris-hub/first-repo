@@ -119,12 +119,17 @@ class PolymarketMonitor:
         """
         Fetch all active events from Gamma /events and populate the
         conditionId → category map used by Gate 0 of _should_exclude_market.
+        Also batch-updates end_date / resolution_date for any market seen here
+        that has NULL values in the DB (Gamma /events is the only reliable source
+        of endDate for conditionId-keyed markets).
         Runs at startup and every 10 monitoring cycles (~2.5 hours).
         """
         import requests as _req
         safe_print("[MARKET FILTER] Refreshing event category map...")
         base_url = self.polymarket.base_url
         new_map: Dict[str, Optional[str]] = {}
+        # conditionId → endDate string; collected for the DB batch update below
+        end_date_updates: Dict[str, str] = {}
         offset = 0
         batch = 100
         n_events = 0
@@ -166,6 +171,9 @@ class PolymarketMonitor:
                         cid = market.get('conditionId')
                         if cid:
                             new_map[cid] = cat
+                            end_date_raw = market.get('endDate') or market.get('endDateIso')
+                            if end_date_raw:
+                                end_date_updates[cid] = str(end_date_raw)
 
                 offset += batch
                 if len(events) < batch:
@@ -176,8 +184,44 @@ class PolymarketMonitor:
             safe_print(
                 f"[MARKET FILTER] Category map loaded: {len(new_map)} markets mapped across {n_events} events"
             )
+
+            # Batch-update end_date / resolution_date in DB for markets seen in this refresh
+            if end_date_updates:
+                await asyncio.to_thread(
+                    self._batch_update_market_end_dates, end_date_updates
+                )
+
         except Exception as e:
             safe_print(f"[MARKET FILTER] Category map refresh failed: {e} — falling back to keyword filter")
+
+    def _batch_update_market_end_dates(self, end_date_map: Dict[str, str]) -> None:
+        """
+        Write end_date (and resolution_date as proxy where NULL) for all conditionId
+        keys seen in the latest event category map refresh.  Only touches rows that
+        currently have NULL end_date to avoid overwriting richer data.
+        """
+        if not end_date_map:
+            return
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+        updated = 0
+        try:
+            for cid, end_date_str in end_date_map.items():
+                cursor.execute("""
+                    UPDATE markets
+                    SET end_date = ?,
+                        resolution_date = COALESCE(resolution_date, ?)
+                    WHERE condition_id = ?
+                      AND end_date IS NULL
+                """, (end_date_str, end_date_str, cid))
+                updated += cursor.rowcount
+            conn.commit()
+            if updated:
+                safe_print(f"[CATEGORY MAP] Updated end_date for {updated} markets from event refresh")
+        except Exception as e:
+            safe_print(f"[CATEGORY MAP] end_date batch update error: {e}")
+        finally:
+            conn.close()
 
     async def _ai_categorization_check(self, market_title: str) -> bool:
         """
