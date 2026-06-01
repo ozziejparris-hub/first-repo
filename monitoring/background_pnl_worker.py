@@ -21,6 +21,7 @@ budget it is skipped and marked updated so it won't immediately requeue.
 import asyncio
 import concurrent.futures
 import logging
+import sqlite3
 import time
 from datetime import datetime
 from typing import Optional
@@ -459,6 +460,21 @@ class BackgroundPnLWorker:
                         "Failed to send PNL skip Telegram alert for %s",
                         trader_address[:10],
                     )
+            # Persist skip permanently so restarts don't retry this trader
+            try:
+                conn = sqlite3.connect(self.db.db_path, timeout=10)
+                conn.execute(
+                    "UPDATE traders SET pnl_skip = 1 WHERE address = ?",
+                    (trader_address,)
+                )
+                conn.commit()
+                conn.close()
+                self.logger.warning(
+                    "pnl_skip=1 persisted for %s — will not retry after restart",
+                    trader_address[:10],
+                )
+            except Exception as e:
+                self.logger.error("Failed to persist pnl_skip for %s: %s", trader_address[:10], e)
 
     # ------------------------------------------------------------------ #
     #  Progress reporting                                                  #
