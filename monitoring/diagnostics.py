@@ -381,12 +381,7 @@ class ELOSystemDiagnostics:
 
             # 4. Check for duplicate trades
             cursor.execute("""
-                SELECT COUNT(*) FROM (
-                    SELECT trader_address, market_id, outcome, shares, price, timestamp
-                    FROM trades
-                    GROUP BY trader_address, market_id, outcome, shares, price, timestamp
-                    HAVING COUNT(*) > 1
-                )
+                SELECT COUNT(*) - COUNT(DISTINCT trade_id) FROM trades
             """)
             duplicates = cursor.fetchone()[0]
 

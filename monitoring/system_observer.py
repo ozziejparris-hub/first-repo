@@ -1643,6 +1643,8 @@ https://polymarket.com/profile/{address}
             HAVING
                 trader_count >= 3
                 AND MAX(tr.timestamp) >= ?
+                AND AVG(tr.price) BETWEEN 0.10 AND 0.90
+                AND MAX(tr.timestamp) >= datetime('now', '-30 days')
             ORDER BY trader_count DESC, total_volume DESC
             LIMIT 10
             """
