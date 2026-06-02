@@ -31,6 +31,14 @@ HARD_INCLUDE_CATEGORIES: frozenset = frozenset({
     'Global Politics', 'Ukraine & Russia',
     'Geopolitics', 'Elections',  # legacy Polymarket API category values
 })
+GAMMA_CATEGORY_MAP: dict = {
+    'Geopolitics':        'Geopolitics',
+    'Elections':          'Elections',
+    'Global Politics':    'Geopolitics',
+    'Ukraine & Russia':   'Geopolitics',
+    'US-current-affairs': 'Geopolitics',
+    'Politics':           'Geopolitics',
+}
 
 
 def safe_print(message: str, fallback: str = None):
@@ -867,6 +875,9 @@ class PolymarketMonitor:
             market_title = trade.get('title', 'Unknown Market')
             # Look up Gamma event category for this market's conditionId
             event_category = self._event_category_map.get(market_id) if market_id else None
+            internal_category = GAMMA_CATEGORY_MAP.get(
+                event_category.strip() if event_category else '', 'Unknown'
+            )
 
             # CHECK: Skip trades from excluded markets (crypto/sports/entertainment)
             if await self._should_exclude_market(market_title, event_category):
@@ -907,7 +918,7 @@ class PolymarketMonitor:
                 trader_address=trader_address,
                 market_id=market_id,
                 market_title=market_title,
-                market_category='Geopolitics',
+                market_category=internal_category,
                 outcome=outcome,
                 shares=shares,
                 price=price,
