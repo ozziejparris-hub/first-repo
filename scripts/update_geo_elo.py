@@ -133,7 +133,7 @@ def _find_traders_to_update(conn, full_recalc: bool) -> list:
 def _fetch_qualifying_trades(conn, address: str) -> list:
     """All qualifying geo trades for a trader, ordered timestamp ASC."""
     return conn.execute("""
-        SELECT tr.outcome_bet, tr.price, tr.trade_result, tr.market_id, tr.shares
+        SELECT tr.outcome_bet, tr.price, tr.trade_result, tr.market_id, tr.shares, tr.timestamp
         FROM trades tr
         JOIN markets m ON m.market_id = tr.market_id
         WHERE tr.trader_address = ?
@@ -195,6 +195,26 @@ def _compute_geo_directionality(trades: list):
     return sum(scores) / len(scores)
 
 
+def _compute_geo_elo_active(geo_elo: float, last_trade_ts) -> float:
+    """
+    Apply time-decay to geo_elo based on days since last qualifying geo trade.
+    Formula: geo_elo * (0.5 ^ (days_dormant / 180.0))
+    A trader active today gets ~full score. 180 days dormant = 50% score.
+    """
+    if last_trade_ts is None or geo_elo is None:
+        return None
+    try:
+        from datetime import datetime, timezone
+        last = datetime.fromisoformat(last_trade_ts.replace('Z', '+00:00'))
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        days_dormant = (datetime.now(timezone.utc) - last).days
+        decay = 0.5 ** (days_dormant / 180.0)
+        return round(geo_elo * decay, 4)
+    except Exception:
+        return None
+
+
 def _refresh_pool_c(conn) -> int:
     with conn:
         conn.execute(POOL_C_RESET_SQL)
@@ -220,6 +240,11 @@ def main():
     recalc = "full recalc" if args.full_recalc else "incremental"
     print(f"[geo_elo] {mode}{recalc} — {now_str}")
 
+    try:
+        conn.execute("ALTER TABLE traders ADD COLUMN geo_elo_active REAL")
+    except sqlite3.OperationalError:
+        pass
+
     traders = _find_traders_to_update(conn, args.full_recalc)
     print(f"[geo_elo] Traders to update: {len(traders)}")
 
@@ -231,8 +256,13 @@ def main():
                 "SELECT COUNT(*) FROM traders WHERE geo_elo >= ? AND geo_accuracy_pool = 1",
                 (GEO_ELO_LEGENDARY,)
             ).fetchone()[0]
+            active_legendary = conn.execute(
+                "SELECT COUNT(*) FROM traders WHERE geo_elo_active >= ? AND geo_accuracy_pool = 1",
+                (GEO_ELO_LEGENDARY,)
+            ).fetchone()[0]
             print(f"[geo_elo] Pool C (geo_accuracy_pool): {pool_c} traders")
             print(f"[geo_elo] LEGENDARY (geo_elo >= {GEO_ELO_LEGENDARY:.0f}): {legendary} traders")
+            print(f"[geo_elo] LEGENDARY active (geo_elo_active >= {GEO_ELO_LEGENDARY:.0f}): {active_legendary} traders")
         conn.close()
         return
 
@@ -250,8 +280,10 @@ def main():
 
         geo_elo = _compute_geo_elo(trades)
         directionality = _compute_geo_directionality(trades)
+        last_trade_ts = trades[-1][5] if trades else None
+        geo_elo_active = _compute_geo_elo_active(geo_elo, last_trade_ts)
 
-        updates.append((geo_elo, directionality, n, address))
+        updates.append((geo_elo, directionality, n, geo_elo_active, address))
         updated += 1
 
         if args.dry_run and updated <= 5:
@@ -259,7 +291,8 @@ def main():
                     "ELITE" if geo_elo >= 1800 else
                     "QUALIFIED" if geo_elo >= 1500 else "BELOW_QUALIFIED")
             dir_str = f"{directionality:.3f}" if directionality is not None else "N/A"
-            print(f"  {address[:12]}… geo_elo={geo_elo:.1f} ({tier}) dir={dir_str} n={n}")
+            active_str = f"{geo_elo_active:.1f}" if geo_elo_active is not None else "N/A"
+            print(f"  {address[:12]}… geo_elo={geo_elo:.1f} active={active_str} ({tier}) dir={dir_str} n={n}")
 
     if args.dry_run:
         if updated > 5:
@@ -275,13 +308,19 @@ def main():
                 UPDATE traders
                 SET geo_elo                    = ?,
                     geo_directionality_score   = ?,
-                    geo_resolved_trades_count  = ?
+                    geo_resolved_trades_count  = ?,
+                    geo_elo_active             = ?
                 WHERE address = ?
             """, updates)
 
     pool_c = _refresh_pool_c(conn)
     legendary = conn.execute(
         "SELECT COUNT(*) FROM traders WHERE geo_elo >= ? AND geo_accuracy_pool = 1",
+        (GEO_ELO_LEGENDARY,)
+    ).fetchone()[0]
+
+    active_legendary = conn.execute(
+        "SELECT COUNT(*) FROM traders WHERE geo_elo_active >= ? AND geo_accuracy_pool = 1",
         (GEO_ELO_LEGENDARY,)
     ).fetchone()[0]
 
@@ -292,6 +331,7 @@ def main():
         print(f"[geo_elo] Skipped : {skipped_thin} traders (< {MIN_TRADES_FOR_ELO} qualifying trades)")
     print(f"[geo_elo] Pool C (geo_accuracy_pool): {pool_c} traders")
     print(f"[geo_elo] LEGENDARY (geo_elo >= {GEO_ELO_LEGENDARY:.0f}): {legendary} traders")
+    print(f"[geo_elo] LEGENDARY active (geo_elo_active >= {GEO_ELO_LEGENDARY:.0f}): {active_legendary} traders")
 
 
 if __name__ == "__main__":
