@@ -1,0 +1,6 @@
+2026-06-03: Excluded 30 ARB_BOT wallets (Jan 12 2026 batch, 24-minute creation window)
+ELO range: 1539-2006. Clusters: 8. Same operator as Dec 2025 cluster excluded 2026-05-06.
+Detection method: identical geo_elo + geo_resolved_trades_count + realized_pnl across wallets created within 24 minutes.
+Note: 30 wallets flagged (not 23 initially estimated) — 7 additional wallets matched on ELO+trade-count fingerprint
+with slightly varying PnL, still confirmed same Jan 12 2026 creation batch (21:47-22:12 UTC).
+Wallets also excluded in same session (pre-confirmed ARB_BOT): 3 wallets flagged 2026-06-03 before cluster scan.
