@@ -205,13 +205,16 @@ def _compute_geo_elo_active(geo_elo: float, last_trade_ts) -> float:
         return None
     try:
         from datetime import datetime, timezone
-        last = datetime.fromisoformat(last_trade_ts.replace('Z', '+00:00'))
+        ts = last_trade_ts.replace('Z', '+00:00').replace(' ', 'T')
+        last = datetime.fromisoformat(ts)
         if last.tzinfo is None:
             last = last.replace(tzinfo=timezone.utc)
         days_dormant = (datetime.now(timezone.utc) - last).days
         decay = 0.5 ** (days_dormant / 180.0)
         return round(geo_elo * decay, 4)
-    except Exception:
+    except Exception as e:
+        import sys
+        print(f"[geo_elo_active] parse error for ts={last_trade_ts!r}: {e}", file=sys.stderr)
         return None
 
 
