@@ -12,3 +12,5 @@ Wallets also excluded in same session (pre-confirmed ARB_BOT): 3 wallets flagged
 Detection: Pattern A (identical metrics cluster) + Pattern C (symmetric arb)
 Note: UPDATE 2 required ROUND(comprehensive_elo,2)=1500.0 — stored value is 1500.0003 (floating-point artifact).
 Post-exclusion clean pool: 14,860 traders. WAL mode confirmed.
+
+2026-06-03 (addendum): 3 Jan-12 wallets excluded (ARB_BOT — 1-market, Dec 2025 stop, factory first_seen). 0xf4034309 excluded (LP_ARTIFACT — near-symmetric market maker, 10 markets).
