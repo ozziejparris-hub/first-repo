@@ -280,8 +280,15 @@ def main():
 
         geo_elo = _compute_geo_elo(trades)
         directionality = _compute_geo_directionality(trades)
-        last_trade_ts = trades[-1][5] if trades else None
-        geo_elo_active = _compute_geo_elo_active(geo_elo, last_trade_ts)
+        last_any_trade = conn.execute("""
+            SELECT MAX(tr.timestamp)
+            FROM trades tr
+            JOIN markets m ON m.market_id = tr.market_id
+            WHERE tr.trader_address = ?
+            AND tr.market_category IN ('Geopolitics', 'Elections')
+            AND tr.timestamp <= datetime('now')
+        """, (address,)).fetchone()[0]
+        geo_elo_active = _compute_geo_elo_active(geo_elo, last_any_trade)
 
         updates.append((geo_elo, directionality, n, geo_elo_active, address))
         updated += 1
