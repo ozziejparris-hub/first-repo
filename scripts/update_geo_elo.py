@@ -323,6 +323,39 @@ def main():
                 WHERE address = ?
             """, updates)
 
+    # Second pass: update geo_elo_active for ALL traders with geo_elo,
+    # including those skipped by the thin-trade guard.
+    # geo_elo_active only needs geo_elo + last trade timestamp — independent of trade count.
+    all_geo_traders = conn.execute("""
+        SELECT address, geo_elo FROM traders
+        WHERE geo_elo IS NOT NULL
+        AND bot_type IS NULL
+        AND (wash_trade_suspect = 0 OR wash_trade_suspect IS NULL)
+        AND (bot_suspect = 0 OR bot_suspect IS NULL)
+    """).fetchall()
+
+    active_updates = []
+    for address, geo_elo in all_geo_traders:
+        last_any_trade = conn.execute("""
+            SELECT MAX(tr.timestamp)
+            FROM trades tr
+            JOIN markets m ON m.market_id = tr.market_id
+            WHERE tr.trader_address = ?
+            AND tr.market_category IN ('Geopolitics', 'Elections')
+            AND tr.timestamp <= datetime('now')
+        """, (address,)).fetchone()[0]
+        geo_elo_active = _compute_geo_elo_active(geo_elo, last_any_trade)
+        if geo_elo_active is not None:
+            active_updates.append((geo_elo_active, address))
+
+    if active_updates:
+        with conn:
+            conn.executemany(
+                "UPDATE traders SET geo_elo_active = ? WHERE address = ?",
+                active_updates
+            )
+        print(f"[geo_elo] geo_elo_active updated: {len(active_updates)} traders")
+
     pool_c = _refresh_pool_c(conn)
     legendary = conn.execute(
         "SELECT COUNT(*) FROM traders WHERE geo_elo >= ? AND geo_accuracy_pool = 1",
