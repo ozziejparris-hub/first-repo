@@ -4,3 +4,11 @@ Detection method: identical geo_elo + geo_resolved_trades_count + realized_pnl a
 Note: 30 wallets flagged (not 23 initially estimated) — 7 additional wallets matched on ELO+trade-count fingerprint
 with slightly varying PnL, still confirmed same Jan 12 2026 creation batch (21:47-22:12 UTC).
 Wallets also excluded in same session (pre-confirmed ARB_BOT): 3 wallets flagged 2026-06-03 before cluster scan.
+
+2026-06-03: Excluded 225 ARB_BOT wallets across 3 batches:
+  - 139 today's factory wallets (2026-06-03 12:15-12:32 UTC, baseline ELO 1500)
+  - 85 May 17 factory wallets (2026-05-17 08:42-08:48 UTC, baseline ELO 1500; stored as 1500.0003)
+  - 0x8e59d10d: perfect 336/336 YES/NO arb symmetry, 1674 markets, ELO 2187
+Detection: Pattern A (identical metrics cluster) + Pattern C (symmetric arb)
+Note: UPDATE 2 required ROUND(comprehensive_elo,2)=1500.0 — stored value is 1500.0003 (floating-point artifact).
+Post-exclusion clean pool: 14,860 traders. WAL mode confirmed.
