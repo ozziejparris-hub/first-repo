@@ -24,8 +24,11 @@ import json
 import sqlite3
 import argparse
 import requests
+from pathlib import Path
 from typing import Dict, List, Optional
 from datetime import datetime
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "monitoring"))
 from database import Database
 
 
