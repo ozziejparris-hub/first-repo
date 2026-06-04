@@ -152,6 +152,12 @@ class CategorySpecificELO:
         # Calculate new rating
         new_elo = current_elo + adjusted_k * (actual_score - expected)
 
+        # Soft cap: total resolved trades across all categories (including this one)
+        total_resolved = sum(self.category_market_counts[trader_address].values()) + 1
+        max_elo = 1500.0 + (total_resolved * 150.0)
+        if new_elo > max_elo:
+            new_elo = max_elo
+
         # Update
         self.category_elos[trader_address][category] = new_elo
         self.category_market_counts[trader_address][category] += 1

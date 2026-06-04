@@ -101,7 +101,8 @@ def main():
 
     placeholders = ','.join('?' * len(eligible))
     cur.execute("""
-        SELECT address, base_category_elo, comprehensive_elo, pnl_modifier
+        SELECT address, base_category_elo, comprehensive_elo, pnl_modifier,
+               resolved_trades_count
         FROM traders
         WHERE address IN ({})
     """.format(placeholders), list(eligible.keys()))
@@ -109,23 +110,26 @@ def main():
     rows = cur.fetchall()
 
     base_elos = {}       # addr -> base ELO to use
+    resolved_counts = {} # addr -> resolved_trades_count
     skipped_stale = 0    # had a modifier but no safe base — skip to avoid stacking
 
-    for addr, base_cat, comp_elo, pnl_mod in rows:
+    for addr, base_cat, comp_elo, pnl_mod, res_count in rows:
         # Prefer base_category_elo when it has been explicitly set (backfilled OR
         # recorded at first-modifier-write time by this script).  NULL means never
         # set; any stored value — including 1500.0 — is a valid clean base.
         if base_cat is not None:
             base_elos[addr] = base_cat
+            resolved_counts[addr] = res_count or 0
         # Fallback: comprehensive_elo is safe to use only if no modifier has been
         # applied yet (pnl_modifier == 1.0 or NULL), otherwise we'd stack
         elif comp_elo is not None and (pnl_mod is None or abs(pnl_mod - 1.0) < 0.0001):
             base_elos[addr] = comp_elo
+            resolved_counts[addr] = res_count or 0
         else:
             # Modifier already applied and no clean base available — skip
             skipped_stale += 1
 
-    from_backfill = sum(1 for a, b, c, p in rows
+    from_backfill = sum(1 for a, b, c, p, r in rows
                         if b is not None and a in base_elos)
     from_comp = len(base_elos) - from_backfill
 
@@ -176,6 +180,10 @@ def main():
             # Change 2: gate the multiplier by confidence (closed positions)
             cap = _confidence_cap(closed_pos)
             mult = min(mult, cap) if mult > 1.0 else mult
+
+            # Gate: suppress bonus multipliers for thin-sample traders
+            if mult > 1.0 and resolved_counts.get(addr, 0) < 10:
+                mult = 1.0
 
             # Change 4: asymmetric loss penalty at high ELO
             if mult < 1.0 and base_elo >= 2000:

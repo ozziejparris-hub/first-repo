@@ -539,8 +539,10 @@ class UnifiedELOMonitoringBridge:
         conn = self.db.get_connection()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT address FROM traders WHERE is_flagged = 1")
-        trader_addresses = [row[0] for row in cursor.fetchall()]
+        cursor.execute("SELECT address, COALESCE(resolved_trades_count, 0) FROM traders WHERE is_flagged = 1")
+        rows = cursor.fetchall()
+        trader_addresses = [r[0] for r in rows]
+        resolved_counts = {r[0]: r[1] for r in rows}
 
         if verbose:
             print(f"[ELO_BRIDGE] Updating {len(trader_addresses)} traders...")
@@ -562,6 +564,12 @@ class UnifiedELOMonitoringBridge:
                     apply_contrarian=not skip_contrarian,
                     apply_pnl=True
                 )
+
+                # Soft cap: prevent multiplier inflation for thin-sample traders
+                if comprehensive_elo > 0:
+                    res_count = resolved_counts.get(trader_address, 0)
+                    max_comprehensive = 1500.0 + (res_count * 150.0)
+                    comprehensive_elo = min(comprehensive_elo, max_comprehensive)
 
                 # Get base category ELO (without any modifiers)
                 base_category_elo = elo_system.get_trader_global_elo(trader_address)
@@ -678,6 +686,7 @@ class UnifiedELOMonitoringBridge:
             FROM traders
             WHERE comprehensive_elo IS NOT NULL
             AND comprehensive_elo >= ?
+            AND resolved_trades_count >= 5
             ORDER BY comprehensive_elo DESC
             LIMIT ?
         """, (min_elo, limit))
