@@ -7,7 +7,7 @@ Pattern A: Coordinated wallet factory clusters. Groups of 2+ traders with
            all first_seen within 60 minutes of each other, ≤3 distinct markets.
 
 Pattern B: Symmetric YES/NO arb. ELO ≥1800, >50 YES-market buys, >50 NO-market
-           buys, abs(yes-no)/(yes+no) < 0.05, >100 distinct markets, pnl < 1000.
+           buys, abs(yes-no)/(yes+no) < 0.03, >100 distinct markets, pnl < 1000.
 
 Pattern C: Single-market concentration. >500 trades, exactly 1 distinct market.
 
@@ -107,7 +107,7 @@ WHERE t.research_excluded = 0
   AND t.comprehensive_elo >= 1800
   AND ts.long_yes > 50
   AND ts.long_no > 50
-  AND CAST(ABS(ts.long_yes - ts.long_no) AS REAL) / (ts.long_yes + ts.long_no) < 0.05
+  AND CAST(ABS(ts.long_yes - ts.long_no) AS REAL) / (ts.long_yes + ts.long_no) < 0.03
   AND ts.market_count > 100
   AND t.realized_pnl < 1000
 ORDER BY t.comprehensive_elo DESC
