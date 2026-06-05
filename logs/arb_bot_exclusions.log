@@ -14,3 +14,8 @@ Note: UPDATE 2 required ROUND(comprehensive_elo,2)=1500.0 — stored value is 15
 Post-exclusion clean pool: 14,860 traders. WAL mode confirmed.
 
 2026-06-03 (addendum): 3 Jan-12 wallets excluded (ARB_BOT — 1-market, Dec 2025 stop, factory first_seen). 0xf4034309 excluded (LP_ARTIFACT — near-symmetric market maker, 10 markets).
+
+2026-06-05: 2 wallets excluded (ARB_BOT — Pattern B symmetric arb, <5% Yes/No asymmetry, ELO >= 1800, >100 distinct markets).
+  0xa7a52fa6a446c6630711bdd923204fc634d037f8 — ELO 2574, PnL -$35, 69 long-yes / 66 long-no, 118 markets, active 2025-10-28 to 2026-05-30.
+  0xf2836053a3c32df8af586a409abc6f936ef4da05 — ELO 2762, PnL +$288, 115 long-yes / 119 long-no, 109 markets, active 2026-04-15 to 2026-05-23 (fast-ramp).
+  Two borderline wallets (0x2b02ff, 0xd96b9f) left unflagged — Pattern B threshold may need tightening to <3% to avoid false positives on legitimate market-makers.
