@@ -312,13 +312,112 @@ class FastResolutionChecker:
         else:
             print("\n[OK] Database updated successfully")
 
-    def run_fast_check(self, test_mode: bool = False, limit: Optional[int] = None):
+    def run_stale_clob_pass(self, stale_limit: int = 200, test_mode: bool = False) -> int:
+        """
+        Second pass: resolve stale markets the Gamma bulk scan misses.
+
+        Targets markets with resolution_date older than 7 days and resolved=0 —
+        these fall below the 20K recency cap in the Gamma scan. Queries the CLOB
+        API directly, which is the authoritative resolution source.
+        """
+        print("\n" + "="*70)
+        print("STALE CLOB PASS (markets missed by Gamma bulk scan)")
+        print("="*70 + "\n")
+
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT market_id, condition_id
+            FROM markets
+            WHERE (resolved = 0 OR resolved IS NULL)
+              AND resolution_date IS NOT NULL
+              AND resolution_date < datetime('now', '-7 days')
+            ORDER BY resolution_date ASC
+            LIMIT ?
+        """, (stale_limit,))
+
+        stale_markets = cursor.fetchall()
+        conn.close()
+
+        total = len(stale_markets)
+        print(f"Stale unresolved markets to check: {total}")
+
+        if not total:
+            print("No stale markets found.")
+            print(f"\nStale CLOB pass: 0 resolved out of 0 checked")
+            return 0
+
+        resolved_count = 0
+
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        for idx, (market_id, condition_id) in enumerate(stale_markets, 1):
+            try:
+                time.sleep(0.2)  # Rate limiting
+
+                clob_id = condition_id or market_id
+                url = f"https://clob.polymarket.com/markets/{clob_id}"
+
+                response = self.session.get(url, timeout=15)
+                self.stats['api_requests'] += 1
+
+                if response.status_code != 200:
+                    continue
+
+                data = response.json()
+
+                if not data.get('closed'):
+                    continue
+
+                winner_outcome = None
+                for token in data.get('tokens', []):
+                    if token.get('winner'):
+                        winner_outcome = token.get('outcome')
+                        break
+
+                if not winner_outcome:
+                    continue
+
+                if not test_mode:
+                    cursor.execute("""
+                        UPDATE markets
+                        SET resolved = 1,
+                            winning_outcome = ?,
+                            last_checked = ?
+                        WHERE market_id = ?
+                    """, (winner_outcome, datetime.now(), market_id))
+                    conn.commit()
+
+                resolved_count += 1
+
+                if resolved_count <= 5:
+                    display_id = str(clob_id)[:30]
+                    print(f"   [OK] Resolved: {display_id}... → {winner_outcome}")
+
+            except Exception as e:
+                self.stats['errors'] += 1
+                continue
+
+            if idx % 20 == 0 or idx == total:
+                print(f"   Checked {idx}/{total} | Resolved: {resolved_count}     ", end='\r')
+
+        print()
+        conn.close()
+
+        print(f"\nStale CLOB pass: {resolved_count} resolved out of {total} checked")
+        return resolved_count
+
+    def run_fast_check(self, test_mode: bool = False, limit: Optional[int] = None,
+                       stale_limit: int = 200):
         """
         Run fast batch resolution check.
 
         Args:
             test_mode: If True, don't write to database
             limit: Max markets to process (for testing)
+            stale_limit: Max stale markets to check via CLOB pass (default 200)
         """
         print("\n" + "="*70)
         print("FAST BATCH RESOLUTION CHECK")
@@ -338,6 +437,9 @@ class FastResolutionChecker:
 
         # Step 2: Update database in batch
         self.batch_update_resolved_markets(resolved_markets, test_mode=test_mode)
+
+        # Step 3: CLOB stale pass for markets the Gamma scan missed
+        self.run_stale_clob_pass(stale_limit=stale_limit, test_mode=test_mode)
 
         elapsed = time.time() - start_time
 
@@ -370,13 +472,21 @@ def main():
         default='data/polymarket_tracker.db',
         help='Path to database file'
     )
+    parser.add_argument(
+        '--stale-limit',
+        type=int,
+        default=200,
+        dest='stale_limit',
+        help='Max stale markets to check via CLOB pass (default 200)'
+    )
 
     args = parser.parse_args()
 
     checker = FastResolutionChecker(db_path=args.db)
     checker.run_fast_check(
         test_mode=args.test,
-        limit=args.limit
+        limit=args.limit,
+        stale_limit=args.stale_limit
     )
 
 
