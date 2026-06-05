@@ -344,7 +344,7 @@ class UnifiedELOSystem:
 
         # Network analysis components
         self.correlation_analyzer = TraderCorrelationMatrix(db_path=self.db_path)
-        self.copy_detector = CopyTradeDetector(db_path=self.db_path)
+        self.copy_detector = None  # lazy-init: only constructed when _load_network_data() is called
 
         # Cache for network data
         self.independence_scores = {}  # trader -> independence_score (0-100)
@@ -1566,6 +1566,11 @@ class UnifiedELOSystem:
 
                 # 2. Load copy-trade relationships
                 print("[COPY-TRADE] Detecting copy-trade relationships...")
+
+                # Lazy-init: CopyTradeDetector is expensive to construct (triggers
+                # O(n²) correlation matrix when cache is stale), so defer until here.
+                if self.copy_detector is None:
+                    self.copy_detector = CopyTradeDetector(db_path=self.db_path)
 
                 # Run copy-trade detection
                 copy_results = self.copy_detector.detect_copy_relationships()
