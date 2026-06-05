@@ -233,43 +233,42 @@ def main():
 
     # Write updates — retry on lock
     import time as _time
-    write_rows = [
+    write_rows_flat = [
         (round(new_elo, 4), round(mult, 4), now, round(base_elo, 6), addr)
         for addr, base_elo, mult, new_elo, _ in updates
     ]
-    written = 0
-    for row in write_rows:
-        for _attempt in range(15):
-            try:
-                cur.execute("""
-                    UPDATE traders
-                    SET comprehensive_elo = ?,
-                        pnl_modifier = ?,
-                        elo_last_updated = ?,
-                        base_category_elo = CASE
-                            WHEN base_category_elo IS NULL
-                              OR ABS(base_category_elo - 1500.0) <= 0.0001
-                            THEN ?
-                            ELSE base_category_elo
-                        END
-                    WHERE address = ?
-                """, row)
-                written += cur.rowcount
-                break
-            except sqlite3.OperationalError as e:
-                if "locked" in str(e):
-                    _time.sleep(2)
-                else:
-                    raise
+    sql = """
+        UPDATE traders
+        SET comprehensive_elo = ?,
+            pnl_modifier = ?,
+            elo_last_updated = ?,
+            base_category_elo = CASE
+                WHEN base_category_elo IS NULL
+                  OR ABS(base_category_elo - 1500.0) <= 0.0001
+                THEN ?
+                ELSE base_category_elo
+            END
+        WHERE address = ?
+    """
+    for _attempt in range(15):
+        try:
+            cur.executemany(sql, write_rows_flat)
+            break
+        except sqlite3.OperationalError as e:
+            if "locked" in str(e).lower():
+                _time.sleep(2)
+            else:
+                raise
     for _attempt in range(15):
         try:
             conn.commit()
             break
         except sqlite3.OperationalError as e:
-            if "locked" in str(e):
+            if "locked" in str(e).lower():
                 _time.sleep(2)
             else:
                 raise
+    written = len(write_rows_flat)
 
     # Final stats
     print(f"\n  Written {written} updates to database")
