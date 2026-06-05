@@ -117,6 +117,10 @@ WHERE discovery_source = 'leaderboard'
   AND bot_suspect = 0
 """
 
+# NOTE: wash_trade_audit.py (the writer for wash_trade_suspect) is archived.
+# 57 traders currently have wash_trade_suspect=1 from a prior run (date unknown).
+# This filter is kept active since those flags may be valid, but no new flags will
+# be written unless wash_trade_audit.py is restored or replaced.
 EXCLUDE_SQL = """
 UPDATE traders
 SET research_excluded = 1

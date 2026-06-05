@@ -2941,41 +2941,31 @@ Sellers:
 
             # Get the script path
             scripts_dir = Path(__file__).parent.parent / 'scripts'
-            script_path = scripts_dir / 'integrate_behavioral_elo.py'
 
-            if not script_path.exists():
-                raise FileNotFoundError(f"ELO integration script not found: {script_path}")
+            # DISABLED 2026-06-05: behavioral_modifier is written here but silently discarded by
+            # apply_full_elo_modifiers.py which overwrites comprehensive_elo without reading it.
+            # Intentionally disabled until comprehensive_elo formula is redesigned (RQ-CONTESTED-001,
+            # July 2026). Re-enable when apply_full_elo_modifiers.py is updated to include
+            # behavioral_modifier in its calculation.
+            #
+            # script_path = scripts_dir / 'integrate_behavioral_elo.py'
+            # if not script_path.exists():
+            #     raise FileNotFoundError(f"ELO integration script not found: {script_path}")
+            # spec = importlib.util.spec_from_file_location("integrate_behavioral_elo", str(script_path))
+            # if spec is None or spec.loader is None:
+            #     raise ImportError(f"Could not load spec for {script_path}")
+            # elo_module = importlib.util.module_from_spec(spec)
+            # sys.modules['integrate_behavioral_elo'] = elo_module
+            # spec.loader.exec_module(elo_module)
+            # if not hasattr(elo_module, 'main'):
+            #     raise AttributeError("integrate_behavioral_elo.py has no main() function")
+            # integrate_elo_main = elo_module.main
+            # print("[ELO] Starting integration (direct function call)...")
+            # loop = asyncio.get_event_loop()
+            # await loop.run_in_executor(None, integrate_elo_main)
+            # print("[ELO] Integration complete")
 
-            # Load the module dynamically
-            spec = importlib.util.spec_from_file_location(
-                "integrate_behavioral_elo",
-                str(script_path)
-            )
-
-            if spec is None or spec.loader is None:
-                raise ImportError(f"Could not load spec for {script_path}")
-
-            elo_module = importlib.util.module_from_spec(spec)
-
-            # Add to sys.modules to handle internal imports
-            sys.modules['integrate_behavioral_elo'] = elo_module
-
-            # Execute the module
-            spec.loader.exec_module(elo_module)
-
-            # Get the main function
-            if not hasattr(elo_module, 'main'):
-                raise AttributeError("integrate_behavioral_elo.py has no main() function")
-
-            integrate_elo_main = elo_module.main
-
-            print("[ELO] Starting integration (direct function call)...")
-
-            # Run in executor to avoid blocking event loop
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, integrate_elo_main)
-
-            print("[ELO] Integration complete")
 
             # --- P&L modifier pass ---
             # integrate_behavioral_elo writes comprehensive_elo without P&L
