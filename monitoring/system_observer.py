@@ -15,6 +15,7 @@ This is an independent watchdog process that monitors the main monitoring system
 """
 
 import asyncio
+import logging
 import signal
 import sys
 import sqlite3
@@ -23,6 +24,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, List
 from pathlib import Path
 import psutil
+
+logger = logging.getLogger('observer')
 
 from .health_checker import HealthChecker
 from .log_monitor import LogMonitor
@@ -649,7 +652,7 @@ class SystemObserver:
         between smart money positioning and market price, and sends one
         Telegram message per high-conviction signal.
         """
-        print("[OBSERVER] Pre-resolution intelligence loop started (fires once per day at/after 08:00 UTC)")
+        logger.info("[OBSERVER] Pre-resolution loop started — will trigger daily when hour >= 8")
 
         last_run_date = None  # date object; None means never run this session
 
@@ -659,7 +662,7 @@ class SystemObserver:
                 today = now.date()
 
                 if now.hour >= 8 and last_run_date != today:
-                    print("[OBSERVER] Triggering pre-resolution intelligence scan...")
+                    logger.info("[OBSERVER] Triggering pre-resolution intelligence scan...")
                     last_run_date = today
 
                     loop = asyncio.get_event_loop()
@@ -668,19 +671,18 @@ class SystemObserver:
                         None, run_pre_resolution_intelligence
                     )
 
-                    print(
-                        f"[OBSERVER] Pre-resolution scan complete — "
-                        f"{result['markets_checked']} markets checked, "
-                        f"{result['signals_found']} signal(s) sent"
+                    logger.info(
+                        "[OBSERVER] Pre-resolution scan complete — "
+                        "%s markets checked, %s signal(s) sent",
+                        result['markets_checked'],
+                        result['signals_found']
                     )
 
                 # Check every hour — date guard prevents re-firing on same day
                 await asyncio.sleep(3600)
 
             except Exception as e:
-                print(f"[OBSERVER] Error in pre-resolution loop: {e}")
-                import traceback
-                traceback.print_exc()
+                logger.error("[OBSERVER] Error in pre-resolution loop: %s", e, exc_info=True)
                 await asyncio.sleep(3600)
 
     async def _trend_analysis_loop(self):
