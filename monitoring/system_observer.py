@@ -25,8 +25,6 @@ from typing import Optional, Dict, List
 from pathlib import Path
 import psutil
 
-logger = logging.getLogger('observer')
-
 from .health_checker import HealthChecker
 from .log_monitor import LogMonitor
 from .telegram_health_bot import TelegramHealthBot
@@ -652,7 +650,7 @@ class SystemObserver:
         between smart money positioning and market price, and sends one
         Telegram message per high-conviction signal.
         """
-        logger.info("[OBSERVER] Pre-resolution loop started — will trigger daily when hour >= 8")
+        print("[OBSERVER] Pre-resolution loop started — will trigger daily when hour >= 8")
 
         last_run_date = None  # date object; None means never run this session
 
@@ -662,7 +660,7 @@ class SystemObserver:
                 today = now.date()
 
                 if now.hour >= 8 and last_run_date != today:
-                    logger.info("[OBSERVER] Triggering pre-resolution intelligence scan...")
+                    print("[OBSERVER] Triggering pre-resolution intelligence scan...")
                     last_run_date = today
 
                     loop = asyncio.get_event_loop()
@@ -671,18 +669,18 @@ class SystemObserver:
                         None, run_pre_resolution_intelligence
                     )
 
-                    logger.info(
-                        "[OBSERVER] Pre-resolution scan complete — "
-                        "%s markets checked, %s signal(s) sent",
-                        result['markets_checked'],
-                        result['signals_found']
+                    print(
+                        f"[OBSERVER] Pre-resolution scan complete — "
+                        f"{result['markets_checked']} markets checked, {result['signals_found']} signal(s) sent"
                     )
 
                 # Check every hour — date guard prevents re-firing on same day
                 await asyncio.sleep(3600)
 
             except Exception as e:
-                logger.error("[OBSERVER] Error in pre-resolution loop: %s", e, exc_info=True)
+                import traceback
+                print(f"[OBSERVER] Error in pre-resolution loop: {e}")
+                traceback.print_exc()
                 await asyncio.sleep(3600)
 
     async def _trend_analysis_loop(self):
