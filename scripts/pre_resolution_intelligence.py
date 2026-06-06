@@ -100,7 +100,11 @@ def _fetch_elite_positions(conn: sqlite3.Connection, market_id: str) -> list[dic
             p.entry_avg_price,
             p.entry_shares,
             p.entry_timestamp,
-            t.comprehensive_elo
+            t.comprehensive_elo,
+            t.geo_elo,
+            t.geo_accuracy_pool,
+            t.research_excluded,
+            t.bot_type
         FROM positions p
         JOIN traders   t ON t.address = p.trader_address
         WHERE p.market_id  = :mid
@@ -208,10 +212,14 @@ def _compute_signal(positions: list[dict]) -> dict:
             continue  # skip multi-outcome legs for trend calc
 
         trader_set.add(id(p))  # positional id as proxy (address not fetched)
-        if elo >= ELO_LEGENDARY:
+        geo_elo        = p.get('geo_elo') or 0.0
+        geo_acc        = p.get('geo_accuracy_pool') or 0
+        res_excluded   = p.get('research_excluded') or 0
+        bot_type       = p.get('bot_type')
+        if geo_elo >= ELO_LEGENDARY and geo_acc == 1:
             legendary_set.add(id(p))
             elite_set.add(id(p))
-        elif elo >= ELO_ELITE:
+        elif elo >= ELO_ELITE and res_excluded == 0 and bot_type is None:
             elite_set.add(id(p))
 
         if is_yes:
