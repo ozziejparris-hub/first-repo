@@ -643,20 +643,24 @@ class SystemObserver:
 
     async def _pre_resolution_loop(self):
         """
-        Run pre-resolution intelligence daily at 08:00 UTC.
+        Run pre-resolution intelligence daily, once per day after 08:00 UTC.
 
         Scans open markets resolving within 7 days, identifies divergence
         between smart money positioning and market price, and sends one
         Telegram message per high-conviction signal.
         """
-        print("[OBSERVER] Pre-resolution intelligence loop started (triggers at 08:00 UTC)")
+        print("[OBSERVER] Pre-resolution intelligence loop started (fires once per day at/after 08:00 UTC)")
+
+        last_run_date = None  # date object; None means never run this session
 
         while self.running:
             try:
                 now = datetime.now(timezone.utc)
+                today = now.date()
 
-                if now.hour == 8 and now.minute == 0:
+                if now.hour >= 8 and last_run_date != today:
                     print("[OBSERVER] Triggering pre-resolution intelligence scan...")
+                    last_run_date = today
 
                     loop = asyncio.get_event_loop()
                     from scripts.pre_resolution_intelligence import run_pre_resolution_intelligence
@@ -670,11 +674,8 @@ class SystemObserver:
                         f"{result['signals_found']} signal(s) sent"
                     )
 
-                    # Wait 24 hours before next run
-                    await asyncio.sleep(86400)
-                else:
-                    # Check every hour to catch the 08:00 window
-                    await asyncio.sleep(3600)
+                # Check every hour — date guard prevents re-firing on same day
+                await asyncio.sleep(3600)
 
             except Exception as e:
                 print(f"[OBSERVER] Error in pre-resolution loop: {e}")
