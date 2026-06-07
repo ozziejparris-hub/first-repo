@@ -1204,7 +1204,9 @@ https://polymarket.com/profile/{address}
                 tr.price,
                 tr.side,
                 tr.timestamp,
-                COALESCE(m.title, tr.market_title) AS market_title
+                COALESCE(m.title, tr.market_title) AS market_title,
+                t.geo_elo,
+                t.geo_accuracy_pool
             FROM trades tr
             JOIN traders t ON tr.trader_address = t.address
             LEFT JOIN markets m ON tr.market_id = m.market_id
@@ -1226,7 +1228,7 @@ https://polymarket.com/profile/{address}
             for trade in trades:
                 (address, elo, avg_roi, realized_pnl, closed_positions,
                  watched, username, trade_id, outcome, shares, price,
-                 side, timestamp, market_title) = trade
+                 side, timestamp, market_title, geo_elo, geo_accuracy_pool) = trade
 
                 # Deduplicate by trade_id
                 if self._already_alerted_legendary(trade_id):
@@ -1237,7 +1239,7 @@ https://polymarket.com/profile/{address}
                 if is_watched and (elo is None or elo < 2000):
                     tier_badge = "WATCHED"
                     tier_icon  = "👁"
-                elif elo is not None and elo >= 2500:
+                elif geo_elo is not None and geo_elo >= 2175 and geo_accuracy_pool == 1:
                     tier_badge = "LEGENDARY"
                     tier_icon  = "🏆"
                 else:
@@ -1986,9 +1988,10 @@ Sellers:
 
         # Determine performance status
         error_rate = basic_error_summary['errors_per_hour']
-        if error_rate < 10:
+        # Thresholds raised 2026-06-07 — DB lock contention during large trader backfills (100+ traders) produces 15-24 errors/10m which is expected behaviour
+        if error_rate < 15:
             performance = 'good'
-        elif error_rate < 30:
+        elif error_rate < 50:
             performance = 'moderate'
         else:
             performance = 'poor'
