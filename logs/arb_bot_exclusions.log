@@ -19,3 +19,16 @@ Post-exclusion clean pool: 14,860 traders. WAL mode confirmed.
   0xa7a52fa6a446c6630711bdd923204fc634d037f8 — ELO 2574, PnL -$35, 69 long-yes / 66 long-no, 118 markets, active 2025-10-28 to 2026-05-30.
   0xf2836053a3c32df8af586a409abc6f936ef4da05 — ELO 2762, PnL +$288, 115 long-yes / 119 long-no, 109 markets, active 2026-04-15 to 2026-05-23 (fast-ramp).
   Two borderline wallets (0x2b02ff, 0xd96b9f) left unflagged — Pattern B threshold may need tightening to <3% to avoid false positives on legitimate market-makers.
+
+2026-06-06 06:00 UTC: Pattern A — 2 ARB_BOT wallet(s) flagged (1 cluster)
+  Wallet factory cluster: ELO=1774.62 trades=0 pnl=0.0 (2 wallets, 16.1min window, 2026-03-05 19:27:38–2026-03-05 19:43:44)
+  Addresses: 0xbb9c165825e9f233d1f611b50b193fe94513072b, 0xe3282069bf386acedfa36e283826d8a362159f4a
+
+2026-06-06 06:00 UTC: Pattern B — 1 ARB_BOT wallet(s) flagged (1 cluster)
+  0x5cfd881133ff44d1f7b81ea8a819a30dfc39ca1b: 223/225 YES/NO symmetry, 544 markets, ELO 1908, pnl -178.27
+
+2026-06-07 06:00 UTC: Pattern B — 4 ARB_BOT wallet(s) flagged (4 clusters)
+  0xd5c591d0cbb9fc23424425d275c4d5ffa07abdac: 133/128 YES/NO symmetry, 499 markets, ELO 2550, pnl 189.19
+  0xfe1002910af5e32b9f6e723711749cd039b695cb: 62/61 YES/NO symmetry, 141 markets, ELO 2550, pnl 807.24
+  0xfe0e8609806dead758dec0fcb5f7c468e6e91d8b: 72/74 YES/NO symmetry, 201 markets, ELO 1950, pnl -7.43
+  0x49459461e53957638a45df676946f559d67c3f00: 103/106 YES/NO symmetry, 674 markets, ELO 1800, pnl 6.34

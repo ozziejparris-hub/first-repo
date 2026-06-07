@@ -100,3 +100,5 @@ results/
 
 # Windows null device artifact
 nul
+# External datasets (large files, not for version control)
+data/external/
