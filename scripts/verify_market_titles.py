@@ -40,7 +40,8 @@ FROM markets m
 WHERE m.condition_id IN (
     SELECT DISTINCT p.market_id FROM positions p
     JOIN traders t ON t.address = p.trader_address
-    WHERE t.comprehensive_elo > 2175
+    WHERE t.geo_elo >= 2175
+      AND t.geo_accuracy_pool = 1
       AND t.research_excluded = 0
       AND t.resolved_trades_count >= 20
       AND t.bot_type IS NULL
