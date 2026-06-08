@@ -148,6 +148,15 @@ def main():
         extra_args=["--geo-only", "--limit", "500"],
     )
 
+    # Hydrate stub markets for external_seed traders — ~5,929 markets inserted as stubs
+    # during trade import have no metadata. Runs 200/day until the backlog is cleared.
+    # Non-blocking: a Gamma API failure here should never abort maintenance.
+    run_step(
+        "Hydrate stub markets (external_seed)",
+        SCRIPTS_DIR / "hydrate_stub_markets.py",
+        extra_args=["--limit", "200"],
+    )
+
     elapsed = time.time() - start
     print(f"\n=== MAINTENANCE COMPLETE === {elapsed:.1f}s total — all steps succeeded ===")
 

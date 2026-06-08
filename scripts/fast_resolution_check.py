@@ -127,10 +127,10 @@ class FastResolutionChecker:
                     resolved_markets = resolved_markets[:limit]
                     break
 
-                # Safety limit: stop after fetching 10,000 closed markets
-                # (prevents infinite loops and excessive API calls)
-                if offset >= 20000:
-                    print(f"\n   [INFO] Reached safety limit of 20,000 closed markets")
+                # Raised 2026-06-08 — external_seed traders have markets spread across
+                # Polymarket's full history, not just recent 20K closed markets.
+                if offset >= 50000:
+                    print(f"\n   [INFO] Reached safety limit of 50,000 closed markets")
                     break
 
             except Exception as e:
@@ -409,6 +409,108 @@ class FastResolutionChecker:
         print(f"\nStale CLOB pass: {resolved_count} resolved out of {total} checked")
         return resolved_count
 
+    def run_external_seed_pass(self, limit: int = 100, test_mode: bool = False) -> int:
+        """
+        Targeted pass for external_seed trader markets missed by the bulk Gamma scan.
+
+        These markets span Polymarket's full history — the bulk scan sorted by
+        recency won't reach them even at the 50K cap. Queries the CLOB API directly
+        for each market that's still marked unresolved but has a resolution_date
+        older than 7 days.
+        """
+        print("\n" + "="*70)
+        print("EXTERNAL SEED PASS (markets from external_seed traders)")
+        print("="*70 + "\n")
+
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT m.market_id, m.condition_id
+            FROM markets m
+            WHERE m.market_id IN (
+                SELECT DISTINCT t.market_id
+                FROM trades t
+                JOIN traders tr ON tr.address = t.trader_address
+                WHERE tr.discovery_source = 'external_seed'
+            )
+              AND (m.resolved = 0 OR m.resolved IS NULL)
+              AND m.resolution_date < datetime('now', '-7 days')
+            LIMIT ?
+        """, (limit,))
+
+        markets = cursor.fetchall()
+        conn.close()
+
+        total = len(markets)
+        print(f"External seed unresolved markets to check: {total}")
+
+        if not total:
+            print("No external_seed markets requiring resolution check.")
+            print(f"\nExternal seed pass: 0 resolved out of 0 checked")
+            return 0
+
+        resolved_count = 0
+
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        for idx, (market_id, condition_id) in enumerate(markets, 1):
+            try:
+                time.sleep(0.2)
+
+                clob_id = condition_id or market_id
+                url = f"https://clob.polymarket.com/markets/{clob_id}"
+
+                response = self.session.get(url, timeout=15)
+                self.stats['api_requests'] += 1
+
+                if response.status_code != 200:
+                    continue
+
+                data = response.json()
+
+                if not data.get('closed'):
+                    continue
+
+                winner_outcome = None
+                for token in data.get('tokens', []):
+                    if token.get('winner'):
+                        winner_outcome = token.get('outcome')
+                        break
+
+                if not winner_outcome:
+                    continue
+
+                if not test_mode:
+                    cursor.execute("""
+                        UPDATE markets
+                        SET resolved = 1,
+                            winning_outcome = ?,
+                            last_checked = ?
+                        WHERE market_id = ?
+                    """, (winner_outcome, datetime.now(), market_id))
+                    conn.commit()
+
+                resolved_count += 1
+
+                if resolved_count <= 5:
+                    display_id = str(clob_id)[:30]
+                    print(f"   [OK] Resolved (external_seed): {display_id}... → {winner_outcome}")
+
+            except Exception:
+                self.stats['errors'] += 1
+                continue
+
+            if idx % 20 == 0 or idx == total:
+                print(f"   Checked {idx}/{total} | Resolved: {resolved_count}     ", end='\r')
+
+        print()
+        conn.close()
+
+        print(f"\nExternal seed pass: {resolved_count} resolved out of {total} checked")
+        return resolved_count
+
     def run_fast_check(self, test_mode: bool = False, limit: Optional[int] = None,
                        stale_limit: int = 200):
         """
@@ -440,6 +542,9 @@ class FastResolutionChecker:
 
         # Step 3: CLOB stale pass for markets the Gamma scan missed
         self.run_stale_clob_pass(stale_limit=stale_limit, test_mode=test_mode)
+
+        # Step 4: Targeted pass for external_seed trader markets (full history, not just recent)
+        self.run_external_seed_pass(limit=100, test_mode=test_mode)
 
         elapsed = time.time() - start_time
 
