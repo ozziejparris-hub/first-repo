@@ -1,6 +1,10 @@
 """
 resolve_legendary_markets.py
 
+CANONICAL DEFINITIONS: See brain/integration-contract.md Section 10.
+LEGENDARY: geo_elo_active >= 2175 AND geo_accuracy_pool = 1 (NOT comprehensive_elo).
+Pool filter: research_excluded = 0 AND bot_type IS NULL.
+
 Targeted resolution pass for markets where LEGENDARY traders
 (geo_elo_active >= 2175, geo_accuracy_pool = 1) have positions
 that are overdue but not yet resolved in our DB.

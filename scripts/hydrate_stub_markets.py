@@ -2,6 +2,10 @@
 """
 Hydrate stub market records for external_seed traders.
 
+CANONICAL DEFINITIONS: See brain/integration-contract.md Section 10.
+LEGENDARY: geo_elo_active >= 2175 AND geo_accuracy_pool = 1 (NOT comprehensive_elo).
+Pool filter: research_excluded = 0 AND bot_type IS NULL.
+
 Markets inserted as stubs during trade import have market_id but no metadata
 (resolution_date, resolved, winning_outcome, category, title). This script
 fetches that metadata from the Gamma API and fills in the gaps.
