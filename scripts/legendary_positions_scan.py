@@ -21,6 +21,9 @@ For each qualifying market:
   - days_to_resolution    : days until resolution_date (None if unknown)
   - current_price         : live YES probability from Gamma API (0–1)
   - gap_pt                : smart_money_pct minus market-price-for-that-side (pp)
+  - signal_credibility_score / signal_credibility_tier
+                          : net-position Signal Credibility Score 0-100
+                            (signal_credibility.py, RQ-SCI-001)
 
 Markets where Gamma returns no price (cold/resolved) are skipped.
 
@@ -39,6 +42,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.request import urlopen, Request
 from urllib.error import URLError
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import signal_credibility
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -454,8 +460,6 @@ def run_legendary_scan(min_traders: int = 2, min_gap: float = 0.0) -> dict:
         if i % 50 == 0:
             print(f"[LEGEND]   ... {i}/{len(markets)} processed")
 
-    conn.close()
-
     # Sort: legendary_count DESC, then gap_pt DESC (None last)
     results.sort(
         key=lambda x: (
@@ -512,6 +516,11 @@ def run_legendary_scan(min_traders: int = 2, min_gap: float = 0.0) -> dict:
             "days_to_resolution":     sig["days_to_resolution"],
             "resolution_date":        (row["resolution_date"] or row["end_date"] or "")[:10],
         })
+
+    # Enrich with Signal Credibility Scores (RQ-SCI-001 — net-position based)
+    print(f"[LEGEND] Computing Signal Credibility Scores for {len(output_rows)} market(s)...")
+    signal_credibility.enrich_scan_rows(conn, output_rows)
+    conn.close()
 
     output_data = {
         "scan_date":       scan_ts.strftime("%Y-%m-%d"),
