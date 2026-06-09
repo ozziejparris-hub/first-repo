@@ -406,7 +406,9 @@ def run_legendary_scan(min_traders: int = 2, min_gap: float = 0.0) -> dict:
     print(f"[LEGEND] {len(markets)} market(s) with >= {min_traders} LEGENDARY traders")
 
     results = []
-    skipped_no_price = 0
+    skipped_no_price    = 0
+    skipped_stale_price = 0
+    skipped_overdue     = 0
     for i, row in enumerate(markets, 1):
         price = _fetch_gamma_price(row)
         time.sleep(API_DELAY)
@@ -416,7 +418,22 @@ def run_legendary_scan(min_traders: int = 2, min_gap: float = 0.0) -> dict:
             skipped_no_price += 1
             continue
 
+        # Skip markets returning Gamma's default/empty price (0.510–0.520 band).
+        # A real 50/50 market trades at e.g. 0.498 or 0.503, not exactly 0.515.
+        if 0.510 <= price <= 0.520:
+            skipped_stale_price += 1
+            continue
+
         sig = _compute_market_signal(row, price)
+
+        # Skip markets whose resolution date has passed by more than 7 days.
+        # 7-day tolerance accommodates slow oracles (e.g. Peru elections).
+        # Beyond that, the market is almost certainly resolved but not yet updated
+        # in our DB, so its price signal is meaningless.
+        days = sig["days_to_resolution"]
+        if days is not None and days < -7:
+            skipped_overdue += 1
+            continue
 
         # Apply min_gap filter (skip if gap below threshold)
         if min_gap > 0:
@@ -443,11 +460,18 @@ def run_legendary_scan(min_traders: int = 2, min_gap: float = 0.0) -> dict:
     # Print summary
     if skipped_no_price:
         print(f"[LEGEND] Skipped {skipped_no_price} market(s) with no Gamma price (cold/resolved)")
+    if skipped_stale_price:
+        print(f"[LEGEND] Skipped {skipped_stale_price} market(s) with stale Gamma default price (0.510–0.520)")
+    if skipped_overdue:
+        print(f"[LEGEND] Skipped {skipped_overdue} market(s) overdue by >7 days (likely resolved, DB not yet updated)")
 
     print(f"\n{'='*70}")
     print(f"  LEGENDARY POSITIONS SCAN — {scan_ts.strftime('%Y-%m-%d %H:%M UTC')}")
     print(f"  Filters: min_traders={min_traders}, min_gap={min_gap}pt")
-    print(f"  Markets shown: {len(results)}  (skipped no-price: {skipped_no_price})")
+    print(f"  Markets shown: {len(results)}  "
+          f"(skipped no-price: {skipped_no_price}, "
+          f"stale-price: {skipped_stale_price}, "
+          f"overdue: {skipped_overdue})")
     print(f"{'='*70}")
     for rank, r in enumerate(results, 1):
         print(_format_row(rank, r["market"], r["signal"]))
@@ -487,8 +511,11 @@ def run_legendary_scan(min_traders: int = 2, min_gap: float = 0.0) -> dict:
             "min_traders": min_traders,
             "min_gap_pt":  min_gap,
         },
-        "markets_scanned": len(markets),
-        "markets_in_report": len(results),
+        "markets_scanned":       len(markets),
+        "markets_in_report":     len(results),
+        "skipped_no_price":      skipped_no_price,
+        "skipped_stale_price":   skipped_stale_price,
+        "skipped_overdue":       skipped_overdue,
         "markets": output_rows,
     }
 
@@ -498,10 +525,12 @@ def run_legendary_scan(min_traders: int = 2, min_gap: float = 0.0) -> dict:
     print(f"[LEGEND] Output → {out_file}")
 
     return {
-        "markets_scanned":    len(markets),
-        "markets_in_report":  len(results),
-        "skipped_no_price":   skipped_no_price,
-        "output_file":        str(out_file),
+        "markets_scanned":      len(markets),
+        "markets_in_report":    len(results),
+        "skipped_no_price":     skipped_no_price,
+        "skipped_stale_price":  skipped_stale_price,
+        "skipped_overdue":      skipped_overdue,
+        "output_file":          str(out_file),
     }
 
 
