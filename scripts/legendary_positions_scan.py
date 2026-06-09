@@ -338,16 +338,25 @@ def _check_and_update_stale_markets(conn: sqlite3.Connection) -> None:
         print(f"  [TARGETED] Checking: {row['title'][:70]}")
         _resolve_one_market(conn, row)
 
-    # Pass 2 — general sweep of recent overdue geo/elections markets
+    # Pass 2 — ALL overdue geo/elections markets where LEGENDARY traders have positions
     placeholders = ",".join(f"'{c}'" for c in GEO_CATEGORIES)
     cur.execute(f"""
-        SELECT market_id, title, end_date, api_id
-        FROM markets
-        WHERE resolved = 0
-          AND end_date < datetime('now', '-1 day')
-          AND category IN ({placeholders})
-        ORDER BY end_date DESC
-        LIMIT 30
+        SELECT m.market_id, m.title, m.end_date, m.api_id
+        FROM markets m
+        WHERE m.resolved = 0
+          AND m.end_date < datetime('now', '-1 day')
+          AND m.category IN ({placeholders})
+          AND m.market_id IN (
+              SELECT DISTINCT t.market_id
+              FROM trades t
+              WHERE t.trader_address IN (
+                  SELECT address FROM traders
+                  WHERE geo_elo_active >= {ELO_LEGENDARY}
+                    AND geo_accuracy_pool = 1
+                    AND research_excluded = 0
+              )
+          )
+        ORDER BY m.end_date DESC
     """)
     stale = [dict(r) for r in cur.fetchall()]
 

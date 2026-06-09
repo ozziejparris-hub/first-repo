@@ -30,6 +30,7 @@ STEPS = [
     ("Verify market titles",              SCRIPTS_DIR / "verify_market_titles.py",        None, True),
     ("Backfill market categories",        SCRIPTS_DIR / "backfill_market_categories.py",  ["--limit", "50"], True),
     ("Fetch new market resolutions",      SCRIPTS_DIR / "fast_resolution_check.py"),
+    ("Resolve LEGENDARY trader markets",   SCRIPTS_DIR / "resolve_legendary_markets.py", ["--limit", "50"], True),
     ("Evaluate new trader results",        SCRIPTS_DIR / "evaluate_new_trader_results.py", None, True),
     ("Requeue resolved market traders",   SCRIPTS_DIR / "requeue_resolved_market_traders.py"),
     ("Apply full ELO modifiers",          SCRIPTS_DIR / "apply_full_elo_modifiers.py"),
