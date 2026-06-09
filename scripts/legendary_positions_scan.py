@@ -1,6 +1,10 @@
 """
 legendary_positions_scan.py
 
+CANONICAL DEFINITIONS: See brain/integration-contract.md Section 10.
+LEGENDARY: geo_elo_active >= 2175 AND geo_accuracy_pool = 1 (NOT comprehensive_elo).
+Pool filter: research_excluded = 0 AND bot_type IS NULL.
+
 Intelligence report of ALL open markets where LEGENDARY traders
 (geo_elo_active >= 2175, geo_accuracy_pool = 1) have positions.
 
@@ -12,9 +16,13 @@ For each qualifying market:
   - smart_money_direction : YES or NO (whichever side has more LEGENDARY capital)
   - smart_money_pct       : fraction of total LEGENDARY capital on that side (%)
   - yes_capital / no_capital : raw LEGENDARY capital by side ($)
+  - both_sides_ratio      : min(yes,no) / max(yes,no) — high = mixed signal
+  - signal_quality        : MIXED_SIGNAL if both_sides_ratio > 0.3, else CLEAN
   - days_to_resolution    : days until resolution_date (None if unknown)
   - current_price         : live YES probability from Gamma API (0–1)
   - gap_pt                : smart_money_pct minus market-price-for-that-side (pp)
+
+Markets where Gamma returns no price (cold/resolved) are skipped.
 
 Usage:
   python scripts/legendary_positions_scan.py
@@ -87,6 +95,8 @@ def _fetch_legendary_markets(conn: sqlite3.Connection, min_traders: int) -> list
           AND m.category IN ({placeholders})
           AND t.geo_elo_active >= :elo
           AND t.geo_accuracy_pool = 1
+          AND t.research_excluded = 0
+          AND t.bot_type IS NULL
           AND p.status = 'open'
           AND LOWER(p.outcome) IN ('yes', 'no')
         GROUP BY m.market_id
@@ -191,6 +201,8 @@ def _compute_market_signal(row: dict, current_price: float | None) -> dict:
         smart_money_pct   = 50.0
         direction         = "NEUTRAL"
         gap_pt            = None
+        both_sides_ratio  = None
+        signal_quality    = "CLEAN"
     else:
         yes_pct = yes_capital / total * 100.0
         no_pct  = no_capital  / total * 100.0
@@ -205,12 +217,17 @@ def _compute_market_signal(row: dict, current_price: float | None) -> dict:
 
         gap_pt = round(smart_money_pct - market_side_pct, 1) if market_side_pct is not None else None
 
+        both_sides_ratio = round(min(yes_capital, no_capital) / max(yes_capital, no_capital), 3)
+        signal_quality   = "MIXED_SIGNAL" if both_sides_ratio > 0.3 else "CLEAN"
+
     return {
         "smart_money_direction": direction,
         "smart_money_pct":       round(smart_money_pct, 1),
         "yes_capital":           round(yes_capital, 2),
         "no_capital":            round(no_capital, 2),
         "total_capital":         round(total, 2),
+        "both_sides_ratio":      both_sides_ratio,
+        "signal_quality":        signal_quality,
         "current_price":         round(current_price, 4) if current_price is not None else None,
         "gap_pt":                gap_pt,
         "days_to_resolution":    _days_to_resolution(row["end_date"], row["resolution_date"]),
@@ -353,9 +370,10 @@ def _format_row(rank: int, row: dict, sig: dict) -> str:
     days  = sig["days_to_resolution"]
     days_str = f"{days:.0f}d" if days is not None else "?"
 
-    price_str = f"{sig['current_price'] * 100:.1f}%" if sig["current_price"] is not None else "n/a"
-    gap_str   = f"{sig['gap_pt']:+.1f}pt" if sig["gap_pt"] is not None else "n/a"
-    dir_arrow = "YES ▲" if sig["smart_money_direction"] == "YES" else "NO  ▼"
+    price_str  = f"{sig['current_price'] * 100:.1f}%" if sig["current_price"] is not None else "n/a"
+    gap_str    = f"{sig['gap_pt']:+.1f}pt" if sig["gap_pt"] is not None else "n/a"
+    dir_arrow  = "YES ▲" if sig["smart_money_direction"] == "YES" else "NO  ▼"
+    mixed_flag = " [MIXED_SIGNAL]" if sig["signal_quality"] == "MIXED_SIGNAL" else ""
 
     cap_total = sig["total_capital"]
     if cap_total >= 1_000_000:
@@ -368,7 +386,7 @@ def _format_row(rank: int, row: dict, sig: dict) -> str:
     return (
         f"  {rank:>3}. [{row['legendary_count']:>2} LEG] {dir_arrow}  "
         f"{sig['smart_money_pct']:.0f}% vs mkt {price_str}  gap={gap_str}  "
-        f"cap={cap_str}  res={days_str}\n"
+        f"cap={cap_str}  res={days_str}{mixed_flag}\n"
         f"       {title}"
     )
 
@@ -388,12 +406,19 @@ def run_legendary_scan(min_traders: int = 2, min_gap: float = 0.0) -> dict:
     print(f"[LEGEND] {len(markets)} market(s) with >= {min_traders} LEGENDARY traders")
 
     results = []
+    skipped_no_price = 0
     for i, row in enumerate(markets, 1):
         price = _fetch_gamma_price(row)
         time.sleep(API_DELAY)
+
+        # Skip markets where Gamma returns no price — cold/resolved, no live signal
+        if price is None:
+            skipped_no_price += 1
+            continue
+
         sig = _compute_market_signal(row, price)
 
-        # Apply min_gap filter (skip if gap unknown or below threshold)
+        # Apply min_gap filter (skip if gap below threshold)
         if min_gap > 0:
             if sig["gap_pt"] is None or sig["gap_pt"] < min_gap:
                 continue
@@ -416,10 +441,13 @@ def run_legendary_scan(min_traders: int = 2, min_gap: float = 0.0) -> dict:
     scan_ts = datetime.now(timezone.utc)
 
     # Print summary
+    if skipped_no_price:
+        print(f"[LEGEND] Skipped {skipped_no_price} market(s) with no Gamma price (cold/resolved)")
+
     print(f"\n{'='*70}")
     print(f"  LEGENDARY POSITIONS SCAN — {scan_ts.strftime('%Y-%m-%d %H:%M UTC')}")
     print(f"  Filters: min_traders={min_traders}, min_gap={min_gap}pt")
-    print(f"  Markets shown: {len(results)}")
+    print(f"  Markets shown: {len(results)}  (skipped no-price: {skipped_no_price})")
     print(f"{'='*70}")
     for rank, r in enumerate(results, 1):
         print(_format_row(rank, r["market"], r["signal"]))
@@ -444,6 +472,8 @@ def run_legendary_scan(min_traders: int = 2, min_gap: float = 0.0) -> dict:
             "yes_capital":            sig["yes_capital"],
             "no_capital":             sig["no_capital"],
             "total_capital":          sig["total_capital"],
+            "both_sides_ratio":       sig["both_sides_ratio"],
+            "signal_quality":         sig["signal_quality"],
             "current_price_yes":      sig["current_price"],
             "gap_pt":                 sig["gap_pt"],
             "days_to_resolution":     sig["days_to_resolution"],
@@ -470,6 +500,7 @@ def run_legendary_scan(min_traders: int = 2, min_gap: float = 0.0) -> dict:
     return {
         "markets_scanned":    len(markets),
         "markets_in_report":  len(results),
+        "skipped_no_price":   skipped_no_price,
         "output_file":        str(out_file),
     }
 
