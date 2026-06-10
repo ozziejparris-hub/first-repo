@@ -1174,9 +1174,10 @@ https://polymarket.com/profile/{address}
     async def _check_legendary_trades(self):
         """
         Priority alerts for high-tier traders:
-          - ELO >= 2500  =>  Legendary (trophy badge)
-          - ELO 2000-2499 =>  Elite    (star badge)
-          - watched = 1  =>  Watched Trader (eye badge), regardless of ELO
+          - geo_elo_active >= 2175 AND geo_accuracy_pool=1  =>  LEGENDARY  (🏆)
+          - geo_elo_active 1800-2174 AND geo_accuracy_pool=1  =>  NEAR_LEGENDARY (🌟)
+          - comprehensive_elo >= 2000  =>  ELITE (⭐)
+          - watched = 1  =>  WATCHED TRADER (👁), regardless of ELO
 
         Runs every hour with a 48-hour lookback window so no trades are
         missed between observer restarts.  Deduplicates by trade_id.
@@ -1205,7 +1206,7 @@ https://polymarket.com/profile/{address}
                 tr.side,
                 tr.timestamp,
                 COALESCE(m.title, tr.market_title) AS market_title,
-                t.geo_elo,
+                t.geo_elo_active,
                 t.geo_accuracy_pool
             FROM trades tr
             JOIN traders t ON tr.trader_address = t.address
@@ -1215,6 +1216,7 @@ https://polymarket.com/profile/{address}
                     t.comprehensive_elo >= 2000
                     OR COALESCE(t.watched, 0) = 1
                     OR (t.discovery_source = 'leaderboard' AND t.comprehensive_elo >= 1500)
+                    OR (t.geo_elo_active >= 1800 AND t.geo_accuracy_pool = 1)
                 )
                 AND tr.timestamp >= ?
                 AND tr.shares > 0
@@ -1228,7 +1230,7 @@ https://polymarket.com/profile/{address}
             for trade in trades:
                 (address, elo, avg_roi, realized_pnl, closed_positions,
                  watched, username, trade_id, outcome, shares, price,
-                 side, timestamp, market_title, geo_elo, geo_accuracy_pool) = trade
+                 side, timestamp, market_title, geo_elo_active, geo_accuracy_pool) = trade
 
                 # Deduplicate by trade_id
                 if self._already_alerted_legendary(trade_id):
@@ -1239,9 +1241,12 @@ https://polymarket.com/profile/{address}
                 if is_watched and (elo is None or elo < 2000):
                     tier_badge = "WATCHED"
                     tier_icon  = "👁"
-                elif geo_elo is not None and geo_elo >= 2175 and geo_accuracy_pool == 1:
+                elif geo_elo_active is not None and geo_elo_active >= 2175 and geo_accuracy_pool == 1:
                     tier_badge = "LEGENDARY"
                     tier_icon  = "🏆"
+                elif geo_elo_active is not None and geo_elo_active >= 1800 and geo_accuracy_pool == 1:
+                    tier_badge = "NEAR_LEGENDARY"
+                    tier_icon  = "🌟"
                 else:
                     tier_badge = "ELITE"
                     tier_icon  = "⭐"
