@@ -48,7 +48,11 @@ def main():
           AND m.winning_outcome IS NOT NULL
           AND m.winning_outcome != ''
           AND tr.is_flagged = 1
-          AND tr.research_excluded = 0
+          AND (
+              tr.research_excluded = 0
+              OR (tr.discovery_source IN ('manual_watchlist', 'external_seed')
+                  AND tr.resolved_trades_count IS NULL)
+          )
     """)
     pending = [dict(row) for row in cursor.fetchall()]
     conn.close()
@@ -74,7 +78,11 @@ def main():
               AND t.trade_result IN ('won', 'lost')
         )
         WHERE is_flagged = 1
-          AND research_excluded = 0
+          AND (
+              research_excluded = 0
+              OR (discovery_source IN ('manual_watchlist', 'external_seed')
+                  AND resolved_trades_count IS NULL)
+          )
     """)
     conn2.commit()
     conn2.close()
