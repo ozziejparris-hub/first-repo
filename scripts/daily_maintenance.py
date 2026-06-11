@@ -36,6 +36,7 @@ STEPS = [
     ("Requeue resolved market traders",   SCRIPTS_DIR / "requeue_resolved_market_traders.py"),
     ("Apply full ELO modifiers",          SCRIPTS_DIR / "apply_full_elo_modifiers.py"),
     ("Resync position counts",            SCRIPTS_DIR / "resync_position_counts.py"),
+    ("Snapshot ELO scores",               SCRIPTS_DIR / "snapshot_elo_scores.py",              None, True),
     ("Write integration health",          TRADING_SWARM_SCRIPTS / "write_integration_health.py"),
 ]
 
