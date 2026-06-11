@@ -451,11 +451,11 @@ class SystemObserver:
                                 print("[OBSERVER] Monitoring frozen — triggering auto-restart")
                                 await self._attempt_monitoring_restart()
 
-                    # DISABLED 2026-05-20 — pre-Phase 5, not actioning individual trade alerts
+                    # Re-enabled 2026-06-11 — Phase 5 Gate 2 met June 5
+                    # High value trades disabled (noise) — legendary trades enabled (signal)
                     # await self._check_high_value_trades()
 
-                    # DISABLED 2026-05-20 — pre-Phase 5, not actioning individual trade alerts
-                    # await self._check_legendary_trades()
+                    await self._check_legendary_trades()
 
                     # Check for smart money consensus (runs every hour)
                     await self._check_consensus_positions()
@@ -466,8 +466,9 @@ class SystemObserver:
                     # Log ELO staleness date alongside hourly report
                     await self._check_elo_staleness()
 
-                    # Send report
-                    await self.telegram.send_hourly_report(metrics)
+                    # Only send hourly report if not fully healthy — HEALTHY hours are silent
+                    if metrics.get("status") != "healthy" or metrics.get("error_count", 0) > 0:
+                        await self.telegram.send_hourly_report(metrics)
 
                     self.last_hourly_report = now
 
