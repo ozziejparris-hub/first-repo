@@ -2,8 +2,12 @@
 """
 backfill_clob_token_ids.py
 
-Fetches clobTokenIds from Gamma API for markets missing them in the DB.
-Uses conditionIds query param since api_id is not reliably populated.
+Fetches clobTokenIds for markets missing them in the DB.
+Primary: CLOB API /markets/{condition_id} (exact match, reliable).
+Fallback: Gamma conditionIds param — BUT Gamma silently ignores unrecognised
+  conditionIds and returns a default popular-market list, so we MUST verify
+  that the returned market's conditionId matches what we queried.
+
 Run after any new signal markets are added.
 
 Usage:
@@ -16,10 +20,32 @@ from datetime import datetime
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        'data', 'polymarket_tracker.db')
+CLOB_BASE = 'https://clob.polymarket.com'
 GAMMA_BASE = 'https://gamma-api.polymarket.com'
 
 def fetch_token_ids(condition_id):
-    """Fetch clobTokenIds from Gamma using conditionIds lookup."""
+    """Fetch YES/NO token IDs for a market.
+
+    Tries CLOB first (exact match). Falls back to Gamma with conditionId
+    verification — Gamma returns a default list when the ID is unrecognised,
+    so we reject results where the returned conditionId doesn't match.
+    """
+    # --- Primary: CLOB API ---
+    try:
+        r = requests.get(f'{CLOB_BASE}/markets/{condition_id}', timeout=15)
+        if r.status_code == 200:
+            market = r.json()
+            tokens = market.get('tokens', [])
+            yes_token = next((t['token_id'] for t in tokens if t.get('outcome') == 'Yes'), None)
+            no_token = next((t['token_id'] for t in tokens if t.get('outcome') == 'No'), None)
+            if yes_token:
+                return yes_token, no_token
+        elif r.status_code != 404:
+            print(f'  CLOB error {r.status_code} for {condition_id[:20]}')
+    except Exception as e:
+        print(f'  CLOB fetch error: {e}')
+
+    # --- Fallback: Gamma API (with match verification) ---
     try:
         r = requests.get(f'{GAMMA_BASE}/markets',
                         params={'conditionIds': condition_id},
@@ -31,10 +57,15 @@ def fetch_token_ids(condition_id):
         if not markets:
             print(f'  No market found for conditionId {condition_id[:20]}')
             return None, None
-        market = markets[0]
+        # Gamma silently ignores unrecognised IDs and returns a default list —
+        # verify the returned market actually matches the queried conditionId.
+        market = next((m for m in markets if m.get('conditionId', '').lower() == condition_id.lower()), None)
+        if not market:
+            print(f'  Gamma returned no matching conditionId for {condition_id[:20]} (got unrelated markets)')
+            return None, None
         token_ids_raw = market.get('clobTokenIds')
         if not token_ids_raw:
-            print(f'  No clobTokenIds in response')
+            print(f'  No clobTokenIds in Gamma response')
             return None, None
         if isinstance(token_ids_raw, str):
             token_ids = json.loads(token_ids_raw)
@@ -45,7 +76,7 @@ def fetch_token_ids(condition_id):
         no_token = token_ids[1] if len(token_ids) > 1 else None
         return yes_token, no_token
     except Exception as e:
-        print(f'  Error fetching token IDs: {e}')
+        print(f'  Gamma fetch error: {e}')
         return None, None
 
 def run(market_id=None):
