@@ -104,6 +104,24 @@ def _score_signal(signal: dict, conn) -> dict:
     updated['outcome_correct'] = outcome_correct
     updated['resolved_at'] = row['resolution_date']
     updated['scored_at'] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    # Market-relative edge: how much the signal beat market consensus at entry.
+    # Positive = correctly identified underpriced side; near-zero = market already knew.
+    # Only computable when a registration price was captured at or near signal creation.
+    reg_price = (signal.get('market_price_at_registration') or
+                 signal.get('market_price_at_first_capture'))
+    if reg_price is not None:
+        try:
+            reg_price = float(reg_price)
+            market_implied_signal_side = reg_price if direction == 'YES' else (1.0 - reg_price)
+            edge_at_entry = float(outcome_correct) - market_implied_signal_side
+            updated['edge_at_entry'] = round(edge_at_entry, 4)
+            updated['market_price_at_registration_used'] = reg_price
+        except (TypeError, ValueError):
+            updated['edge_at_entry'] = None
+    else:
+        updated['edge_at_entry'] = None
+
     return updated
 
 
@@ -242,6 +260,18 @@ def main():
         correct = sum(1 for s in already_scored if s.get('outcome_correct') == 1)
         accuracy = correct / len(already_scored)
         print(f"[str003] Accuracy: {accuracy:.1%} ({correct}/{len(already_scored)})")
+
+        with_edge = [s for s in already_scored if s.get('edge_at_entry') is not None]
+        if with_edge:
+            avg_edge = sum(s['edge_at_entry'] for s in with_edge) / len(with_edge)
+            print(f"[str003] Market-relative edge: {avg_edge:+.4f} avg "
+                  f"({len(with_edge)}/{len(already_scored)} signals have registration price)")
+            for s in with_edge:
+                print(f"  {s.get('signal_id','?')}: edge={s['edge_at_entry']:+.4f} "
+                      f"(registered at YES={s.get('market_price_at_registration_used','?')})")
+        else:
+            print("[str003] Market-relative edge: N/A — no signals have market_price_at_registration")
+            print("  (forward-only metric — new signals will capture this at registration)")
 
         tier_counts = {}
         for sig in already_scored:

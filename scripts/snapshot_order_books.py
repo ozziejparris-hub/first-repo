@@ -24,6 +24,23 @@ DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 SIGNALS_PATH = '/home/parison/trading-swarm/brain/signals.json'
 CLOB_BASE = 'https://clob.polymarket.com'
 
+def fetch_clob_market_price(condition_id):
+    """Fetch authoritative YES price from CLOB /markets/{condition_id}.
+    Returns float YES price (0-1) or None if unavailable."""
+    try:
+        r = requests.get(f'{CLOB_BASE}/markets/{condition_id}', timeout=10)
+        if r.status_code == 200:
+            market = r.json()
+            tokens = market.get('tokens', [])
+            yes_token = next((t for t in tokens if t.get('outcome') == 'Yes'), None)
+            if yes_token:
+                price = yes_token.get('price')
+                return float(price) if price is not None else None
+    except Exception:
+        pass
+    return None
+
+
 def get_active_signal_markets():
     """Read active signals from signals.json, return list of (signal_id, market_id, direction)."""
     try:
@@ -95,18 +112,21 @@ def snapshot_market(conn, signal_id, market_id, direction, snapshot_type='daily'
 
     bids, asks, mid_price, spread, bid_depth, ask_depth = result
     snapshot_ts = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    clob_yes_price = fetch_clob_market_price(market_id)
 
     try:
         conn.execute('''
             INSERT OR IGNORE INTO order_book_snapshots
             (market_id, snapshot_ts, signal_id, snapshot_type, direction, token_id,
-             bids_json, asks_json, mid_price, spread, bid_depth_10, ask_depth_10)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             bids_json, asks_json, mid_price, spread, bid_depth_10, ask_depth_10,
+             clob_market_price_yes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (market_id, snapshot_ts, signal_id, snapshot_type, direction,
               token_id, json.dumps(bids), json.dumps(asks),
-              mid_price, spread, bid_depth, ask_depth))
+              mid_price, spread, bid_depth, ask_depth, clob_yes_price))
         conn.commit()
-        print(f'  ✓ {signal_id} {direction}: mid={mid_price:.3f} spread={spread:.4f} '
+        yes_str = f'{clob_yes_price:.4f}' if clob_yes_price is not None else 'N/A'
+        print(f'  ✓ {signal_id} {direction}: YES={yes_str} mid={mid_price:.3f} '
               f'bid_depth={bid_depth:.0f} ask_depth={ask_depth:.0f}')
         return True
     except Exception as e:
