@@ -16,3 +16,7 @@ numpy>=1.24.0
 matplotlib>=3.7.0
 seaborn>=0.12.0
 scipy>=1.10.0
+
+# Scheduling & process monitoring
+apscheduler>=3.10.0  # monitoring/telegram_scheduler.py
+psutil>=5.9.0        # scripts/check_processes.py, diagnose_* scripts

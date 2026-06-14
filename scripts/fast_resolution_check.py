@@ -419,7 +419,7 @@ class FastResolutionChecker:
         """
         print()
         print("=" * 70)
-        print("RECENT OVERDUE PASS (0-7 days past resolution, no api_id)")
+        print("RECENT OVERDUE PASS (0-7 days past resolution, no api_id or condition_id)")
         print("=" * 70)
         print()
         conn = sqlite3.connect(self.db_path)
@@ -439,7 +439,7 @@ class FastResolutionChecker:
         recent_markets = cursor.fetchall()
         conn.close()
         total = len(recent_markets)
-        print(f"Recent overdue markets (no api_id) to check: {total}")
+        print(f"Recent overdue markets (no api_id or condition_id) to check: {total}")
         if not total:
             print("No recent overdue markets found.")
             return 0
