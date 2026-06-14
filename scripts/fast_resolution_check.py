@@ -409,6 +409,84 @@ class FastResolutionChecker:
         print(f"\nStale CLOB pass: {resolved_count} resolved out of {total} checked")
         return resolved_count
 
+    def run_recent_overdue_pass(self, limit: int = 100, test_mode: bool = False) -> int:
+        """
+        Targeted pass for markets that are 0-7 days past resolution_date but
+        were missed by the Gamma bulk scan (no api_id or condition_id).
+        These fall in the gap between the Gamma scan (needs api_id) and the
+        stale CLOB pass (only picks up markets >7 days overdue).
+        Runs before the stale pass so recently-resolved markets are caught quickly.
+        """
+        print()
+        print("=" * 70)
+        print("RECENT OVERDUE PASS (0-7 days past resolution, no api_id)")
+        print("=" * 70)
+        print()
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT market_id, condition_id
+            FROM markets
+            WHERE (resolved = 0 OR resolved IS NULL)
+              AND (
+                  (resolution_date IS NOT NULL AND resolution_date < datetime('now') AND resolution_date >= datetime('now', '-7 days'))
+                  OR
+                  (resolution_date IS NULL AND end_date IS NOT NULL AND end_date < datetime('now') AND end_date >= datetime('now', '-7 days'))
+              )
+            ORDER BY resolution_date ASC
+            LIMIT ?
+        """, (limit,))
+        recent_markets = cursor.fetchall()
+        conn.close()
+        total = len(recent_markets)
+        print(f"Recent overdue markets (no api_id) to check: {total}")
+        if not total:
+            print("No recent overdue markets found.")
+            return 0
+        resolved_count = 0
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        for idx, (market_id, condition_id) in enumerate(recent_markets, 1):
+            try:
+                import time as _time
+                _time.sleep(0.2)
+                clob_id = condition_id or market_id
+                url = f"https://clob.polymarket.com/markets/{clob_id}"
+                response = self.session.get(url, timeout=15)
+                self.stats['api_requests'] += 1
+                if response.status_code != 200:
+                    continue
+                data = response.json()
+                if not data.get('closed'):
+                    continue
+                winner_outcome = None
+                for token in data.get('tokens', []):
+                    if token.get('winner'):
+                        winner_outcome = token.get('outcome')
+                        break
+                if not winner_outcome:
+                    continue
+                if not test_mode:
+                    cursor.execute("""
+                        UPDATE markets
+                        SET resolved = 1,
+                            winning_outcome = ?,
+                            last_checked = ?
+                        WHERE market_id = ?
+                    """, (winner_outcome, datetime.now(), market_id))
+                    conn.commit()
+                resolved_count += 1
+                if resolved_count <= 10:
+                    display_id = str(clob_id)[:30]
+                    print(f"   [OK] Resolved: {display_id}... → {winner_outcome}")
+            except Exception:
+                self.stats['errors'] += 1
+                continue
+        print()
+        print(f"Recent overdue pass: {resolved_count} resolved out of {total} checked")
+        conn.close()
+        return resolved_count
+
     def run_external_seed_pass(self, limit: int = 100, test_mode: bool = False) -> int:
         """
         Targeted pass for external_seed trader markets missed by the bulk Gamma scan.
@@ -540,7 +618,10 @@ class FastResolutionChecker:
         # Step 2: Update database in batch
         self.batch_update_resolved_markets(resolved_markets, test_mode=test_mode)
 
-        # Step 3: CLOB stale pass for markets the Gamma scan missed
+        # Step 3a: Recent overdue pass — 0-7 days past resolution_date, no api_id
+        self.run_recent_overdue_pass(limit=100, test_mode=test_mode)
+
+        # Step 3b: CLOB stale pass for markets the Gamma scan missed
         self.run_stale_clob_pass(stale_limit=stale_limit, test_mode=test_mode)
 
         # Step 4: Targeted pass for external_seed trader markets (full history, not just recent)
