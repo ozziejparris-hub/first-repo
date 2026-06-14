@@ -47,10 +47,16 @@ class TelegramNotifier:
             try:
                 if len(message) <= MAX_LENGTH:
                     # Message is short enough, send as-is
-                    await bot.send_message(
-                        chat_id=self.chat_id,
-                        text=message,
-                        parse_mode='HTML'
+                    await asyncio.wait_for(
+                        bot.send_message(
+                            chat_id=self.chat_id,
+                            text=message,
+                            parse_mode='HTML',
+                            read_timeout=10,
+                            write_timeout=10,
+                            connect_timeout=10,
+                        ),
+                        timeout=15
                     )
                 else:
                     # Split into multiple messages
@@ -74,16 +80,27 @@ class TelegramNotifier:
                             header = f"[Part {i}/{len(parts)}]\n\n"
                             part = header + part
 
-                        await bot.send_message(
-                            chat_id=self.chat_id,
-                            text=part,
-                            parse_mode='HTML'
+                        await asyncio.wait_for(
+                            bot.send_message(
+                                chat_id=self.chat_id,
+                                text=part,
+                                parse_mode='HTML',
+                                read_timeout=10,
+                                write_timeout=10,
+                                connect_timeout=10,
+                            ),
+                            timeout=15
                         )
                         await asyncio.sleep(0.5)  # Small delay between messages
 
                 # Success - exit retry loop
                 return
 
+            except asyncio.TimeoutError:
+                print(f"[TELEGRAM] Send timeout on attempt {attempt+1}/{max_retries} — skipping")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2 ** attempt)
+                continue
             except Exception as e:
                 error_msg = str(e)
 
