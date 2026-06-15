@@ -30,7 +30,7 @@ STEPS = [
     ("Label maker/taker roles",           SCRIPTS_DIR / "polygon_maker_taker.py",         ["--backfill", "--limit", "500"], True),
     ("Verify market titles",              SCRIPTS_DIR / "verify_market_titles.py",        None, True),
     ("Backfill market categories",        SCRIPTS_DIR / "backfill_market_categories.py",  ["--limit", "50"], True),
-    ("Fetch new market resolutions",      SCRIPTS_DIR / "fast_resolution_check.py"),
+    ("Fetch new market resolutions",      SCRIPTS_DIR / "fast_resolution_check.py",       ["--stale-limit", "500"], True),
     ("Register STR-002 signals",           SCRIPTS_DIR / "register_str002_signals.py",     None, True),
     ("Enrich STR-002 metadata",            SCRIPTS_DIR / "enrich_str002_metadata.py",      None, True),
     ("Score STR-002 signals",              SCRIPTS_DIR / "score_str002_signals.py",        None, True),
