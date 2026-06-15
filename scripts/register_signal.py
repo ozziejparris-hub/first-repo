@@ -63,7 +63,7 @@ CANONICAL_FIELDS = [
     'signal_id', 'strategy', 'status', 'market_id', 'market_title', 'direction',
     'registered_at', 'key_traders', 'trader_elos_at_registration',
     'market_price_at_registration', 'event_cluster', 'correlated_with',
-    'legendary_count', 'signal_credibility_score', 'signal_credibility_tier',
+    'legendary_count', 'str002_confirmed', 'signal_credibility_score', 'signal_credibility_tier',
     'outcome_correct', 'edge_at_entry', 'resolved_at', 'scored_at', 'notes'
 ]
 
@@ -163,6 +163,41 @@ def _scs_tier_from_score(score):
     return "LOW"
 
 
+
+def _check_str002_confirmation(conn, market_id, direction):
+    """Check if this market+direction has a confirming STR-002 signal with a
+    proven trader (ELITE/LEGENDARY). This is the STR-002 -> STR-003 stepping-stone:
+    a STR-003 signal that was ALSO flagged by pre-resolution divergence from a
+    proven trader is higher-conviction (two independent detection methods agree).
+
+    Returns dict: {confirmed: bool, str002_signal_id, str002_tier, str002_regime,
+                   str002_first_seen} or {confirmed: False}.
+    """
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT signal_id, tier, regime, first_seen_date, has_proven_trader
+            FROM str002_signals
+            WHERE market_id = ? AND direction = ?
+              AND has_proven_trader = 1
+            ORDER BY first_seen_date ASC
+            LIMIT 1
+        """, (market_id, direction.upper()))
+        row = cur.fetchone()
+        if row:
+            return {
+                'confirmed': True,
+                'str002_signal_id': row[0],
+                'str002_tier': row[1],
+                'str002_regime': row[2],
+                'str002_first_seen': row[3],
+            }
+    except Exception as e:
+        # str002_signals table may not exist in some contexts — fail safe
+        pass
+    return {'confirmed': False}
+
+
 def register_signal(market_id, direction, key_traders, strategy='STR-003',
                     event_cluster=None, correlated_with=None, notes='',
                     signal_credibility_score=None, fire_alert=False, dry_run=False):
@@ -200,6 +235,9 @@ def register_signal(market_id, direction, key_traders, strategy='STR-003',
     archetypes = _load_archetypes()
     trader_archetypes = {addr: archetypes.get(addr) for addr in key_traders}
 
+    # 5b. STR-002 confirmation check (stepping-stone link)
+    str002 = _check_str002_confirmation(conn, market_id, direction)
+
     # 6. SCS
     if signal_credibility_score is None:
         scs_score, scs_tier = _compute_scs(conn, market_id, reg_price)
@@ -231,6 +269,8 @@ def register_signal(market_id, direction, key_traders, strategy='STR-003',
         "event_cluster": event_cluster,
         "correlated_with": correlated_with,
         "legendary_count": legendary_count,
+        "str002_confirmed": str002['confirmed'],
+        "str002_confirmation": str002 if str002['confirmed'] else None,
         "signal_credibility_score": scs_score,
         "signal_credibility_tier": scs_tier,
         "outcome_correct": None,

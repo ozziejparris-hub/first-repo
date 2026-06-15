@@ -32,6 +32,7 @@ STEPS = [
     ("Backfill market categories",        SCRIPTS_DIR / "backfill_market_categories.py",  ["--limit", "50"], True),
     ("Fetch new market resolutions",      SCRIPTS_DIR / "fast_resolution_check.py"),
     ("Register STR-002 signals",           SCRIPTS_DIR / "register_str002_signals.py",     None, True),
+    ("Enrich STR-002 metadata",            SCRIPTS_DIR / "enrich_str002_metadata.py",      None, True),
     ("Score STR-002 signals",              SCRIPTS_DIR / "score_str002_signals.py",        None, True),
     ("Resolve LEGENDARY trader markets",   SCRIPTS_DIR / "resolve_legendary_markets.py", ["--limit", "50"], True),
     ("Evaluate new trader results",        SCRIPTS_DIR / "evaluate_new_trader_results.py", None, True),
