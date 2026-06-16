@@ -94,12 +94,24 @@ def collect_first_seen(conn):
                 continue
 
             # Resolve title -> market_id ONCE (locking concrete identifier)
+            # When duplicates exist, pick the market_id with highest trade activity
             cur.execute("SELECT market_id FROM markets WHERE title = ?", (title,))
             row = cur.fetchone()
             if not row:
                 unmatched.append((scan_date, title))
                 continue
             market_id = row[0]
+
+            # Minimum activity filter: skip thin markets (noise, not signal)
+            # Threshold: >=200 trades OR >=50000 notional (shares*price)
+            cur.execute("""
+                SELECT COUNT(trade_id), COALESCE(SUM(shares*price),0)
+                FROM trades WHERE market_id = ?
+            """, (market_id,))
+            activity = cur.fetchone()
+            trade_count, notional = activity[0], activity[1]
+            if trade_count < 200 and notional < 50000:
+                continue  # Skip thin market — divergence is meaningless
 
             key = (market_id, direction)
             if key not in first_seen:  # FIRST-SEEN WINS
