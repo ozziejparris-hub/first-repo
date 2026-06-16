@@ -353,6 +353,12 @@ def _format_no_signals_message(total_upcoming: int) -> str:
 # ---------------------------------------------------------------------------
 
 async def _send_messages(messages: list[str], dry_run: bool) -> None:
+    """
+    Telegram alerts suppressed 2026-06-16 — pre-res scan results are written to
+    JSON scan files and consumed by the STR-002 pipeline. Per-signal Telegram
+    alerts were generating 20+ notifications/day (noise). Alerts now fire only
+    for STR-003 signal registration, counter-signals, and system errors.
+    """
     if dry_run:
         import unicodedata
         def _safe(text: str) -> str:
@@ -363,21 +369,8 @@ async def _send_messages(messages: list[str], dry_run: bool) -> None:
             print(_safe(msg))
         return
 
-    try:
-        sys.path.insert(0, _REPO_ROOT)
-        from dotenv import load_dotenv
-        load_dotenv(os.path.expanduser('~/.env_trading'))
-        token   = os.getenv('telegram_alerts_token')
-        chat_id = os.getenv('telegram_chat_id')
-        if not token or not chat_id:
-            print("[PRE-RES] ERROR: telegram_alerts_token / telegram_chat_id not in ~/.env_trading")
-            return
-        from monitoring.telegram_health_bot import TelegramHealthBot
-        bot = TelegramHealthBot(token=token, chat_id=chat_id)
-        for msg in messages:
-            await bot._send_message(msg)
-    except Exception as e:
-        print(f"[PRE-RES] Telegram dispatch error: {e}")
+    # Alerts suppressed — results written to scan file, processed by STR-002 pipeline
+    print(f"[PRE-RES] {len(messages)} signal message(s) logged (Telegram suppressed)")
 
 
 # ---------------------------------------------------------------------------

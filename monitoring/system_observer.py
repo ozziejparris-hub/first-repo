@@ -1175,10 +1175,11 @@ https://polymarket.com/profile/{address}
     async def _check_legendary_trades(self):
         """
         Priority alerts for high-tier traders:
-          - geo_elo_active >= 2175 AND geo_accuracy_pool=1  =>  LEGENDARY  (🏆)
-          - geo_elo_active 1800-2174 AND geo_accuracy_pool=1  =>  NEAR_LEGENDARY (🌟)
-          - comprehensive_elo >= 2000  =>  ELITE (⭐)
+          - geo_elo_active >= 2175 AND geo_accuracy_pool=1 AND not excluded/bot => LEGENDARY (🏆)
           - watched = 1  =>  WATCHED TRADER (👁), regardless of ELO
+
+        NEAR_LEGENDARY, ELITE, and leaderboard-discovery tiers removed 2026-06-16
+        (too noisy — 20+ alerts/day). Only TRUE LEGENDARY + manual watchlist fire.
 
         Runs every hour with a 48-hour lookback window so no trades are
         missed between observer restarts.  Deduplicates by trade_id.
@@ -1214,14 +1215,13 @@ https://polymarket.com/profile/{address}
             LEFT JOIN markets m ON tr.market_id = m.market_id
             WHERE
                 (
-                    t.comprehensive_elo >= 2000
+                    (t.geo_elo_active >= 2175 AND t.geo_accuracy_pool = 1
+                     AND t.research_excluded = 0 AND t.bot_type IS NULL)
                     OR COALESCE(t.watched, 0) = 1
-                    OR (t.discovery_source = 'leaderboard' AND t.comprehensive_elo >= 1500)
-                    OR (t.geo_elo_active >= 1800 AND t.geo_accuracy_pool = 1)
                 )
                 AND tr.timestamp >= ?
-                AND tr.shares > 0
-            ORDER BY COALESCE(t.watched, 0) DESC, t.comprehensive_elo DESC, tr.timestamp DESC
+                AND tr.shares >= 500
+            ORDER BY COALESCE(t.watched, 0) DESC, t.geo_elo_active DESC, tr.timestamp DESC
             """
 
             cursor.execute(query, (cutoff.isoformat(),))
