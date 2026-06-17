@@ -883,7 +883,7 @@ class Database:
         cursor.execute("""
             SELECT DISTINCT t.trader_address
             FROM trades t
-            INNER JOIN markets m ON t.market_id = m.condition_id
+            INNER JOIN markets m ON t.market_id = m.market_id
             WHERE m.resolved = 1
             AND m.resolution_date IS NOT NULL
             AND datetime(m.resolution_date) >= datetime('now', '-' || ? || ' hours')
@@ -1296,7 +1296,7 @@ class Database:
 
         cursor.execute("""
             SELECT DISTINCT
-                m.condition_id AS market_id,
+                m.market_id,
                 m.winning_outcome,
                 m.resolution_date
             FROM markets m
@@ -1305,7 +1305,6 @@ class Database:
               AND m.resolved = 1
               AND m.winning_outcome IS NOT NULL
               AND m.winning_outcome != ''
-              AND m.condition_id IS NOT NULL
         """, (trader_address,))
 
         rows = cursor.fetchall()

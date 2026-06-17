@@ -37,7 +37,6 @@ def main():
         WHERE m.resolved = 1
           AND m.winning_outcome IS NOT NULL
           AND m.winning_outcome != ''
-          AND m.condition_id IS NOT NULL
         ORDER BY t.trader_address
     """)
     traders = [row[0] for row in cursor.fetchall()]

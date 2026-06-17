@@ -274,7 +274,7 @@ def write_manual_review_report(cur) -> int:
                COUNT(p.position_id) as open_positions,
                SUM(p.entry_total_cost) as capital
         FROM markets m
-        JOIN positions p ON p.market_id = m.condition_id
+        JOIN positions p ON p.market_id = m.market_id
         WHERE p.status = 'open'
         AND m.resolved = 0
         AND (m.api_id IS NULL OR m.api_id = '')
@@ -342,7 +342,7 @@ def verify(cur) -> tuple[int, float]:
                COUNT(*) as positions,
                COALESCE(SUM(p.entry_total_cost), 0) as capital
         FROM positions p
-        JOIN markets m ON m.condition_id = p.market_id
+        JOIN markets m ON m.market_id = p.market_id
         WHERE p.status = 'open'
         AND m.resolved = 0
         AND m.end_date < datetime('now')

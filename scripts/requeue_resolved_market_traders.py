@@ -68,12 +68,11 @@ def main():
 
     # Find markets that resolved since last run
     cur.execute("""
-        SELECT condition_id, winning_outcome, resolution_date, title
+        SELECT market_id, winning_outcome, resolution_date, title
         FROM markets
         WHERE resolved = 1
           AND winning_outcome IS NOT NULL
           AND winning_outcome NOT IN ('', 'unknown')
-          AND condition_id IS NOT NULL
           AND datetime(resolution_date) > datetime(?)
         ORDER BY resolution_date ASC
     """, (last_run,))
@@ -87,7 +86,7 @@ def main():
         conn.close()
         return
 
-    for cid, winning, res_date, title in newly_resolved:
+    for mid, winning, res_date, title in newly_resolved:
         safe_title = (title or 'Unknown')[:60].encode('ascii', 'replace').decode('ascii')
         try:
             print(f"  [{res_date}] {safe_title}  winner: {winning}")
@@ -97,15 +96,15 @@ def main():
     print()
 
     # For each newly resolved market, find traders with open positions
-    condition_ids = [row[0] for row in newly_resolved]
-    placeholders = ",".join("?" * len(condition_ids))
+    market_ids = [row[0] for row in newly_resolved]
+    placeholders = ",".join("?" * len(market_ids))
 
     cur.execute(f"""
         SELECT DISTINCT trader_address
         FROM positions
         WHERE status = 'open'
           AND market_id IN ({placeholders})
-    """, condition_ids)
+    """, market_ids)
     traders_to_requeue = [row[0] for row in cur.fetchall()]
 
     print(f"Traders with open positions in these markets: {len(traders_to_requeue)}")
