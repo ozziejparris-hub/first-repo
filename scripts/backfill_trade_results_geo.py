@@ -47,7 +47,7 @@ def fetch_pending_trades(conn: sqlite3.Connection, limit: int | None) -> list[di
             t.side,
             m.winning_outcome
         FROM trades t
-        JOIN markets m ON m.condition_id = t.market_id
+        JOIN markets m ON m.market_id = t.market_id
         WHERE (t.trade_result = 'pending' OR t.trade_result IS NULL)
           AND m.resolved = 1
           AND m.winning_outcome IS NOT NULL
@@ -115,7 +115,7 @@ def run(db_path: str, dry_run: bool, limit: int | None) -> None:
         SET geo_resolved_trades_count = (
             SELECT COUNT(DISTINCT tr2.market_id)
             FROM trades tr2
-            JOIN markets m ON m.condition_id = tr2.market_id
+            JOIN markets m ON m.market_id = tr2.market_id
             WHERE tr2.trader_address = traders.address
               AND tr2.trade_result IN ('won', 'lost')
               AND m.category IN ('Geopolitics', 'Elections')

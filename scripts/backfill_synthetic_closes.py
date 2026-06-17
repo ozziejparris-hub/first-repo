@@ -33,7 +33,7 @@ def main():
     cursor.execute("""
         SELECT DISTINCT t.trader_address
         FROM trades t
-        INNER JOIN markets m ON m.condition_id = t.market_id
+        INNER JOIN markets m ON m.market_id = t.market_id
         WHERE m.resolved = 1
           AND m.winning_outcome IS NOT NULL
           AND m.winning_outcome != ''

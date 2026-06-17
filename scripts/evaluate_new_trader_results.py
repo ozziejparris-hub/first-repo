@@ -41,7 +41,7 @@ def main():
             m.condition_id,
             m.winning_outcome
         FROM trades t
-        JOIN markets m ON m.condition_id = t.market_id
+        JOIN markets m ON m.market_id = t.market_id
         JOIN traders tr ON tr.address = t.trader_address
         WHERE t.trade_result = 'pending'
           AND m.resolved = 1
@@ -72,7 +72,7 @@ def main():
         SET resolved_trades_count = (
             SELECT COUNT(DISTINCT t.market_id)
             FROM trades t
-            JOIN markets m ON m.condition_id = t.market_id
+            JOIN markets m ON m.market_id = t.market_id
             WHERE t.trader_address = traders.address
               AND m.resolved = 1
               AND t.trade_result IN ('won', 'lost')

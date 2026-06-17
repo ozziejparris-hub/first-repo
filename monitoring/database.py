@@ -509,7 +509,7 @@ class Database:
                 m.end_date,
                 m.last_checked
             FROM markets m
-            INNER JOIN trades t ON m.condition_id = t.market_id
+            INNER JOIN trades t ON m.market_id = t.market_id
             INNER JOIN traders tr ON t.trader_address = tr.address
             WHERE tr.is_flagged = 1
             AND (tr.research_excluded = 0 OR tr.research_excluded IS NULL)
@@ -1300,7 +1300,7 @@ class Database:
                 m.winning_outcome,
                 m.resolution_date
             FROM markets m
-            INNER JOIN trades t ON m.condition_id = t.market_id
+            INNER JOIN trades t ON m.market_id = t.market_id
             WHERE t.trader_address = ?
               AND m.resolved = 1
               AND m.winning_outcome IS NOT NULL
