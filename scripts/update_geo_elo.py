@@ -45,6 +45,7 @@ POOL_C_POPULATE_SQL = """
 UPDATE traders
 SET geo_accuracy_pool = 1
 WHERE geo_elo IS NOT NULL
+  AND geo_elo_active >= 500
   AND geo_resolved_trades_count >= 10
   AND geo_directionality_score IS NOT NULL
   AND bot_type IS NULL
