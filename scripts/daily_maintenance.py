@@ -23,6 +23,11 @@ STEPS = [
     ("Detect ARB_BOT patterns",           SCRIPTS_DIR / "detect_arb_bots.py",             None, True),
     ("Promote high-P&L traders",          SCRIPTS_DIR / "promote_high_pnl_traders.py",    None, True),
     ("Resolution sweep",                  SCRIPTS_DIR / "resolution_sweep.py",            None, True),
+    # EXIT CONTRACT: audit_invariants exits 2 on any Tier-1 CRITICAL (impossible state →
+    # hard abort before ELO writes); exits 0 on PASS or REGRESSION-only (Telegram alert
+    # already sent, run continues). Never exits 1. Non-blocking=False (default) so the
+    # existing blocking-step abort path catches exit 2.
+    ("Integrity audit (pre-ELO gate)",   SCRIPTS_DIR / "audit_invariants.py",            ["--alert"]),
     ("Update geo ELO scores",             SCRIPTS_DIR / "update_geo_elo.py",               None, True),
     ("Score insider signals",             SCRIPTS_DIR / "score_insider_signals.py",        None, True),
     ("Score STR-003 signals",             SCRIPTS_DIR / "score_str003_signals.py",         None, True),

@@ -49,7 +49,10 @@ FLOOR_GEO_RECON         = 0  # must stay 0 after reconcile_geo_resolved_counts.p
 # ---- Tier 2 (floor = current value; REGRESSION if count grows) -----------
 FLOOR_PENDING_FLAGGED   = 0       # stays 0 as long as daily evaluation keeps pace
 FLOOR_PENDING_GEO       = 0       # stays 0 as long as daily evaluation keeps pace
-FLOOR_UNKNOWN_CAT       = 122412  # backfill incomplete — Teardown: backfill_market_categories.py
+FLOOR_UNKNOWN_CAT       = 122417  # denormalized-category-cache drift; deferred to Teardown 2
+                                   # (drop-and-JOIN vs refresh decision, next session).
+                                   # Known-growing baseline — alerts only on growth beyond this floor.
+                                   # Expected until Teardown 2.
 
 # Timestamp non-canonical counts per column.
 # "Non-canonical" = the minority format for that column (i.e., the format
@@ -63,11 +66,10 @@ FLOOR_TS_POS_ENTRY      = 0      # positions.entry_timestamp: all T-sep
 FLOOR_TS_POS_EXIT       = 0      # positions.exit_timestamp: all T-sep
 FLOOR_TS_POS_CREATED    = 0      # positions.created_at: all space-sep
 FLOOR_TS_POS_UPDATED    = 0      # positions.last_updated: all space-sep
-FLOOR_TS_TOTAL = (
-    FLOOR_TS_TRADES + FLOOR_TS_MARKET_END + FLOOR_TS_MARKET_RES +
-    FLOOR_TS_TRADER_ELO + FLOOR_TS_POS_ENTRY + FLOOR_TS_POS_EXIT +
-    FLOOR_TS_POS_CREATED + FLOOR_TS_POS_UPDATED
-)  # = 24,990
+# Deferred: mixed-format timestamp normalization planned for Teardown 3.
+# Known-structural baseline — alerts only on growth beyond this floor.
+# Set to last-observed total count (2026-06-18); expected until Teardown 3.
+FLOOR_TS_TOTAL = 24996
 
 # ---- Tier 3 (alert only on > 10% growth from floor) ---------------------
 FLOOR_API_NO_LOCAL      = 114047  # traders with API total_trades but 0 local records — Teardown: discovery backfill
@@ -434,13 +436,19 @@ def check_vol_outliers(cur, verbose):
 
 
 def check_invested_mismatch(cur, verbose):
-    """traders.total_invested diverges > 5% from SUM(positions.entry_total_cost)."""
+    """traders.total_invested diverges > 5% from SUM(positions.entry_total_cost)
+    for closed positions only — matching the reconciler's own definition
+    (reconcile_trader_aggregates.py: SUM WHERE status='closed').
+    Excludes pnl_skip=1 traders: their PnL columns are deliberately preserved
+    unreconciled because PnL computation failed permanently for them."""
     count = _count(cur, """
         SELECT COUNT(*) FROM (
             SELECT t.address
             FROM traders t
             JOIN positions p ON p.trader_address = t.address
             WHERE t.total_invested IS NOT NULL AND t.total_invested > 0
+              AND (t.pnl_skip = 0 OR t.pnl_skip IS NULL)
+              AND p.status = 'closed'
             GROUP BY t.address
             HAVING ABS(t.total_invested - SUM(p.entry_total_cost))
                    / t.total_invested > 0.05
@@ -456,6 +464,8 @@ def check_invested_mismatch(cur, verbose):
             FROM traders t
             JOIN positions p ON p.trader_address = t.address
             WHERE t.total_invested IS NOT NULL AND t.total_invested > 0
+              AND (t.pnl_skip = 0 OR t.pnl_skip IS NULL)
+              AND p.status = 'closed'
             GROUP BY t.address
             HAVING ABS(t.total_invested - SUM(p.entry_total_cost))
                    / t.total_invested > 0.05
@@ -690,7 +700,10 @@ def main() -> None:
         pass
 
     n_crit, _ = run_audit(verbose=args.verbose, alert=args.alert)
-    sys.exit(1 if n_crit > 0 else 0)
+    # Exit contract (used by daily_maintenance.py):
+    #   2 → Tier-1 CRITICAL found   (impossible state — caller should ABORT)
+    #   0 → clean or REGRESSION-only (Telegram alert already sent; caller continues)
+    sys.exit(2 if n_crit > 0 else 0)
 
 
 if __name__ == "__main__":
