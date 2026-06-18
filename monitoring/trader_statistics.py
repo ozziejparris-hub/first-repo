@@ -101,7 +101,13 @@ class TraderStatisticsCalculator:
             address=trader_address,
             total_trades=existing['total_trades'],
             successful_trades=stats['won_trades'],  # Update with actual wins
-            win_rate=stats['win_rate'],  # Update with calculated win rate
+            # DISABLED 2026-06-18: win_rate is now owned by
+            # reconcile_trader_aggregates.py (single-writer pattern).
+            # This writer used percentage scale (won/resolved * 100) while the
+            # reconciler uses fraction scale (won/resolved, capped at 1.0) —
+            # they also differ on denominator (trade count vs distinct markets).
+            # Omitting win_rate triggers the preserve-existing path in the UPSERT.
+            # win_rate=stats['win_rate'],
             total_volume=existing['total_volume'],
             is_flagged=existing['is_flagged']
         )
@@ -294,7 +300,11 @@ class TraderStatisticsCalculator:
             address=trader_address,
             total_trades=existing['total_trades'],
             successful_trades=stats['resolution_based']['won_trades'],
-            win_rate=stats['resolution_based']['win_rate'],
+            # DISABLED 2026-06-18: win_rate is now owned by
+            # reconcile_trader_aggregates.py (single-writer pattern).
+            # Same scale/denominator mismatch as update_trader_win_rate above.
+            # Omitting win_rate triggers the preserve-existing path in the UPSERT.
+            # win_rate=stats['resolution_based']['win_rate'],
             total_volume=existing['total_volume'],
             is_flagged=existing['is_flagged']
         )

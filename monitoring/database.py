@@ -202,20 +202,27 @@ class Database:
 
     @retry_on_locked(max_retries=3, delay=1)
     def add_or_update_trader(self, address: str, total_trades: int,
-                            successful_trades: int, win_rate: float,
+                            successful_trades: int, win_rate: float = None,
                             total_volume: float = 0.0, is_flagged: bool = False):
-        """Add or update a trader's information."""
+        """Add or update a trader's information.
+
+        win_rate defaults to None.  When None, the ON CONFLICT path preserves
+        the existing DB value instead of overwriting it.  This supports the
+        single-writer pattern: only reconcile_trader_aggregates.py owns win_rate.
+        """
         conn = self.get_connection()
         cursor = conn.cursor()
 
         cursor.execute("""
             INSERT INTO traders (address, total_trades, successful_trades, win_rate,
                                total_volume, is_flagged, last_updated)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, COALESCE(?, 0.0), ?, ?, ?)
             ON CONFLICT(address) DO UPDATE SET
                 total_trades = excluded.total_trades,
                 successful_trades = excluded.successful_trades,
-                win_rate = excluded.win_rate,
+                win_rate = CASE WHEN excluded.win_rate IS NULL
+                                THEN traders.win_rate
+                                ELSE excluded.win_rate END,
                 total_volume = excluded.total_volume,
                 is_flagged = excluded.is_flagged,
                 last_updated = excluded.last_updated

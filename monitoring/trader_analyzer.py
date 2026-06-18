@@ -45,7 +45,14 @@ class TraderAnalyzer:
                 address=address,
                 total_trades=total_trades,
                 successful_trades=stats['successful_trades'],
-                win_rate=win_rate,  # Store as 0 (placeholder for future)
+                # DISABLED 2026-06-18: win_rate is now owned by
+                # reconcile_trader_aggregates.py (single-writer pattern).
+                # This placeholder 0 was clobbering real values on every
+                # flag/re-flag cycle.  Omitting the argument preserves the
+                # existing DB value (see add_or_update_trader — win_rate
+                # defaults to None, which triggers the preserve-on-conflict
+                # path in the UPSERT).
+                # win_rate=win_rate,
                 total_volume=total_volume,
                 is_flagged=should_flag
             )
