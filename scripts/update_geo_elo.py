@@ -117,7 +117,7 @@ def _find_traders_to_update(conn, full_recalc: bool) -> list:
           AND tr.price BETWEEN 0.10 AND 0.80
           AND tr.timestamp <= datetime('now')
         GROUP BY t.address
-        HAVING COUNT(tr.trade_id) > COALESCE(t.geo_resolved_trades_count, 0)
+        HAVING COUNT(DISTINCT tr.market_id) > COALESCE(t.geo_resolved_trades_count, 0)
     """).fetchall()
 
     seen = set()
@@ -293,7 +293,8 @@ def main():
         """, (address,)).fetchone()[0]
         geo_elo_active = _compute_geo_elo_active(geo_elo, last_any_trade)
 
-        updates.append((geo_elo, directionality, n, geo_elo_active, address))
+        distinct_markets = len(set(row[3] for row in trades))
+        updates.append((geo_elo, directionality, distinct_markets, geo_elo_active, address))
         updated += 1
 
         if args.dry_run and updated <= 5:
