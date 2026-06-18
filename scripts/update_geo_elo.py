@@ -45,7 +45,7 @@ POOL_C_POPULATE_SQL = """
 UPDATE traders
 SET geo_accuracy_pool = 1
 WHERE geo_elo IS NOT NULL
-  AND geo_resolved_trades_count >= 5
+  AND geo_resolved_trades_count >= 10
   AND geo_directionality_score IS NOT NULL
   AND bot_type IS NULL
   AND (wash_trade_suspect = 0 OR wash_trade_suspect IS NULL)
@@ -92,7 +92,7 @@ def _find_traders_to_update(conn, full_recalc: bool) -> list:
           AND t.bot_type IS NULL
           AND (t.wash_trade_suspect = 0 OR t.wash_trade_suspect IS NULL)
           AND (t.bot_suspect = 0 OR t.bot_suspect IS NULL)
-          AND tr.market_category IN ('Geopolitics', 'Elections')
+          AND m.category IN ('Geopolitics', 'Elections')
           AND tr.trade_result IN ('won', 'lost')
           AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)
           AND tr.price BETWEEN 0.10 AND 0.80
@@ -111,7 +111,7 @@ def _find_traders_to_update(conn, full_recalc: bool) -> list:
           AND t.bot_type IS NULL
           AND (t.wash_trade_suspect = 0 OR t.wash_trade_suspect IS NULL)
           AND (t.bot_suspect = 0 OR t.bot_suspect IS NULL)
-          AND tr.market_category IN ('Geopolitics', 'Elections')
+          AND m.category IN ('Geopolitics', 'Elections')
           AND tr.trade_result IN ('won', 'lost')
           AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)
           AND tr.price BETWEEN 0.10 AND 0.80
@@ -137,7 +137,7 @@ def _fetch_qualifying_trades(conn, address: str) -> list:
         FROM trades tr
         JOIN markets m ON m.market_id = tr.market_id
         WHERE tr.trader_address = ?
-          AND tr.market_category IN ('Geopolitics', 'Elections')
+          AND m.category IN ('Geopolitics', 'Elections')
           AND tr.trade_result IN ('won', 'lost')
           AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)
           AND tr.price BETWEEN 0.10 AND 0.80
