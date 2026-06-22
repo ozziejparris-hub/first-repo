@@ -22,6 +22,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import monitoring.column_definitions as cd
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -161,14 +164,14 @@ def check_geo_elo_range(cur, verbose):
 
 
 def check_geo_pool_sanity(cur, verbose):
-    """Pool C member has geo_elo_active < 500 — the sanity floor added in commit af6fafb."""
+    """Pool C member has geo_elo_active < GEO_ELO_POOL_SANITY_FLOOR — the sanity floor added in commit af6fafb."""
     count = _count(cur,
-        "SELECT COUNT(*) FROM traders WHERE geo_accuracy_pool = 1 AND geo_elo_active < 500")
+        f"SELECT COUNT(*) FROM traders WHERE {cd.POOL_C_SANITY_VIOLATION_WHERE}")
     examples = []
     if verbose and count:
         examples = _fetch_examples(cur,
-            "SELECT address, geo_elo_active, geo_elo FROM traders "
-            "WHERE geo_accuracy_pool = 1 AND geo_elo_active < 500 LIMIT 5")
+            f"SELECT address, geo_elo_active, geo_elo FROM traders "
+            f"WHERE {cd.POOL_C_SANITY_VIOLATION_WHERE} LIMIT 5")
     return ("geo_accuracy_pool=1 with geo_elo_active < 500", 1, FLOOR_GEO_POOL_SANITY, count, examples)
 
 
@@ -201,43 +204,23 @@ def check_condid_orphan(cur, verbose):
 
 def check_geo_recon(cur, verbose):
     """geo_resolved_trades_count stored value != recomputed COUNT(DISTINCT won/lost geo markets).
-    Uses a WITH clause to avoid a correlated-subquery scan.
+    Uses cd.GEO_RESOLVED_TRADES_COUNT_SQL as the reference computation — structurally
+    prevents harness-vs-writer divergence (the root cause of the June-22 morning CRITICAL).
     Must stay 0 after reconcile_geo_resolved_counts.py fix."""
-    count = _count(cur, """
-        WITH geo_actual AS (
-            SELECT tr.trader_address,
-                   COUNT(DISTINCT tr.market_id) AS recomputed
-            FROM trades tr
-            JOIN markets m ON m.market_id = tr.market_id
-            WHERE tr.trade_result IN ('won', 'lost')
-              AND m.category IN ('Geopolitics', 'Elections')
-              AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)
-            GROUP BY tr.trader_address
-        )
-        SELECT COUNT(*) FROM traders t
-        LEFT JOIN geo_actual ga ON ga.trader_address = t.address
-        WHERE (t.geo_accuracy_pool = 1 OR t.geo_elo IS NOT NULL)
-          AND COALESCE(t.geo_resolved_trades_count, 0) != COALESCE(ga.recomputed, 0)
+    _sub = cd.GEO_RESOLVED_TRADES_COUNT_SQL.strip()
+    count = _count(cur, f"""
+        SELECT COUNT(*) FROM traders
+        WHERE (geo_accuracy_pool = 1 OR geo_elo IS NOT NULL)
+          AND COALESCE(geo_resolved_trades_count, 0) != COALESCE(({_sub}), 0)
     """)
     examples = []
     if verbose and count:
-        examples = _fetch_examples(cur, """
-            WITH geo_actual AS (
-                SELECT tr.trader_address,
-                       COUNT(DISTINCT tr.market_id) AS recomputed
-                FROM trades tr
-                JOIN markets m ON m.market_id = tr.market_id
-                WHERE tr.trade_result IN ('won','lost')
-                  AND m.category IN ('Geopolitics','Elections')
-                  AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)
-                GROUP BY tr.trader_address
-            )
-            SELECT t.address, t.geo_resolved_trades_count,
-                   COALESCE(ga.recomputed, 0) AS recomputed
-            FROM traders t
-            LEFT JOIN geo_actual ga ON ga.trader_address = t.address
-            WHERE (t.geo_accuracy_pool = 1 OR t.geo_elo IS NOT NULL)
-              AND COALESCE(t.geo_resolved_trades_count, 0) != COALESCE(ga.recomputed, 0)
+        examples = _fetch_examples(cur, f"""
+            SELECT traders.address, traders.geo_resolved_trades_count,
+                   COALESCE(({_sub}), 0) AS recomputed
+            FROM traders
+            WHERE (geo_accuracy_pool = 1 OR geo_elo IS NOT NULL)
+              AND COALESCE(geo_resolved_trades_count, 0) != COALESCE(({_sub}), 0)
             LIMIT 5
         """)
     return ("geo_resolved_trades_count mismatch vs recomputed", 1, FLOOR_GEO_RECON, count, examples)
