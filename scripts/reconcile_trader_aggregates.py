@@ -60,9 +60,13 @@ KNOWN SECONDARY WRITER VIOLATION (not fixed here — flag for next session):
 """
 
 import argparse
+import os
 import sqlite3
 import sys
 from datetime import datetime
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import monitoring.column_definitions as cd
 
 DB_PATH = "data/polymarket_tracker.db"
 BATCH_SIZE = 5000
@@ -101,6 +105,11 @@ def fetch_new_values(conn):
                 trader_address,
                 COUNT(*)                                                       AS total_trades,
                 SUM(CASE WHEN trade_result = 'won'  THEN 1 ELSE 0 END)        AS successful_trades,
+                -- CANONICAL: equivalent to cd.RESOLVED_TRADES_COUNT_SQL (contract 18.5.1).
+                -- Implemented as bulk CTE GROUP BY for performance (single pass over 143K traders
+                -- vs 143K correlated sub-scans). COUNT(DISTINCT CASE WHEN ... THEN market_id END)
+                -- is logically identical to COUNT(DISTINCT market_id) WHERE trade_result IN (...).
+                -- Any change to the canonical definition MUST be mirrored here.
                 COUNT(DISTINCT
                     CASE WHEN trade_result IN ('won', 'lost')
                          THEN market_id END)                                   AS resolved_trades_count,
@@ -172,17 +181,6 @@ def fetch_new_values(conn):
     """).fetchall()
 
 
-def compute_win_rate(new_st, new_rtc):
-    """
-    win_rate = MIN(1.0, successful_trades / resolved_trades_count).
-    The MIN(1.0) cap enforces the [0,1] contract: if a trader placed multiple
-    trades in a single market, successful_trades can exceed resolved_trades_count
-    (distinct-market count).  Returns 0.0 on divide-by-zero.
-    """
-    if new_rtc and new_rtc > 0:
-        return min(1.0, new_st / new_rtc)
-    return 0.0
-
 
 def val_changed(old, new):
     """Return True if old and new are meaningfully different."""
@@ -250,9 +248,8 @@ def main():
         new_tv  = row["new_total_volume"]
 
         # -- derived win_rate --
-        raw_wr  = (new_st / new_rtc) if new_rtc else 0.0
-        new_wr  = min(1.0, raw_wr)
-        if raw_wr > 1.0:
+        new_wr = cd.compute_win_rate(new_st, new_rtc)
+        if new_rtc and new_st > new_rtc:   # preserve cap-counter for reporting
             win_rate_capped += 1
 
         # -- position-derived (preserve if pnl_skip) --
