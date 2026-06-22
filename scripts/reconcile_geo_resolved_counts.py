@@ -15,20 +15,14 @@ Usage:
 """
 import sqlite3
 import argparse
+import os
+import sys
 from pathlib import Path
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+import monitoring.column_definitions as cd
+
 DB_PATH = Path("/home/parison/projects/first-repo/data/polymarket_tracker.db")
-
-CORRECT_COUNT_SQL = """
-    SELECT COUNT(DISTINCT tr.market_id)
-    FROM trades tr
-    JOIN markets m ON m.market_id = tr.market_id
-    WHERE tr.trader_address = traders.address
-      AND tr.trade_result IN ('won', 'lost')
-      AND m.category IN ('Geopolitics', 'Elections')
-      AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)
-"""
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -53,26 +47,26 @@ def main():
     cur.execute(f"""
         SELECT COUNT(*) FROM traders
         WHERE (geo_resolved_trades_count IS NOT NULL OR geo_elo IS NOT NULL)
-        AND geo_resolved_trades_count != ({CORRECT_COUNT_SQL})
+        AND geo_resolved_trades_count != ({cd.GEO_RESOLVED_TRADES_COUNT_SQL})
     """)
     will_change = cur.fetchone()[0]
     print(f"Traders whose geo_resolved_trades_count will change: {will_change}")
 
     if args.dry_run:
-        # Show projected Pool C drop (traders going below 5 distinct markets)
+        # Show projected Pool C drop (traders going below the Pool C minimum)
         cur.execute(f"""
             SELECT COUNT(*) FROM traders
             WHERE geo_accuracy_pool = 1 AND research_excluded = 0
-            AND ({CORRECT_COUNT_SQL}) < 5
+            AND ({cd.GEO_RESOLVED_TRADES_COUNT_SQL}) < {cd.POOL_C_MIN_RESOLVED_TRADES}
         """)
         would_drop = cur.fetchone()[0]
-        print(f"DRY RUN — Pool C traders that would drop (distinct < 5): {would_drop}")
+        print(f"DRY RUN — Pool C traders that would drop (distinct < {cd.POOL_C_MIN_RESOLVED_TRADES}): {would_drop}")
 
         cur.execute(f"""
             SELECT COUNT(*) FROM traders
             WHERE geo_elo_active >= 2175 AND geo_accuracy_pool = 1
             AND research_excluded = 0 AND bot_type IS NULL
-            AND ({CORRECT_COUNT_SQL}) < 5
+            AND ({cd.GEO_RESOLVED_TRADES_COUNT_SQL}) < {cd.POOL_C_MIN_RESOLVED_TRADES}
         """)
         leg_would_drop = cur.fetchone()[0]
         print(f"DRY RUN — LEGENDARY that would drop: {leg_would_drop}")
@@ -82,20 +76,14 @@ def main():
     # APPLY: reconcile the counts
     cur.execute(f"""
         UPDATE traders
-        SET geo_resolved_trades_count = ({CORRECT_COUNT_SQL})
+        SET geo_resolved_trades_count = ({cd.GEO_RESOLVED_TRADES_COUNT_SQL})
         WHERE geo_resolved_trades_count IS NOT NULL OR geo_elo IS NOT NULL
     """)
     conn.commit()
     print(f"Reconciled geo_resolved_trades_count for affected traders")
 
-    # Now recompute Pool C membership with corrected counts
-    # (mirror the gate from update_geo_elo.py)
-    cur.execute("""
-        UPDATE traders SET geo_accuracy_pool = 0
-        WHERE geo_resolved_trades_count < 5
-    """)
-    conn.commit()
-    print("Recomputed geo_accuracy_pool (set 0 where distinct geo markets < 5)")
+    evicted, populated = cd.refresh_pool_c(conn)
+    print(f"Recomputed geo_accuracy_pool via cd.refresh_pool_c: {populated} in pool, {evicted} evicted")
 
     # AFTER: pool state
     cur.execute("""SELECT COUNT(*) FROM traders WHERE geo_accuracy_pool = 1
