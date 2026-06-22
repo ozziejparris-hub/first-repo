@@ -12,6 +12,9 @@ import os
 import argparse
 import sqlite3
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import monitoring.column_definitions as cd
+
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'polymarket_tracker.db')
 BATCH_SIZE = 1000
 
@@ -112,15 +115,7 @@ def run(db_path: str, dry_run: bool, limit: int | None) -> None:
     placeholders = ','.join('?' * len(traders_seen))
     cursor.execute(f"""
         UPDATE traders
-        SET geo_resolved_trades_count = (
-            SELECT COUNT(DISTINCT tr2.market_id)
-            FROM trades tr2
-            JOIN markets m ON m.market_id = tr2.market_id
-            WHERE tr2.trader_address = traders.address
-              AND tr2.trade_result IN ('won', 'lost')
-              AND m.category IN ('Geopolitics', 'Elections')
-              AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)
-        )
+        SET geo_resolved_trades_count = ({cd.GEO_RESOLVED_TRADES_COUNT_SQL})
         WHERE address IN ({placeholders})
     """, list(traders_seen))
     conn.commit()
