@@ -122,7 +122,7 @@ def run_sync(full_sync=False, incremental_days=7, dry_run=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Sync trades.market_category from markets.category')
     parser.add_argument('--full-sync', action='store_true', help='Update all mismatched trades')
-    parser.add_argument('--incremental', type=int, default=7,
+    parser.add_argument('--incremental', type=int, default=7, nargs='?', const=7,
                         metavar='DAYS', help='Update trades from last N days (default: 7)')
     parser.add_argument('--dry-run', action='store_true', help='Report only, no changes')
     args = parser.parse_args()

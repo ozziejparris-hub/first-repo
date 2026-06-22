@@ -200,7 +200,8 @@ ACCURACY_POOL_GEO_POPULATE_SQL = """
 UPDATE traders
 SET geo_accuracy_pool = 1
 WHERE geo_elo IS NOT NULL
-  AND geo_resolved_trades_count >= 5
+  AND geo_elo_active >= 500
+  AND geo_resolved_trades_count >= 10
   AND geo_directionality_score IS NOT NULL
   AND bot_type IS NULL
   AND wash_trade_suspect = 0
@@ -305,7 +306,7 @@ def main():
     print(f"  Total clean pool      : {total_clean:,} traders  (Pool B — signal watch)")
     print(f"  Total excluded        : {total_excluded:,} traders")
     print(f"  Synced is_flagged: {synced_flagged:,} traders flagged, {synced_unflagged:,} traders unflagged ({watched_preserved:,} watched + {leaderboard_preserved:,} leaderboard traders preserved)")
-    print(f"  geo_accuracy_pool (Pool C): {geo_accuracy_pool_count:,} traders  (geo_elo IS NOT NULL, geo_resolved>=5, no bot/wash)")
+    print(f"  geo_accuracy_pool (Pool C): {geo_accuracy_pool_count:,} traders  (geo_elo IS NOT NULL, geo_resolved>=10, geo_elo_active>=500, no bot/wash)")
 
 
 if __name__ == "__main__":
