@@ -33,10 +33,14 @@ LP focus ratio flagging (report only — no automatic exclusion):
 """
 
 import json
+import os
 import sqlite3
 import sys
 from datetime import datetime
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+import monitoring.column_definitions as cd
 
 DB_PATH = Path(__file__).parent.parent / "data" / "polymarket_tracker.db"
 LOGS_DIR = Path(__file__).parent.parent / "logs"
@@ -189,26 +193,6 @@ WHERE research_excluded = 1
 #   AND bot_suspect = 0
 # """
 
-# --- Pool C: geopolitics accuracy pool ---
-# Geo-specialists often have <20 total resolved trades (research_excluded=1)
-# but may have ≥5 geo-specific resolved trades. This pool enables geo_elo
-# tier accuracy validation and STR-003 signal qualification independent of
-# the general research pool (Pool A/B).
-ACCURACY_POOL_GEO_RESET_SQL = "UPDATE traders SET geo_accuracy_pool = 0"
-
-ACCURACY_POOL_GEO_POPULATE_SQL = """
-UPDATE traders
-SET geo_accuracy_pool = 1
-WHERE geo_elo IS NOT NULL
-  AND geo_elo_active >= 500
-  AND geo_resolved_trades_count >= 10
-  AND geo_directionality_score IS NOT NULL
-  AND bot_type IS NULL
-  AND wash_trade_suspect = 0
-  AND bot_suspect = 0
-"""
-
-
 # DISABLED 2026-06-05: accuracy_pool column dropped — written daily but never read
 # by any downstream script. Re-enable if a consumer is added.
 # def _ensure_accuracy_pool_column(conn):
@@ -271,11 +255,9 @@ def main():
         total_clean    = rows.get(0, 0)
         total_excluded = rows.get(1, 0)
 
-        # DISABLED 2026-06-05: accuracy_pool column dropped — Pool A populate removed.
-        # Populate Pool C (geopolitics accuracy pool).
-        with conn:
-            conn.execute(ACCURACY_POOL_GEO_RESET_SQL)
-            geo_accuracy_pool_count = conn.execute(ACCURACY_POOL_GEO_POPULATE_SQL).rowcount
+        # Pool C (geo accuracy pool) — LIVE. Canonical gate via cd.refresh_pool_c.
+        # (The DISABLED note above refers to the separate Pool A, not this.)
+        _evicted, geo_accuracy_pool_count = cd.refresh_pool_c(conn)
 
     except Exception as e:
         print(f"[ERROR] research_excluded update failed, rolled back: {e}", file=sys.stderr)
