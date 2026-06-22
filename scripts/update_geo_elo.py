@@ -27,10 +27,14 @@ geo_directionality_score:
 """
 
 import argparse
+import os
 import sqlite3
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+import monitoring.column_definitions as cd
 
 DB_PATH = Path("/home/parison/projects/first-repo/data/polymarket_tracker.db")
 
@@ -38,20 +42,6 @@ GEO_ELO_LEGENDARY = 2175.0
 ELO_START = 1500.0
 MIN_TRADES_FOR_ELO = 5
 MIN_MARKETS_FOR_DIRECTIONALITY = 3
-
-# Pool C SQL (mirrors update_research_exclusions.py)
-POOL_C_RESET_SQL = "UPDATE traders SET geo_accuracy_pool = 0"
-POOL_C_POPULATE_SQL = """
-UPDATE traders
-SET geo_accuracy_pool = 1
-WHERE geo_elo IS NOT NULL
-  AND geo_elo_active >= 500
-  AND geo_resolved_trades_count >= 10
-  AND geo_directionality_score IS NOT NULL
-  AND bot_type IS NULL
-  AND (wash_trade_suspect = 0 OR wash_trade_suspect IS NULL)
-  AND (bot_suspect = 0 OR bot_suspect IS NULL)
-"""
 
 
 def _k_factor(trades_processed: int) -> int:
@@ -115,7 +105,6 @@ def _find_traders_to_update(conn, full_recalc: bool) -> list:
           AND m.category IN ('Geopolitics', 'Elections')
           AND tr.trade_result IN ('won', 'lost')
           AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)
-          AND tr.price BETWEEN 0.10 AND 0.80
           AND tr.timestamp <= datetime('now')
         GROUP BY t.address
         HAVING COUNT(DISTINCT tr.market_id) > COALESCE(t.geo_resolved_trades_count, 0)
@@ -196,35 +185,6 @@ def _compute_geo_directionality(trades: list):
     return sum(scores) / len(scores)
 
 
-def _compute_geo_elo_active(geo_elo: float, last_trade_ts) -> float:
-    """
-    Apply time-decay to geo_elo based on days since last qualifying geo trade.
-    Formula: geo_elo * (0.5 ^ (days_dormant / 180.0))
-    A trader active today gets ~full score. 180 days dormant = 50% score.
-    """
-    if last_trade_ts is None or geo_elo is None:
-        return None
-    try:
-        from datetime import datetime, timezone
-        ts = last_trade_ts.replace('Z', '+00:00').replace(' ', 'T')
-        last = datetime.fromisoformat(ts)
-        if last.tzinfo is None:
-            last = last.replace(tzinfo=timezone.utc)
-        days_dormant = (datetime.now(timezone.utc) - last).days
-        decay = 0.5 ** (days_dormant / 180.0)
-        return round(geo_elo * decay, 4)
-    except Exception as e:
-        import sys
-        print(f"[geo_elo_active] parse error for ts={last_trade_ts!r}: {e}", file=sys.stderr)
-        return None
-
-
-def _refresh_pool_c(conn) -> int:
-    with conn:
-        conn.execute(POOL_C_RESET_SQL)
-        count = conn.execute(POOL_C_POPULATE_SQL).rowcount
-    return count
-
 
 def main():
     parser = argparse.ArgumentParser(description="Update geo_elo and geo_directionality_score")
@@ -255,7 +215,7 @@ def main():
     if not traders:
         print("[geo_elo] Nothing to update.")
         if not args.dry_run:
-            pool_c = _refresh_pool_c(conn)
+            _evicted, pool_c = cd.refresh_pool_c(conn)
             legendary = conn.execute(
                 "SELECT COUNT(*) FROM traders WHERE geo_elo >= ? AND geo_accuracy_pool = 1",
                 (GEO_ELO_LEGENDARY,)
@@ -292,10 +252,18 @@ def main():
             AND tr.market_category IN ('Geopolitics', 'Elections')
             AND tr.timestamp <= datetime('now')
         """, (address,)).fetchone()[0]
-        geo_elo_active = _compute_geo_elo_active(geo_elo, last_any_trade)
+        geo_elo_active = cd.compute_geo_elo_active(geo_elo, last_any_trade)
 
-        distinct_markets = len(set(row[3] for row in trades))
-        updates.append((geo_elo, directionality, distinct_markets, geo_elo_active, address))
+        canonical_count = conn.execute("""
+            SELECT COUNT(DISTINCT tr.market_id)
+            FROM trades tr
+            JOIN markets m ON m.market_id = tr.market_id
+            WHERE tr.trader_address = ?
+              AND tr.trade_result IN ('won', 'lost')
+              AND m.category IN ('Geopolitics', 'Elections')
+              AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)
+        """, (address,)).fetchone()[0]
+        updates.append((geo_elo, directionality, canonical_count, geo_elo_active, address))
         updated += 1
 
         if args.dry_run and updated <= 5:
@@ -346,7 +314,7 @@ def main():
             AND tr.market_category IN ('Geopolitics', 'Elections')
             AND tr.timestamp <= datetime('now')
         """, (address,)).fetchone()[0]
-        geo_elo_active = _compute_geo_elo_active(geo_elo, last_any_trade)
+        geo_elo_active = cd.compute_geo_elo_active(geo_elo, last_any_trade)
         if geo_elo_active is not None:
             active_updates.append((geo_elo_active, address))
 
@@ -358,7 +326,7 @@ def main():
             )
         print(f"[geo_elo] geo_elo_active updated: {len(active_updates)} traders")
 
-    pool_c = _refresh_pool_c(conn)
+    _evicted, pool_c = cd.refresh_pool_c(conn)
     legendary = conn.execute(
         "SELECT COUNT(*) FROM traders WHERE geo_elo >= ? AND geo_accuracy_pool = 1",
         (GEO_ELO_LEGENDARY,)
