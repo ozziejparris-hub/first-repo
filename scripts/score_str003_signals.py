@@ -12,26 +12,28 @@ For each signal with type containing 'str003':
   5. Report accuracy: correct/total, by trader geo_elo tier
 
 Expected signal payload fields:
-  market_id       — matches markets.market_id
-  direction       — 'YES' or 'NO'
-  geo_elo_tier    — optional; computed from trader_geo_elo if absent
-  trader_geo_elo  — optional; used for tier breakdown
-  market_title    — optional; used for human-readable output
+  market_id                    — matches markets.market_id
+  direction                    — 'YES' or 'NO'
+  geo_elo_tier                 — optional; used as-is if present
+  key_traders + trader_elos_at_registration — canonical schema; tier via cd.derive_tier
+  trader_geo_elo_active        — intermediate schema; tier via cd.derive_tier + live pool if address known
+  trader_geo_elo               — legacy raw snapshot; tier with _RAW_SNAPSHOT suffix
+  corrected_legendary_count    — manual basis correction; trusted directly
+  market_title                 — optional; used for human-readable output
 """
 
+import os
 import json
 import sqlite3
 import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import monitoring.column_definitions as cd
 from datetime import datetime, timezone
 from pathlib import Path
 
 DB_PATH = Path("/home/parison/projects/first-repo/data/polymarket_tracker.db")
 SIGNALS_PATH = Path("/home/parison/trading-swarm/brain/signals.json")
 FINDINGS_PATH = Path("/home/parison/trading-swarm/brain/findings.json")
-
-GEO_ELO_LEGENDARY = 2175.0
-GEO_ELO_ELITE = 1800.0
-GEO_ELO_QUALIFIED = 1500.0
 
 
 def _get_connection():
@@ -42,17 +44,128 @@ def _get_connection():
     return conn
 
 
-def _geo_elo_tier(geo_elo) -> str:
-    if geo_elo is None:
-        return "UNKNOWN"
-    geo_elo = float(geo_elo)
-    if geo_elo >= GEO_ELO_LEGENDARY:
-        return "LEGENDARY"
-    if geo_elo >= GEO_ELO_ELITE:
-        return "ELITE"
-    if geo_elo >= GEO_ELO_QUALIFIED:
-        return "QUALIFIED"
-    return "BELOW_QUALIFIED"
+_TIER_RANK = ['LEGENDARY', 'NEAR_LEGENDARY', 'ELITE', 'QUALIFIED', 'DEVELOPING', 'UNRANKED']
+
+
+def _best_tier(tiers: list) -> str:
+    for t in _TIER_RANK:
+        if t in tiers:
+            return t
+    return 'UNRANKED'
+
+
+def _derive_signal_tier(signal: dict, conn) -> str:
+    """
+    Derive tier for a signal, dispatching on schema vintage.
+
+    Suffix taxonomy (degradation scale):
+      (none)           — active ELO + live pool/excl/bot fully verified via cd.derive_tier
+      _NO_POOLCHECK    — stored geo_elo_active cleared ELO bar; pool eligibility not verifiable
+                         (intermediate schema where address is absent or not in DB)
+      _RAW_SNAPSHOT    — only raw (pre-decay) geo_elo stored; not active-gated, no pool check
+
+    CASE A — canonical schema (key_traders list + trader_elos_at_registration dict):
+      Per-trader: pairs STORED geo_elo_active (point-in-time at registration — what the signal
+      rested on) with LIVE pool/research_excluded/bot_type (current eligibility truth, so
+      retroactive bot/exclusion flags apply). Returns highest tier across key traders.
+      Rationale for the mix: all-live reclassifies historical signals as ELO drifts;
+      all-stored can't work (pool/excl/bot_type not persisted in signal at registration).
+
+    CASE B.5 — intermediate schema (trader_geo_elo_active present, no canonical structure):
+      If key_trader (singular) gives a recoverable address in DB: calls cd.derive_tier with
+      stored geo_elo_active + live pool/excl/bot_type — same stored-ELO/live-pool logic as
+      CASE A. Returns clean tier with no suffix.
+      If no address or address absent from DB: classifies stored geo_elo_active against cd
+      thresholds — ELO is active-gated but pool not verifiable. Returns tier + _NO_POOLCHECK.
+
+    CASE B — old raw snapshot (trader_geo_elo present and non-null):
+      Classifies stored raw geo_elo against cd thresholds. Returns tier + _RAW_SNAPSHOT.
+      geo_elo_active cannot be reconstructed (no stored last-trade timestamp at registration).
+
+    CASE C_ANNOTATED — manually curated basis correction (corrected_legendary_count present):
+      Trusts the manually applied annotation — real trader roster not in structured fields.
+
+    CASE C — no applicable fields: returns 'UNKNOWN'.
+    """
+    # CASE A: canonical schema
+    key_traders = signal.get('key_traders')
+    elos_at_reg = signal.get('trader_elos_at_registration')
+    if key_traders and isinstance(key_traders, list) and isinstance(elos_at_reg, dict):
+        tiers = []
+        for addr in key_traders:
+            stored_active = elos_at_reg.get(addr)
+            if stored_active is None:
+                tiers.append('UNRANKED')
+                continue
+            row = conn.execute(
+                "SELECT geo_accuracy_pool, research_excluded, bot_type "
+                "FROM traders WHERE address = ?", (addr,)
+            ).fetchone()
+            if row:
+                tiers.append(cd.derive_tier(
+                    float(stored_active),
+                    row['geo_accuracy_pool'] or 0,
+                    row['research_excluded'] or 0,
+                    row['bot_type'],
+                ))
+            else:
+                # Trader absent from DB — ELO alone, pool gating not possible
+                tiers.append(cd.derive_tier(float(stored_active), 0, 0, None))
+        return _best_tier(tiers) if tiers else 'UNKNOWN'
+
+    # CASE B.5: intermediate schema with stored geo_elo_active
+    stored_active = signal.get('trader_geo_elo_active')
+    if stored_active is not None:
+        stored_active = float(stored_active)
+        addr = signal.get('key_trader')
+        if addr:
+            row = conn.execute(
+                "SELECT geo_accuracy_pool, research_excluded, bot_type "
+                "FROM traders WHERE address = ?", (addr,)
+            ).fetchone()
+            if row:
+                # Full gate: stored active ELO + live pool/excl/bot (same logic as CASE A)
+                return cd.derive_tier(
+                    stored_active,
+                    row['geo_accuracy_pool'] or 0,
+                    row['research_excluded'] or 0,
+                    row['bot_type'],
+                )
+        # No recoverable address, or address absent from DB — active ELO only
+        if stored_active >= cd.GEO_ELO_LEGENDARY:
+            base = 'LEGENDARY'
+        elif stored_active >= cd.GEO_ELO_NEAR_LEGENDARY:
+            base = 'NEAR_LEGENDARY'
+        elif stored_active >= cd.GEO_ELO_ELITE:
+            base = 'ELITE'
+        elif stored_active >= cd.GEO_ELO_QUALIFIED:
+            base = 'QUALIFIED'
+        else:
+            base = 'DEVELOPING'
+        return f'{base}_NO_POOLCHECK'
+
+    # CASE B: old raw snapshot (null trader_geo_elo falls through to C)
+    raw_geo_elo = signal.get('trader_geo_elo')
+    if raw_geo_elo is not None:
+        v = float(raw_geo_elo)
+        if v >= cd.GEO_ELO_LEGENDARY:
+            base = 'LEGENDARY'
+        elif v >= cd.GEO_ELO_NEAR_LEGENDARY:
+            base = 'NEAR_LEGENDARY'
+        elif v >= cd.GEO_ELO_ELITE:
+            base = 'ELITE'
+        elif v >= cd.GEO_ELO_QUALIFIED:
+            base = 'QUALIFIED'
+        else:
+            base = 'DEVELOPING'
+        return f'{base}_RAW_SNAPSHOT'
+
+    # CASE C_ANNOTATED: manually curated basis correction
+    corrected = signal.get('corrected_legendary_count')
+    if corrected is not None:
+        return 'LEGENDARY' if int(corrected) >= 1 else 'UNKNOWN'
+
+    return 'UNKNOWN'
 
 
 def _collect_str003_signals(data: dict) -> list:
@@ -125,7 +238,7 @@ def _score_signal(signal: dict, conn) -> dict:
     return updated
 
 
-def _write_finding(resolved_signals: list):
+def _write_finding(resolved_signals: list, conn):
     """Append a STR-003 accuracy finding to findings.json (requires 3+ resolved signals)."""
     if len(resolved_signals) < 3:
         return
@@ -143,7 +256,7 @@ def _write_finding(resolved_signals: list):
     for sig in resolved_signals:
         payload = sig.get('payload', {})
         tier = (payload.get('geo_elo_tier') or sig.get('geo_elo_tier') or
-                _geo_elo_tier(payload.get('trader_geo_elo') or sig.get('trader_geo_elo')))
+                _derive_signal_tier(sig, conn))
         if tier not in tier_stats:
             tier_stats[tier] = {'correct': 0, 'total': 0}
         tier_stats[tier]['total'] += 1
@@ -243,8 +356,6 @@ def main():
         result_str = "CORRECT" if updated['outcome_correct'] == 1 else "WRONG"
         print(f"  Scored: {title} | {direction} → {result_str}")
 
-    conn.close()
-
     if changed:
         SIGNALS_PATH.write_text(json.dumps(data, indent=2))
         print(f"[str003] signals.json updated — {newly_scored} newly scored")
@@ -277,7 +388,7 @@ def main():
         for sig in already_scored:
             payload = sig.get('payload', {})
             tier = (payload.get('geo_elo_tier') or sig.get('geo_elo_tier') or
-                _geo_elo_tier(payload.get('trader_geo_elo') or sig.get('trader_geo_elo')))
+                _derive_signal_tier(sig, conn))
             if tier not in tier_counts:
                 tier_counts[tier] = {'correct': 0, 'total': 0}
             tier_counts[tier]['total'] += 1
@@ -288,9 +399,11 @@ def main():
             acc = s['correct'] / s['total'] if s['total'] > 0 else 0.0
             print(f"  {tier}: {acc:.1%} ({s['correct']}/{s['total']})")
 
-        _write_finding(already_scored)
+        _write_finding(already_scored, conn)
     else:
         print("[str003] No resolved signals yet — accuracy not yet measurable.")
+
+    conn.close()
 
 
 if __name__ == "__main__":
