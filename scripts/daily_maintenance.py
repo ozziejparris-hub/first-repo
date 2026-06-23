@@ -23,6 +23,11 @@ STEPS = [
     ("Detect ARB_BOT patterns",           SCRIPTS_DIR / "detect_arb_bots.py",             None, True),
     ("Promote high-P&L traders",          SCRIPTS_DIR / "promote_high_pnl_traders.py",    None, True),
     ("Resolution sweep",                  SCRIPTS_DIR / "resolution_sweep.py",            None, True),
+    # Recomputes all geo_resolved_trades_count values canonically and re-gates Pool C
+    # immediately before the audit gate. Catches sync_trade_categories drift (and any
+    # other pre-audit category changes). Blocking: exits 0 normally; non-zero only on
+    # hard DB error.
+    ("Reconcile geo resolved counts [pre-audit]",  SCRIPTS_DIR / "reconcile_geo_resolved_counts.py"),
     # EXIT CONTRACT: audit_invariants exits 2 on any Tier-1 CRITICAL (impossible state →
     # hard abort before ELO writes); exits 0 on PASS or REGRESSION-only (Telegram alert
     # already sent, run continues). Never exits 1. Non-blocking=False (default) so the
@@ -41,6 +46,11 @@ STEPS = [
     ("Score STR-002 signals",              SCRIPTS_DIR / "score_str002_signals.py",        None, True),
     ("Resolve LEGENDARY trader markets",   SCRIPTS_DIR / "resolve_legendary_markets.py", ["--limit", "50"], True),
     ("Evaluate new trader results",        SCRIPTS_DIR / "evaluate_new_trader_results.py", None, True),
+    # Settles geo counts after post-audit evaluation. evaluate_new_trader_results flips
+    # pending→won/lost on geo trades, changing geo_resolved_trades_count. Running here
+    # ensures the next morning's audit opens on a clean reconciled state.
+    # Non-blocking: settlement pass, not a gate; morning's reconcile #1 is the real gate.
+    ("Reconcile geo resolved counts [post-eval]",  SCRIPTS_DIR / "reconcile_geo_resolved_counts.py", None, True),
     ("Requeue resolved market traders",   SCRIPTS_DIR / "requeue_resolved_market_traders.py"),
     ("Apply full ELO modifiers",          SCRIPTS_DIR / "apply_full_elo_modifiers.py"),
     ("Resync position counts",            SCRIPTS_DIR / "resync_position_counts.py"),
