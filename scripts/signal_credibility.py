@@ -47,14 +47,17 @@ Usage:
 
 import argparse
 import json
+import os
 import sqlite3
 import sys
 from pathlib import Path
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import monitoring.column_definitions as cd
+
 DB_PATH = "/home/parison/projects/first-repo/data/polymarket_tracker.db"
 SCAN_DIR = Path("/home/parison/trading-swarm/brain/agent-outputs/positions-scan")
 
-ELO_LEGENDARY = 2175           # integration-contract Section 10.1 (geo_elo_active)
 NET_COMMIT_THRESHOLD = 1.0     # abs(net shares) above this = genuine commitment
 
 TIER_HIGH = 70
@@ -109,7 +112,7 @@ def compute_net_positions(conn: sqlite3.Connection, market_id: str) -> dict:
           AND tr.research_excluded = 0
           AND tr.bot_type IS NULL
         GROUP BY t.trader_address, LOWER(t.outcome), UPPER(t.side)
-    """, {"market_id": market_id, "elo": ELO_LEGENDARY})
+    """, {"market_id": market_id, "elo": cd.GEO_ELO_LEGENDARY})
 
     raw: dict[str, dict] = {}
     for r in cur.fetchall():

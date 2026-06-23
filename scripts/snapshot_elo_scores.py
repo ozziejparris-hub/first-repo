@@ -33,6 +33,9 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import monitoring.column_definitions as cd
+
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        'data', 'polymarket_tracker.db')
 PROFILE_INDEX = '/home/parison/trading-swarm/brain/trader-profiles/_index.json'
@@ -61,22 +64,6 @@ def ensure_table(conn):
     conn.execute('CREATE INDEX IF NOT EXISTS idx_snapshot_addr ON elo_snapshots(address)')
     conn.execute('CREATE INDEX IF NOT EXISTS idx_snapshot_tier ON elo_snapshots(snapshot_date, tier)')
     conn.commit()
-
-
-def derive_tier(geo_elo_active, geo_accuracy_pool, research_excluded, bot_type):
-    """Derive tier from current state. Matches canonical definitions."""
-    if geo_elo_active is None:
-        return 'UNRANKED'
-    clean = (geo_accuracy_pool == 1 and research_excluded == 0 and bot_type is None)
-    if geo_elo_active >= 2175 and clean:
-        return 'LEGENDARY'
-    if geo_elo_active >= 1800 and clean:
-        return 'NEAR_LEGENDARY'
-    if geo_elo_active >= 1400:
-        return 'ELITE'
-    if geo_elo_active >= 1000:
-        return 'QUALIFIED'
-    return 'DEVELOPING'
 
 
 def load_archetypes():
@@ -130,7 +117,7 @@ def run_snapshot(snapshot_date=None, verbose=True):
         (address, geo_elo, geo_elo_active, comprehensive_elo,
          geo_accuracy_pool, research_excluded, bot_type,
          geo_resolved_trades_count, geo_directionality_score) = r
-        tier = derive_tier(geo_elo_active, geo_accuracy_pool, research_excluded, bot_type)
+        tier = cd.derive_tier(geo_elo_active, geo_accuracy_pool, research_excluded, bot_type)
         archetype = archetypes.get(address)
         snapshot_rows.append((
             snapshot_date, address, geo_elo, geo_elo_active, comprehensive_elo,

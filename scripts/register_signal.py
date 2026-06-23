@@ -49,14 +49,13 @@ from pathlib import Path
 
 # Import CLOB price + book snapshot functions from the order book module
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import monitoring.column_definitions as cd
 from snapshot_order_books import fetch_clob_market_price, snapshot_market
 
 DB_PATH = Path("/home/parison/projects/first-repo/data/polymarket_tracker.db")
 SIGNALS_PATH = Path("/home/parison/trading-swarm/brain/signals.json")
 PROFILE_INDEX = Path("/home/parison/trading-swarm/brain/trader-profiles/_index.json")
-
-GEO_ELO_LEGENDARY = 2175.0
-GEO_ELO_NEAR_LEGENDARY = 1800.0
 
 # Canonical schema — every signal MUST have all these fields
 CANONICAL_FIELDS = [
@@ -131,7 +130,7 @@ def _lookup_trader_elos(conn, key_traders):
             elos[addr] = round(float(r['geo_elo_active']), 1)
             is_clean = (r['geo_accuracy_pool'] == 1 and r['research_excluded'] == 0
                         and r['bot_type'] is None)
-            if elos[addr] >= GEO_ELO_LEGENDARY and is_clean:
+            if elos[addr] >= cd.GEO_ELO_LEGENDARY and is_clean:
                 legendary_count += 1
         else:
             elos[addr] = None

@@ -29,6 +29,7 @@ from .health_checker import HealthChecker
 from .log_monitor import LogMonitor
 from .telegram_health_bot import TelegramHealthBot
 from .diagnostics import ELOSystemDiagnostics, PerformanceMonitor, FixSuggestionEngine
+from .column_definitions import GEO_ELO_LEGENDARY, GEO_ELO_NEAR_LEGENDARY
 
 
 class SystemObserver:
@@ -1192,7 +1193,7 @@ https://polymarket.com/profile/{address}
             conn = sqlite3.connect(self.db_path, timeout=30)
             cursor = conn.cursor()
 
-            query = """
+            query = f"""
             SELECT
                 t.address,
                 t.comprehensive_elo,
@@ -1215,7 +1216,7 @@ https://polymarket.com/profile/{address}
             LEFT JOIN markets m ON tr.market_id = m.market_id
             WHERE
                 (
-                    (t.geo_elo_active >= 2175 AND t.geo_accuracy_pool = 1
+                    (t.geo_elo_active >= {GEO_ELO_LEGENDARY} AND t.geo_accuracy_pool = 1
                      AND t.research_excluded = 0 AND t.bot_type IS NULL)
                     OR COALESCE(t.watched, 0) = 1
                 )
@@ -1242,10 +1243,10 @@ https://polymarket.com/profile/{address}
                 if is_watched and (elo is None or elo < 2000):
                     tier_badge = "WATCHED"
                     tier_icon  = "👁"
-                elif geo_elo_active is not None and geo_elo_active >= 2175 and geo_accuracy_pool == 1:
+                elif geo_elo_active is not None and geo_elo_active >= GEO_ELO_LEGENDARY and geo_accuracy_pool == 1:
                     tier_badge = "LEGENDARY"
                     tier_icon  = "🏆"
-                elif geo_elo_active is not None and geo_elo_active >= 1800 and geo_accuracy_pool == 1:
+                elif geo_elo_active is not None and geo_elo_active >= GEO_ELO_NEAR_LEGENDARY and geo_accuracy_pool == 1:
                     tier_badge = "NEAR_LEGENDARY"
                     tier_icon  = "🌟"
                 else:
