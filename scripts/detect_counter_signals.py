@@ -45,11 +45,12 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from monitoring import column_definitions as cd
+
 DB_PATH = Path("/home/parison/projects/first-repo/data/polymarket_tracker.db")
 SIGNALS_PATH = Path("/home/parison/trading-swarm/brain/signals.json")
 
-GEO_ELO_LEGENDARY = 2175.0
-GEO_ELO_ELITE = 1800.0
 SCS_FLOOR = 25.0
 
 # Net-position threshold (shares) below which a position is considered "flat/exited"
@@ -94,7 +95,7 @@ def _net_positions_for_market(conn, market_id, signal_date, proven_addresses=Non
                            AND tr.geo_accuracy_pool = 1
                            AND tr.research_excluded = 0
                            AND tr.bot_type IS NULL"""
-        params = [market_id, GEO_ELO_ELITE]
+        params = [market_id, cd.GEO_ELO_NEAR_LEGENDARY]
 
     query = f"""
         SELECT t.trader_address, t.outcome, t.side, t.shares, t.timestamp,
@@ -198,7 +199,7 @@ def detect_for_signal(conn, signal):
             'net_opposing': round(net_opp, 0),
             'last_trade': t['last_trade'],
             'post_reg_activity': t['has_post_reg_activity'],
-            'is_legendary': t['geo_elo'] >= GEO_ELO_LEGENDARY if t['geo_elo'] else False,
+            'is_legendary': t['geo_elo'] >= cd.GEO_ELO_LEGENDARY if t['geo_elo'] else False,
         }
         if state == 'CONFIRMING':
             confirming.append(entry)

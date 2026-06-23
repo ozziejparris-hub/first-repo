@@ -23,6 +23,7 @@ import argparse
 import json
 import os
 import sqlite3
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -32,9 +33,11 @@ from urllib.error import URLError
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _DB_PATH   = os.path.join(_REPO_ROOT, 'data', 'polymarket_tracker.db')
 
+sys.path.insert(0, _REPO_ROOT)
+from monitoring import column_definitions as cd
+
 GAMMA_API_BASE = "https://gamma-api.polymarket.com/markets"
 API_DELAY      = 0.2   # seconds between Gamma requests
-ELO_LEGENDARY  = 2175
 
 
 def _get_conn() -> sqlite3.Connection:
@@ -47,7 +50,7 @@ def _get_conn() -> sqlite3.Connection:
 def _fetch_overdue_legendary_markets(conn: sqlite3.Connection, limit: int) -> list[dict]:
     """Return markets overdue by >3 days where LEGENDARY traders have trades."""
     cur = conn.cursor()
-    cur.execute("""
+    cur.execute(f"""
         SELECT m.market_id, m.title, m.api_id, m.condition_id, m.resolution_date
         FROM markets m
         WHERE m.resolved = 0
@@ -59,14 +62,12 @@ def _fetch_overdue_legendary_markets(conn: sqlite3.Connection, limit: int) -> li
               WHERE t.trader_address IN (
                   SELECT address
                   FROM traders
-                  WHERE geo_elo_active >= ?
-                    AND geo_accuracy_pool = 1
-                    AND research_excluded = 0
+                  WHERE {cd.LEGENDARY_GATE_WHERE}
               )
           )
         ORDER BY m.resolution_date DESC
         LIMIT ?
-    """, (ELO_LEGENDARY, limit))
+    """, (limit,))
     return [dict(r) for r in cur.fetchall()]
 
 

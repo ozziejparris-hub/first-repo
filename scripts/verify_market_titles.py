@@ -29,18 +29,22 @@ import requests
 
 _REPO_ROOT = Path(__file__).parent.parent
 DB_PATH = _REPO_ROOT / "data" / "polymarket_tracker.db"
+
+sys.path.insert(0, str(_REPO_ROOT))
+from monitoring import column_definitions as cd
+
 GAMMA_API_BASE = "https://gamma-api.polymarket.com"
 REQUEST_TIMEOUT = 5   # seconds per API call
 SLEEP_BETWEEN = 1.0   # seconds between requests
 
 
-TARGET_MARKETS_SQL = """
+TARGET_MARKETS_SQL = f"""
 SELECT DISTINCT m.condition_id, m.api_id, m.title
 FROM markets m
 WHERE m.condition_id IN (
     SELECT DISTINCT p.market_id FROM positions p
     JOIN traders t ON t.address = p.trader_address
-    WHERE t.geo_elo >= 2175
+    WHERE t.geo_elo_active >= {cd.GEO_ELO_LEGENDARY}
       AND t.geo_accuracy_pool = 1
       AND t.research_excluded = 0
       AND t.resolved_trades_count >= 20

@@ -53,6 +53,9 @@ import signal_credibility
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _DB_PATH   = os.path.join(_REPO_ROOT, 'data', 'polymarket_tracker.db')
 
+sys.path.insert(0, _REPO_ROOT)
+from monitoring import column_definitions as cd
+
 OUTPUT_DIR = Path("/home/parison/trading-swarm/brain/agent-outputs/positions-scan")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -61,7 +64,6 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 # ---------------------------------------------------------------------------
 
 GEO_CATEGORIES = ('Geopolitics', 'Elections', 'Global Politics')
-ELO_LEGENDARY  = 2175
 GAMMA_API_BASE = "https://gamma-api.polymarket.com/markets"
 API_DELAY      = 0.1   # seconds between Gamma requests
 
@@ -108,7 +110,7 @@ def _fetch_legendary_markets(conn: sqlite3.Connection, min_traders: int) -> list
         GROUP BY m.market_id
         HAVING legendary_count >= :min_traders
         ORDER BY legendary_count DESC, (yes_capital + no_capital) DESC
-    """, {"elo": ELO_LEGENDARY, "min_traders": min_traders})
+    """, {"elo": cd.GEO_ELO_LEGENDARY, "min_traders": min_traders})
     return [dict(r) for r in cur.fetchall()]
 
 
@@ -357,9 +359,7 @@ def _check_and_update_stale_markets(conn: sqlite3.Connection) -> None:
               FROM trades t
               WHERE t.trader_address IN (
                   SELECT address FROM traders
-                  WHERE geo_elo_active >= {ELO_LEGENDARY}
-                    AND geo_accuracy_pool = 1
-                    AND research_excluded = 0
+                  WHERE {cd.LEGENDARY_GATE_WHERE}
               )
           )
         ORDER BY m.end_date DESC
