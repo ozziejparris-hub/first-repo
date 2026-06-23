@@ -8,6 +8,7 @@ to capture transaction hashes for newly ingested trades before they age out.
 
 import argparse
 import importlib.util
+import os
 import sqlite3
 import sys
 import time
@@ -15,6 +16,9 @@ from pathlib import Path
 from typing import Optional
 
 import requests
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import monitoring.column_definitions as cd
 
 # --- Constants ---
 
@@ -185,7 +189,7 @@ def run_backfill(
     conn = _get_conn()
 
     if tier == "legendary":
-        sql = "SELECT address FROM traders WHERE geo_elo >= 2175 AND research_excluded = 0 ORDER BY geo_elo DESC"
+        sql = f"SELECT address FROM traders WHERE geo_elo_active >= {cd.GEO_ELO_LEGENDARY} AND research_excluded = 0 ORDER BY geo_elo_active DESC"
     elif tier == "pool_c":
         sql = "SELECT address FROM traders WHERE geo_accuracy_pool = 1 ORDER BY geo_elo DESC NULLS LAST"
     else:
@@ -248,15 +252,15 @@ def show_stats():
     with_hash = q("SELECT COUNT(*) FROM trades WHERE transaction_hash IS NOT NULL AND transaction_hash != ''")
     without_hash = total - with_hash
 
-    leg_total = q("""
+    leg_total = q(f"""
         SELECT COUNT(*) FROM trades t
         JOIN traders tr ON t.trader_address = tr.address
-        WHERE tr.geo_elo >= 2175 AND tr.research_excluded = 0
+        WHERE tr.geo_elo_active >= {cd.GEO_ELO_LEGENDARY} AND tr.research_excluded = 0
     """)
-    leg_with = q("""
+    leg_with = q(f"""
         SELECT COUNT(*) FROM trades t
         JOIN traders tr ON t.trader_address = tr.address
-        WHERE tr.geo_elo >= 2175 AND tr.research_excluded = 0
+        WHERE tr.geo_elo_active >= {cd.GEO_ELO_LEGENDARY} AND tr.research_excluded = 0
           AND t.transaction_hash IS NOT NULL AND t.transaction_hash != ''
     """)
 

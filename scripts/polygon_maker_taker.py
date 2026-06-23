@@ -7,10 +7,14 @@ import argparse
 import json
 import os
 import sqlite3
+import sys
 import time
 import urllib.request
 import urllib.error
 from typing import Optional
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import monitoring.column_definitions as cd
 
 # --- Constants ---
 
@@ -264,16 +268,16 @@ def get_maker_taker_stats(db_path: str = DB_PATH) -> dict:
         WHERE tr.geo_accuracy_pool = 1 AND t.is_taker = 0
     """)
 
-    # LEGENDARY breakdown (geo_elo >= 2175, research_excluded = 0)
-    leg_taker = q("""
+    # LEGENDARY breakdown (geo_elo_active >= GEO_ELO_LEGENDARY, research_excluded = 0)
+    leg_taker = q(f"""
         SELECT COUNT(*) FROM trades t
         INNER JOIN traders tr ON t.trader_address = tr.address
-        WHERE tr.geo_elo >= 2175 AND tr.research_excluded = 0 AND t.is_taker = 1
+        WHERE tr.geo_elo_active >= {cd.GEO_ELO_LEGENDARY} AND tr.research_excluded = 0 AND t.is_taker = 1
     """)
-    leg_maker = q("""
+    leg_maker = q(f"""
         SELECT COUNT(*) FROM trades t
         INNER JOIN traders tr ON t.trader_address = tr.address
-        WHERE tr.geo_elo >= 2175 AND tr.research_excluded = 0 AND t.is_taker = 0
+        WHERE tr.geo_elo_active >= {cd.GEO_ELO_LEGENDARY} AND tr.research_excluded = 0 AND t.is_taker = 0
     """)
 
     conn.close()

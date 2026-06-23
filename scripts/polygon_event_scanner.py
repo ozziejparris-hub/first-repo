@@ -20,6 +20,9 @@ import urllib.request
 from pathlib import Path
 from typing import Optional
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import monitoring.column_definitions as cd
+
 # --- Constants ---
 
 DB_PATH = "/home/parison/projects/first-repo/data/polymarket_tracker.db"
@@ -457,10 +460,10 @@ def scan_pool_c(
     print("[DEBUG] DB connected, querying traders...", flush=True)
 
     if tier == "legendary":
-        sql = """
+        sql = f"""
             SELECT address FROM traders
-            WHERE geo_elo >= 2175 AND research_excluded = 0
-            ORDER BY geo_elo DESC
+            WHERE geo_elo_active >= {cd.GEO_ELO_LEGENDARY} AND research_excluded = 0
+            ORDER BY geo_elo_active DESC
         """
     else:  # pool_c
         sql = """
@@ -561,26 +564,26 @@ def get_scanner_state(db_path: str = DB_PATH) -> dict:
     taker_pct = round(100 * taker_count / labeled, 1) if labeled else 0
     maker_pct = round(100 * maker_count / labeled, 1) if labeled else 0
 
-    leg_total = q("""
+    leg_total = q(f"""
         SELECT COUNT(*) FROM trades t
         JOIN traders tr ON t.trader_address = tr.address
-        WHERE tr.geo_elo >= 2175 AND tr.research_excluded = 0
+        WHERE tr.geo_elo_active >= {cd.GEO_ELO_LEGENDARY} AND tr.research_excluded = 0
     """)
-    leg_labeled = q("""
+    leg_labeled = q(f"""
         SELECT COUNT(*) FROM trades t
         JOIN traders tr ON t.trader_address = tr.address
-        WHERE tr.geo_elo >= 2175 AND tr.research_excluded = 0
+        WHERE tr.geo_elo_active >= {cd.GEO_ELO_LEGENDARY} AND tr.research_excluded = 0
           AND t.is_taker IS NOT NULL
     """)
-    leg_taker = q("""
+    leg_taker = q(f"""
         SELECT COUNT(*) FROM trades t
         JOIN traders tr ON t.trader_address = tr.address
-        WHERE tr.geo_elo >= 2175 AND tr.research_excluded = 0 AND t.is_taker = 1
+        WHERE tr.geo_elo_active >= {cd.GEO_ELO_LEGENDARY} AND tr.research_excluded = 0 AND t.is_taker = 1
     """)
-    leg_maker = q("""
+    leg_maker = q(f"""
         SELECT COUNT(*) FROM trades t
         JOIN traders tr ON t.trader_address = tr.address
-        WHERE tr.geo_elo >= 2175 AND tr.research_excluded = 0 AND t.is_taker = 0
+        WHERE tr.geo_elo_active >= {cd.GEO_ELO_LEGENDARY} AND tr.research_excluded = 0 AND t.is_taker = 0
     """)
 
     conn.close()
