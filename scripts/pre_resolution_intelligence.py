@@ -35,6 +35,8 @@ import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
+import monitoring.column_definitions as cd
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -55,7 +57,7 @@ LOOKBACK_DAYS       = 7
 TREND_WINDOW_HOURS  = 48
 ELO_QUALIFIED       = 1500
 ELO_ELITE           = 1800
-ELO_LEGENDARY       = 2175
+ELO_LEGENDARY       = cd.GEO_ELO_LEGENDARY
 
 # ---------------------------------------------------------------------------
 # Database helpers
@@ -102,6 +104,7 @@ def _fetch_elite_positions(conn: sqlite3.Connection, market_id: str) -> list[dic
             p.entry_timestamp,
             t.comprehensive_elo,
             t.geo_elo,
+            t.geo_elo_active,
             t.geo_accuracy_pool,
             t.research_excluded,
             t.bot_type
@@ -213,10 +216,11 @@ def _compute_signal(positions: list[dict]) -> dict:
 
         trader_set.add(id(p))  # positional id as proxy (address not fetched)
         geo_elo        = p.get('geo_elo') or 0.0
+        geo_elo_active = p.get('geo_elo_active') or 0.0
         geo_acc        = p.get('geo_accuracy_pool') or 0
         res_excluded   = p.get('research_excluded') or 0
         bot_type       = p.get('bot_type')
-        if geo_elo >= ELO_LEGENDARY and geo_acc == 1:
+        if geo_elo_active >= ELO_LEGENDARY and geo_acc == 1:
             legendary_set.add(id(p))
             elite_set.add(id(p))
         elif elo >= ELO_ELITE and res_excluded == 0 and bot_type is None:
