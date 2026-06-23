@@ -301,7 +301,7 @@ def get_maker_taker_stats(db_path: str = DB_PATH) -> dict:
     print(f"\n  Pool C (geo_accuracy_pool=1):")
     print(f"    Taker:              {pool_c_taker:,}")
     print(f"    Maker:              {pool_c_maker:,}")
-    print(f"\n  LEGENDARY (geo_elo >= 2175, research_excluded=0):")
+    print(f"\n  LEGENDARY (geo_elo_active >= 2175, research_excluded=0):")
     print(f"    Taker:              {leg_taker:,}")
     print(f"    Maker:              {leg_maker:,}")
 

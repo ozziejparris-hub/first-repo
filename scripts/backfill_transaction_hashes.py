@@ -182,7 +182,7 @@ def run_backfill(
     """
     Process all traders in the specified tier.
 
-    tier='legendary': geo_elo >= 2175 AND research_excluded = 0
+    tier='legendary': geo_elo_active >= 2175 AND research_excluded = 0
     tier='pool_c':    geo_accuracy_pool = 1
     tier='all':       all traders (very slow — not recommended)
     """

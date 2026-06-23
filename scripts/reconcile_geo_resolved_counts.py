@@ -37,8 +37,7 @@ def main():
     cur.execute("""SELECT COUNT(*) FROM traders WHERE geo_accuracy_pool = 1
                    AND research_excluded = 0""")
     pool_c_before = cur.fetchone()[0]
-    cur.execute("""SELECT COUNT(*) FROM traders WHERE geo_elo_active >= 2175
-                   AND geo_accuracy_pool = 1 AND research_excluded = 0 AND bot_type IS NULL""")
+    cur.execute(f"""SELECT COUNT(*) FROM traders WHERE {cd.LEGENDARY_GATE_WHERE}""")
     legendary_before = cur.fetchone()[0]
 
     print(f"BEFORE: Pool C = {pool_c_before}, LEGENDARY = {legendary_before}")
@@ -64,8 +63,7 @@ def main():
 
         cur.execute(f"""
             SELECT COUNT(*) FROM traders
-            WHERE geo_elo_active >= 2175 AND geo_accuracy_pool = 1
-            AND research_excluded = 0 AND bot_type IS NULL
+            WHERE {cd.LEGENDARY_GATE_WHERE}
             AND ({cd.GEO_RESOLVED_TRADES_COUNT_SQL}) < {cd.POOL_C_MIN_RESOLVED_TRADES}
         """)
         leg_would_drop = cur.fetchone()[0]
@@ -89,8 +87,7 @@ def main():
     cur.execute("""SELECT COUNT(*) FROM traders WHERE geo_accuracy_pool = 1
                    AND research_excluded = 0""")
     pool_c_after = cur.fetchone()[0]
-    cur.execute("""SELECT COUNT(*) FROM traders WHERE geo_elo_active >= 2175
-                   AND geo_accuracy_pool = 1 AND research_excluded = 0 AND bot_type IS NULL""")
+    cur.execute(f"""SELECT COUNT(*) FROM traders WHERE {cd.LEGENDARY_GATE_WHERE}""")
     legendary_after = cur.fetchone()[0]
 
     print(f"\nAFTER:  Pool C = {pool_c_after} (was {pool_c_before}, -{pool_c_before-pool_c_after})")

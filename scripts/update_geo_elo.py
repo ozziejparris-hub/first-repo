@@ -267,9 +267,11 @@ def main():
         updated += 1
 
         if args.dry_run and updated <= 5:
-            tier = ("LEGENDARY" if geo_elo >= 2175 else
-                    "ELITE" if geo_elo >= 1800 else
-                    "QUALIFIED" if geo_elo >= 1500 else "BELOW_QUALIFIED")
+            _a = geo_elo_active if geo_elo_active is not None else 0.0
+            tier = ("LEGENDARY"      if _a >= cd.GEO_ELO_LEGENDARY      else
+                    "NEAR_LEGENDARY" if _a >= cd.GEO_ELO_NEAR_LEGENDARY else
+                    "ELITE"          if _a >= cd.GEO_ELO_ELITE          else
+                    "QUALIFIED"      if _a >= cd.GEO_ELO_QUALIFIED      else "BELOW_QUALIFIED")
             dir_str = f"{directionality:.3f}" if directionality is not None else "N/A"
             active_str = f"{geo_elo_active:.1f}" if geo_elo_active is not None else "N/A"
             print(f"  {address[:12]}… geo_elo={geo_elo:.1f} active={active_str} ({tier}) dir={dir_str} n={n}")

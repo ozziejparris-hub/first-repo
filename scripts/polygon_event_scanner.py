@@ -450,7 +450,7 @@ def scan_pool_c(
     """
     Scan all traders in the specified tier for OrderFilled events.
 
-    tier='legendary': traders WHERE geo_elo >= 2175 AND research_excluded = 0
+    tier='legendary': traders WHERE geo_elo_active >= 2175 AND research_excluded = 0
     tier='pool_c':    traders WHERE geo_accuracy_pool = 1
     """
     print(f"[DEBUG] scan_pool_c() starting: tier={tier} dry_run={dry_run} "
@@ -611,7 +611,7 @@ def get_scanner_state(db_path: str = DB_PATH) -> dict:
     print(f"    Taker:               {taker_count:,} ({taker_pct}%)", flush=True)
     print(f"    Maker:               {maker_count:,} ({maker_pct}%)", flush=True)
     print(f"  Unlabeled:             {unlabeled:,}", flush=True)
-    print(f"\n  LEGENDARY (geo_elo >= 2175, research_excluded=0):", flush=True)
+    print(f"\n  LEGENDARY (geo_elo_active >= 2175, research_excluded=0):", flush=True)
     print(f"    Total trades:        {leg_total:,}", flush=True)
     print(f"    Labeled:             {leg_labeled:,} ({leg_label_pct}%)", flush=True)
     print(f"    Taker:               {leg_taker:,}", flush=True)
