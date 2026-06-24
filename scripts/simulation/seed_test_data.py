@@ -24,10 +24,12 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-# Add project root to path
+# Add project root and simulation dir to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
 
 from monitoring.database import Database
+from _sim_db_guard import add_sim_db_args, resolve_sim_db, assert_safe_to_write, SIM_DB_DEFAULT
 
 
 # Market title templates
@@ -53,7 +55,8 @@ MONTHS = ["January", "February", "March", "April", "May", "June", "July", "Augus
 class MarketSimulator:
     """Generate realistic Polymarket data with skill-based traders."""
 
-    def __init__(self, config_path: str = None, seed: int = 42):
+    def __init__(self, config_path: str = None, seed: int = 42,
+                 db_path: str = SIM_DB_DEFAULT):
         """Initialize with config file."""
         self.seed = seed
         random.seed(seed)
@@ -71,7 +74,7 @@ class MarketSimulator:
             self.seed = self.config['seed']
             random.seed(self.seed)
 
-        self.db = Database()
+        self.db = Database(db_path)
         self.trader_profiles = []
         self.markets = []
 
@@ -784,12 +787,19 @@ Examples:
     parser.add_argument('--seed', type=int, help='Random seed for reproducibility')
     parser.add_argument('--quiet', action='store_true', help='Quiet mode (minimal output)')
     parser.add_argument('--validate-only', action='store_true', help='Only run validation, no seeding')
+    add_sim_db_args(parser)
 
     args = parser.parse_args()
 
+    # Resolve DB path — default is simulation_test.db, NOT production
+    db_path = resolve_sim_db(args)
+
+    # Guard: seeder always writes, so refuse production unless explicitly unlocked
+    assert_safe_to_write(db_path, args.allow_production_write)
+
     # Create simulator
     seed = args.seed if args.seed else 42
-    sim = MarketSimulator(config_path=args.config, seed=seed)
+    sim = MarketSimulator(config_path=args.config, seed=seed, db_path=db_path)
 
     # Apply quick mode
     if args.quick:

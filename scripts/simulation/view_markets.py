@@ -28,8 +28,10 @@ from collections import defaultdict
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
 
 from monitoring.database import Database
+from _sim_db_guard import add_sim_db_args, resolve_sim_db
 
 
 class MarketViewer:
@@ -428,11 +430,12 @@ Examples:
 
     parser.add_argument('--simulation-age-days', type=int, default=7,
                        help='Consider traders updated within N days (default: 7)')
+    add_sim_db_args(parser)
 
     args = parser.parse_args()
 
     # Initialize
-    db = Database()
+    db = Database(resolve_sim_db(args))
     viewer = MarketViewer(db, simulation_age_days=args.simulation_age_days)
 
     # Load simulation traders

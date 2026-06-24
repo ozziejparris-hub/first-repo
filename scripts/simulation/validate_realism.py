@@ -32,8 +32,10 @@ from collections import defaultdict
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
 
 from monitoring.database import Database
+from _sim_db_guard import add_sim_db_args, resolve_sim_db
 
 
 # Real Polymarket Benchmarks (based on market analysis)
@@ -578,11 +580,12 @@ Examples:
                        help='Minimal output')
     parser.add_argument('--simulation-age-days', type=int, default=7,
                        help='Consider data from last N days (default: 7)')
+    add_sim_db_args(parser)
 
     args = parser.parse_args()
 
     # Initialize
-    db = Database()
+    db = Database(resolve_sim_db(args))
     validator = RealismValidator(db, simulation_age_days=args.simulation_age_days)
 
     try:

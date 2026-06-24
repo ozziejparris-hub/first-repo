@@ -32,8 +32,10 @@ from dataclasses import dataclass, field
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
 
 from monitoring.database import Database
+from _sim_db_guard import add_sim_db_args, resolve_sim_db, assert_safe_to_write, SIM_DB_DEFAULT
 
 
 # Market title templates by category
@@ -190,7 +192,7 @@ class Market:
 class ProductionSimulator:
     """Production-grade market simulator with realistic dynamics."""
 
-    def __init__(self, config_path: str = None, seed: int = 42):
+    def __init__(self, config_path: str = None, seed: int = 42, db_path: str = SIM_DB_DEFAULT):
         """Initialize with config file."""
         self.seed = seed
         random.seed(seed)
@@ -207,7 +209,7 @@ class ProductionSimulator:
             self.seed = self.config['seed']
             random.seed(self.seed)
 
-        self.db = Database()
+        self.db = Database(db_path)
         self.traders: List[TraderProfile] = []
         self.markets: List[Market] = []
         self.news_events: List[NewsEvent] = []
@@ -1108,12 +1110,19 @@ Examples:
                        help='Minimal output')
     parser.add_argument('--validate-only', action='store_true',
                        help='Only run validation')
+    add_sim_db_args(parser)
 
     args = parser.parse_args()
 
+    # Resolve DB path — default is simulation_test.db, NOT production
+    db_path = resolve_sim_db(args)
+
+    # Guard: seeder always writes, so refuse production unless explicitly unlocked
+    assert_safe_to_write(db_path, args.allow_production_write)
+
     # Create simulator
     seed = args.seed if args.seed else 42
-    sim = ProductionSimulator(config_path=args.config, seed=seed)
+    sim = ProductionSimulator(config_path=args.config, seed=seed, db_path=db_path)
 
     # Clear if requested
     if args.clear_simulation:

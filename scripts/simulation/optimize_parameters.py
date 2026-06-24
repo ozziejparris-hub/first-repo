@@ -13,14 +13,19 @@ import sqlite3
 import argparse
 import json
 import math
+import sys
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import List, Dict, Tuple, Any
+
+sys.path.insert(0, str(Path(__file__).parent))
+from _sim_db_guard import add_sim_db_args, resolve_sim_db, SIM_DB_DEFAULT
 
 
 class ELOOptimizer:
     """Optimize ELO parameters for simulation data."""
 
-    def __init__(self, db_path: str = 'data/polymarket_tracker.db'):
+    def __init__(self, db_path: str = SIM_DB_DEFAULT):
         self.db_path = db_path
         self.traders = []
         self.resolved_markets = []
@@ -372,11 +377,13 @@ Examples:
         action='store_true',
         help='Suppress progress output'
     )
+    add_sim_db_args(parser)
 
     args = parser.parse_args()
 
     # Create optimizer
-    optimizer = ELOOptimizer()
+    db_path = resolve_sim_db(args)
+    optimizer = ELOOptimizer(db_path=db_path)
 
     # Load data
     if not args.quiet:

@@ -30,8 +30,10 @@ from collections import defaultdict
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
 
 from monitoring.database import Database
+from _sim_db_guard import add_sim_db_args, resolve_sim_db
 
 
 class PredictionAnalyzer:
@@ -484,13 +486,14 @@ Examples:
 
     parser.add_argument('--quiet', action='store_true',
                        help='Suppress verbose output')
+    add_sim_db_args(parser)
 
     args = parser.parse_args()
 
     verbose = not args.quiet
 
     # Initialize
-    db = Database()
+    db = Database(resolve_sim_db(args))
     analyzer = PredictionAnalyzer(db, simulation_age_days=args.simulation_age_days)
 
     # Load data

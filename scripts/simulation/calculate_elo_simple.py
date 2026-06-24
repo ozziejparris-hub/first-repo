@@ -22,19 +22,22 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 from collections import defaultdict
 
-# Add project root to path
+# Add project root and simulation dir to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
 
 from monitoring.database import Database
+from _sim_db_guard import add_sim_db_args, resolve_sim_db, assert_safe_to_write
 
 
 class SimpleELOCalculator:
     """Simple ELO calculator for simulation data."""
 
-    def __init__(self, db: Database, k_factor: int = 32):
+    def __init__(self, db: Database, k_factor: int = 32, write_to_db: bool = False):
         """Initialize calculator."""
         self.db = db
         self.k_factor = k_factor
+        self.write_to_db = write_to_db
         self.trader_elos = {}  # trader_address -> current ELO
 
     def expected_score(self, rating_a: float, rating_b: float) -> float:
@@ -165,23 +168,25 @@ class SimpleELOCalculator:
             print(f"     Processed {updates_count} rating updates")
             print()
 
-        # Save to database
-        if verbose:
-            print("[3/3] Saving ELO ratings to database...")
-
-        for trader_address, elo in self.trader_elos.items():
-            cursor.execute("""
-                UPDATE traders
-                SET comprehensive_elo = ?,
-                    base_category_elo = ?,
-                    behavioral_modifier = 1.0,
-                    advanced_modifier = 1.0,
-                    pnl_modifier = 1.0,
-                    elo_last_updated = ?
-                WHERE address = ?
-            """, (elo, elo, datetime.now(), trader_address))
-
-        conn.commit()
+        # Save to database only when write_to_db is explicitly enabled
+        if self.write_to_db:
+            if verbose:
+                print("[3/3] Saving ELO ratings to database...")
+            for trader_address, elo in self.trader_elos.items():
+                cursor.execute("""
+                    UPDATE traders
+                    SET comprehensive_elo = ?,
+                        base_category_elo = ?,
+                        behavioral_modifier = 1.0,
+                        advanced_modifier = 1.0,
+                        pnl_modifier = 1.0,
+                        elo_last_updated = ?
+                    WHERE address = ?
+                """, (elo, elo, datetime.now(), trader_address))
+            conn.commit()
+        else:
+            if verbose:
+                print("[3/3] Skipping DB write (read-only mode — pass --write-to-db to enable)")
         conn.close()
 
         if verbose:
@@ -415,12 +420,26 @@ Examples:
                        help='Minimal output')
     parser.add_argument('--k-factor', type=int, default=32,
                        help='ELO K-factor (default: 32)')
+    parser.add_argument('--write-to-db', action='store_true',
+                       help=(
+                           'Write ELO results back to the traders table. '
+                           'Off by default (read-only). '
+                           'Also requires --allow-production-write when targeting production.'
+                       ))
+    add_sim_db_args(parser)
 
     args = parser.parse_args()
 
-    # Initialize
-    db = Database()
-    calculator = SimpleELOCalculator(db, k_factor=args.k_factor)
+    # Resolve DB path — default is simulation_test.db, NOT production
+    db_path = resolve_sim_db(args)
+
+    # Guard: refuse production writes unless explicitly unlocked
+    if args.write_to_db:
+        assert_safe_to_write(db_path, args.allow_production_write)
+
+    db = Database(db_path)
+    calculator = SimpleELOCalculator(db, k_factor=args.k_factor,
+                                     write_to_db=args.write_to_db)
 
     # Calculate ratings
     try:

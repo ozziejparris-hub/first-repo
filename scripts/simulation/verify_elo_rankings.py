@@ -28,8 +28,10 @@ from typing import Dict, List, Tuple
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
 
 from monitoring.database import Database
+from _sim_db_guard import add_sim_db_args, resolve_sim_db
 
 
 class ELORankingsValidator:
@@ -445,11 +447,12 @@ Examples:
                        help='Minimum correlation for pass (default: 0.5)')
     parser.add_argument('--simulation-age-days', type=int, default=1,
                        help='Only analyze traders updated in last N days (default: 1)')
+    add_sim_db_args(parser)
 
     args = parser.parse_args()
 
     # Initialize
-    db = Database()
+    db = Database(resolve_sim_db(args))
     validator = ELORankingsValidator(db, simulation_age_days=args.simulation_age_days)
 
     # Run tests

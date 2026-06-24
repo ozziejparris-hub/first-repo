@@ -33,15 +33,19 @@ from typing import Dict, List, Optional
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
+
+from _sim_db_guard import add_sim_db_args, resolve_sim_db, SIM_DB_DEFAULT
 
 
 class PipelineOrchestrator:
     """Orchestrate full validation pipeline."""
 
-    def __init__(self, export_dir: str = None, verbose: bool = True):
+    def __init__(self, export_dir: str = None, verbose: bool = True, db_path: str = SIM_DB_DEFAULT):
         """Initialize orchestrator."""
         self.export_dir = export_dir or 'results/pipeline'
         self.verbose = verbose
+        self.db_path = db_path
         self.results = {}
         self.start_time = None
         self.stage_times = {}
@@ -101,7 +105,8 @@ class PipelineOrchestrator:
         cmd_seed = [
             'py', 'scripts/simulation/seed_test_data.py',
             '--config', 'experiments/configs/config_simulation.json',
-            '--clear-simulation'
+            '--clear-simulation',
+            '--db-path', self.db_path
         ]
 
         returncode, stdout, stderr = self.run_command(cmd_seed, 'seed_data')
@@ -129,7 +134,9 @@ class PipelineOrchestrator:
 
         cmd = [
             'py', 'scripts/simulation/calculate_elo_simple.py',
-            '--k-factor', '32'
+            '--k-factor', '32',
+            '--write-to-db',
+            '--db-path', self.db_path
         ]
 
         returncode, stdout, stderr = self.run_command(cmd, 'calculate_elo')
@@ -163,7 +170,8 @@ class PipelineOrchestrator:
             'py', 'scripts/simulation/verify_elo_rankings.py',
             '--simulation-age-days', '7',
             '--threshold', '0.5',
-            '--export', export_path
+            '--export', export_path,
+            '--db-path', self.db_path
         ]
 
         returncode, stdout, stderr = self.run_command(cmd, 'validation')
@@ -203,7 +211,8 @@ class PipelineOrchestrator:
             '--k-range', '24', '40',
             '--optimize-for', 'combined',
             '--export', export_path,
-            '--quiet'
+            '--quiet',
+            '--db-path', self.db_path
         ]
 
         returncode, stdout, stderr = self.run_command(cmd, 'optimization')
@@ -242,7 +251,8 @@ class PipelineOrchestrator:
             'py', 'scripts/simulation/backtest_strategy.py',
             '--all-strategies',
             '--export', export_path,
-            '--quiet'
+            '--quiet',
+            '--db-path', self.db_path
         ]
 
         returncode, stdout, stderr = self.run_command(cmd, 'backtesting')
@@ -286,7 +296,8 @@ class PipelineOrchestrator:
         cmd = [
             'py', 'scripts/simulation/analyze_predictions.py',
             '--export', export_path,
-            '--quiet'
+            '--quiet',
+            '--db-path', self.db_path
         ]
 
         returncode, stdout, stderr = self.run_command(cmd, 'error_analysis')
@@ -326,7 +337,8 @@ class PipelineOrchestrator:
             'py', 'scripts/simulation/compare_systems.py',
             '--all',
             '--export', export_path,
-            '--quiet'
+            '--quiet',
+            '--db-path', self.db_path
         ]
 
         returncode, stdout, stderr = self.run_command(cmd, 'comparison')
@@ -502,6 +514,7 @@ Examples:
 
     parser.add_argument('--quiet', action='store_true',
                        help='Suppress verbose output')
+    add_sim_db_args(parser)
 
     args = parser.parse_args()
 
@@ -516,7 +529,8 @@ Examples:
     # Create orchestrator
     orchestrator = PipelineOrchestrator(
         export_dir=args.export_dir,
-        verbose=not args.quiet
+        verbose=not args.quiet,
+        db_path=resolve_sim_db(args)
     )
 
     # Run pipeline

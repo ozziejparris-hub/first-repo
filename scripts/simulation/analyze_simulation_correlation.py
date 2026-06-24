@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
 """Quick script to analyze correlation for simulation traders only."""
 
+import argparse
 import sqlite3
+import sys
 import math
 from datetime import datetime, timedelta
+from pathlib import Path
 
-conn = sqlite3.connect('data/polymarket_tracker.db')
+sys.path.insert(0, str(Path(__file__).parent))
+from _sim_db_guard import add_sim_db_args, resolve_sim_db
+
+parser = argparse.ArgumentParser(description='Analyze correlation for simulation traders')
+add_sim_db_args(parser)
+args = parser.parse_args()
+
+conn = sqlite3.connect(resolve_sim_db(args))
 c = conn.cursor()
 
 cutoff = (datetime.now() - timedelta(minutes=10)).strftime('%Y-%m-%d %H:%M:%S')
