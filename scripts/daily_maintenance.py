@@ -33,6 +33,9 @@ STEPS = [
     # already sent, run continues). Never exits 1. Non-blocking=False (default) so the
     # existing blocking-step abort path catches exit 2.
     ("Integrity audit (pre-ELO gate)",   SCRIPTS_DIR / "audit_invariants.py",            ["--alert"]),
+    # Code-drift check: alerts if any .py file hardcodes ELO thresholds instead of using
+    # canonical column_definitions constants. NON-BLOCKING — a code smell, not a data gate.
+    ("Canonical definitions drift",      SCRIPTS_DIR / "check_canonical_definitions.py", ["--alert"], True),
     ("Update geo ELO scores",             SCRIPTS_DIR / "update_geo_elo.py",               None, True),
     ("Score insider signals",             SCRIPTS_DIR / "score_insider_signals.py",        None, True),
     ("Score STR-003 signals",             SCRIPTS_DIR / "score_str003_signals.py",         None, True),

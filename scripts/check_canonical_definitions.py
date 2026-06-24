@@ -25,6 +25,8 @@ Usage:
   python scripts/check_canonical_definitions.py
 """
 import ast
+import asyncio
+import os
 import re
 import sys
 from pathlib import Path
@@ -169,6 +171,45 @@ class DriftVisitor(ast.NodeVisitor):
 
 
 # ---------------------------------------------------------------------------
+# Telegram alert
+# ---------------------------------------------------------------------------
+
+async def _send_telegram_async(token: str, chat_id: str, message: str) -> None:
+    from telegram import Bot
+    bot = Bot(token=token)
+    MAX = 4000
+    if len(message) <= MAX:
+        await bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML",
+                               read_timeout=15, write_timeout=15)
+    else:
+        for chunk in [message[i:i+MAX] for i in range(0, len(message), MAX)]:
+            await bot.send_message(chat_id=chat_id, text=chunk, parse_mode="HTML",
+                                   read_timeout=15, write_timeout=15)
+
+
+def send_telegram_alert(violations: list) -> None:
+    token   = os.getenv("telegram_alerts_token")
+    chat_id = os.getenv("telegram_chat_id")
+    if not token or not chat_id:
+        print("[TELEGRAM] Credentials not found — skipping alert.", file=sys.stderr)
+        return
+    lines = [
+        "<b>⚠️ Canonical Definitions Drift Detected</b>",
+        f"{len(violations)} violation(s) found:\n",
+    ]
+    for rel, lineno, msg in violations[:20]:
+        lines.append(f"  • {rel}:{lineno}  {msg}")
+    if len(violations) > 20:
+        lines.append(f"  … and {len(violations) - 20} more")
+    lines.append("\nFix: replace hardcoded thresholds with constants from monitoring/column_definitions.py")
+    try:
+        asyncio.run(_send_telegram_async(token, chat_id, "\n".join(lines)))
+        print("[TELEGRAM] Alert sent.")
+    except Exception as exc:
+        print(f"[TELEGRAM] Failed: {exc}", file=sys.stderr)
+
+
+# ---------------------------------------------------------------------------
 # Per-file check
 # ---------------------------------------------------------------------------
 
@@ -191,7 +232,7 @@ def check_file(path: Path) -> list[tuple[int, str]]:
 # Main
 # ---------------------------------------------------------------------------
 
-def main() -> int:
+def main(alert: bool = False) -> int:
     py_files = sorted(
         f for f in ROOT.rglob("*.py")
         if f.resolve() not in EXEMPT_FILES
@@ -213,6 +254,8 @@ def main() -> int:
             f"\nFix: replace hardcoded thresholds / gate conditions with constants from\n"
             f"     monitoring/column_definitions.py"
         )
+        if alert:
+            send_telegram_alert(all_violations)
         return 1
 
     print(
@@ -223,4 +266,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--alert", action="store_true",
+                        help="Send Telegram alert if drift violations are found")
+    args = parser.parse_args()
+    sys.exit(main(alert=args.alert))
