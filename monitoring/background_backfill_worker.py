@@ -307,8 +307,8 @@ class BackgroundBackfillWorker:
                         trade_id, trader_address, market_id, market_title,
                         market_category, outcome, outcome_bet, shares, price,
                         side, timestamp, notified, completed, was_successful,
-                        trade_result
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,0,0,NULL,'pending')
+                        trade_result, data_source
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,0,0,NULL,'pending','background_backfill')
                 """, (
                     trade_id,
                     trade.get("proxyWallet", trader_address),

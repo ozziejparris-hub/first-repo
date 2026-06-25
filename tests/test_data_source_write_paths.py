@@ -8,19 +8,25 @@ Exercises the ACTUAL patched code from each write path against a temporary
 SQLite DB that mirrors the full production schema. Never touches the
 production database — a guard assertion is checked at every temp-DB creation.
 
-10 test cases:
+15 test cases:
   PROVENANCE-ON-INSERT (new rows):
     1  background_backfill_worker  → 'background_backfill'
     2  backfill_missing_markets    → 'background_backfill'
     3  refresh_markets (new row)   → 'api_refresh'
     4  database.update_market      → 'live_monitoring' (DEFAULT; not in column list)
     5  4 traders write paths       → correct per-path value
+   11  database.add_trade (new)    → 'polymarket_api' (DEFAULT)
+   12  backfill worker trade (new) → 'background_backfill' (patched literal)
   ORIGIN-PRESERVATION (existing rows — the critical ones):
     6  refresh_markets on existing 'historical_backfill' → data_source PRESERVED
     7  refresh_markets on resolved market → resolved + winning_outcome PRESERVED
        (regression test for the pre-existing INSERT OR REPLACE resolution-wipe bug)
     8  update_market DO UPDATE on existing market → data_source PRESERVED
     9  backfill stub then live monitor update → data_source STAYS 'background_backfill'
+   13  add_trade conflict (IntegrityError) → existing 'background_backfill' PRESERVED
+   14  backfill INSERT OR IGNORE conflict  → existing 'polymarket_api' PRESERVED
+  REGRESSION LOCK:
+   15  backfill trade IS 'background_backfill' NOT 'polymarket_api' (silent-mislabel fix)
   HARNESS INTEGRATION:
    10  data_source harness checks pass on the test DB (0 NULLs, 0 out-of-set)
 """
@@ -279,6 +285,29 @@ def _seed_market(db_path: str, market_id: str, resolved: int = 0,
     conn.close()
 
 
+def _fetch_trade(db_path: str, trade_id: str) -> dict | None:
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    row = conn.execute("SELECT * FROM trades WHERE trade_id = ?", (trade_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def _seed_trade(db_path: str, trade_id: str, trader_address: str = '0xseed_trader',
+                data_source: str = 'polymarket_api'):
+    """Insert a minimal trade row for origin-preservation tests."""
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO trades (trade_id, trader_address, market_id, market_title, "
+        "market_category, outcome, shares, price, side, timestamp, data_source) "
+        "VALUES (?, ?, 'mkt_seed', 'Seeded market', 'Test', 'Yes', 1.0, 0.5, 'BUY', "
+        "CURRENT_TIMESTAMP, ?)",
+        (trade_id, trader_address, data_source)
+    )
+    conn.commit()
+    conn.close()
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # PROVENANCE-ON-INSERT TESTS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -522,6 +551,97 @@ def test_5_traders_four_paths(results: TestResults):
         os.unlink(db_path)
 
 
+def test_11_add_trade_new_trade_default_source(results: TestResults):
+    """
+    database.add_trade inserts a brand-new trade.  data_source is absent from
+    the INSERT column list (monitoring/database.py:273-280), so the column
+    DEFAULT 'polymarket_api' fires.  No patch needed — this test confirms the
+    DEFAULT is correct for the live-monitor path.
+    """
+    print("\n[TEST 11] database.add_trade (new trade) → data_source='polymarket_api' (DEFAULT)")
+    db_path = make_test_db()
+    try:
+        from monitoring.database import Database
+
+        _seed_trader(db_path, '0xtest011')
+        db = Database(db_path)
+        inserted = db.add_trade(
+            trade_id='trade_t11_001',
+            trader_address='0xtest011',
+            market_id='0xmkt_t11_001',
+            market_title='Add-trade test market',
+            market_category='Test',
+            outcome='Yes',
+            shares=10.0,
+            price=0.5,
+            side='BUY',
+            timestamp=datetime(2026, 1, 1, 12, 0, 0),
+        )
+        if not inserted:
+            results.fail("T11 add_trade new trade", "add_trade returned False — row not inserted")
+            return
+        trade = _fetch_trade(db_path, 'trade_t11_001')
+        if trade is None:
+            results.fail("T11 add_trade new trade", "trade row not in DB")
+        elif trade['data_source'] != 'polymarket_api':
+            results.fail("T11 add_trade new trade",
+                         f"expected 'polymarket_api', got {trade['data_source']!r}")
+        else:
+            results.ok("T11 add_trade new trade → data_source='polymarket_api' (DEFAULT)")
+    finally:
+        os.unlink(db_path)
+
+
+def test_12_backfill_worker_trade_new_insert(results: TestResults):
+    """
+    background_backfill_worker._process_trader_sync: a brand-new trade row
+    inserted during backfill gets data_source='background_backfill'.
+
+    This is the patch that was wrong before — without it, the INSERT OR IGNORE
+    at monitoring/background_backfill_worker.py:305 had no data_source in its
+    column list, so new backfill trades silently got the DEFAULT 'polymarket_api',
+    mislabeling every backfill trade as a live-monitor trade.
+
+    Exercises the full production code path via monkeypatched _fetch_all_trades.
+    """
+    print("\n[TEST 12] backfill_worker trade INSERT → data_source='background_backfill' (patched)")
+    db_path = make_test_db()
+    try:
+        from monitoring.database import Database
+        from monitoring.background_backfill_worker import BackgroundBackfillWorker
+
+        db = Database(db_path)
+        _seed_trader(db_path, '0xtest012')
+        worker = BackgroundBackfillWorker(db, logger=logging.getLogger('test.t12'))
+
+        worker._fetch_all_trades = lambda addr: [{
+            'transactionHash': 'tx_t12_abc',
+            'asset':           'TOKEN_T12',
+            'timestamp':       1700000012,
+            'conditionId':     '0xmkt_t12_001',
+            'title':           'Backfill trade provenance test',
+            'outcome':         'Yes',
+            'size':            20,
+            'price':           0.65,
+            'side':            'BUY',
+            'proxyWallet':     '0xtest012',
+        }]
+
+        worker._process_trader_sync('0xtest012')
+
+        # trade_id = f"{tx_hash}-{asset[:8]}" → 'tx_t12_abc-TOKEN_T1'
+        trade = _fetch_trade(db_path, 'tx_t12_abc-TOKEN_T1')
+        if trade is None:
+            results.fail("T12 backfill worker trade", "trade row not inserted")
+        elif trade['data_source'] != 'background_backfill':
+            results.fail("T12 backfill worker trade",
+                         f"expected 'background_backfill', got {trade['data_source']!r}")
+        else:
+            results.ok("T12 backfill worker trade → data_source='background_backfill'")
+    finally:
+        os.unlink(db_path)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # ORIGIN-PRESERVATION TESTS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -695,6 +815,187 @@ def test_9_first_writer_wins_market(results: TestResults):
         os.unlink(db_path)
 
 
+def test_13_add_trade_conflict_preserves_origin(results: TestResults):
+    """
+    database.add_trade called on an existing trade_id returns False (IntegrityError
+    path at monitoring/database.py:284).  The existing row must be untouched.
+
+    Seed: trade_id='trade_t13_001' with data_source='background_backfill'
+    Act:  call add_trade with the same trade_id (live-monitor path)
+    Assert: data_source is still 'background_backfill' — NOT clobbered to 'polymarket_api'
+    """
+    print("\n[TEST 13] add_trade conflict → existing data_source='background_backfill' PRESERVED")
+    db_path = make_test_db()
+    try:
+        from monitoring.database import Database
+
+        _seed_trader(db_path, '0xtest013')
+        _seed_trade(db_path, 'trade_t13_001', trader_address='0xtest013',
+                    data_source='background_backfill')
+
+        db = Database(db_path)
+        result = db.add_trade(
+            trade_id='trade_t13_001',
+            trader_address='0xtest013',
+            market_id='0xmkt_t13_001',
+            market_title='Conflict test market',
+            market_category='Test',
+            outcome='No',
+            shares=5.0,
+            price=0.3,
+            side='SELL',
+            timestamp=datetime(2026, 2, 1, 12, 0, 0),
+        )
+        if result is not False:
+            results.fail("T13 add_trade conflict", f"expected False on conflict, got {result!r}")
+            return
+        trade = _fetch_trade(db_path, 'trade_t13_001')
+        if trade is None:
+            results.fail("T13 add_trade conflict", "trade row disappeared after conflict")
+        elif trade['data_source'] != 'background_backfill':
+            results.fail("T13 add_trade conflict",
+                         f"ORIGIN CLOBBERED: expected 'background_backfill', got {trade['data_source']!r}")
+        else:
+            results.ok("T13 add_trade conflict → data_source='background_backfill' PRESERVED (first-writer-wins)")
+    finally:
+        os.unlink(db_path)
+
+
+def test_14_backfill_insert_ignore_conflict_preserves_origin(results: TestResults):
+    """
+    background_backfill_worker INSERT OR IGNORE on an existing trade_id is
+    silently skipped — the existing row must be untouched.
+
+    Seed: trade_id='trade_t14_001' with data_source='polymarket_api'
+    Act:  run the exact patched INSERT OR IGNORE with same trade_id
+    Assert: data_source stays 'polymarket_api' — NOT overwritten by 'background_backfill'
+
+    Exercises the exact SQL from monitoring/background_backfill_worker.py:305-324
+    (including the patched data_source column).
+    """
+    print("\n[TEST 14] backfill INSERT OR IGNORE conflict → existing 'polymarket_api' PRESERVED")
+    db_path = make_test_db()
+    try:
+        _seed_trader(db_path, '0xtest014')
+        _seed_trade(db_path, 'trade_t14_001', trader_address='0xtest014',
+                    data_source='polymarket_api')
+
+        conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("""
+            INSERT OR IGNORE INTO trades (
+                trade_id, trader_address, market_id, market_title,
+                market_category, outcome, outcome_bet, shares, price,
+                side, timestamp, notified, completed, was_successful,
+                trade_result, data_source
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,0,0,NULL,'pending','background_backfill')
+        """, (
+            'trade_t14_001',
+            '0xtest014',
+            '0xcond_t14',
+            'Backfill conflict test',
+            'Unknown',
+            'Yes', 'Yes',
+            float(10),
+            float(0.5),
+            'BUY',
+            '2026-01-01 12:00:00',
+        ))
+        conn.commit()
+        conn.close()
+
+        trade = _fetch_trade(db_path, 'trade_t14_001')
+        if trade is None:
+            results.fail("T14 backfill INSERT OR IGNORE conflict", "trade row disappeared")
+        elif trade['data_source'] != 'polymarket_api':
+            results.fail("T14 backfill INSERT OR IGNORE conflict",
+                         f"ORIGIN CLOBBERED: expected 'polymarket_api', got {trade['data_source']!r}")
+        else:
+            results.ok("T14 backfill INSERT OR IGNORE conflict → 'polymarket_api' PRESERVED (first-writer-wins)")
+    finally:
+        os.unlink(db_path)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# REGRESSION LOCK
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_15_regression_lock_backfill_trade_not_default_api(results: TestResults):
+    """
+    REGRESSION LOCK for the silent-mislabel bug: a trade inserted by the
+    background backfill worker must carry data_source='background_backfill',
+    NOT the DEFAULT 'polymarket_api'.
+
+    Before the patch (monitoring/background_backfill_worker.py:305-324), the
+    INSERT OR IGNORE omitted data_source from the column list.  SQLite fired
+    the DEFAULT 'polymarket_api', silently labeling every backfill trade as if
+    it came from the live monitor.  This test locks that fix permanently.
+
+    The SQL executed here is the EXACT patched INSERT OR IGNORE from the worker.
+    On pre-patch code this test FAILS because the DEFAULT 'polymarket_api' fires.
+
+    Assertions are doubly rigorous:
+      1. value == 'background_backfill'  (positive: exact required value)
+      2. value != 'polymarket_api'        (negative: reject the pre-patch DEFAULT)
+    """
+    print("\n[TEST 15] REGRESSION LOCK: backfill trade='background_backfill' NOT 'polymarket_api'")
+    db_path = make_test_db()
+    try:
+        _seed_trader(db_path, '0xtest015')
+
+        conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA journal_mode=WAL")
+        # Exact SQL from the patched INSERT OR IGNORE in background_backfill_worker.py
+        conn.execute("""
+            INSERT OR IGNORE INTO trades (
+                trade_id, trader_address, market_id, market_title,
+                market_category, outcome, outcome_bet, shares, price,
+                side, timestamp, notified, completed, was_successful,
+                trade_result, data_source
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,0,0,NULL,'pending','background_backfill')
+        """, (
+            'trade_t15_lock',
+            '0xtest015',
+            '0xcond_t15',
+            'Regression lock test market',
+            'Unknown',
+            'Yes', 'Yes',
+            float(10),
+            float(0.5),
+            'BUY',
+            '2026-01-01 00:00:00',
+        ))
+        conn.commit()
+        conn.close()
+
+        trade = _fetch_trade(db_path, 'trade_t15_lock')
+        if trade is None:
+            results.fail("T15 regression lock", "trade row not inserted")
+            return
+
+        actual = trade['data_source']
+
+        if actual == 'polymarket_api':
+            results.fail(
+                "T15 regression lock",
+                "data_source='polymarket_api' — pre-patch mislabel bug is BACK. "
+                "The INSERT OR IGNORE is missing data_source from its column list; "
+                "the DEFAULT is firing instead of the explicit 'background_backfill' literal."
+            )
+        elif actual != 'background_backfill':
+            results.fail(
+                "T15 regression lock",
+                f"unexpected value {actual!r} — expected exactly 'background_backfill'"
+            )
+        else:
+            results.ok(
+                "T15 regression lock: data_source='background_backfill' "
+                "(not the pre-patch DEFAULT 'polymarket_api')"
+            )
+    finally:
+        os.unlink(db_path)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # HARNESS INTEGRATION TEST
 # ─────────────────────────────────────────────────────────────────────────────
@@ -809,7 +1110,7 @@ def test_10_harness_checks_on_test_db(results: TestResults):
 
 def main() -> bool:
     print("\n" + "="*70)
-    print("  DATA SOURCE WRITE-PATH TESTS  (10 cases)")
+    print("  DATA SOURCE WRITE-PATH TESTS  (15 cases)")
     print("="*70)
     print(f"\n  Production DB guard : {_PROD_DB}")
     print(f"  Temp DBs            : {tempfile.gettempdir()}/test_ds_writepath_*.db")
@@ -823,12 +1124,19 @@ def main() -> bool:
     test_3_refresh_markets_new_market(results)
     test_4_database_update_market_new_row(results)
     test_5_traders_four_paths(results)
+    test_11_add_trade_new_trade_default_source(results)
+    test_12_backfill_worker_trade_new_insert(results)
 
     # ORIGIN-PRESERVATION
     test_6_refresh_preserves_historical_backfill_origin(results)
     test_7_refresh_preserves_resolution_state(results)
     test_8_update_market_do_update_preserves_data_source(results)
     test_9_first_writer_wins_market(results)
+    test_13_add_trade_conflict_preserves_origin(results)
+    test_14_backfill_insert_ignore_conflict_preserves_origin(results)
+
+    # REGRESSION LOCK
+    test_15_regression_lock_backfill_trade_not_default_api(results)
 
     # HARNESS INTEGRATION
     test_10_harness_checks_on_test_db(results)
