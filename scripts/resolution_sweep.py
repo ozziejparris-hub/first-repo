@@ -217,8 +217,8 @@ class ResolutionSweep:
                             INSERT INTO traders (
                                 address, total_trades, successful_trades, win_rate,
                                 total_volume, is_flagged, research_excluded,
-                                discovery_source, backfill_attempted, last_updated
-                            ) VALUES (?, 0, 0, 0.0, ?, 1, 0, 'resolution_sweep', NULL, ?)
+                                discovery_source, data_source, backfill_attempted, last_updated
+                            ) VALUES (?, 0, 0, 0.0, ?, 1, 0, 'resolution_sweep', 'resolution_sweep', NULL, ?)
                             ON CONFLICT(address) DO NOTHING
                         """, (addr, vol, now))
                         if cur.rowcount > 0:

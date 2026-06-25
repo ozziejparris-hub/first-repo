@@ -160,15 +160,20 @@ def cmd_add(db_path: str, address: str, username: str | None, dry_run: bool):
     cur.execute("""
         INSERT INTO traders (
             address, total_trades, successful_trades, win_rate,
-            total_volume, is_flagged, watched, discovery_source,
+            total_volume, is_flagged, watched, discovery_source, data_source,
             username, last_updated
-        ) VALUES (?, 0, 0, 0.0, 0.0, 1, 1, 'manual_watchlist', ?, ?)
+        ) VALUES (?, 0, 0, 0.0, 0.0, 1, 1, 'manual_watchlist', 'manual_watchlist', ?, ?)
         ON CONFLICT(address) DO UPDATE SET
             watched          = 1,
             discovery_source = CASE
                 WHEN discovery_source IS NULL OR discovery_source = 'live_feed'
                 THEN 'manual_watchlist'
                 ELSE discovery_source
+            END,
+            data_source      = CASE
+                WHEN data_source IS NULL OR data_source = 'live_feed'
+                THEN 'manual_watchlist'
+                ELSE data_source
             END,
             is_flagged       = 1,
             username         = CASE

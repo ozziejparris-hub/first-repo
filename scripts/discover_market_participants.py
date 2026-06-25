@@ -344,8 +344,8 @@ class MarketParticipantDiscovery:
                 cur.execute("""
                     INSERT INTO traders (
                         address, total_trades, successful_trades, win_rate,
-                        total_volume, is_flagged, discovery_source, username, last_updated
-                    ) VALUES (?, ?, 0, 0.0, ?, ?, 'market_scan', ?, ?)
+                        total_volume, is_flagged, discovery_source, data_source, username, last_updated
+                    ) VALUES (?, ?, 0, 0.0, ?, ?, 'market_scan', 'market_scan', ?, ?)
                     ON CONFLICT(address) DO NOTHING
                 """, (address, total_trades, total_volume, is_flagged, username, datetime.now()))
                 conn.commit()

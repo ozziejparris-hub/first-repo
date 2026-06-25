@@ -363,8 +363,8 @@ class LeaderboardDiscovery:
                         cur.execute("""
                             INSERT INTO traders (
                                 address, total_trades, successful_trades, win_rate,
-                                total_volume, is_flagged, discovery_source, username, last_updated
-                            ) VALUES (?, ?, 0, 0.0, ?, ?, 'leaderboard', ?, ?)
+                                total_volume, is_flagged, discovery_source, data_source, username, last_updated
+                            ) VALUES (?, ?, 0, 0.0, ?, ?, 'leaderboard', 'leaderboard', ?, ?)
                             ON CONFLICT(address) DO NOTHING
                         """, (address, total_trades, total_volume, should_flag, username, datetime.now()))
                         if cur.rowcount > 0:
