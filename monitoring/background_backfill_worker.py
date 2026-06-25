@@ -325,8 +325,8 @@ class BackgroundBackfillWorker:
                 n_inserted += cursor.rowcount
 
                 cursor.execute("""
-                    INSERT OR IGNORE INTO markets (market_id, title, category, resolved)
-                    VALUES (?, ?, 'Unknown', 0)
+                    INSERT OR IGNORE INTO markets (market_id, title, category, resolved, data_source)
+                    VALUES (?, ?, 'Unknown', 0, 'background_backfill')
                 """, (condition_id, title))
 
             conn.commit()

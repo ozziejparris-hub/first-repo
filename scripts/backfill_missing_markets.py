@@ -134,8 +134,8 @@ def insert_market(conn, row: dict, dry_run: bool) -> bool:
     cur.execute('''
         INSERT OR IGNORE INTO markets
             (market_id, title, category, end_date, resolved, winning_outcome,
-             condition_id, resolution_date, last_checked)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             condition_id, resolution_date, last_checked, data_source)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         row['market_id'],
         row['title'],
@@ -146,6 +146,7 @@ def insert_market(conn, row: dict, dry_run: bool) -> bool:
         row['condition_id'],
         row['resolution_date'],
         datetime.now().isoformat(),
+        'background_backfill',
     ))
     conn.commit()
     return cur.rowcount > 0

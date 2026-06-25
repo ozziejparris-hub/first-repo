@@ -269,17 +269,25 @@ class MarketRefresher:
                     cursor = conn.cursor()
 
                     cursor.execute("""
-                        INSERT OR REPLACE INTO markets
-                        (market_id, title, category, end_date, resolved,
-                         winning_outcome, condition_id, api_id, last_checked)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO markets
+                            (market_id, title, category, end_date, resolved,
+                             winning_outcome, condition_id, api_id, last_checked,
+                             data_source)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'api_refresh')
+                        ON CONFLICT(market_id) DO UPDATE SET
+                            title        = excluded.title,
+                            category     = excluded.category,
+                            end_date     = excluded.end_date,
+                            condition_id = excluded.condition_id,
+                            api_id       = excluded.api_id,
+                            last_checked = excluded.last_checked
                     """, (
                         condition_id,  # market_id = conditionId
                         market.get('question', market.get('title', 'Unknown')),
                         market.get('category', 'Unknown'),
                         market.get('endDate'),
-                        0,  # Not resolved initially
-                        None,  # No winner yet
+                        0,    # only used for brand-new rows
+                        None, # only used for brand-new rows
                         condition_id,  # condition_id column
                         str(numeric_id),  # api_id column (IMPORTANT!)
                         datetime.now()
