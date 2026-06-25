@@ -256,6 +256,118 @@ def refresh_pool_c(conn) -> tuple[int, int]:
 
 
 # =============================================================================
+# SECTION 5 — DATA PROVENANCE
+#
+# Canonical data_source values, migration SQL, and backfill SQL for the four
+# core tables: traders, markets, trades, positions.
+#
+# Migration protocol:
+#   1. Run ALTER SQL below (O(1) schema-only on SQLite >= 3.37 — tested 3.45.1)
+#   2. Run backfill SQL to correct rows that should not keep the DEFAULT
+#   3. Verify distribution matches forensic-map projections
+#   4. Only then add harness checks — never during migration
+#
+# Forward policy: every write path sets data_source at insertion time using the
+# DEFAULT constants below. The allowed value frozensets are the canonical enum
+# for each table; harness checks enforce membership post-migration.
+# =============================================================================
+
+# ── Canonical defaults (must match the DEFAULT clause in ALTER SQL) ───────────
+
+DATA_SOURCE_TRADERS_DEFAULT   = 'live_feed'
+DATA_SOURCE_MARKETS_DEFAULT   = 'live_monitoring'
+DATA_SOURCE_TRADES_DEFAULT    = 'polymarket_api'
+DATA_SOURCE_POSITIONS_DEFAULT = 'position_tracker'
+
+# ── Allowed value sets (canonical enums per table) ────────────────────────────
+
+DATA_SOURCE_TRADERS = frozenset({
+    'live_feed',         # inserted by live monitoring (monitor.py, discover_*.py)
+    'leaderboard',       # scraped from Polymarket leaderboard API
+    'external_seed',     # imported from external dataset (e.g. HuggingFace parquet)
+    'manual_watchlist',  # hand-entered watchlist entry
+    'orphan_repair',     # added by orphan-repair to fix dangling trade refs
+    'simulation',        # simulation framework — simulation_test.db only
+    'backfill',          # one-off historical backfill script
+    'blockchain_scan',   # discovered via on-chain scan
+})
+
+DATA_SOURCE_MARKETS = frozenset({
+    'live_monitoring',    # inserted during live monitoring window
+    'historical_backfill', # Dec 11 2025 mass-import of historical Polymarket markets
+    'simulation',         # simulation framework — simulation_test.db only
+    'manual_entry',       # hand-entered market record
+    'api_refresh',        # refreshed via Polymarket API batch
+    'stub_placeholder',   # placeholder before full market data was available
+})
+
+DATA_SOURCE_TRADES = frozenset({
+    'polymarket_api',   # fetched from Polymarket REST API (all existing rows)
+    'blockchain_scan',  # future: discovered via on-chain scan at insertion time
+    'simulation',       # simulation framework — simulation_test.db only
+    'backfill_import',  # imported from CSV or external backfill
+    'computed',         # derived trade record not directly from API
+})
+
+DATA_SOURCE_POSITIONS = frozenset({
+    'position_tracker',    # created by monitoring/position_tracker.py (FIFO tracking)
+    'backfill_historical', # populated by a historical backfill operation
+    'simulation',          # simulation framework — simulation_test.db only
+    'synthetic_resolution', # position closed at market resolution (is_synthetic_close=1)
+})
+
+# ── Migration SQL — ALTER TABLE (O(1), run once per table) ───────────────────
+
+DATA_SOURCE_ALTER_TRADERS = (
+    "ALTER TABLE traders ADD COLUMN data_source TEXT NOT NULL "
+    f"DEFAULT '{DATA_SOURCE_TRADERS_DEFAULT}'"
+)
+DATA_SOURCE_ALTER_MARKETS = (
+    "ALTER TABLE markets ADD COLUMN data_source TEXT NOT NULL "
+    f"DEFAULT '{DATA_SOURCE_MARKETS_DEFAULT}'"
+)
+DATA_SOURCE_ALTER_TRADES = (
+    "ALTER TABLE trades ADD COLUMN data_source TEXT NOT NULL "
+    f"DEFAULT '{DATA_SOURCE_TRADES_DEFAULT}'"
+)
+DATA_SOURCE_ALTER_POSITIONS = (
+    "ALTER TABLE positions ADD COLUMN data_source TEXT NOT NULL "
+    f"DEFAULT '{DATA_SOURCE_POSITIONS_DEFAULT}'"
+)
+
+# ── Backfill SQL — run after ALTER, before harness checks ────────────────────
+#
+# traders: discovery_source maps 1:1 to data_source for all existing values
+#   (live_feed, leaderboard, external_seed, manual_watchlist, orphan_repair).
+#   Sets data_source = discovery_source for all rows where discovery_source is
+#   set; rows where discovery_source IS NULL keep the DEFAULT 'live_feed'.
+DATA_SOURCE_BACKFILL_TRADERS_SQL = (
+    "UPDATE traders SET data_source = discovery_source "
+    "WHERE discovery_source IS NOT NULL"
+)
+
+# markets: Dec 11 2025 last_checked date identifies the 203K historical backfill.
+#   All other rows keep the DEFAULT 'live_monitoring'.
+DATA_SOURCE_BACKFILL_MARKETS_HISTORICAL_SQL = (
+    "UPDATE markets SET data_source = 'historical_backfill' "
+    "WHERE DATE(last_checked) = '2025-12-11'"
+)
+
+# trades: all existing rows are polymarket_api (matches the DEFAULT — this UPDATE
+#   is a no-op but is included as an explicit audit-trail step).
+DATA_SOURCE_BACKFILL_TRADES_SQL = (
+    "UPDATE trades SET data_source = 'polymarket_api' WHERE data_source IS NULL"
+)
+
+# positions: synthetic closes (P&L computed at market resolution) get a distinct
+#   provenance label. All others keep the DEFAULT 'position_tracker'.
+DATA_SOURCE_BACKFILL_POSITIONS_SYNTHETIC_SQL = (
+    "UPDATE positions SET data_source = 'synthetic_resolution' "
+    "WHERE is_synthetic_close = 1"
+)
+
+
+# =============================================================================
 # SELF-TEST  (python3 monitoring/column_definitions.py)
 # =============================================================================
 
@@ -353,9 +465,44 @@ if __name__ == '__main__':
             f"= {got!r:>16}  {'OK' if ok else 'FAIL'}"
         )
 
+    # ── Section 5: provenance constants ──────────────────────────────────
+    print("\n── Section 5: provenance defaults ──")
+    print(f"  DATA_SOURCE_TRADERS_DEFAULT   : {DATA_SOURCE_TRADERS_DEFAULT!r}")
+    print(f"  DATA_SOURCE_MARKETS_DEFAULT   : {DATA_SOURCE_MARKETS_DEFAULT!r}")
+    print(f"  DATA_SOURCE_TRADES_DEFAULT    : {DATA_SOURCE_TRADES_DEFAULT!r}")
+    print(f"  DATA_SOURCE_POSITIONS_DEFAULT : {DATA_SOURCE_POSITIONS_DEFAULT!r}")
+
+    print("\n── Section 5: ALTER SQL (structural check) ──")
+    s5_ok = True
+    for name, sql, default in [
+        ("traders",   DATA_SOURCE_ALTER_TRADERS,   DATA_SOURCE_TRADERS_DEFAULT),
+        ("markets",   DATA_SOURCE_ALTER_MARKETS,   DATA_SOURCE_MARKETS_DEFAULT),
+        ("trades",    DATA_SOURCE_ALTER_TRADES,    DATA_SOURCE_TRADES_DEFAULT),
+        ("positions", DATA_SOURCE_ALTER_POSITIONS, DATA_SOURCE_POSITIONS_DEFAULT),
+    ]:
+        ok = (
+            f"ALTER TABLE {name} ADD COLUMN data_source TEXT NOT NULL" in sql
+            and f"DEFAULT '{default}'" in sql
+        )
+        if not ok:
+            s5_ok = False
+        print(f"  {name:<10}: {'OK' if ok else 'FAIL'}  {sql!r}")
+
+    print("\n── Section 5: backfill SQL (non-empty check) ──")
+    for name, sql in [
+        ("traders",   DATA_SOURCE_BACKFILL_TRADERS_SQL),
+        ("markets",   DATA_SOURCE_BACKFILL_MARKETS_HISTORICAL_SQL),
+        ("trades",    DATA_SOURCE_BACKFILL_TRADES_SQL),
+        ("positions", DATA_SOURCE_BACKFILL_POSITIONS_SYNTHETIC_SQL),
+    ]:
+        ok = bool(sql.strip())
+        if not ok:
+            s5_ok = False
+        print(f"  {name:<10}: {'OK' if ok else 'FAIL'}")
+
     # ── Summary ───────────────────────────────────────────────────────────
     print("\n── Summary ──")
-    if win_rate_ok and tier_ok:
+    if win_rate_ok and tier_ok and s5_ok:
         print("  All assertions passed.")
     else:
         failures = []
@@ -363,5 +510,7 @@ if __name__ == '__main__':
             failures.append("compute_win_rate")
         if not tier_ok:
             failures.append("derive_tier")
+        if not s5_ok:
+            failures.append("section_5_provenance")
         print(f"  FAILURES in: {', '.join(failures)}")
         sys.exit(1)
