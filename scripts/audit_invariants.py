@@ -74,6 +74,9 @@ FLOOR_TS_POS_UPDATED    = 0      # positions.last_updated: all space-sep
 # Set to last-observed total count (2026-06-18); expected until Teardown 3.
 FLOOR_TS_TOTAL = 24996
 
+FLOOR_DS_NULLS   = 0  # after backfill: any NULL is a new write-path omission
+FLOOR_DS_INVALID = 0  # after backfill: any out-of-set value is a new write-path regression
+
 # ---- Tier 3 (alert only on > 10% growth from floor) ---------------------
 FLOOR_API_NO_LOCAL      = 114047  # traders with API total_trades but 0 local records — Teardown: discovery backfill
 FLOOR_BUY_NO_POS        = 275254  # BUY trades with no position record — Teardown: position backfill
@@ -360,6 +363,55 @@ def check_timestamp_formats(cur, verbose):
     return ("timestamp mixed formats (per-column breakdown)", 2, FLOOR_TS_TOTAL, total, detail)
 
 
+def check_data_source_nulls(cur, verbose):
+    """data_source IS NULL across all 4 core tables.
+    Column is NOT NULL DEFAULT, so any NULL is a write-path omission regression."""
+    tables = ["traders", "markets", "trades", "positions"]
+    detail = []
+    total = 0
+    for table in tables:
+        cnt = _count(cur, f"SELECT COUNT(*) FROM {table} WHERE data_source IS NULL")
+        total += cnt
+        detail.append({
+            "table":      table,
+            "null_count": cnt,
+            "status":     "REGRESSION" if cnt > 0 else "PASS",
+        })
+    return ("data_source IS NULL (write-path omission)", 2, FLOOR_DS_NULLS, total, detail)
+
+
+def check_data_source_invalid(cur, verbose):
+    """data_source NOT IN canonical set, per table.
+    IN-clause built from cd frozensets — shares one canonical source with write paths."""
+    table_specs = [
+        ("traders",   cd.DATA_SOURCE_TRADERS),
+        ("markets",   cd.DATA_SOURCE_MARKETS),
+        ("trades",    cd.DATA_SOURCE_TRADES),
+        ("positions", cd.DATA_SOURCE_POSITIONS),
+    ]
+    detail = []
+    total = 0
+    for table, allowed_set in table_specs:
+        in_clause = ",".join(f"'{v}'" for v in sorted(allowed_set))
+        cnt = _count(cur,
+            f"SELECT COUNT(*) FROM {table} "
+            f"WHERE data_source IS NOT NULL AND data_source NOT IN ({in_clause})")
+        total += cnt
+        entry = {
+            "table":         table,
+            "invalid_count": cnt,
+            "allowed":       sorted(allowed_set),
+            "status":        "REGRESSION" if cnt > 0 else "PASS",
+        }
+        if verbose and cnt:
+            entry["examples"] = _fetch_examples(cur,
+                f"SELECT data_source, COUNT(*) AS cnt FROM {table} "
+                f"WHERE data_source IS NOT NULL AND data_source NOT IN ({in_clause}) "
+                f"GROUP BY data_source LIMIT 5")
+        detail.append(entry)
+    return ("data_source not in canonical set (write-path regression)", 2, FLOOR_DS_INVALID, total, detail)
+
+
 # ---------------------------------------------------------------------------
 # Tier 3 invariants — REGRESSION if count > floor * (1 + TIER3_THRESHOLD)
 # ---------------------------------------------------------------------------
@@ -508,6 +560,8 @@ ALL_CHECKS = [
     check_pending_geo,
     check_unknown_category,
     check_timestamp_formats,
+    check_data_source_nulls,
+    check_data_source_invalid,
     # Tier 3
     check_api_no_local,
     check_buy_no_position,
