@@ -506,12 +506,31 @@ class PositionTracker:
                 data['position_id'] = existing[0]
 
             cursor.execute("""
-                INSERT OR REPLACE INTO positions (
+                INSERT INTO positions (
                     position_id, trader_address, market_id, market_title, outcome,
                     entry_shares, entry_avg_price, entry_total_cost, entry_timestamp, entry_trade_ids,
                     exit_shares, exit_avg_price, exit_total_received, exit_timestamp, exit_trade_ids,
-                    realized_pnl, roi_percent, holding_period_hours, status, remaining_shares
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    realized_pnl, roi_percent, holding_period_hours, status, remaining_shares,
+                    data_source, last_updated
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                          'position_tracker', CURRENT_TIMESTAMP)
+                ON CONFLICT(position_id) DO UPDATE SET
+                    market_title         = excluded.market_title,
+                    entry_shares         = excluded.entry_shares,
+                    entry_avg_price      = excluded.entry_avg_price,
+                    entry_total_cost     = excluded.entry_total_cost,
+                    entry_trade_ids      = excluded.entry_trade_ids,
+                    exit_shares          = excluded.exit_shares,
+                    exit_avg_price       = excluded.exit_avg_price,
+                    exit_total_received  = excluded.exit_total_received,
+                    exit_timestamp       = excluded.exit_timestamp,
+                    exit_trade_ids       = excluded.exit_trade_ids,
+                    realized_pnl         = excluded.realized_pnl,
+                    roi_percent          = excluded.roi_percent,
+                    holding_period_hours = excluded.holding_period_hours,
+                    status               = excluded.status,
+                    remaining_shares     = excluded.remaining_shares,
+                    last_updated         = CURRENT_TIMESTAMP
             """, (
                 data['position_id'], data['trader_address'], data['market_id'],
                 data['market_title'], data['outcome'],

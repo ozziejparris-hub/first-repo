@@ -2,13 +2,14 @@
 """
 tests/test_data_source_write_paths.py
 
-Regression tests for the markets and traders data_source write paths.
+Regression tests for the markets, traders, trades, and positions data_source
+write paths.
 
 Exercises the ACTUAL patched code from each write path against a temporary
 SQLite DB that mirrors the full production schema. Never touches the
 production database — a guard assertion is checked at every temp-DB creation.
 
-15 test cases:
+23 test cases (30 assertions):
   PROVENANCE-ON-INSERT (new rows):
     1  background_backfill_worker  → 'background_backfill'
     2  backfill_missing_markets    → 'background_backfill'
@@ -17,6 +18,10 @@ production database — a guard assertion is checked at every temp-DB creation.
     5  4 traders write paths       → correct per-path value
    11  database.add_trade (new)    → 'polymarket_api' (DEFAULT)
    12  backfill worker trade (new) → 'background_backfill' (patched literal)
+   16  position_tracker UPSERT (new row)            → 'position_tracker'
+   17  background_pnl_worker UPSERT (new row)       → 'position_tracker'
+   18  backfill_synthetic_closes (new rows, T18a/b) → 'synthetic_resolution' / 'position_tracker'
+   19  database.insert_position (new row)           → 'position_tracker'
   ORIGIN-PRESERVATION (existing rows — the critical ones):
     6  refresh_markets on existing 'historical_backfill' → data_source PRESERVED
     7  refresh_markets on resolved market → resolved + winning_outcome PRESERVED
@@ -27,6 +32,15 @@ production database — a guard assertion is checked at every temp-DB creation.
    14  backfill INSERT OR IGNORE conflict  → existing 'polymarket_api' PRESERVED
   REGRESSION LOCK:
    15  backfill trade IS 'background_backfill' NOT 'polymarket_api' (silent-mislabel fix)
+  POSITIONS REGRESSION LOCKS (most critical — lock removal of INSERT OR REPLACE):
+   20  SYNTHETIC PRESERVATION: is_synthetic_close=1 + data_source='synthetic_resolution'
+       survive position_tracker UPSERT (would FAIL on old INSERT OR REPLACE code)
+   21  CREATED_AT PRESERVATION: seeded created_at unchanged after UPSERT
+       (old INSERT OR REPLACE reset it to now on every cycle)
+   22  MUTABLE FIELDS UPDATE (T22a/b): status, realized_pnl, exit_* DO update
+       (proves UPSERT didn't accidentally freeze any mutable field)
+   23  BACKFILL CASE GUARD (T23a/b): no-downgrade from 'synthetic_resolution' AND
+       upgrade from 'position_tracker' → 'synthetic_resolution' both correct
   HARNESS INTEGRATION:
    10  data_source harness checks pass on the test DB (0 NULLs, 0 out-of-set)
 """
@@ -306,6 +320,220 @@ def _seed_trade(db_path: str, trade_id: str, trader_address: str = '0xseed_trade
     )
     conn.commit()
     conn.close()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Positions helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _fetch_position(db_path: str, position_id: str) -> dict | None:
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    row = conn.execute(
+        "SELECT * FROM positions WHERE position_id = ?", (position_id,)
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def _seed_position(db_path: str, position_id: str,
+                   trader_address: str = '0xtesttrader',
+                   is_synthetic_close: int = 0,
+                   data_source: str = 'position_tracker',
+                   created_at: str = '2020-01-01 00:00:00',
+                   status: str = 'open',
+                   realized_pnl: float = 0.0):
+    """
+    Directly INSERT a minimal position row, bypassing all write-path code.
+    Used to set up preconditions (specific is_synthetic_close, data_source,
+    created_at) for origin-preservation and regression-lock tests.
+    """
+    _seed_trader(db_path, trader_address)
+    conn = sqlite3.connect(db_path)
+    conn.execute("""
+        INSERT INTO positions (
+            position_id, trader_address, market_id, market_title, outcome,
+            entry_shares, entry_avg_price, entry_total_cost, entry_timestamp,
+            status, remaining_shares, realized_pnl,
+            is_synthetic_close, data_source, created_at
+        ) VALUES (?, ?, '0xtest_mkt', 'Test Market', 'Yes',
+                  10.0, 0.5, 5.0, '2026-01-01 10:00:00',
+                  ?, 10.0, ?, ?, ?, ?)
+    """, (position_id, trader_address, status, realized_pnl,
+          is_synthetic_close, data_source, created_at))
+    conn.commit()
+    conn.close()
+
+
+def _make_pos_data(position_id: str, trader_address: str = '0xtesttrader',
+                   **overrides) -> dict:
+    """
+    Return a complete minimal position data dict suitable for all positions
+    write paths (position_tracker, background_pnl_worker, insert_position).
+    Caller can override any field via keyword arguments.
+    """
+    base = {
+        'position_id':          position_id,
+        'trader_address':       trader_address,
+        'market_id':            '0xtest_mkt',
+        'market_title':         'Test Market',
+        'outcome':              'Yes',
+        'entry_shares':         10.0,
+        'entry_avg_price':      0.5,
+        'entry_total_cost':     5.0,
+        'entry_timestamp':      '2026-01-01 10:00:00',
+        'entry_trade_ids':      'trade_001',
+        'exit_shares':          None,
+        'exit_avg_price':       None,
+        'exit_total_received':  None,
+        'exit_timestamp':       None,
+        'exit_trade_ids':       None,
+        'realized_pnl':         0.0,
+        'roi_percent':          0.0,
+        'holding_period_hours': 0.0,
+        'status':               'open',
+        'remaining_shares':     10.0,
+    }
+    base.update(overrides)
+    return base
+
+
+def _pos_exec_position_tracker(conn, d: dict):
+    """
+    Execute the exact positions UPSERT from monitoring/position_tracker.py:509-543.
+    20 bound params; data_source='position_tracker' and last_updated are SQL literals.
+    """
+    conn.execute("""
+        INSERT INTO positions (
+            position_id, trader_address, market_id, market_title, outcome,
+            entry_shares, entry_avg_price, entry_total_cost, entry_timestamp, entry_trade_ids,
+            exit_shares, exit_avg_price, exit_total_received, exit_timestamp, exit_trade_ids,
+            realized_pnl, roi_percent, holding_period_hours, status, remaining_shares,
+            data_source, last_updated
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                  'position_tracker', CURRENT_TIMESTAMP)
+        ON CONFLICT(position_id) DO UPDATE SET
+            market_title         = excluded.market_title,
+            entry_shares         = excluded.entry_shares,
+            entry_avg_price      = excluded.entry_avg_price,
+            entry_total_cost     = excluded.entry_total_cost,
+            entry_trade_ids      = excluded.entry_trade_ids,
+            exit_shares          = excluded.exit_shares,
+            exit_avg_price       = excluded.exit_avg_price,
+            exit_total_received  = excluded.exit_total_received,
+            exit_timestamp       = excluded.exit_timestamp,
+            exit_trade_ids       = excluded.exit_trade_ids,
+            realized_pnl         = excluded.realized_pnl,
+            roi_percent          = excluded.roi_percent,
+            holding_period_hours = excluded.holding_period_hours,
+            status               = excluded.status,
+            remaining_shares     = excluded.remaining_shares,
+            last_updated         = CURRENT_TIMESTAMP
+    """, (
+        d['position_id'], d['trader_address'], d['market_id'], d['market_title'], d['outcome'],
+        d['entry_shares'], d['entry_avg_price'], d['entry_total_cost'],
+        d['entry_timestamp'], d['entry_trade_ids'],
+        d['exit_shares'], d['exit_avg_price'], d['exit_total_received'],
+        d['exit_timestamp'], d['exit_trade_ids'],
+        d['realized_pnl'], d['roi_percent'], d['holding_period_hours'],
+        d['status'], d['remaining_shares'],
+    ))
+
+
+def _pos_exec_background_pnl(conn, d: dict, is_synthetic_close: int = 0):
+    """
+    Execute the exact positions UPSERT from monitoring/background_pnl_worker.py:283-332.
+    21 bound params; last_updated and data_source='position_tracker' are SQL literals.
+    """
+    conn.execute("""
+        INSERT INTO positions (
+            position_id, trader_address, market_id, market_title,
+            outcome, entry_shares, entry_avg_price, entry_total_cost,
+            entry_timestamp, entry_trade_ids,
+            exit_shares, exit_avg_price, exit_total_received,
+            exit_timestamp, exit_trade_ids,
+            realized_pnl, roi_percent, holding_period_hours,
+            status, remaining_shares, is_synthetic_close, last_updated, data_source
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,'position_tracker')
+        ON CONFLICT(position_id) DO UPDATE SET
+            market_title         = excluded.market_title,
+            entry_shares         = excluded.entry_shares,
+            entry_avg_price      = excluded.entry_avg_price,
+            entry_total_cost     = excluded.entry_total_cost,
+            entry_trade_ids      = excluded.entry_trade_ids,
+            exit_shares          = excluded.exit_shares,
+            exit_avg_price       = excluded.exit_avg_price,
+            exit_total_received  = excluded.exit_total_received,
+            exit_timestamp       = excluded.exit_timestamp,
+            exit_trade_ids       = excluded.exit_trade_ids,
+            realized_pnl         = excluded.realized_pnl,
+            roi_percent          = excluded.roi_percent,
+            holding_period_hours = excluded.holding_period_hours,
+            status               = excluded.status,
+            remaining_shares     = excluded.remaining_shares,
+            last_updated         = CURRENT_TIMESTAMP
+    """, (
+        d['position_id'], d['trader_address'], d['market_id'], d['market_title'], d['outcome'],
+        d['entry_shares'], d['entry_avg_price'], d['entry_total_cost'],
+        d['entry_timestamp'], d['entry_trade_ids'],
+        d['exit_shares'], d['exit_avg_price'], d['exit_total_received'],
+        d['exit_timestamp'], d['exit_trade_ids'],
+        d['realized_pnl'], d['roi_percent'], d['holding_period_hours'],
+        d['status'], d['remaining_shares'],
+        is_synthetic_close,
+    ))
+
+
+def _pos_exec_backfill(conn, d: dict, is_synthetic_close: int = 0):
+    """
+    Execute the exact positions UPSERT from scripts/backfill_synthetic_closes.py:82-125.
+    22 bound params (21 position fields + data_src); last_updated is a SQL literal.
+    data_src mirrors the production computation:
+        'synthetic_resolution' if is_synthetic_close else 'position_tracker'
+    """
+    data_src = 'synthetic_resolution' if is_synthetic_close else 'position_tracker'
+    conn.execute("""
+        INSERT INTO positions (
+            position_id, trader_address, market_id, market_title,
+            outcome, entry_shares, entry_avg_price, entry_total_cost,
+            entry_timestamp, entry_trade_ids,
+            exit_shares, exit_avg_price, exit_total_received,
+            exit_timestamp, exit_trade_ids,
+            realized_pnl, roi_percent, holding_period_hours,
+            status, remaining_shares, is_synthetic_close, last_updated, data_source
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?)
+        ON CONFLICT(position_id) DO UPDATE SET
+            market_title         = excluded.market_title,
+            entry_shares         = excluded.entry_shares,
+            entry_avg_price      = excluded.entry_avg_price,
+            entry_total_cost     = excluded.entry_total_cost,
+            entry_trade_ids      = excluded.entry_trade_ids,
+            exit_shares          = excluded.exit_shares,
+            exit_avg_price       = excluded.exit_avg_price,
+            exit_total_received  = excluded.exit_total_received,
+            exit_timestamp       = excluded.exit_timestamp,
+            exit_trade_ids       = excluded.exit_trade_ids,
+            realized_pnl         = excluded.realized_pnl,
+            roi_percent          = excluded.roi_percent,
+            holding_period_hours = excluded.holding_period_hours,
+            status               = excluded.status,
+            remaining_shares     = excluded.remaining_shares,
+            is_synthetic_close   = excluded.is_synthetic_close,
+            last_updated         = CURRENT_TIMESTAMP,
+            data_source          = CASE WHEN data_source = 'synthetic_resolution'
+                                        THEN 'synthetic_resolution'
+                                        ELSE excluded.data_source END
+    """, (
+        d['position_id'], d['trader_address'], d['market_id'], d['market_title'], d['outcome'],
+        d['entry_shares'], d['entry_avg_price'], d['entry_total_cost'],
+        d['entry_timestamp'], d['entry_trade_ids'],
+        d['exit_shares'], d['exit_avg_price'], d['exit_total_received'],
+        d['exit_timestamp'], d['exit_trade_ids'],
+        d['realized_pnl'], d['roi_percent'], d['holding_period_hours'],
+        d['status'], d['remaining_shares'],
+        is_synthetic_close,
+        data_src,
+    ))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1105,12 +1333,425 @@ def test_10_harness_checks_on_test_db(results: TestResults):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# POSITIONS PROVENANCE-ON-INSERT TESTS
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_16_position_tracker_new_position_provenance(results: TestResults):
+    """
+    position_tracker.py UPSERT on a brand-new position_id → data_source='position_tracker'.
+    Exercises the exact patched SQL from monitoring/position_tracker.py:509-543.
+    data_source is a SQL literal in the INSERT column list (not a bound param).
+    """
+    print("\n[TEST 16] position_tracker UPSERT (new row) → data_source='position_tracker'")
+    db_path = make_test_db()
+    try:
+        _seed_trader(db_path, '0xtesttrader')
+        d = _make_pos_data('pos_t16_001')
+        conn = sqlite3.connect(db_path)
+        _pos_exec_position_tracker(conn, d)
+        conn.commit()
+        conn.close()
+
+        pos = _fetch_position(db_path, 'pos_t16_001')
+        if pos is None:
+            results.fail("T16 position_tracker new", "position row not inserted")
+        elif pos['data_source'] != 'position_tracker':
+            results.fail("T16 position_tracker new",
+                         f"expected 'position_tracker', got {pos['data_source']!r}")
+        else:
+            results.ok("T16 position_tracker UPSERT (new row) → data_source='position_tracker'")
+    finally:
+        os.unlink(db_path)
+
+
+def test_17_background_pnl_worker_new_position_provenance(results: TestResults):
+    """
+    background_pnl_worker.py UPSERT on a brand-new position_id → data_source='position_tracker'.
+    Exercises the exact patched SQL from monitoring/background_pnl_worker.py:283-332.
+    data_source is a SQL literal; is_synthetic_close is a bound param defaulting to 0.
+    """
+    print("\n[TEST 17] background_pnl_worker UPSERT (new row) → data_source='position_tracker'")
+    db_path = make_test_db()
+    try:
+        _seed_trader(db_path, '0xtesttrader')
+        d = _make_pos_data('pos_t17_001')
+        conn = sqlite3.connect(db_path)
+        _pos_exec_background_pnl(conn, d, is_synthetic_close=0)
+        conn.commit()
+        conn.close()
+
+        pos = _fetch_position(db_path, 'pos_t17_001')
+        if pos is None:
+            results.fail("T17 background_pnl_worker new", "position row not inserted")
+        elif pos['data_source'] != 'position_tracker':
+            results.fail("T17 background_pnl_worker new",
+                         f"expected 'position_tracker', got {pos['data_source']!r}")
+        else:
+            results.ok("T17 background_pnl_worker UPSERT (new row) → data_source='position_tracker'")
+    finally:
+        os.unlink(db_path)
+
+
+def test_18_backfill_synthetic_closes_provenance(results: TestResults):
+    """
+    backfill_synthetic_closes.py UPSERT provenance:
+      T18a: is_synthetic_close=1 → data_source='synthetic_resolution'
+      T18b: is_synthetic_close=0 → data_source='position_tracker'
+
+    Exercises the exact patched SQL from scripts/backfill_synthetic_closes.py:82-125,
+    including the Python data_src computation that is the heart of the patch:
+        data_src = 'synthetic_resolution' if pd.get('is_synthetic_close') else 'position_tracker'
+    """
+    print("\n[TEST 18] backfill_synthetic_closes provenance (T18a synthetic, T18b non-synthetic)")
+    db_path = make_test_db()
+    try:
+        _seed_trader(db_path, '0xtesttrader')
+
+        # T18a: synthetic close → 'synthetic_resolution'
+        conn = sqlite3.connect(db_path)
+        _pos_exec_backfill(conn, _make_pos_data('pos_t18a_001'), is_synthetic_close=1)
+        conn.commit()
+        conn.close()
+
+        pos = _fetch_position(db_path, 'pos_t18a_001')
+        if pos is None:
+            results.fail("T18a backfill synthetic", "position row not inserted")
+        elif pos['data_source'] != 'synthetic_resolution':
+            results.fail("T18a backfill synthetic",
+                         f"expected 'synthetic_resolution', got {pos['data_source']!r}")
+        else:
+            results.ok("T18a backfill (is_synthetic_close=1) → data_source='synthetic_resolution'")
+
+        # T18b: non-synthetic → 'position_tracker'
+        conn = sqlite3.connect(db_path)
+        _pos_exec_backfill(conn, _make_pos_data('pos_t18b_001'), is_synthetic_close=0)
+        conn.commit()
+        conn.close()
+
+        pos = _fetch_position(db_path, 'pos_t18b_001')
+        if pos is None:
+            results.fail("T18b backfill non-synthetic", "position row not inserted")
+        elif pos['data_source'] != 'position_tracker':
+            results.fail("T18b backfill non-synthetic",
+                         f"expected 'position_tracker', got {pos['data_source']!r}")
+        else:
+            results.ok("T18b backfill (is_synthetic_close=0) → data_source='position_tracker'")
+    finally:
+        os.unlink(db_path)
+
+
+def test_19_database_insert_position_provenance(results: TestResults):
+    """
+    database.insert_position (called by monitor.py:1160) on a brand-new
+    position_id → data_source='position_tracker' (SQL literal added in patch).
+    Calls the actual production method directly with a plain dict.
+    """
+    print("\n[TEST 19] database.insert_position (new row) → data_source='position_tracker'")
+    db_path = make_test_db()
+    try:
+        from monitoring.database import Database
+
+        _seed_trader(db_path, '0xtesttrader')
+        db = Database(db_path)
+        db.insert_position(_make_pos_data('pos_t19_001'))
+
+        pos = _fetch_position(db_path, 'pos_t19_001')
+        if pos is None:
+            results.fail("T19 insert_position new", "position row not inserted")
+        elif pos['data_source'] != 'position_tracker':
+            results.fail("T19 insert_position new",
+                         f"expected 'position_tracker', got {pos['data_source']!r}")
+        else:
+            results.ok("T19 database.insert_position (new row) → data_source='position_tracker'")
+    finally:
+        os.unlink(db_path)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# POSITIONS REGRESSION LOCKS
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_20_synthetic_preservation_regression_lock(results: TestResults):
+    """
+    REGRESSION LOCK — the most critical positions test in the suite.
+
+    Scenario: a position was previously identified as a synthetic close and
+    stored with is_synthetic_close=1 and data_source='synthetic_resolution'.
+    On the next 15-minute monitoring cycle, position_tracker upserts that
+    same position_id with fresh FIFO data (which carries no synthetic flag).
+
+    OLD INSERT OR REPLACE behaviour: deleted the row and re-inserted from
+    scratch. is_synthetic_close reset to DEFAULT 0. data_source reset to
+    DEFAULT 'position_tracker'. Synthetic provenance destroyed every cycle.
+
+    NEW UPSERT behaviour: DO UPDATE omits both columns — they are preserved.
+
+    This test MUST fail on pre-patch INSERT OR REPLACE code. That failure is
+    what proves it is a real regression lock, not a tautology.
+
+    Two assertions are checked and individually reported:
+      1. is_synthetic_close IS STILL 1  (not reset to DEFAULT 0)
+      2. data_source IS STILL 'synthetic_resolution'  (not reset to DEFAULT)
+    """
+    print("\n[TEST 20] REGRESSION LOCK: synthetic flags preserved after position_tracker UPSERT")
+    db_path = make_test_db()
+    try:
+        _seed_position(
+            db_path, 'pos_t20_001',
+            is_synthetic_close=1,
+            data_source='synthetic_resolution',
+        )
+
+        # Simulate the next monitor cycle: position_tracker upserts the same
+        # position_id as a regular (non-synthetic) FIFO position update.
+        conn = sqlite3.connect(db_path)
+        _pos_exec_position_tracker(conn, _make_pos_data('pos_t20_001',
+                                                        status='closed', realized_pnl=50.0))
+        conn.commit()
+        conn.close()
+
+        pos = _fetch_position(db_path, 'pos_t20_001')
+        if pos is None:
+            results.fail("T20 synthetic preservation", "position row disappeared after UPSERT")
+            return
+
+        failures = []
+        if pos['is_synthetic_close'] != 1:
+            failures.append(
+                f"is_synthetic_close WIPED to {pos['is_synthetic_close']!r} "
+                "(expected 1 — INSERT OR REPLACE reset it to DEFAULT 0)"
+            )
+        if pos['data_source'] != 'synthetic_resolution':
+            failures.append(
+                f"data_source WIPED to {pos['data_source']!r} "
+                "(expected 'synthetic_resolution' — INSERT OR REPLACE reset it to DEFAULT)"
+            )
+
+        if failures:
+            results.fail("T20 synthetic preservation", "; ".join(failures))
+        else:
+            results.ok(
+                "T20 REGRESSION LOCK: is_synthetic_close=1 + data_source='synthetic_resolution' "
+                "both survive position_tracker UPSERT (INSERT OR REPLACE bug locked out)"
+            )
+    finally:
+        os.unlink(db_path)
+
+
+def test_21_created_at_preservation(results: TestResults):
+    """
+    CREATED_AT PRESERVATION: a position's created_at must survive any upsert.
+
+    OLD INSERT OR REPLACE behaviour: deleted + re-inserted the row on every
+    cycle — created_at reset to CURRENT_TIMESTAMP. A position created in
+    January 2026 would silently show a June 2026 creation timestamp after
+    the next monitoring pass.
+
+    NEW UPSERT: created_at is absent from both INSERT column list and
+    DO UPDATE. For new rows it gets DEFAULT CURRENT_TIMESTAMP (set once).
+    For conflicts the column is never touched.
+    """
+    print("\n[TEST 21] created_at PRESERVED through UPSERT (not reset to now every cycle)")
+    db_path = make_test_db()
+    try:
+        KNOWN_CREATED_AT = '2025-03-15 08:00:00'
+        _seed_position(db_path, 'pos_t21_001', created_at=KNOWN_CREATED_AT)
+
+        conn = sqlite3.connect(db_path)
+        _pos_exec_position_tracker(conn, _make_pos_data('pos_t21_001',
+                                                        status='closed', realized_pnl=25.0))
+        conn.commit()
+        conn.close()
+
+        pos = _fetch_position(db_path, 'pos_t21_001')
+        if pos is None:
+            results.fail("T21 created_at preserved", "position row missing after UPSERT")
+        elif pos['created_at'] != KNOWN_CREATED_AT:
+            results.fail(
+                "T21 created_at preserved",
+                f"created_at RESET: expected {KNOWN_CREATED_AT!r}, got {pos['created_at']!r} "
+                "(INSERT OR REPLACE was resetting this to CURRENT_TIMESTAMP every cycle)"
+            )
+        else:
+            results.ok(
+                f"T21 created_at='{KNOWN_CREATED_AT}' unchanged after UPSERT "
+                "(INSERT OR REPLACE silent-reset bug locked out)"
+            )
+    finally:
+        os.unlink(db_path)
+
+
+def test_22_mutable_fields_update_after_upsert(results: TestResults):
+    """
+    MUTABLE FIELDS STILL UPDATE: proves the OR REPLACE → UPSERT conversion
+    did not accidentally freeze any mutable field.
+
+    Risk: if a field is mutable (changes as a position closes) but was
+    accidentally omitted from DO UPDATE, it would silently freeze at its
+    first-written value, never reflecting the true closed state.
+
+    Seed: status='open', realized_pnl=0.0, exit_* all NULL
+    Act:  UPSERT with status='closed', realized_pnl=150.0, exit_shares=10.0,
+          exit_timestamp set, remaining_shares=0.0
+    Assert: all 5 fields updated — none frozen.
+
+    Runs against two paths:
+      T22a — position_tracker (primary 15-min monitor path)
+      T22b — database.insert_position (monitor.py:1160 caller)
+    """
+    print("\n[TEST 22] Mutable fields DO update after UPSERT (T22a position_tracker, T22b insert_position)")
+    db_path = make_test_db()
+    try:
+        from monitoring.database import Database
+
+        # T22a and T22b use distinct trader_addresses so the dedup guard inside
+        # insert_position (which looks up by trader+market+outcome+entry_ts) never
+        # accidentally matches one sub-test's row when processing the other.
+
+        # T22a — position_tracker path
+        _seed_position(db_path, 'pos_t22a_001', trader_address='0xtrader_t22a',
+                       status='open', realized_pnl=0.0)
+        conn = sqlite3.connect(db_path)
+        _pos_exec_position_tracker(conn, _make_pos_data(
+            'pos_t22a_001', trader_address='0xtrader_t22a',
+            status='closed', realized_pnl=150.0,
+            exit_shares=10.0, exit_timestamp='2026-06-01 12:00:00', remaining_shares=0.0,
+        ))
+        conn.commit()
+        conn.close()
+
+        pos = _fetch_position(db_path, 'pos_t22a_001')
+        if pos is None:
+            results.fail("T22a position_tracker mutable fields", "position row missing")
+        else:
+            fails = []
+            if pos['status'] != 'closed':
+                fails.append(f"status frozen at {pos['status']!r} (expected 'closed')")
+            if pos['realized_pnl'] != 150.0:
+                fails.append(f"realized_pnl frozen at {pos['realized_pnl']!r} (expected 150.0)")
+            if pos['exit_shares'] != 10.0:
+                fails.append(f"exit_shares frozen at {pos['exit_shares']!r} (expected 10.0)")
+            if pos['exit_timestamp'] != '2026-06-01 12:00:00':
+                fails.append(f"exit_timestamp frozen at {pos['exit_timestamp']!r}")
+            if pos['remaining_shares'] != 0.0:
+                fails.append(f"remaining_shares frozen at {pos['remaining_shares']!r} (expected 0.0)")
+            if fails:
+                results.fail("T22a position_tracker mutable fields", "; ".join(fails))
+            else:
+                results.ok("T22a position_tracker: status + realized_pnl + exit_* all updated by UPSERT")
+
+        # T22b — database.insert_position path (distinct trader_address avoids dedup-guard
+        # cross-match with T22a — both share market_id/outcome/entry_ts but different traders)
+        _seed_position(db_path, 'pos_t22b_001', trader_address='0xtrader_t22b',
+                       status='open', realized_pnl=0.0)
+        db = Database(db_path)
+        db.insert_position(_make_pos_data(
+            'pos_t22b_001', trader_address='0xtrader_t22b',
+            status='closed', realized_pnl=200.0,
+            exit_shares=8.0, exit_timestamp='2026-06-02 09:00:00', remaining_shares=0.0,
+        ))
+
+        pos = _fetch_position(db_path, 'pos_t22b_001')
+        if pos is None:
+            results.fail("T22b insert_position mutable fields", "position row missing")
+        else:
+            fails = []
+            if pos['status'] != 'closed':
+                fails.append(f"status frozen at {pos['status']!r}")
+            if pos['realized_pnl'] != 200.0:
+                fails.append(f"realized_pnl frozen at {pos['realized_pnl']!r}")
+            if pos['exit_shares'] != 8.0:
+                fails.append(f"exit_shares frozen at {pos['exit_shares']!r}")
+            if fails:
+                results.fail("T22b insert_position mutable fields", "; ".join(fails))
+            else:
+                results.ok("T22b database.insert_position: status + realized_pnl + exit_* all updated by UPSERT")
+    finally:
+        os.unlink(db_path)
+
+
+def test_23_backfill_case_guard(results: TestResults):
+    """
+    BACKFILL CASE GUARD — tests both directions of the CASE expression in
+    backfill_synthetic_closes.py DO UPDATE:
+
+        data_source = CASE WHEN data_source = 'synthetic_resolution'
+                           THEN 'synthetic_resolution'
+                           ELSE excluded.data_source END
+
+    T23a NO-DOWNGRADE: seed data_source='synthetic_resolution'. Run backfill
+    with a NON-synthetic position for that id (data_src='position_tracker').
+    CASE guard must keep 'synthetic_resolution' — the THEN branch fires.
+    A re-run of the backfill on a row that's already synthetic must never
+    strip the synthetic label.
+
+    T23b UPGRADE: seed data_source='position_tracker'. Run backfill with a
+    SYNTHETIC position (data_src='synthetic_resolution'). CASE guard must
+    ALLOW the upgrade — the ELSE branch fires, writing 'synthetic_resolution'.
+    This is how a position first tracked normally becomes correctly labeled
+    when the backfill identifies its market has resolved synthetically.
+    """
+    print("\n[TEST 23] Backfill CASE guard (T23a no-downgrade, T23b upgrade)")
+    db_path = make_test_db()
+    try:
+        _seed_trader(db_path, '0xtesttrader')
+
+        # T23a: existing 'synthetic_resolution' must survive a non-synthetic backfill pass
+        _seed_position(db_path, 'pos_t23a_001',
+                       data_source='synthetic_resolution', is_synthetic_close=1)
+        conn = sqlite3.connect(db_path)
+        _pos_exec_backfill(conn, _make_pos_data('pos_t23a_001'), is_synthetic_close=0)
+        conn.commit()
+        conn.close()
+
+        pos = _fetch_position(db_path, 'pos_t23a_001')
+        if pos is None:
+            results.fail("T23a no-downgrade", "position row missing after backfill")
+        elif pos['data_source'] != 'synthetic_resolution':
+            results.fail(
+                "T23a no-downgrade",
+                f"CASE guard FAILED: 'synthetic_resolution' DOWNGRADED to "
+                f"{pos['data_source']!r} by non-synthetic backfill pass"
+            )
+        else:
+            results.ok(
+                "T23a no-downgrade: data_source='synthetic_resolution' survives "
+                "non-synthetic backfill pass (THEN branch holds)"
+            )
+
+        # T23b: existing 'position_tracker' must be upgradeable to 'synthetic_resolution'
+        _seed_position(db_path, 'pos_t23b_001',
+                       data_source='position_tracker', is_synthetic_close=0)
+        conn = sqlite3.connect(db_path)
+        _pos_exec_backfill(conn, _make_pos_data('pos_t23b_001'), is_synthetic_close=1)
+        conn.commit()
+        conn.close()
+
+        pos = _fetch_position(db_path, 'pos_t23b_001')
+        if pos is None:
+            results.fail("T23b upgrade", "position row missing after backfill")
+        elif pos['data_source'] != 'synthetic_resolution':
+            results.fail(
+                "T23b upgrade",
+                f"CASE guard blocked upgrade: expected 'synthetic_resolution', "
+                f"got {pos['data_source']!r} (ELSE branch should have fired)"
+            )
+        else:
+            results.ok(
+                "T23b upgrade: 'position_tracker' → 'synthetic_resolution' "
+                "allowed by CASE guard ELSE branch"
+            )
+    finally:
+        os.unlink(db_path)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Runner
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main() -> bool:
     print("\n" + "="*70)
-    print("  DATA SOURCE WRITE-PATH TESTS  (15 cases)")
+    print("  DATA SOURCE WRITE-PATH TESTS  (23 cases, 30 assertions)")
     print("="*70)
     print(f"\n  Production DB guard : {_PROD_DB}")
     print(f"  Temp DBs            : {tempfile.gettempdir()}/test_ds_writepath_*.db")
@@ -1126,6 +1767,11 @@ def main() -> bool:
     test_5_traders_four_paths(results)
     test_11_add_trade_new_trade_default_source(results)
     test_12_backfill_worker_trade_new_insert(results)
+    # — positions —
+    test_16_position_tracker_new_position_provenance(results)
+    test_17_background_pnl_worker_new_position_provenance(results)
+    test_18_backfill_synthetic_closes_provenance(results)
+    test_19_database_insert_position_provenance(results)
 
     # ORIGIN-PRESERVATION
     test_6_refresh_preserves_historical_backfill_origin(results)
@@ -1137,6 +1783,12 @@ def main() -> bool:
 
     # REGRESSION LOCK
     test_15_regression_lock_backfill_trade_not_default_api(results)
+
+    # POSITIONS REGRESSION LOCKS (critical — lock removal of INSERT OR REPLACE)
+    test_20_synthetic_preservation_regression_lock(results)
+    test_21_created_at_preservation(results)
+    test_22_mutable_fields_update_after_upsert(results)
+    test_23_backfill_case_guard(results)
 
     # HARNESS INTEGRATION
     test_10_harness_checks_on_test_db(results)

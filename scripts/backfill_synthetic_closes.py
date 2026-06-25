@@ -3,7 +3,7 @@
 One-off backfill: Apply synthetic resolution closes to all traders who have open
 positions in markets that have since resolved.
 
-Safe to run multiple times — INSERT OR REPLACE handles duplicates.
+Safe to run multiple times — ON CONFLICT DO UPDATE handles duplicates.
 Run from project root:
     python scripts/backfill_synthetic_closes.py
 """
@@ -79,16 +79,38 @@ def main():
             try:
                 for pos in positions:
                     pd = pos.to_dict()
+                    data_src = 'synthetic_resolution' if pd.get('is_synthetic_close') else 'position_tracker'
                     c2.execute("""
-                        INSERT OR REPLACE INTO positions (
+                        INSERT INTO positions (
                             position_id, trader_address, market_id, market_title,
                             outcome, entry_shares, entry_avg_price, entry_total_cost,
                             entry_timestamp, entry_trade_ids,
                             exit_shares, exit_avg_price, exit_total_received,
                             exit_timestamp, exit_trade_ids,
                             realized_pnl, roi_percent, holding_period_hours,
-                            status, remaining_shares, is_synthetic_close, last_updated
-                        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+                            status, remaining_shares, is_synthetic_close, last_updated, data_source
+                        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?)
+                        ON CONFLICT(position_id) DO UPDATE SET
+                            market_title         = excluded.market_title,
+                            entry_shares         = excluded.entry_shares,
+                            entry_avg_price      = excluded.entry_avg_price,
+                            entry_total_cost     = excluded.entry_total_cost,
+                            entry_trade_ids      = excluded.entry_trade_ids,
+                            exit_shares          = excluded.exit_shares,
+                            exit_avg_price       = excluded.exit_avg_price,
+                            exit_total_received  = excluded.exit_total_received,
+                            exit_timestamp       = excluded.exit_timestamp,
+                            exit_trade_ids       = excluded.exit_trade_ids,
+                            realized_pnl         = excluded.realized_pnl,
+                            roi_percent          = excluded.roi_percent,
+                            holding_period_hours = excluded.holding_period_hours,
+                            status               = excluded.status,
+                            remaining_shares     = excluded.remaining_shares,
+                            is_synthetic_close   = excluded.is_synthetic_close,
+                            last_updated         = CURRENT_TIMESTAMP,
+                            data_source          = CASE WHEN data_source = 'synthetic_resolution'
+                                                        THEN 'synthetic_resolution'
+                                                        ELSE excluded.data_source END
                     """, (
                         pd['position_id'], pd['trader_address'], pd['market_id'],
                         pd['market_title'], pd['outcome'],
@@ -99,6 +121,7 @@ def main():
                         pd['realized_pnl'], pd['roi_percent'], pd['holding_period_hours'],
                         pd['status'], pd['remaining_shares'],
                         pd.get('is_synthetic_close', 0),
+                        data_src,
                     ))
                 conn2.commit()
             except Exception as e:
