@@ -281,32 +281,38 @@ DATA_SOURCE_POSITIONS_DEFAULT = 'position_tracker'
 
 # ── Allowed value sets (canonical enums per table) ────────────────────────────
 
+# CONTRACT: data_source on traders is the governed 1:1 successor to discovery_source.
+# Every value any INSERT path sets as discovery_source MUST be in this set.
 DATA_SOURCE_TRADERS = frozenset({
-    'live_feed',         # inserted by live monitoring (monitor.py, discover_*.py)
-    'leaderboard',       # scraped from Polymarket leaderboard API
-    'external_seed',     # imported from external dataset (e.g. HuggingFace parquet)
-    'manual_watchlist',  # hand-entered watchlist entry
-    'orphan_repair',     # added by orphan-repair to fix dangling trade refs
-    'simulation',        # simulation framework — simulation_test.db only
-    'backfill',          # one-off historical backfill script
-    'blockchain_scan',   # discovered via on-chain scan
+    'live_feed',          # add_or_update_trader (discovery_source omitted → DEFAULT)
+    'leaderboard',        # discover_leaderboard_traders.py
+    'market_scan',        # discover_market_participants.py — market participant sweep
+    'resolution_sweep',   # resolution_sweep.py — traders found during resolution pass
+    'external_seed',      # imported from external dataset (e.g. HuggingFace parquet)
+    'manual_watchlist',   # add_watched_trader.py
+    'orphan_repair',      # added by orphan-repair to fix dangling trade refs
+    'simulation',         # simulation framework — simulation_test.db only
+    'backfill',           # one-off historical backfill script
+    'blockchain_scan',    # future: on-chain scan discovery
 })
 
 DATA_SOURCE_MARKETS = frozenset({
-    'live_monitoring',    # inserted during live monitoring window
+    'live_monitoring',     # inserted during live monitoring window
     'historical_backfill', # Dec 11 2025 mass-import of historical Polymarket markets
-    'simulation',         # simulation framework — simulation_test.db only
-    'manual_entry',       # hand-entered market record
-    'api_refresh',        # refreshed via Polymarket API batch
-    'stub_placeholder',   # placeholder before full market data was available
+    'background_backfill', # API gap-fill: background_backfill_worker / backfill_missing_markets
+    'simulation',          # simulation framework — simulation_test.db only
+    'manual_entry',        # hand-entered market record
+    'api_refresh',         # refreshed via Polymarket API batch (refresh_markets)
+    'stub_placeholder',    # placeholder before full market data was available
 })
 
 DATA_SOURCE_TRADES = frozenset({
-    'polymarket_api',   # fetched from Polymarket REST API (all existing rows)
-    'blockchain_scan',  # future: discovered via on-chain scan at insertion time
-    'simulation',       # simulation framework — simulation_test.db only
-    'backfill_import',  # imported from CSV or external backfill
-    'computed',         # derived trade record not directly from API
+    'polymarket_api',      # fetched from Polymarket REST API (all existing rows)
+    'blockchain_scan',     # future: discovered via on-chain scan at insertion time
+    'background_backfill', # API gap-fill: background_backfill_worker trades
+    'simulation',          # simulation framework — simulation_test.db only
+    'backfill_import',     # imported from CSV or external backfill
+    'computed',            # derived trade record not directly from API
 })
 
 DATA_SOURCE_POSITIONS = frozenset({
