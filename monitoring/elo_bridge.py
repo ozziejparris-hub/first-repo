@@ -552,6 +552,7 @@ class UnifiedELOMonitoringBridge:
         traders_failed = 0
         errors = []
         elo_values = []
+        _behavioral_keys_logged = False
 
         for i, trader_address in enumerate(trader_addresses):
             try:
@@ -583,6 +584,17 @@ class UnifiedELOMonitoringBridge:
                 advanced_modifier = advanced_data['combined_multiplier']
                 pnl_modifier = pnl_data['combined_multiplier']
 
+                # Persist behavioral snapshot scores — already computed in cache, no new
+                # computation. Cache key 'optimal_timing_score' != DB column 'timing_score'.
+                behavior_raw = elo_system._load_behavioral_data().get(trader_address, {})
+                kelly_snap    = behavior_raw.get('kelly_alignment_score')  # key == column
+                patience_snap = behavior_raw.get('patience_score')         # key == column
+                timing_snap   = behavior_raw.get('optimal_timing_score')   # key != column (trap)
+
+                if verbose and not _behavioral_keys_logged and behavior_raw:
+                    print(f"[ELO_BRIDGE] Behavioral cache keys (snapshot): {sorted(behavior_raw.keys())}")
+                    _behavioral_keys_logged = True
+
                 # Store in database
                 cursor.execute("""
                     UPDATE traders
@@ -591,6 +603,9 @@ class UnifiedELOMonitoringBridge:
                         behavioral_modifier = ?,
                         advanced_modifier = ?,
                         pnl_modifier = ?,
+                        kelly_alignment_score = ?,
+                        patience_score = ?,
+                        timing_score = ?,
                         elo_last_updated = ?
                     WHERE address = ?
                 """, (
@@ -599,6 +614,9 @@ class UnifiedELOMonitoringBridge:
                     behavioral_modifier,
                     advanced_modifier,
                     pnl_modifier,
+                    kelly_snap,
+                    patience_snap,
+                    timing_snap,
                     datetime.now(),
                     trader_address
                 ))
