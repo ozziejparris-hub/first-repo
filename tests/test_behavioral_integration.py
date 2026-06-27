@@ -369,8 +369,13 @@ def test_roi_based_scoring(db_path: str, results: TestResults):
     else:
         results.record_fail("ROI calculation", f"Only {with_roi}/{total} have ROI")
 
-    # ROI range should be reasonable (e.g., -100% to +200%)
-    if min_roi and max_roi and -100 <= min_roi and max_roi <= 500:
+    # ROI floor: can't lose more than 100% of stake on binary prediction-market positions.
+    # ROI ceiling: longshot traders legitimately reach thousands of % (e.g. buying YES at 0.02
+    # that resolves YES ≈ 4,900% on that position). Observed max in production is ~2,444%.
+    # 100,000% is chosen as the sanity ceiling: far above any plausible real result, but will
+    # catch computation bugs like division-by-near-zero (producing millions of %) or an
+    # off-by-100 scaling error (which would push the 2,444% observed max to ~244,400%).
+    if min_roi is not None and max_roi is not None and -100 <= min_roi and max_roi <= 100_000:
         results.record_pass(f"ROI in reasonable range ({min_roi:.1f}% to {max_roi:.1f}%)")
     else:
         results.record_fail("ROI range", f"Range: {min_roi} to {max_roi}")
@@ -378,34 +383,46 @@ def test_roi_based_scoring(db_path: str, results: TestResults):
     conn.close()
 
 
-def test_weighted_win_rate(db_path: str, results: TestResults):
-    """Test that weighted win rates are calculated."""
-    print("\n[TEST 6] Weighted Win Rate")
+def test_behavioral_pipeline_coverage(db_path: str, results: TestResults):
+    """Test that the three live behavioral input columns are populated after integration.
+
+    weighted_win_rate is intentionally NOT checked here — it is a dead column:
+    integrate_behavioral_elo writes it but nothing reads it back from the DB.
+    The live inputs to the ELO modifier chain are kelly_alignment_score,
+    patience_score, and timing_score. Coverage of those three confirms the
+    integration pipeline ran.
+    """
+    print("\n[TEST 6] Behavioral Pipeline Coverage (kelly / patience / timing)")
 
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     cursor.execute("""
         SELECT COUNT(*) as total,
-               COUNT(weighted_win_rate) as with_weighted,
-               AVG(weighted_win_rate) as avg_weighted_wr
+               COUNT(kelly_alignment_score) as with_kelly,
+               COUNT(patience_score) as with_patience,
+               COUNT(timing_score) as with_timing,
+               COUNT(CASE WHEN kelly_alignment_score IS NOT NULL
+                           AND patience_score IS NOT NULL
+                           AND timing_score IS NOT NULL THEN 1 END) as with_all_three
         FROM traders
         WHERE resolved_trades_count >= 10
     """)
 
     row = cursor.fetchone()
-    total, with_weighted, avg_weighted_wr = row
+    total, with_kelly, with_patience, with_timing, with_all_three = row
 
-    if with_weighted / max(1, total) >= 0.10:
-        results.record_pass(f"Weighted WR calculated ({with_weighted}/{total} traders)")
+    # At least 10% of qualified traders should have all three scores — confirms pipeline ran
+    if with_all_three / max(1, total) >= 0.10:
+        results.record_pass(
+            f"Live behavioral scores populated: kelly={with_kelly}, patience={with_patience}, "
+            f"timing={with_timing} ({with_all_three}/{total} have all three)"
+        )
     else:
-        results.record_fail("Weighted win rate", f"Only {with_weighted}/{total} have weighted WR")
-
-    # Average should be around 50% (0-100 scale)
-    if avg_weighted_wr and 20 <= avg_weighted_wr <= 80:
-        results.record_pass(f"Weighted WR in reasonable range (avg: {avg_weighted_wr:.1f}%)")
-    else:
-        results.record_fail("Weighted WR out of range", f"Average: {avg_weighted_wr}")
+        results.record_fail(
+            "Behavioral pipeline coverage",
+            f"Only {with_all_three}/{total} qualified traders have all three live scores"
+        )
 
     conn.close()
 
@@ -454,7 +471,14 @@ def test_correlation_data_exists(db_path: str, results: TestResults):
 
 
 def test_behavioral_metrics_complete(db_path: str, results: TestResults):
-    """Test that all behavioral metrics are calculated."""
+    """Test that all live behavioral metrics are calculated.
+
+    weighted_win_rate is excluded: confirmed dead column (written by
+    integrate_behavioral_elo but never read back from the DB by any downstream
+    consumer — ELO chain, signal scripts, monitoring all confirmed clean, Jun 2026).
+    "Complete" means the three live ELO inputs (kelly, patience, timing) plus ROI
+    are all populated — the set the Sunday recalc actually maintains.
+    """
     print("\n[TEST 8] Complete Behavioral Metrics")
 
     conn = sqlite3.connect(db_path)
@@ -467,7 +491,6 @@ def test_behavioral_metrics_complete(db_path: str, results: TestResults):
         AND kelly_alignment_score IS NOT NULL
         AND patience_score IS NOT NULL
         AND timing_score IS NOT NULL
-        AND weighted_win_rate IS NOT NULL
         AND roi_percentage IS NOT NULL
     """)
 
@@ -515,7 +538,7 @@ def main():
     test_minimum_sample_filter(db_path, results)
     test_behavioral_elo_modifier(db_path, results)
     test_roi_based_scoring(db_path, results)
-    test_weighted_win_rate(db_path, results)
+    test_behavioral_pipeline_coverage(db_path, results)
     test_correlation_data_exists(db_path, results)
     test_behavioral_metrics_complete(db_path, results)
 

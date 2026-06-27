@@ -45,6 +45,12 @@ specialisation_ratio   trader_categories MAX(trade_count) / SUM(trade_count)
 
 NOT OWNED BY THIS SCRIPT — do not touch:
   roi_percentage, total_pnl, unrealized_pnl   DEAD/DUPLICATE — drop next session
+  weighted_win_rate                            DEAD COLUMN — drop next session.
+                                               integrate_behavioral_elo writes it
+                                               but nothing reads it back from the DB.
+                                               No live downstream consumer: not in ELO
+                                               chain, not in signal scripts, not in
+                                               monitoring. Grep confirms (Jun 2026).
   comprehensive_elo, base_category_elo,        Layer 2 (ELO chain — see
     behavioral_modifier, advanced_modifier,    recalculate_comprehensive_elo.py)
     pnl_modifier, kelly_alignment_score,
