@@ -66,6 +66,49 @@ STEPS = [
 DB_PATH = Path(__file__).parent.parent / "data" / "polymarket_tracker.db"
 
 
+def run_test_suite():
+    """Run the test suite and write results to tests/LATEST_TEST_RESULTS.md. Always non-blocking."""
+    repo_root = SCRIPTS_DIR.parent
+    runner    = repo_root / "run_tests.py"
+    out_path  = repo_root / "tests" / "LATEST_TEST_RESULTS.md"
+
+    print("\n--- Step: Run test suite ---")
+    step_start = time.time()
+    try:
+        result = subprocess.run(
+            [sys.executable, str(runner), "--verbose"],
+            capture_output=True, text=True,
+            cwd=str(repo_root), timeout=300,
+        )
+        output  = result.stdout + (result.stderr or "")
+        passed  = result.returncode == 0
+        elapsed = time.time() - step_start
+        status  = "ALL TESTS PASSED" if passed else "FAILURES DETECTED"
+
+        header = (
+            f"# Test Suite Results\n\n"
+            f"**Run:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  \n"
+            f"**Duration:** {elapsed:.1f}s  \n"
+            f"**Result:** {status}\n\n---\n\n"
+        )
+        out_path.write_text(header + output, encoding="utf-8")
+
+        level = "PASS" if passed else "WARNING"
+        print(f"    {level} — {status} ({elapsed:.1f}s) → tests/LATEST_TEST_RESULTS.md")
+    except Exception as exc:
+        elapsed = time.time() - step_start
+        print(f"    WARNING — test suite runner error: {exc} ({elapsed:.1f}s)")
+        try:
+            out_path.write_text(
+                f"# Test Suite Results\n\n"
+                f"**Run:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  \n"
+                f"**Result:** ERROR — runner crashed\n\n```\n{exc}\n```\n",
+                encoding="utf-8",
+            )
+        except Exception:
+            pass
+
+
 def run_trade_dedup():
     print("\n--- Step: Deduplicate trades table ---")
     step_start = time.time()
@@ -153,6 +196,8 @@ def main():
 
     if datetime.now().weekday() == 6:  # Sunday
         run_trade_dedup()
+
+    run_test_suite()
 
     # WAL checkpoint — clears accumulated WAL pages without blocking readers or writers.
     print("\n--- Step: WAL checkpoint ---")
