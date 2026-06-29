@@ -102,3 +102,4 @@ results/
 nul
 # External datasets (large files, not for version control)
 data/external/
+tests/LATEST_TEST_RESULTS.md
