@@ -409,7 +409,7 @@ class FastResolutionChecker:
         print(f"\nStale CLOB pass: {resolved_count} resolved out of {total} checked")
         return resolved_count
 
-    def run_recent_overdue_pass(self, limit: int = 100, test_mode: bool = False) -> int:
+    def run_recent_overdue_pass(self, limit: int = 200, test_mode: bool = False) -> int:
         """
         Targeted pass for markets that are 0-7 days past resolution_date but
         were missed by the Gamma bulk scan (no api_id or condition_id).
@@ -425,6 +425,17 @@ class FastResolutionChecker:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute("""
+            SELECT COUNT(*)
+            FROM markets
+            WHERE (resolved = 0 OR resolved IS NULL)
+              AND (
+                  (resolution_date IS NOT NULL AND resolution_date < datetime('now') AND resolution_date >= datetime('now', '-7 days'))
+                  OR
+                  (resolution_date IS NULL AND end_date IS NOT NULL AND end_date < datetime('now') AND end_date >= datetime('now', '-7 days'))
+              )
+        """)
+        total_in_window = cursor.fetchone()[0]
+        cursor.execute("""
             SELECT market_id, condition_id
             FROM markets
             WHERE (resolved = 0 OR resolved IS NULL)
@@ -433,13 +444,15 @@ class FastResolutionChecker:
                   OR
                   (resolution_date IS NULL AND end_date IS NOT NULL AND end_date < datetime('now') AND end_date >= datetime('now', '-7 days'))
               )
-            ORDER BY resolution_date ASC
+            ORDER BY last_checked ASC NULLS FIRST
             LIMIT ?
         """, (limit,))
         recent_markets = cursor.fetchall()
         conn.close()
         total = len(recent_markets)
-        print(f"Recent overdue markets (no api_id or condition_id) to check: {total}")
+        print(f"Recent overdue markets to check: {total} of {total_in_window} in window")
+        if total_in_window > limit:
+            print(f"[WARN] Recent overdue pass: cap hit — limit {limit}, {total_in_window - limit} markets not reached this run (ordering: least-recently-checked first)")
         if not total:
             print("No recent overdue markets found.")
             return 0
@@ -458,6 +471,11 @@ class FastResolutionChecker:
                     continue
                 data = response.json()
                 if not data.get('closed'):
+                    if not test_mode:
+                        cursor.execute(
+                            "UPDATE markets SET last_checked = ? WHERE market_id = ?",
+                            (datetime.now(), market_id)
+                        )
                     continue
                 winner_outcome = None
                 for token in data.get('tokens', []):
@@ -465,6 +483,11 @@ class FastResolutionChecker:
                         winner_outcome = token.get('outcome')
                         break
                 if not winner_outcome:
+                    if not test_mode:
+                        cursor.execute(
+                            "UPDATE markets SET last_checked = ? WHERE market_id = ?",
+                            (datetime.now(), market_id)
+                        )
                     continue
                 if not test_mode:
                     cursor.execute("""
@@ -484,6 +507,8 @@ class FastResolutionChecker:
                 continue
         print()
         print(f"Recent overdue pass: {resolved_count} resolved out of {total} checked")
+        if not test_mode:
+            conn.commit()
         conn.close()
         return resolved_count
 
@@ -619,7 +644,7 @@ class FastResolutionChecker:
         self.batch_update_resolved_markets(resolved_markets, test_mode=test_mode)
 
         # Step 3a: Recent overdue pass — 0-7 days past resolution_date, no api_id
-        self.run_recent_overdue_pass(limit=100, test_mode=test_mode)
+        self.run_recent_overdue_pass(limit=200, test_mode=test_mode)
 
         # Step 3b: CLOB stale pass for markets the Gamma scan missed
         self.run_stale_clob_pass(stale_limit=stale_limit, test_mode=test_mode)
