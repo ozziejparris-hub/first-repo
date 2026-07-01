@@ -301,8 +301,8 @@ def _resolve_one_market(conn: sqlite3.Connection, row: dict) -> bool:
 
     if winning:
         cur.execute(
-            "UPDATE markets SET resolved = 1, winning_outcome = ? WHERE market_id = ?",
-            (winning, row["market_id"])
+            "UPDATE markets SET resolved = 1, winning_outcome = ?, resolution_date = COALESCE(resolution_date, ?) WHERE market_id = ?",
+            (winning, datetime.now(), row["market_id"])
         )
         conn.commit()
         print(f"    → UPDATED: resolved=1, winning_outcome={winning}")
@@ -311,8 +311,8 @@ def _resolve_one_market(conn: sqlite3.Connection, row: dict) -> bool:
         total_price = sum(float(p) for p in (outcome_prices or []) if p)
         if total_price == 0.0 and closed:
             cur.execute(
-                "UPDATE markets SET resolved = 1 WHERE market_id = ?",
-                (row["market_id"],)
+                "UPDATE markets SET resolved = 1, resolution_date = COALESCE(resolution_date, ?) WHERE market_id = ?",
+                (datetime.now(), row["market_id"],)
             )
             conn.commit()
             print(f"    → UPDATED: resolved=1, winning_outcome=NULL (v1/multi-outcome market)")

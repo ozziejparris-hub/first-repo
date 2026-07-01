@@ -207,13 +207,13 @@ def resolve_legendary_markets(limit: int = 100, dry_run: bool = False) -> dict:
         if not dry_run:
             if winning == "__RESOLVED_NO_WINNER__":
                 cur.execute(
-                    "UPDATE markets SET resolved = 1, last_checked = ? WHERE market_id = ?",
-                    (datetime.now(), row["market_id"])
+                    "UPDATE markets SET resolved = 1, resolution_date = COALESCE(resolution_date, ?), last_checked = ? WHERE market_id = ?",
+                    (datetime.now(), datetime.now(), row["market_id"])
                 )
             else:
                 cur.execute(
-                    "UPDATE markets SET resolved = 1, winning_outcome = ?, last_checked = ? WHERE market_id = ?",
-                    (winning, datetime.now(), row["market_id"])
+                    "UPDATE markets SET resolved = 1, winning_outcome = ?, resolution_date = COALESCE(resolution_date, ?), last_checked = ? WHERE market_id = ?",
+                    (winning, datetime.now(), datetime.now(), row["market_id"])
                 )
             conn.commit()
             updated_count += 1

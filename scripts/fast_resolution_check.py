@@ -385,9 +385,10 @@ class FastResolutionChecker:
                         UPDATE markets
                         SET resolved = 1,
                             winning_outcome = ?,
+                            resolution_date = COALESCE(resolution_date, ?),
                             last_checked = ?
                         WHERE market_id = ?
-                    """, (winner_outcome, datetime.now(), market_id))
+                    """, (winner_outcome, datetime.now(), datetime.now(), market_id))
                     conn.commit()
 
                 resolved_count += 1
@@ -494,9 +495,10 @@ class FastResolutionChecker:
                         UPDATE markets
                         SET resolved = 1,
                             winning_outcome = ?,
+                            resolution_date = COALESCE(resolution_date, ?),
                             last_checked = ?
                         WHERE market_id = ?
-                    """, (winner_outcome, datetime.now(), market_id))
+                    """, (winner_outcome, datetime.now(), datetime.now(), market_id))
                     conn.commit()
                 resolved_count += 1
                 if resolved_count <= 10:
@@ -590,9 +592,10 @@ class FastResolutionChecker:
                         UPDATE markets
                         SET resolved = 1,
                             winning_outcome = ?,
+                            resolution_date = COALESCE(resolution_date, ?),
                             last_checked = ?
                         WHERE market_id = ?
-                    """, (winner_outcome, datetime.now(), market_id))
+                    """, (winner_outcome, datetime.now(), datetime.now(), market_id))
                     conn.commit()
 
                 resolved_count += 1
