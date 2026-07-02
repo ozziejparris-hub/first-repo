@@ -1234,14 +1234,18 @@ class PolymarketMonitor:
                 # Periodically re-scan for new successful traders (every 10 cycles)
                 if cycle_count % 10 == 0:
                     safe_print("\nPerforming periodic trader re-scan...")
-                    newly_flagged = self.analyzer.scan_for_successful_traders()
+                    loop = asyncio.get_event_loop()
+                    newly_flagged = await loop.run_in_executor(None, self.analyzer.scan_for_successful_traders)
                     if newly_flagged > 0:
                         safe_print(f"[OK] Found {newly_flagged} new successful traders!")
                         # Telegram notifications disabled - Observer handles notifications
 
-                # Check for market resolutions (every 10 cycles)
+                # Periodic market-count health signal (every 10 cycles)
+                # O-13 (2026-07-02): check_market_resolutions() call removed here — dead
+                # since 2025-12-11, fully covered by fast_resolution_check.py (daily
+                # maintenance). See trading-swarm/brain/decisions/2026-07-01-o13-monitoring-blocking-stall-design.md
                 if cycle_count % 10 == 0:
-                    safe_print("\nPeriodic resolution check (cycle #{})...".format(cycle_count))
+                    safe_print("\nPeriodic market-count check (cycle #{})...".format(cycle_count))
 
                     # Get statistics before resolution check
                     # FIX-2 2026-05-25: moved to thread pool to unblock event loop
@@ -1257,14 +1261,6 @@ class PolymarketMonitor:
                     total_markets, resolved_count = await asyncio.to_thread(_fetch_market_counts)
 
                     safe_print(f"[MONITOR] Current DB state: {total_markets} total markets, {resolved_count} resolved")
-
-                    newly_resolved = self.analyzer.check_market_resolutions()
-
-                    if newly_resolved > 0:
-                        safe_print(f"[MONITOR] {newly_resolved} new resolution(s) found!")
-                        # Telegram notifications disabled - Observer handles notifications
-                    else:
-                        safe_print(f"[MONITOR] No new resolutions found (markets are long-dated)")
 
                 # OLD P&L CODE - DISABLED (background worker handles this now)
                 # Position tracking with timeout protection (prevents freezing)
