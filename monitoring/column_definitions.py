@@ -305,6 +305,7 @@ DATA_SOURCE_MARKETS = frozenset({
     'api_refresh',         # refreshed via Polymarket API batch (refresh_markets)
     'stub_placeholder',    # placeholder before full market data was available
     'gamma_backfill_2026-07-02',  # O-16 Tier-1 backfill: per-ID Gamma resolution backfill
+    'gamma_backfill_tier2_2026-07-06',  # O-16 Tier-2 backfill: remaining historical_backfill markets
 })
 
 DATA_SOURCE_TRADES = frozenset({
