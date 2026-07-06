@@ -77,6 +77,15 @@ class Position:
     def close_position(self, exit_shares: float, exit_avg_price: float,
                       exit_timestamp: datetime, exit_trade_ids: List[str]):
         """Close or partially close the position."""
+        # All timestamps in this system are UTC; strip tzinfo so naive/aware
+        # values (e.g. a resolution_date parsed as aware vs. an entry_timestamp
+        # parsed as naive) can't raise TypeError on subtraction below. Same
+        # pattern as column_definitions.py's dormancy-decay guard.
+        if exit_timestamp.tzinfo is not None:
+            exit_timestamp = exit_timestamp.replace(tzinfo=None)
+        if self.entry_timestamp.tzinfo is not None:
+            self.entry_timestamp = self.entry_timestamp.replace(tzinfo=None)
+
         self.exit_shares = exit_shares
         self.exit_avg_price = exit_avg_price
         self.exit_total_received = exit_shares * exit_avg_price
