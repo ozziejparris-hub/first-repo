@@ -110,8 +110,8 @@ def parse_timestamp(raw) -> str | None:
     try:
         if isinstance(raw, (int, float)):
             ts = raw / 1000 if raw > 1e10 else raw
-            return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
-        return datetime.fromisoformat(str(raw).replace("Z", "+00:00")).isoformat()
+            return datetime.fromtimestamp(ts, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+        return datetime.fromisoformat(str(raw).replace("Z", "+00:00")).strftime('%Y-%m-%d %H:%M:%S')
     except Exception:
         return None
 
@@ -227,7 +227,7 @@ def run(limit: int, dry_run: bool) -> dict:
                                    data_source = ?,
                                    last_checked = ?
                                WHERE market_id = ?""",
-                            (res_date, DATA_SOURCE_TAG, datetime.now(timezone.utc).isoformat(), market_id),
+                            (res_date, DATA_SOURCE_TAG, datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'), market_id),
                         )
                     else:
                         conn.execute(
@@ -238,7 +238,7 @@ def run(limit: int, dry_run: bool) -> dict:
                                    data_source = ?,
                                    last_checked = ?
                                WHERE market_id = ?""",
-                            (winner, res_date, DATA_SOURCE_TAG, datetime.now(timezone.utc).isoformat(), market_id),
+                            (winner, res_date, DATA_SOURCE_TAG, datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'), market_id),
                         )
                     since_commit += 1
                     if since_commit >= BATCH_COMMIT_SIZE:
