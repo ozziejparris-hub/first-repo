@@ -2,7 +2,9 @@
 """
 Requeue traders affected by newly resolved markets.
 
-For each market that resolved since the last run, finds all traders who still
+For each market we detected as resolved since the last run (gated on
+last_checked, write-time — not resolution_date, event-time, which historical
+backfills can set arbitrarily far in the past), finds all traders who still
 have open positions in that market (in the positions table) and resets their
 pnl_last_updated to NULL. This forces the background P&L worker to re-process
 them on its next cycle, where it will apply synthetic resolution closes.
@@ -66,15 +68,21 @@ def main():
     conn.execute("PRAGMA busy_timeout=30000")
     cur = conn.cursor()
 
-    # Find markets that resolved since last run
+    # Find markets we became aware of as resolved since last run. Gates on
+    # last_checked (write-time — when we detected/wrote the resolution), not
+    # resolution_date (event-time — when the market actually resolved on
+    # Polymarket). A resolution_date gate silently excludes any market whose
+    # true resolution date predates last_run, which is always true for
+    # historical backfills (see O-16) — they could never pass an event-time
+    # gate no matter when the row was actually written.
     cur.execute("""
         SELECT market_id, winning_outcome, resolution_date, title
         FROM markets
         WHERE resolved = 1
           AND winning_outcome IS NOT NULL
           AND winning_outcome NOT IN ('', 'unknown')
-          AND datetime(resolution_date) > datetime(?)
-        ORDER BY resolution_date ASC
+          AND datetime(last_checked) > datetime(?)
+        ORDER BY last_checked ASC
     """, (last_run,))
     newly_resolved = cur.fetchall()
 
