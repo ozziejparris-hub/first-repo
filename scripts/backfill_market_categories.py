@@ -237,13 +237,15 @@ def main() -> None:
     conn = get_db_connection()
     batch_num = 0
     markets_since_commit = 0
+    run_classified = 0
+    run_skipped = 0
 
     try:
         while True:
             offset = state["last_processed_offset"]
 
-            if args.limit is not None and state["total_classified"] + state["total_skipped"] >= args.limit:
-                logger.info(f"Reached --limit {args.limit}, stopping.")
+            if args.limit is not None and run_classified + run_skipped >= args.limit:
+                logger.info(f"Reached --limit {args.limit} for this run, stopping.")
                 break
 
             markets = fetch_batch(conn, offset, args.batch_size)
@@ -284,6 +286,8 @@ def main() -> None:
             state["total_classified"] += classified
             state["total_skipped"] += skipped
             state["last_processed_offset"] = offset + len(markets)
+            run_classified += classified
+            run_skipped += skipped
             markets_since_commit += len(markets)
 
             save_state(state)
