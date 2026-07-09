@@ -15,8 +15,20 @@ from pathlib import Path
 SCRIPTS_DIR = Path(__file__).parent
 SCRIPTS_DIR = Path(__file__).parent
 TRADING_SWARM_SCRIPTS = Path("/home/parison/trading-swarm/scripts")
-# Each entry: (label, script_path [, extra_args] [, non_blocking])
+
+# O-27: default subprocess budget for any step that doesn't specify its own.
+# Sized above the highest historical max among steps WITHOUT an explicit override —
+# "Verify market titles" hit 7204.7s once (2026-06-09, RPC incident) and "Evaluate new
+# trader results" hit 5017.4s once; every other unbudgeted step has never exceeded ~500s
+# across 35 days of logged runs. 3h clears both with 50%+ headroom.
+DEFAULT_STEP_TIMEOUT = 10800  # 3h
+
+# Each entry: (label, script_path [, extra_args] [, non_blocking] [, timeout])
 # non_blocking=True  → log WARNING on failure but continue; don't abort.
+# timeout            → per-step subprocess.run() budget in seconds; defaults to
+#                       DEFAULT_STEP_TIMEOUT when omitted. On expiry the step is killed
+#                       and treated as FAILED (same as a non-zero exit code) — subject
+#                       to the same non_blocking handling as any other failure.
 STEPS = [
     ("Update research exclusions",        SCRIPTS_DIR / "update_research_exclusions.py"),
     ("Sync trade categories",             SCRIPTS_DIR / "sync_trade_categories.py",        ["--incremental"], True),
@@ -39,8 +51,13 @@ STEPS = [
     ("Update geo ELO scores",             SCRIPTS_DIR / "update_geo_elo.py",               None, True),
     ("Score insider signals",             SCRIPTS_DIR / "score_insider_signals.py",        None, True),
     ("Score STR-003 signals",             SCRIPTS_DIR / "score_str003_signals.py",         None, True),
-    ("Backfill transaction hashes",       SCRIPTS_DIR / "backfill_transaction_hashes.py", ["--tier", "pool_c"], True),
-    ("Label maker/taker roles",           SCRIPTS_DIR / "polygon_maker_taker.py",         ["--backfill", "--limit", "500"], True),
+    # Recent normal (last 10 runs): 6883-10714s (~2-3h). Historical worst case during the
+    # 2026-06-09/06-12 RPC incident: 22996.8s (6.39h), completed successfully (not a true
+    # hang). Budget set above that so no normal-if-slow run is ever killed.
+    ("Backfill transaction hashes",       SCRIPTS_DIR / "backfill_transaction_hashes.py", ["--tier", "pool_c"], True, 28800),  # 8h
+    # Stable: max ever observed 239.6s across 35 runs. Generous 7.5x headroom for a bad
+    # API day without being reckless — this is the step named in the O-27 incident report.
+    ("Label maker/taker roles",           SCRIPTS_DIR / "polygon_maker_taker.py",         ["--backfill", "--limit", "500"], True, 1800),  # 30min
     ("Verify market titles",              SCRIPTS_DIR / "verify_market_titles.py",        None, True),
     ("Backfill market categories",        SCRIPTS_DIR / "backfill_market_categories.py",  ["--limit", "50"], True),
     ("Fetch new market resolutions",      SCRIPTS_DIR / "fast_resolution_check.py",       ["--stale-limit", "500"], True),
@@ -131,7 +148,7 @@ def run_trade_dedup():
     print(f"    Deleted {deleted} duplicate trade row(s) ({elapsed:.1f}s)")
 
 
-def run_step(label, script_path, extra_args=None):
+def run_step(label, script_path, extra_args=None, timeout=DEFAULT_STEP_TIMEOUT):
     print(f"\n--- Step: {label} ---")
     print(f"    {script_path.name}")
     step_start = time.time()
@@ -149,11 +166,18 @@ def run_step(label, script_path, extra_args=None):
     if extra_args:
         cmd.extend(extra_args)
 
-    result = subprocess.run(
-        cmd,
-        cwd=str(SCRIPTS_DIR.parent),
-        env=env,
-    )
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=str(SCRIPTS_DIR.parent),
+            env=env,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        # subprocess.run() already killed the child before raising this.
+        elapsed = time.time() - step_start
+        print(f"    WARNING — step exceeded {timeout}s budget, killed ({elapsed:.1f}s)")
+        return False
 
     elapsed = time.time() - step_start
     if result.returncode == 0:
@@ -175,7 +199,10 @@ def main():
         # daily_maintenance does NOT run --full-recalc — the timer owns it exclusively.
         # Weekly trader discovery — scans top geopolitics markets for new participants not yet in DB.
         # API-rate-limited so runs weekly only.
-        steps.append(("Discover leaderboard traders", SCRIPTS_DIR / "discover_leaderboard_traders.py", ["--limit", "100"], True))
+        # Proven offender (O-27): all 3 successful runs took 5.45-7.19h, and the first-ever
+        # run (05-31) was manually SIGKILLed (exit -9) after 4.43h — someone already hit
+        # this exact hang before there was a budget to catch it.
+        steps.append(("Discover leaderboard traders", SCRIPTS_DIR / "discover_leaderboard_traders.py", ["--limit", "100"], True, 36000))  # 10h
         print("\n[WEEKLY] Sunday — full ELO recalculation handled by polymarket-sunday-elo.timer (03:00 UTC)")
 
     for i, step in enumerate(steps, 1):
@@ -183,8 +210,9 @@ def main():
         script       = step[1]
         extra_args   = step[2] if len(step) > 2 else None
         non_blocking = step[3] if len(step) > 3 else False
+        timeout      = step[4] if len(step) > 4 else DEFAULT_STEP_TIMEOUT
         print(f"\n[{i}/{len(steps)}] {label}")
-        ok = run_step(label, script, extra_args)
+        ok = run_step(label, script, extra_args, timeout=timeout)
         if not ok:
             if non_blocking:
                 print(f"    WARNING — step {i} ({label}) failed; continuing anyway (non-blocking).")
