@@ -1,19 +1,31 @@
 {
-  "generated_at": "2026-06-08T06:00:06.120630Z",
+  "generated_at": "2026-07-10T06:00:08.493722Z",
   "note": "Traders flagged by focus ratio > 20x. No DB exclusion applied \u2014 requires manual approval.",
-  "count": 2,
+  "count": 4,
   "traders": [
     {
       "address": "0x4c06388ddfbdd65c9debfb9e9f3d2f54c17da2b8",
-      "resolved_trades": 86,
+      "resolved_trades": 166,
       "distinct_markets": 2,
-      "focus_ratio": 43.0
+      "focus_ratio": 83.0
     },
     {
       "address": "0x132d78f1b3e213ad11c140aee693aa4407aab771",
-      "resolved_trades": 65,
+      "resolved_trades": 147,
       "distinct_markets": 2,
-      "focus_ratio": 32.5
+      "focus_ratio": 73.5
+    },
+    {
+      "address": "0xb44f173ca65b86c763b06ce2e6ad6c1e174d6c04",
+      "resolved_trades": 53,
+      "distinct_markets": 2,
+      "focus_ratio": 26.5
+    },
+    {
+      "address": "0xf267631123a425af719ac07d1335ef586b2c0a4c",
+      "resolved_trades": 245,
+      "distinct_markets": 11,
+      "focus_ratio": 22.27
     }
   ]
 }
