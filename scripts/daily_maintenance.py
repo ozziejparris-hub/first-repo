@@ -188,13 +188,14 @@ def run_step(label, script_path, extra_args=None, timeout=DEFAULT_STEP_TIMEOUT):
         return False
 
 
-def main():
-    start = time.time()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"=== DAILY MAINTENANCE === {timestamp}")
+def build_steps(weekday):
+    """Return the ordered step list for a given weekday (0=Monday ... 6=Sunday).
 
+    Pure function (no datetime.now() call) so the Sunday-only gating can be
+    unit-tested directly against every weekday value without mocking time.
+    """
     steps = list(STEPS)
-    if datetime.now().weekday() == 6:  # Sunday
+    if weekday == 6:  # Sunday
         # Full ELO recalculation runs at 03:00 UTC via polymarket-sunday-elo.timer
         # daily_maintenance does NOT run --full-recalc — the timer owns it exclusively.
         # Weekly trader discovery — scans top geopolitics markets for new participants not yet in DB.
@@ -203,6 +204,28 @@ def main():
         # run (05-31) was manually SIGKILLed (exit -9) after 4.43h — someone already hit
         # this exact hang before there was a budget to catch it.
         steps.append(("Discover leaderboard traders", SCRIPTS_DIR / "discover_leaderboard_traders.py", ["--limit", "100"], True, 36000))  # 10h
+        # O-2 backstop: the daily "Sync trade categories" step above only runs --incremental
+        # (7-day timestamp window), which structurally can never catch a market whose
+        # category is set after its trades already exist with an old timestamp (confirmed
+        # root cause: background_backfill_worker.py inserts trades with a hardcoded
+        # 'Unknown' category regardless of the parent market's real category — source fix
+        # deferred, see O-30). Weekly --full-sync bounds that drift to at most 7 days'
+        # accumulation instead of growing unbounded. Idempotent (WHERE clause only ever
+        # touches genuinely-mismatched rows) — measured 2026-07-10: ~31s for a 277K-row
+        # backlog (14s count + 17s batched update), so 30min is generous headroom even if
+        # the backlog balloons well beyond anything seen so far.
+        steps.append(("Sync trade categories [full, weekly]", SCRIPTS_DIR / "sync_trade_categories.py", ["--full-sync"], True, 1800))  # 30min
+    return steps
+
+
+def main():
+    start = time.time()
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"=== DAILY MAINTENANCE === {timestamp}")
+
+    weekday = datetime.now().weekday()
+    steps = build_steps(weekday)
+    if weekday == 6:  # Sunday
         print("\n[WEEKLY] Sunday — full ELO recalculation handled by polymarket-sunday-elo.timer (03:00 UTC)")
 
     for i, step in enumerate(steps, 1):
