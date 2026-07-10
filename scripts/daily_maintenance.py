@@ -83,8 +83,10 @@ STEPS = [
 DB_PATH = Path(__file__).parent.parent / "data" / "polymarket_tracker.db"
 
 
-def run_test_suite():
-    """Run the test suite and write results to tests/LATEST_TEST_RESULTS.md. Always non-blocking."""
+def run_test_suite() -> bool:
+    """Run the test suite and write results to tests/LATEST_TEST_RESULTS.md. Always
+    non-blocking (never aborts the run) but now RETURNS pass/fail (O-26) so main()
+    can include it in the honest completion banner instead of discarding it."""
     repo_root = SCRIPTS_DIR.parent
     runner    = repo_root / "run_tests.py"
     out_path  = repo_root / "tests" / "LATEST_TEST_RESULTS.md"
@@ -112,6 +114,7 @@ def run_test_suite():
 
         level = "PASS" if passed else "WARNING"
         print(f"    {level} — {status} ({elapsed:.1f}s) → tests/LATEST_TEST_RESULTS.md")
+        return passed
     except Exception as exc:
         elapsed = time.time() - step_start
         print(f"    WARNING — test suite runner error: {exc} ({elapsed:.1f}s)")
@@ -124,9 +127,12 @@ def run_test_suite():
             )
         except Exception:
             pass
+        return False
 
 
-def run_trade_dedup():
+def run_trade_dedup() -> bool:
+    """O-26: now returns pass/fail so main() can include it in the honest banner
+    instead of discarding it (previously a bare call, failure was WARNING-only)."""
     print("\n--- Step: Deduplicate trades table ---")
     step_start = time.time()
     sql = (
@@ -143,9 +149,10 @@ def run_trade_dedup():
     elapsed = time.time() - step_start
     if result.returncode != 0:
         print(f"    WARNING — dedup failed: {result.stderr.strip()} ({elapsed:.1f}s)")
-        return
+        return False
     deleted = result.stdout.strip() or "0"
     print(f"    Deleted {deleted} duplicate trade row(s) ({elapsed:.1f}s)")
+    return True
 
 
 def run_step(label, script_path, extra_args=None, timeout=DEFAULT_STEP_TIMEOUT):
@@ -218,6 +225,24 @@ def build_steps(weekday):
     return steps
 
 
+def build_banner(passed_count: int, total_count: int, failed_labels: list, elapsed: float) -> str:
+    """Pure function: the honest maintenance-completion banner (O-26, Fable finding
+    4.1). Kept separate from step execution so it's directly unit-testable without
+    running any subprocess — see tests/test_maintenance_banner_honesty.py.
+
+    Both strings start with "=== MAINTENANCE COMPLETE" so any existing health-check
+    grep for that literal phrase still matches on EITHER outcome (backward compatible
+    with whatever's been grepping this all month) — but "ALL OK" vs "FAILURES:" are
+    trivially distinct substrings for a grep that wants to tell them apart, which is
+    the actual point of this fix.
+    """
+    if failed_labels:
+        names = ", ".join(failed_labels)
+        return (f"=== MAINTENANCE COMPLETE — FAILURES: {passed_count}/{total_count} OK "
+                f"— FAILED: {names} === {elapsed:.1f}s total ===")
+    return f"=== MAINTENANCE COMPLETE — ALL OK: {passed_count}/{total_count} steps === {elapsed:.1f}s total ==="
+
+
 def main():
     start = time.time()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -228,6 +253,11 @@ def main():
     if weekday == 6:  # Sunday
         print("\n[WEEKLY] Sunday — full ELO recalculation handled by polymarket-sunday-elo.timer (03:00 UTC)")
 
+    # O-26: every step's real pass/fail is accumulated here instead of being
+    # discarded, so the final banner can tell the truth about what happened.
+    failed_steps = []
+    total_tracked = len(steps)
+
     for i, step in enumerate(steps, 1):
         label        = step[0]
         script       = step[1]
@@ -237,6 +267,7 @@ def main():
         print(f"\n[{i}/{len(steps)}] {label}")
         ok = run_step(label, script, extra_args, timeout=timeout)
         if not ok:
+            failed_steps.append(label)
             if non_blocking:
                 print(f"    WARNING — step {i} ({label}) failed; continuing anyway (non-blocking).")
             else:
@@ -246,9 +277,13 @@ def main():
                 sys.exit(1)
 
     if datetime.now().weekday() == 6:  # Sunday
-        run_trade_dedup()
+        total_tracked += 1
+        if not run_trade_dedup():
+            failed_steps.append("Deduplicate trades table")
 
-    run_test_suite()
+    total_tracked += 1
+    if not run_test_suite():
+        failed_steps.append("Run test suite")
 
     # WAL checkpoint — clears accumulated WAL pages without blocking readers or writers.
     print("\n--- Step: WAL checkpoint ---")
@@ -257,30 +292,37 @@ def main():
         capture_output=True,
         text=True,
     )
+    total_tracked += 1
     if wal_result.returncode == 0:
         print(f"    OK — {wal_result.stdout.strip()}")
     else:
         print(f"    WARNING — WAL checkpoint failed: {wal_result.stderr.strip()}")
+        failed_steps.append("WAL checkpoint")
 
     # Backfill market dates — gradually fills end_date/resolution_date for geo markets.
     # Non-blocking: a Gamma API failure here should never abort maintenance.
-    run_step(
+    total_tracked += 1
+    if not run_step(
         "Backfill market dates",
         SCRIPTS_DIR / "backfill_market_dates.py",
         extra_args=["--geo-only", "--limit", "500"],
-    )
+    ):
+        failed_steps.append("Backfill market dates")
 
     # Hydrate stub markets for external_seed traders — ~5,929 markets inserted as stubs
     # during trade import have no metadata. Runs 200/day until the backlog is cleared.
     # Non-blocking: a Gamma API failure here should never abort maintenance.
-    run_step(
+    total_tracked += 1
+    if not run_step(
         "Hydrate stub markets (external_seed)",
         SCRIPTS_DIR / "hydrate_stub_markets.py",
         extra_args=["--limit", "200"],
-    )
+    ):
+        failed_steps.append("Hydrate stub markets (external_seed)")
 
     elapsed = time.time() - start
-    print(f"\n=== MAINTENANCE COMPLETE === {elapsed:.1f}s total — all steps succeeded ===")
+    passed_count = total_tracked - len(failed_steps)
+    print(f"\n{build_banner(passed_count, total_tracked, failed_steps, elapsed)}")
 
 
 if __name__ == "__main__":
