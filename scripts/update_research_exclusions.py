@@ -111,11 +111,19 @@ ORDER BY focus_ratio DESC
 # 10+ trades, $1K+ volume) and qualify for research regardless of resolved_trades_count.
 # bot_type / wash_trade_suspect / bot_suspect checks below ensure genuine bad actors
 # (caught by auto-taggers above) are not inadvertently cleared.
+#
+# O-23 fix (2026-07-10, Fable finding 2.5): added the manual_override guard. Without
+# it, a trader manually excluded for a reason this state machine doesn't model (e.g.
+# single-market concentration) gets silently re-included the moment they otherwise
+# look clean — confirmed live on 0x44a1159b, excluded 2026-06-10, reverted within a
+# day and back in the pool for ~4 weeks before anyone noticed. manual_override=1
+# means "a human decided this, the recompute must not override that decision."
 LEADERBOARD_CLEAR_SQL = """
 UPDATE traders
 SET research_excluded = 0
 WHERE discovery_source = 'leaderboard'
   AND is_flagged = 1
+  AND (manual_override = 0 OR manual_override IS NULL)
   AND bot_type IS NULL
   AND wash_trade_suspect = 0
   AND bot_suspect = 0
@@ -138,10 +146,14 @@ WHERE research_excluded = 0
   )
 """
 
+# O-23 fix: manual_override guard (see LEADERBOARD_CLEAR_SQL comment above for the
+# full rationale — same fix, same reason, applied to both clear paths since either
+# one can silently revert a manual exclusion depending on the trader's discovery_source.
 CLEAR_SQL = """
 UPDATE traders
 SET research_excluded = 0
 WHERE research_excluded = 1
+  AND (manual_override = 0 OR manual_override IS NULL)
   AND resolved_trades_count >= 20
   AND (bot_suspect = 0 OR bot_suspect IS NULL)
   AND (wash_trade_suspect = 0 OR wash_trade_suspect IS NULL)
@@ -213,6 +225,53 @@ def _ensure_geo_accuracy_pool_column(conn):
         pass  # Column already exists
 
 
+def _ensure_manual_override_columns(conn):
+    """Add manual_override / manual_exclusion_reason columns if they don't exist yet
+    (idempotent). O-23: durable manual-exclusion mechanism — see set_manual_research_exclusion.py."""
+    try:
+        conn.execute("ALTER TABLE traders ADD COLUMN manual_override BOOLEAN DEFAULT 0")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+    try:
+        conn.execute("ALTER TABLE traders ADD COLUMN manual_exclusion_reason TEXT")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
+
+def run_exclusion_pass(conn) -> dict:
+    """Core research_excluded state-machine: auto-tag bots, apply/clear exclusions
+    (respecting manual_override — O-23), sync is_flagged. Takes an open connection
+    so it can be run against a temp DB in tests without the full production schema
+    (positions/geo_elo/Pool C etc.) or touching the real database — main() is the
+    only caller that points it at the production connection."""
+    with conn:
+        lp_artifact_tagged = conn.execute(LP_ARTIFACT_TIER1B_TAG_SQL).rowcount
+        arb_bot_tagged     = conn.execute(ARB_BOT_TAG_SQL).rowcount
+
+        newly_excluded = conn.execute(EXCLUDE_SQL).rowcount
+        newly_cleared  = conn.execute(CLEAR_SQL).rowcount
+
+        # Restore leaderboard traders after the exclusion pass so the
+        # resolved_trades_count filter in EXCLUDE_SQL cannot re-exclude them.
+        leaderboard_cleared = conn.execute(LEADERBOARD_CLEAR_SQL).rowcount
+
+    with conn:
+        synced_flagged   = conn.execute(SYNC_IS_FLAGGED_CLEAN_SQL).rowcount
+        synced_unflagged = conn.execute(SYNC_IS_FLAGGED_EXCLUDED_SQL).rowcount
+
+    return {
+        "lp_artifact_tagged": lp_artifact_tagged,
+        "arb_bot_tagged": arb_bot_tagged,
+        "newly_excluded": newly_excluded,
+        "newly_cleared": newly_cleared,
+        "leaderboard_cleared": leaderboard_cleared,
+        "synced_flagged": synced_flagged,
+        "synced_unflagged": synced_unflagged,
+    }
+
+
 def main():
     if not DB_PATH.exists():
         print(f"[ERROR] Database not found: {DB_PATH}", file=sys.stderr)
@@ -222,28 +281,22 @@ def main():
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=30000")
     _ensure_geo_accuracy_pool_column(conn)
+    _ensure_manual_override_columns(conn)
 
     try:
         # Identify focus-ratio candidates for review — NO DB write.
         focus_ratio_rows = conn.execute(LP_FOCUS_RATIO_SELECT_SQL).fetchall()
         lp_flagged = len(focus_ratio_rows)
 
-        with conn:
-            # Auto-tag new bots before the exclusion pass.
-            lp_artifact_tagged = conn.execute(LP_ARTIFACT_TIER1B_TAG_SQL).rowcount
-            arb_bot_tagged     = conn.execute(ARB_BOT_TAG_SQL).rowcount
+        pass_result = run_exclusion_pass(conn)
+        lp_artifact_tagged  = pass_result["lp_artifact_tagged"]
+        arb_bot_tagged      = pass_result["arb_bot_tagged"]
+        newly_excluded      = pass_result["newly_excluded"]
+        newly_cleared       = pass_result["newly_cleared"]
+        leaderboard_cleared = pass_result["leaderboard_cleared"]
+        synced_flagged      = pass_result["synced_flagged"]
+        synced_unflagged    = pass_result["synced_unflagged"]
 
-            newly_excluded = conn.execute(EXCLUDE_SQL).rowcount
-            newly_cleared  = conn.execute(CLEAR_SQL).rowcount
-
-            # Restore leaderboard traders after the exclusion pass so the
-            # resolved_trades_count filter in EXCLUDE_SQL cannot re-exclude them.
-            leaderboard_cleared = conn.execute(LEADERBOARD_CLEAR_SQL).rowcount
-
-        # Sync is_flagged after all exclusion logic is complete.
-        with conn:
-            synced_flagged   = conn.execute(SYNC_IS_FLAGGED_CLEAN_SQL).rowcount
-            synced_unflagged = conn.execute(SYNC_IS_FLAGGED_EXCLUDED_SQL).rowcount
         watched_preserved = conn.execute(
             "SELECT COUNT(*) FROM traders WHERE research_excluded = 1 AND watched = 1"
         ).fetchone()[0]
