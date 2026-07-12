@@ -64,3 +64,7 @@ Post-exclusion clean pool: 14,860 traders. WAL mode confirmed.
   0x08bff07116d1f197f249088ef30f99a90a1e30b0: 80/76 YES/NO symmetry, 156 markets, ELO 2656, pnl 367.11
   0x5521dd6a400c0b399c04cd82f0ad939d5f2c442a: 108/114 YES/NO symmetry, 342 markets, ELO 1836, pnl -68.03
   0x566c2cf296a54c01dcec23e3e95200dd34593d03: 82/82 YES/NO symmetry, 219 markets, ELO 1800, pnl 37.60
+
+2026-07-12 06:00 UTC: Pattern B — 2 ARB_BOT wallet(s) flagged (2 clusters)
+  0x2a967777e922f4606dca4ce18d9a53845871b382: 222/232 YES/NO symmetry, 1260 markets, ELO 2016, pnl 768.52
+  0xeb828d346dc0026e07dc09dd0ce6a9fee747b79c: 128/122 YES/NO symmetry, 487 markets, ELO 1882, pnl 1.70

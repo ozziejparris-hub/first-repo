@@ -15,6 +15,14 @@ import statistics
 from datetime import datetime, timezone
 from scipy import stats
 
+# This file lives under brain/agent-outputs/..., not next to scripts/, so
+# (unlike register_signal.py etc.) it needs an explicit path to find
+# json_safety.py. See that module's docstring for why the lock it provides
+# is what makes this write actually serialize against every other writer
+# of trading-swarm/brain/signals.json, in both repos.
+sys.path.insert(0, "/home/parison/projects/first-repo/scripts")
+from json_safety import CorruptJSONError, atomic_write_json, json_lock, load_json_or_raise
+
 DB_PATH = "/home/parison/projects/first-repo/data/polymarket_tracker.db"
 SIGNALS_PATH = "/home/parison/trading-swarm/brain/signals.json"
 OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -40,16 +48,11 @@ def connect_db():
 
 
 def write_signal(signal_type, payload):
-    """Append a pending signal to trading-swarm brain/signals.json."""
-    try:
-        with open(SIGNALS_PATH, 'r') as f:
-            signals_data = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        signals_data = {"signals": [], "pending": []}
-
-    if "pending" not in signals_data:
-        signals_data["pending"] = []
-
+    """Append a pending signal to trading-swarm brain/signals.json. Locked +
+    atomic, same protections as every other writer of this file. A corrupt
+    file is backed up and reported, never silently reinitialized — this
+    used to collapse "missing" and "corrupt" into the same fresh-skeleton
+    fallback, which would have silently wiped the file on a corrupt read."""
     signal = {
         "from": "quant-research-agent",
         "to": "orchestrator",
@@ -58,10 +61,16 @@ def write_signal(signal_type, payload):
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "status": "pending",
     }
-    signals_data["pending"].append(signal)
-
-    with open(SIGNALS_PATH, 'w') as f:
-        json.dump(signals_data, f, indent=2)
+    with json_lock(SIGNALS_PATH):
+        try:
+            signals_data = load_json_or_raise(
+                SIGNALS_PATH, default=lambda: {"signals": [], "pending": []})
+        except CorruptJSONError as e:
+            print(f"[SIGNAL] ABORTING — corrupt signals.json, refusing to "
+                  f"reinitialize: {e}", file=sys.stderr)
+            return
+        signals_data.setdefault("pending", []).append(signal)
+        atomic_write_json(SIGNALS_PATH, signals_data)
 
     print(f"[SIGNAL] Written to signals.json: type={signal_type}")
 
