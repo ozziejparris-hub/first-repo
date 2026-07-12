@@ -47,6 +47,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from monitoring import column_definitions as cd
+# json_safety.py sits next to this file in scripts/ — see its module
+# docstring / register_signal.py's import comment for why the plain,
+# unqualified import is deliberate and why the lock it provides is what
+# makes this repo's writes to signals.json actually serialize against the
+# swarm repo's writers and this repo's other writers (register_signal.py,
+# score_str003_signals.py). This script previously had NO locking at all.
+from json_safety import CorruptJSONError, atomic_write_json, json_lock, load_json_or_raise
 
 DB_PATH = Path("/home/parison/projects/first-repo/data/polymarket_tracker.db")
 SIGNALS_PATH = Path("/home/parison/trading-swarm/brain/signals.json")
@@ -244,9 +251,32 @@ def detect_for_signal(conn, signal):
 
 
 def run(conn, report_only=False):
-    with open(SIGNALS_PATH) as f:
-        data = json.load(f)
+    if report_only:
+        # Read-only: no lock needed for a single consistent read against an
+        # atomically-written file — nothing here writes, so there's no
+        # update to lose.
+        data = load_json_or_raise(SIGNALS_PATH, default=lambda: {"str003_signals": []})
+        alerts = _detect_and_annotate(conn, data, report_only=True)
+    else:
+        # Locked for the whole read-modify-write (detection loop included):
+        # another process (register_signal.py, the swarm orchestrator, ...)
+        # mutating signals.json mid-loop would otherwise be silently lost
+        # when this function's stale in-memory `data` gets written back.
+        with json_lock(SIGNALS_PATH):
+            data = load_json_or_raise(SIGNALS_PATH, default=lambda: {"str003_signals": []})
+            alerts = _detect_and_annotate(conn, data, report_only=False)
+            atomic_write_json(SIGNALS_PATH, data)
 
+    # Fire alerts for LEGENDARY reversals
+    for sid, signal, result in alerts:
+        leg_reversals = [r for r in result['reversals'] if r['is_legendary']]
+        if leg_reversals:
+            _fire_alert(sid, signal, result, leg_reversals)
+
+    return alerts
+
+
+def _detect_and_annotate(conn, data, report_only):
     active = [s for s in data.get('str003_signals', [])
               if isinstance(s, dict) and s.get('status') == 'ACTIVE']
     print(f"Active STR-003 signals: {len(active)}")
@@ -272,15 +302,7 @@ def run(conn, report_only=False):
             signal['counter_signal_v2'] = result
 
     if not report_only:
-        with open(SIGNALS_PATH, 'w') as f:
-            json.dump(data, f, indent=2)
         print(f"\nWrote counter_signal_v2 to {len(active)} active signals")
-
-    # Fire alerts for LEGENDARY reversals
-    for sid, signal, result in alerts:
-        leg_reversals = [r for r in result['reversals'] if r['is_legendary']]
-        if leg_reversals:
-            _fire_alert(sid, signal, result, leg_reversals)
 
     return alerts
 
@@ -303,7 +325,13 @@ def main():
     args = parser.parse_args()
 
     conn = _get_conn()
-    run(conn, report_only=args.report)
+    try:
+        run(conn, report_only=args.report)
+    except CorruptJSONError as e:
+        print(f"✗ ABORTING — corrupt signals.json, refusing to reinitialize: {e}",
+              file=sys.stderr)
+        conn.close()
+        sys.exit(1)
     conn.close()
 
 

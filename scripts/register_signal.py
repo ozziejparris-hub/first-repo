@@ -43,7 +43,6 @@ import argparse
 import sys
 import re
 import os
-import fcntl
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -52,6 +51,17 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import monitoring.column_definitions as cd
 from snapshot_order_books import fetch_clob_market_price, snapshot_market
+# json_safety.py sits next to this file in scripts/ — Python auto-adds a
+# directly-executed script's own directory to sys.path, so this plain,
+# unqualified import resolves regardless of how register_signal.py is
+# invoked (CLI, subprocess, cron). See json_safety.py's module docstring:
+# the sidecar lock path it derives is what makes this repo's writes to
+# trading-swarm/brain/signals.json actually serialize against the swarm
+# repo's own writers (orchestrator.py, run_feedback_loop_agent.py,
+# ollama_agent_loop.py) and this repo's other writers
+# (detect_counter_signals.py, score_str003_signals.py) — a lock on a
+# different file is a lock that lies.
+from json_safety import CorruptJSONError, atomic_write_json, json_lock, load_json_or_raise
 
 DB_PATH = Path("/home/parison/projects/first-repo/data/polymarket_tracker.db")
 SIGNALS_PATH = Path("/home/parison/trading-swarm/brain/signals.json")
@@ -247,8 +257,12 @@ def register_signal(market_id, direction, key_traders, strategy='STR-003',
         scs_tier = _scs_tier_from_score(scs_score)
 
     # 7. Read signals.json, generate ID, build record
-    with open(SIGNALS_PATH) as f:
-        data = json.load(f)
+    # NOTE: this id is generated from an unlocked read, ahead of the locked
+    # write in step 10 below — a pre-existing race (not introduced or fixed
+    # here): two concurrent registrations could compute the same "next" id.
+    # Step 10 fixes the WRITE's atomicity/locking/corrupt-handling only, per
+    # scope; the id-allocation race is a separate issue.
+    data = load_json_or_raise(SIGNALS_PATH, default=lambda: {"str003_signals": []})
 
     signal_id = _next_signal_id(data)
     registered_at = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -298,18 +312,19 @@ def register_signal(market_id, direction, key_traders, strategy='STR-003',
     except Exception as e:
         print(f"  [warn] Registration book snapshot failed: {e}", file=sys.stderr)
 
-    # 10. Atomic write to signals.json (read-modify-write under lock)
-    with open(SIGNALS_PATH, 'r+') as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
-        try:
-            f.seek(0)
-            data = json.load(f)
-            data.setdefault('str003_signals', []).append(signal)
-            f.seek(0)
-            f.truncate()
-            json.dump(data, f, indent=2)
-        finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
+    # 10. Locked, atomic write to signals.json. json_lock() locks a
+    # <path>.lock sidecar (never signals.json itself) — the same sidecar
+    # the swarm repo's orchestrator.py/run_feedback_loop_agent.py/
+    # ollama_agent_loop.py and this repo's detect_counter_signals.py/
+    # score_str003_signals.py all lock, so this genuinely serializes
+    # against every one of them. atomic_write_json() is temp-fsync-replace
+    # (a crash mid-write leaves the original intact) instead of the old
+    # truncate-in-place. A corrupt file is backed up and raises rather
+    # than being silently reinitialized.
+    with json_lock(SIGNALS_PATH):
+        data = load_json_or_raise(SIGNALS_PATH, default=lambda: {"str003_signals": []})
+        data.setdefault('str003_signals', []).append(signal)
+        atomic_write_json(SIGNALS_PATH, data)
 
     conn.close()
 
@@ -362,18 +377,25 @@ def main():
     correlated = ([c.strip() for c in args.correlated_with.split(',')]
                   if args.correlated_with else [])
 
-    result = register_signal(
-        market_id=args.market_id,
-        direction=args.direction,
-        key_traders=key_traders,
-        strategy=args.strategy,
-        event_cluster=args.event_cluster,
-        correlated_with=correlated,
-        notes=args.notes,
-        signal_credibility_score=args.scs,
-        fire_alert=args.fire_alert,
-        dry_run=args.dry_run,
-    )
+    try:
+        result = register_signal(
+            market_id=args.market_id,
+            direction=args.direction,
+            key_traders=key_traders,
+            strategy=args.strategy,
+            event_cluster=args.event_cluster,
+            correlated_with=correlated,
+            notes=args.notes,
+            signal_credibility_score=args.scs,
+            fire_alert=args.fire_alert,
+            dry_run=args.dry_run,
+        )
+    except CorruptJSONError as e:
+        print(f"✗ ABORTING — corrupt signals.json, refusing to reinitialize: {e}",
+              file=sys.stderr)
+        print("  A human must inspect and repair the file before any signal "
+              "can be registered.", file=sys.stderr)
+        sys.exit(1)
 
     if not result['success']:
         print(f"✗ Registration failed: {result['error']}", file=sys.stderr)

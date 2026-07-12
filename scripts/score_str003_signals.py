@@ -28,6 +28,10 @@ import sqlite3
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import monitoring.column_definitions as cd
+# json_safety.py sits next to this file in scripts/ — see register_signal.py's
+# import comment for why the plain, unqualified import is deliberate. This
+# script previously had NO locking on either signals.json or findings.json.
+from json_safety import CorruptJSONError, atomic_write_json, json_lock, load_json_or_raise
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -302,16 +306,25 @@ def _write_finding(resolved_signals: list, conn):
         "expires_at": now.replace(year=now.year + 1).strftime('%Y-%m-%dT%H:%M:%SZ'),
     }
 
-    data = json.loads(FINDINGS_PATH.read_text())
-    findings = data.get('findings', [])
-    # Remove any earlier STR003-ACC finding from today (keep only latest)
-    findings = [
-        f for f in findings
-        if not f.get('id', '').startswith(now.strftime('%Y-%m-%d') + '-STR003-ACC')
-    ]
-    findings.append(finding)
-    data['findings'] = findings
-    FINDINGS_PATH.write_text(json.dumps(data, indent=2))
+    # Locked read-modify-write: score_str003_signals.py (this script,
+    # elsewhere in the same daily run) and run_feedback_loop_agent.py
+    # (swarm, weekly) both write findings.json too.
+    with json_lock(FINDINGS_PATH):
+        try:
+            data = load_json_or_raise(FINDINGS_PATH, default=lambda: {"findings": []})
+        except CorruptJSONError as e:
+            print(f"[str003] ABORTING finding write — corrupt findings.json, "
+                  f"refusing to reinitialize: {e}", file=sys.stderr)
+            return
+        findings = data.get('findings', [])
+        # Remove any earlier STR003-ACC finding from today (keep only latest)
+        findings = [
+            f for f in findings
+            if not f.get('id', '').startswith(now.strftime('%Y-%m-%d') + '-STR003-ACC')
+        ]
+        findings.append(finding)
+        data['findings'] = findings
+        atomic_write_json(FINDINGS_PATH, data)
     print(f"[str003] Finding written: {finding_id} "
           f"({confidence}, {accuracy:.1%} accuracy, n={total})")
 
@@ -322,43 +335,55 @@ def main():
         sys.exit(1)
 
     conn = _get_connection()
-    data = json.loads(SIGNALS_PATH.read_text())
-    str003_refs = _collect_str003_signals(data)
 
-    if not str003_refs:
-        print("[str003] No STR-003 signals found in signals.json.")
-        conn.close()
-        return
+    # Locked for the whole read-modify-write (scoring loop included): the
+    # swarm orchestrator, register_signal.py, and detect_counter_signals.py
+    # all write this same signals.json. json_lock() resolves to the
+    # identical <path>.lock sidecar every one of them uses.
+    with json_lock(SIGNALS_PATH):
+        try:
+            data = load_json_or_raise(SIGNALS_PATH, default=lambda: {"str003_signals": []})
+        except CorruptJSONError as e:
+            print(f"[str003] ABORTING — corrupt signals.json, refusing to "
+                  f"reinitialize: {e}", file=sys.stderr)
+            conn.close()
+            sys.exit(1)
+        str003_refs = _collect_str003_signals(data)
 
-    print(f"[str003] Found {len(str003_refs)} STR-003 signal(s).")
+        if not str003_refs:
+            print("[str003] No STR-003 signals found in signals.json.")
+            conn.close()
+            return
 
-    changed = False
-    pending = 0
-    newly_scored = 0
+        print(f"[str003] Found {len(str003_refs)} STR-003 signal(s).")
 
-    for key, idx, signal in str003_refs:
-        if signal.get('outcome_correct') is not None:
-            continue  # already scored
+        changed = False
+        pending = 0
+        newly_scored = 0
 
-        updated = _score_signal(signal, conn)
-        if updated is signal:
-            pending += 1
-            continue
+        for key, idx, signal in str003_refs:
+            if signal.get('outcome_correct') is not None:
+                continue  # already scored
 
-        data[key][idx] = updated
-        changed = True
-        newly_scored += 1
+            updated = _score_signal(signal, conn)
+            if updated is signal:
+                pending += 1
+                continue
 
-        p = updated.get('payload', {})
-        direction = p.get('direction') or updated.get('direction', '?')
-        title = (p.get('market_title') or updated.get('market_title') or
-                 p.get('market_id') or updated.get('market_id', 'unknown'))
-        result_str = "CORRECT" if updated['outcome_correct'] == 1 else "WRONG"
-        print(f"  Scored: {title} | {direction} → {result_str}")
+            data[key][idx] = updated
+            changed = True
+            newly_scored += 1
 
-    if changed:
-        SIGNALS_PATH.write_text(json.dumps(data, indent=2))
-        print(f"[str003] signals.json updated — {newly_scored} newly scored")
+            p = updated.get('payload', {})
+            direction = p.get('direction') or updated.get('direction', '?')
+            title = (p.get('market_title') or updated.get('market_title') or
+                     p.get('market_id') or updated.get('market_id', 'unknown'))
+            result_str = "CORRECT" if updated['outcome_correct'] == 1 else "WRONG"
+            print(f"  Scored: {title} | {direction} → {result_str}")
+
+        if changed:
+            atomic_write_json(SIGNALS_PATH, data)
+            print(f"[str003] signals.json updated — {newly_scored} newly scored")
 
     # Accuracy report across all resolved STR-003 signals
     all_str003 = [data[k][i] for k, i, _ in _collect_str003_signals(data)]
