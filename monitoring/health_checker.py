@@ -31,7 +31,13 @@ class HealthChecker:
     3. Last activity (<20 min)
     4. Error rate (from logs)
     5. Memory usage (<500MB warning)
+    6. Offsite backup drive mounted + backup current (O-14)
     """
+
+    # Overridable per-instance so tests can point check_offsite_backup() at
+    # fixtures instead of the real drive/log.
+    OFFSITE_BACKUP_DRIVE = '/mnt/backup'
+    OFFSITE_BACKUP_LOG = '/home/parison/trading-swarm/logs/backup_offsite.log'
 
     def __init__(self, monitoring_pid: Optional[int] = None, db_path: str = 'data/polymarket_tracker.db'):
         """
@@ -205,6 +211,75 @@ class HealthChecker:
                 'accessible': False,
                 'message': f'Database error: {str(e)}'
             }
+
+    def check_offsite_backup(self) -> Dict:
+        """
+        Check the offsite backup drive is mounted and the nightly backup is current.
+
+        Catches two independent failure modes seen in O-14: the drive silently
+        failing to (re)mount (e.g. after a reboot), and the drive being mounted
+        fine but backup_offsite.sh itself not completing. Both fail this check
+        rather than only logging a line nobody watches.
+
+        Returns:
+            dict: {
+                'status': 'healthy' | 'critical' | 'warning',
+                'mounted': bool,
+                'last_backup_age_hours': float | None,
+                'message': str
+            }
+        """
+        backup_drive = self.OFFSITE_BACKUP_DRIVE
+        backup_log = self.OFFSITE_BACKUP_LOG
+
+        if not os.path.ismount(backup_drive):
+            return {
+                'status': 'critical',
+                'mounted': False,
+                'last_backup_age_hours': None,
+                'message': f'{backup_drive} is not mounted — offsite backups cannot run'
+            }
+
+        if not os.path.exists(backup_log):
+            return {
+                'status': 'warning',
+                'mounted': True,
+                'last_backup_age_hours': None,
+                'message': f'Backup log not found: {backup_log}'
+            }
+
+        last_success = None
+        with open(backup_log) as f:
+            for line in f:
+                if 'Backup complete. Drive usage' in line:
+                    m = re.match(r'\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})Z\]', line)
+                    if m:
+                        last_success = datetime.strptime(m.group(1), '%Y-%m-%dT%H:%M:%S')
+
+        if last_success is None:
+            return {
+                'status': 'critical',
+                'mounted': True,
+                'last_backup_age_hours': None,
+                'message': 'No successful offsite backup found in log'
+            }
+
+        age_hours = (datetime.utcnow() - last_success).total_seconds() / 3600
+
+        if age_hours > 26:
+            return {
+                'status': 'critical',
+                'mounted': True,
+                'last_backup_age_hours': round(age_hours, 1),
+                'message': f'Last successful offsite backup was {age_hours:.1f}h ago (>26h) — backup script may be failing'
+            }
+
+        return {
+            'status': 'healthy',
+            'mounted': True,
+            'last_backup_age_hours': round(age_hours, 1),
+            'message': f'Offsite backup current ({age_hours:.1f}h ago)'
+        }
 
     def check_last_activity(self) -> Dict:
         """
@@ -905,7 +980,8 @@ class HealthChecker:
             'database': self.check_database_accessible(),
             'activity': self.check_last_activity(),
             'memory': self.check_memory_usage(),
-            'errors': self.check_error_rate()
+            'errors': self.check_error_rate(),
+            'offsite_backup': self.check_offsite_backup()
         }
 
         # Run component checks
