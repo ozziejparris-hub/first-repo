@@ -18,7 +18,7 @@ import json
 import os
 import sqlite3
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -86,6 +86,17 @@ FLOOR_SUCC_CONTRA       = 608     # traders where successful_trades > actual won
 
 # Tier 3 regression threshold (grow by more than this fraction)
 TIER3_THRESHOLD = 0.10
+
+# ---- Tier 0 (OBSERVE — ELO arc Stage 0d, O-7) ----------------------------
+# These record comprehensive_elo formula-invariant baselines ahead of the
+# Stage 1 shadow computation. They gate NOTHING yet (status is always
+# OBSERVE regardless of count) — see design doc §5 Stage 0d / §6. Each is
+# promoted to its target tier at the migration stage named in its docstring.
+COMP_ELO_RANGE_MIN     = 400     # design §6 invariant #1 — absolute floor
+COMP_ELO_RANGE_MAX     = 3500    # design §6 invariant #1 — hard cap, always enforced
+COMP_ELO_EPS           = 1.0     # float-compare tolerance for all comp_elo OBSERVE checks
+POP_DRIFT_MEAN_DELTA   = 100     # design §6 invariant #6 — weekly mean must stay within this
+POP_DRIFT_TIER_PCT     = 0.20    # design §6 invariant #6 — tier counts must not move >20%/week
 
 
 # ---------------------------------------------------------------------------
@@ -542,6 +553,186 @@ def check_succ_contradiction(cur, verbose):
 
 
 # ---------------------------------------------------------------------------
+# Tier 0 invariants — OBSERVE only (ELO arc Stage 0d, O-7). Status is always
+# "OBSERVE" regardless of count; see design doc §5/§6 for promotion stages.
+# ---------------------------------------------------------------------------
+
+_ELO_POPULATION_WHERE = (
+    "is_flagged = 1 AND research_excluded = 0 AND comprehensive_elo IS NOT NULL"
+)
+
+
+def check_comp_elo_range(cur, verbose):
+    """Design §6 invariant #1: 400 <= comprehensive_elo <= 3500 for the flagged,
+    non-excluded population. Passes today by construction (hard cap already live);
+    promotes to T1 gating once write_elo_result (Stage 2+) is the sole writer."""
+    count = _count(cur, f"""
+        SELECT COUNT(*) FROM traders
+        WHERE {_ELO_POPULATION_WHERE}
+          AND (comprehensive_elo < {COMP_ELO_RANGE_MIN} OR comprehensive_elo > {COMP_ELO_RANGE_MAX})
+    """)
+    baseline = _fetch_examples(cur, f"""
+        SELECT COUNT(*) AS n, MIN(comprehensive_elo) AS min_elo,
+               MAX(comprehensive_elo) AS max_elo, AVG(comprehensive_elo) AS mean_elo
+        FROM traders WHERE {_ELO_POPULATION_WHERE}
+    """)
+    examples = baseline
+    if verbose and count:
+        examples = examples + _fetch_examples(cur, f"""
+            SELECT address, comprehensive_elo FROM traders
+            WHERE {_ELO_POPULATION_WHERE}
+              AND (comprehensive_elo < {COMP_ELO_RANGE_MIN} OR comprehensive_elo > {COMP_ELO_RANGE_MAX})
+            LIMIT 5
+        """)
+    return ("[0d/OBSERVE] comprehensive_elo out of [400,3500]", 0, 0, count, examples)
+
+
+def check_comp_elo_soft_cap(cur, verbose):
+    """Design §6 invariant #2: comp <= 1500 + resolved_trades_count*150 + eps.
+    Writer A already applies this; Writer B currently does not (see design's
+    Correction section — 9 real traders exceed it today, under the hard cap).
+    Promotes to T1 gating at Stage 3, when apply_soft_cap=True lands on both writers."""
+    count = _count(cur, f"""
+        SELECT COUNT(*) FROM traders
+        WHERE {_ELO_POPULATION_WHERE}
+          AND comprehensive_elo > 1500 + COALESCE(resolved_trades_count, 0) * 150 + {COMP_ELO_EPS}
+    """)
+    examples = []
+    if verbose and count:
+        examples = _fetch_examples(cur, f"""
+            SELECT address, comprehensive_elo, resolved_trades_count,
+                   1500 + COALESCE(resolved_trades_count, 0) * 150 AS soft_cap,
+                   comprehensive_elo - (1500 + COALESCE(resolved_trades_count, 0) * 150) AS over_by
+            FROM traders
+            WHERE {_ELO_POPULATION_WHERE}
+              AND comprehensive_elo > 1500 + COALESCE(resolved_trades_count, 0) * 150 + {COMP_ELO_EPS}
+            ORDER BY over_by DESC LIMIT 5
+        """)
+    return ("[0d/OBSERVE] comprehensive_elo exceeds soft cap (1500+resolved*150)", 0, 0, count, examples)
+
+
+def check_comp_elo_write_atomicity(cur, verbose):
+    """Design §6 invariant #4: 0 traders where comprehensive_elo is non-NULL but any
+    component column is NULL. Expected to fail heavily today — no writer currently
+    writes the full atomic column set (kelly/patience/timing are NULL wherever
+    behavioral is disabled). Promotes to T1 gating once write_elo_result (§4.1) is
+    live and is the sole writer of comprehensive_elo (end of Stage 3)."""
+    count = _count(cur, f"""
+        SELECT COUNT(*) FROM traders
+        WHERE {_ELO_POPULATION_WHERE}
+          AND (base_category_elo IS NULL OR behavioral_modifier IS NULL
+               OR advanced_modifier IS NULL OR pnl_modifier IS NULL
+               OR kelly_alignment_score IS NULL OR patience_score IS NULL
+               OR timing_score IS NULL)
+    """)
+    examples = []
+    if verbose and count:
+        examples = _fetch_examples(cur, f"""
+            SELECT address, base_category_elo, behavioral_modifier, advanced_modifier,
+                   pnl_modifier, kelly_alignment_score, patience_score, timing_score
+            FROM traders
+            WHERE {_ELO_POPULATION_WHERE}
+              AND (base_category_elo IS NULL OR behavioral_modifier IS NULL
+                   OR advanced_modifier IS NULL OR pnl_modifier IS NULL
+                   OR kelly_alignment_score IS NULL OR patience_score IS NULL
+                   OR timing_score IS NULL)
+            LIMIT 5
+        """)
+    return ("[0d/OBSERVE] comprehensive_elo non-NULL with a NULL component column", 0, 0, count, examples)
+
+
+def check_comp_elo_behavioral_materialization(cur, verbose):
+    """Design §6 invariant #5 — THE regression test for RQ-CONTESTED-001 ever
+    returning: traders with a meaningfully-positive behavioral_modifier (>1.05)
+    and enough resolved trades to be eligible (>=10), whose stored comp still
+    equals the pnl-only (W_beh=0) reconstruction — i.e. behavioral was computed
+    but had zero effect. Fails by design today (W_beh=0, pre-Stage-4). Once
+    Stage 4 ships W_beh>0, this must fall to ~0 — if it doesn't, behavioral is
+    silently being stripped again. Stays OBSERVE (with this comment) even after
+    Stage 4 confirms W_beh=0 was the launch value — per design §6 row 5."""
+    damp_case = ("CASE WHEN base_category_elo >= 2500 THEN 0.60 "
+                 "WHEN base_category_elo >= 2000 THEN 0.80 ELSE 1.00 END")
+    pnl_only_reconstruction = (
+        f"base_category_elo + base_category_elo * (pnl_modifier - 1.0) * ({damp_case})"
+    )
+    count = _count(cur, f"""
+        SELECT COUNT(*) FROM traders
+        WHERE {_ELO_POPULATION_WHERE}
+          AND base_category_elo IS NOT NULL AND pnl_modifier IS NOT NULL
+          AND behavioral_modifier > 1.05
+          AND COALESCE(resolved_trades_count, 0) >= 10
+          AND ABS(comprehensive_elo - ({pnl_only_reconstruction})) < {COMP_ELO_EPS}
+    """)
+    examples = []
+    if verbose and count:
+        examples = _fetch_examples(cur, f"""
+            SELECT address, comprehensive_elo, base_category_elo, behavioral_modifier,
+                   pnl_modifier, resolved_trades_count
+            FROM traders
+            WHERE {_ELO_POPULATION_WHERE}
+              AND base_category_elo IS NOT NULL AND pnl_modifier IS NOT NULL
+              AND behavioral_modifier > 1.05
+              AND COALESCE(resolved_trades_count, 0) >= 10
+              AND ABS(comprehensive_elo - ({pnl_only_reconstruction})) < {COMP_ELO_EPS}
+            LIMIT 5
+        """)
+    return ("[0d/OBSERVE] behavioral materialization (comp == pnl-only despite eligible behavioral)",
+            0, 0, count, examples)
+
+
+def _load_prior_population_snapshot(check_name: str, min_days_back: int = 5, max_days_back: int = 9):
+    """Read back a prior day's audit JSON report (written by this same script) and
+    pull out the 'today' population snapshot this check recorded, if present.
+    Self-bootstrapping: no separate history file, just this harness's own reports."""
+    if not OUTPUT_DIR.exists():
+        return None
+    for days_back in range(min_days_back, max_days_back + 1):
+        candidate = OUTPUT_DIR / f"{(datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')}-audit.json"
+        if not candidate.exists():
+            continue
+        try:
+            data = json.loads(candidate.read_text())
+        except Exception:
+            continue
+        for r in data.get("checks", []):
+            if r.get("name") == check_name and r.get("examples"):
+                snap = r["examples"][0].get("today")
+                if snap:
+                    return snap
+    return None
+
+
+def check_comp_elo_population_drift(cur, verbose):
+    """Design §6 invariant #6: weekly mean within ±100 of trailing mean; tier
+    counts (>=1500/>=1800/>=2175) change <20%/week. Self-bootstraps its own
+    trailing baseline from this harness's own prior JSON reports (5-9 days back)
+    — first run has no baseline to compare against, so it just records today's
+    snapshot. Slow-inflation / upstream-cache-corruption detector."""
+    name = "[0d/OBSERVE] comprehensive_elo population drift (weekly mean/tier stability)"
+    today = _fetch_examples(cur, f"""
+        SELECT COUNT(*) AS n, AVG(comprehensive_elo) AS mean_elo,
+               SUM(CASE WHEN comprehensive_elo >= 1500 THEN 1 ELSE 0 END) AS tier_1500,
+               SUM(CASE WHEN comprehensive_elo >= 1800 THEN 1 ELSE 0 END) AS tier_1800,
+               SUM(CASE WHEN comprehensive_elo >= 2175 THEN 1 ELSE 0 END) AS tier_2175
+        FROM traders WHERE {_ELO_POPULATION_WHERE}
+    """)[0]
+    baseline = _load_prior_population_snapshot(name)
+    examples = [{"today": today, "trailing_baseline": baseline}]
+    count = 0
+    if baseline:
+        mean_delta = abs(today["mean_elo"] - baseline["mean_elo"])
+        tier_pct = {
+            k: (abs(today[k] - baseline[k]) / baseline[k] if baseline[k] else 0.0)
+            for k in ("tier_1500", "tier_1800", "tier_2175")
+        }
+        examples[0]["mean_delta"] = mean_delta
+        examples[0]["tier_delta_pct"] = tier_pct
+        if mean_delta > POP_DRIFT_MEAN_DELTA or any(v > POP_DRIFT_TIER_PCT for v in tier_pct.values()):
+            count = 1
+    return (name, 0, 0, count, examples)
+
+
+# ---------------------------------------------------------------------------
 # All checks in display order
 # ---------------------------------------------------------------------------
 ALL_CHECKS = [
@@ -568,6 +759,12 @@ ALL_CHECKS = [
     check_vol_outliers,
     check_invested_mismatch,
     check_succ_contradiction,
+    # Tier 0 — OBSERVE only (ELO arc Stage 0d, O-7)
+    check_comp_elo_range,
+    check_comp_elo_soft_cap,
+    check_comp_elo_write_atomicity,
+    check_comp_elo_behavioral_materialization,
+    check_comp_elo_population_drift,
 ]
 
 
@@ -576,7 +773,9 @@ ALL_CHECKS = [
 # ---------------------------------------------------------------------------
 
 def determine_status(tier: int, floor: int, count: int) -> str:
-    if tier == 1:
+    if tier == 0:
+        return "OBSERVE"  # gates nothing — ELO arc Stage 0d baseline recording only
+    elif tier == 1:
         return "CRITICAL" if count > 0 else "PASS"
     elif tier == 2:
         return "REGRESSION" if count > floor else "PASS"
@@ -651,7 +850,7 @@ def run_audit(verbose: bool = False, alert: bool = False) -> tuple[int, int]:
     n = len(ALL_CHECKS)
     print(f"\nRunning {n} invariant checks against {DB_PATH.name} ...\n")
 
-    STATUS_MARKER = {"PASS": "✓", "REGRESSION": "⚠", "CRITICAL": "✗"}
+    STATUS_MARKER = {"PASS": "✓", "REGRESSION": "⚠", "CRITICAL": "✗", "OBSERVE": "○"}
 
     for fn in ALL_CHECKS:
         name, tier, floor, count, examples = fn(cur, verbose)
@@ -672,6 +871,7 @@ def run_audit(verbose: bool = False, alert: bool = False) -> tuple[int, int]:
     n_pass       = sum(1 for r in results if r["status"] == "PASS")
     n_regression = sum(1 for r in results if r["status"] == "REGRESSION")
     n_critical   = sum(1 for r in results if r["status"] == "CRITICAL")
+    n_observe    = sum(1 for r in results if r["status"] == "OBSERVE")
     n_violated   = n_regression + n_critical
     headline     = f"{n_violated} invariant{'s' if n_violated != 1 else ''} violated, {n_critical} critical."
 
@@ -683,6 +883,7 @@ def run_audit(verbose: bool = False, alert: bool = False) -> tuple[int, int]:
         "pass":       n_pass,
         "regression": n_regression,
         "critical":   n_critical,
+        "observe":    n_observe,
         "headline":   headline,
     }
 
@@ -693,6 +894,7 @@ def run_audit(verbose: bool = False, alert: bool = False) -> tuple[int, int]:
     print(f"  PASS             : {n_pass}")
     print(f"  REGRESSION       : {n_regression}")
     print(f"  CRITICAL         : {n_critical}")
+    print(f"  OBSERVE          : {n_observe}")
     print(f"  Headline         : {headline}")
     print("=" * 62)
 
