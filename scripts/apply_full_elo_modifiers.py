@@ -17,10 +17,25 @@ Which modifiers are applied:
   - P&L multiplier (0.40x-2.50x): YES — sourced from positions table via
     PositionTracker. Currently meaningful for ~35 traders with closed positions.
     Guard: only applies open_cost_basis drag when closed_positions >= 1.
-  - Behavioral bonus (±100 pts): SKIPPED — kelly_alignment_score and
-    patience_score columns are all NULL (not yet calculated).
-  - Advanced metrics: SKIPPED — same reason.
+  - Behavioral bonus (±100 pts): SKIPPED — w_beh=0 (Stage 0b decision; see
+    analysis/comprehensive_elo_formula.W_BEH). Real behavioral_modifier /
+    kelly / patience / timing values ARE read and re-written atomically
+    alongside comprehensive_elo (see below), they just don't affect the
+    computed value at w_beh=0.
+  - Advanced metrics: SKIPPED — same reason (w_beh gates the whole
+    behavioral dimension; advanced_modifier is excluded from the formula
+    entirely per design §2.5, re-written unchanged for now).
   - Network/contrarian: SKIPPED — not relevant to consensus detection goal.
+
+ELO ARC STAGE 2 (2026-07): this script's formula internals were replaced
+with analysis.comprehensive_elo_formula.compute_comprehensive_elo(w_beh=0,
+apply_soft_cap=False, apply_floor=False) — proven term-for-term identical
+to this script's PREVIOUS inline formula (zero-diff equivalence test,
+61,248-point grid; live-data validation, 99.87% match). The write now goes
+through monitoring.database.write_elo_result(), which writes the full
+component-column set atomically every time (this is the O-3 elo_last_updated
+canonical-format fix, and closes the "columns from different writers at
+different times" artifact class — see the ELO arc design doc §4.1).
 
 When to re-run:
   - After P&L worker coverage increases significantly (currently ~40%)
@@ -38,11 +53,13 @@ import sqlite3
 import argparse
 import os
 from pathlib import Path
-from datetime import datetime
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 os.chdir(project_root)
+
+from analysis.comprehensive_elo_formula import compute_comprehensive_elo
+from monitoring.database import write_elo_result
 
 
 def main():
@@ -102,18 +119,23 @@ def main():
     placeholders = ','.join('?' * len(eligible))
     cur.execute("""
         SELECT address, base_category_elo, comprehensive_elo, pnl_modifier,
-               resolved_trades_count
+               resolved_trades_count, behavioral_modifier, advanced_modifier,
+               kelly_alignment_score, patience_score, timing_score
         FROM traders
         WHERE address IN ({})
     """.format(placeholders), list(eligible.keys()))
 
     rows = cur.fetchall()
 
-    base_elos = {}       # addr -> base ELO to use
-    resolved_counts = {} # addr -> resolved_trades_count
-    skipped_stale = 0    # had a modifier but no safe base — skip to avoid stacking
+    base_elos = {}          # addr -> base ELO to use
+    base_cat_raw = {}       # addr -> the RAW stored base_category_elo (None if never set)
+    resolved_counts = {}    # addr -> resolved_trades_count
+    behavioral_snapshot = {}  # addr -> (behavioral_modifier, advanced_modifier, kelly, patience, timing)
+    skipped_stale = 0       # had a modifier but no safe base — skip to avoid stacking
 
-    for addr, base_cat, comp_elo, pnl_mod, res_count in rows:
+    for addr, base_cat, comp_elo, pnl_mod, res_count, beh_mod, adv_mod, kelly, patience, timing in rows:
+        base_cat_raw[addr] = base_cat
+        behavioral_snapshot[addr] = (beh_mod, adv_mod, kelly, patience, timing)
         # Prefer base_category_elo when it has been explicitly set (backfilled OR
         # recorded at first-modifier-write time by this script).  NULL means never
         # set; any stored value — including 1500.0 — is a valid clean base.
@@ -129,7 +151,7 @@ def main():
             # Modifier already applied and no clean base available — skip
             skipped_stale += 1
 
-    from_backfill = sum(1 for a, b, c, p, r in rows
+    from_backfill = sum(1 for a, b, c, p, r, *_ in rows
                         if b is not None and a in base_elos)
     from_comp = len(base_elos) - from_backfill
 
@@ -149,13 +171,11 @@ def main():
     print("\n[3/3] Applying P&L multiplier...")
 
     updates = []
-    now = datetime.now().isoformat()
     skipped_excluded = 0
 
-    # Change 1: raised hard cap
-    MAX_FINAL_ELO = 3500.0
-
-    # Change 2: confidence gate — max multiplier by closed position count
+    # Cosmetic only (preview display below) — the actual computation goes
+    # through analysis.comprehensive_elo_formula.compute_comprehensive_elo,
+    # which has its own internal confidence-cap table (identical values).
     def _confidence_cap(closed: int) -> float:
         if closed >= 20: return 2.20
         if closed >= 10: return 2.00
@@ -169,7 +189,9 @@ def main():
             pnl_data = system.calculate_pnl_multiplier(addr)
             mult = pnl_data['combined_multiplier']
 
-            # Skip if the system excluded this trader (copy-trader detection)
+            # Skip if the system excluded this trader (copy-trader detection).
+            # pnl_raw=0.0 is out-of-domain for compute_comprehensive_elo (see
+            # its docstring) — this mirrors the pre-Stage-2 behavior exactly.
             if mult == 0.0:
                 skipped_excluded += 1
                 continue
@@ -177,53 +199,41 @@ def main():
             pnl_entry = eligible.get(addr, {})
             closed_pos = pnl_entry.get('closed_positions', 0)
 
-            # Change 2: gate the multiplier by confidence (closed positions)
-            cap = _confidence_cap(closed_pos)
-            mult = min(mult, cap) if mult > 1.0 else mult
-
-            # Gate: suppress bonus multipliers for thin-sample traders
-            if mult > 1.0 and resolved_counts.get(addr, 0) < 10:
-                mult = 1.0
-
-            # Change 4: asymmetric loss penalty at high ELO
-            if mult < 1.0 and base_elo >= 2000:
-                loss_amplifier = 1.30
-                mult = 1.0 - ((1.0 - mult) * loss_amplifier)
-
-            # Change 3: ELO-level K-factor dampening on the gain
-            if base_elo >= 2500:
-                dampening = 0.60
-            elif base_elo >= 2000:
-                dampening = 0.80
-            else:
-                dampening = 1.00
-            new_elo = base_elo + (base_elo * (mult - 1.0) * dampening)
-
-            # Change 1: hard cap at 3500
-            new_elo = min(new_elo, MAX_FINAL_ELO)
-            updates.append((addr, base_elo, mult, new_elo, pnl_data['breakdown']))
+            # ELO ARC STAGE 2: canonical formula at output-neutral settings.
+            # w_beh=0 (Stage 0b), apply_soft_cap=False, apply_floor=False —
+            # at these settings this IS Writer B's formula, term for term
+            # (proven: zero-diff equivalence test + live-data validation).
+            # beh_mult/bonus are mathematically inert at w_beh=0 (also
+            # proven), so plain placeholders are used here rather than
+            # reconstructing the real bonus step-function.
+            result = compute_comprehensive_elo(
+                base=base_elo, beh_mult=1.0, bonus=0.0,
+                pnl_raw=mult, closed=closed_pos,
+                resolved=resolved_counts.get(addr, 0),
+                w_beh=0.0, apply_soft_cap=False, apply_floor=False,
+            )
+            updates.append((addr, base_elo, mult, result, pnl_data['breakdown']))
         except Exception as e:
             print(f"  WARNING: could not compute P&L for {addr[:10]}...: {e}")
             continue
 
     # Sort by new ELO descending for display
-    updates.sort(key=lambda x: x[3], reverse=True)
+    updates.sort(key=lambda x: x[3].comp, reverse=True)
 
     # Show preview
     print(f"\n  Traders to update: {len(updates):,}")
     print(f"  Excluded (copy-traders): {skipped_excluded}")
     if updates:
-        new_elos = [u[3] for u in updates]
+        new_elos = [u[3].comp for u in updates]
         print(f"  New ELO range for updated traders: {min(new_elos):.0f} – {max(new_elos):.0f}")
 
         print("\n  Top 10 after modifiers:")
-        for addr, base, mult, new, breakdown in updates[:10]:
+        for addr, base, mult, result, breakdown in updates[:10]:
             pnl_entry = eligible.get(addr, {})
             closed = pnl_entry.get('closed_positions', 0)
-            damp = 0.60 if base >= 2500 else (0.80 if base >= 2000 else 1.00)
             conf_cap = _confidence_cap(closed)
             print(f"    {addr[:6]}...{addr[-4:]}  base={base:.0f}  closed={closed}  "
-                  f"conf_cap={conf_cap:.2f}x  damp={damp:.2f}  ×{mult:.3f}  ->  {new:.0f}")
+                  f"conf_cap={conf_cap:.2f}x  damp={result.damp:.2f}  ×{mult:.3f}  ->  {result.comp:.0f}")
             print(f"      {breakdown}")
 
     if args.dry_run:
@@ -231,34 +241,38 @@ def main():
         conn.close()
         return
 
-    # Write updates — retry on lock
+    # Write updates — one atomic full-column-set write per trader (design
+    # §4.1). write_elo_result() has its own retry-on-lock (monitoring.database
+    # .retry_on_locked); we still retry the final commit the same way as before.
     import time as _time
-    write_rows_flat = [
-        (round(new_elo, 4), round(mult, 4), now, round(base_elo, 6), addr)
-        for addr, base_elo, mult, new_elo, _ in updates
-    ]
-    sql = """
-        UPDATE traders
-        SET comprehensive_elo = ?,
-            pnl_modifier = ?,
-            elo_last_updated = ?,
-            base_category_elo = CASE
-                WHEN base_category_elo IS NULL
-                  OR ABS(base_category_elo - 1500.0) <= 0.0001
-                THEN ?
-                ELSE base_category_elo
-            END
-        WHERE address = ?
-    """
-    for _attempt in range(15):
-        try:
-            cur.executemany(sql, write_rows_flat)
-            break
-        except sqlite3.OperationalError as e:
-            if "locked" in str(e).lower():
-                _time.sleep(2)
-            else:
-                raise
+    for addr, base_elo, mult, result, _breakdown in updates:
+        # Replicate the exact pre-Stage-2 base_category_elo policy: backfill
+        # it only if it was never set (NULL) or still sitting at the 1500.0
+        # default; otherwise preserve whatever Writer A/a prior backfill set.
+        # (This is Writer B's policy specifically — write_elo_result itself
+        # takes whatever value the caller resolves, it has no opinion here.)
+        existing_base_cat = base_cat_raw.get(addr)
+        if existing_base_cat is None or abs(existing_base_cat - 1500.0) <= 0.0001:
+            # Backfill branch — matches the old SQL's bound `round(base_elo, 6)`.
+            final_base_cat = round(base_elo, 6)
+        else:
+            # Preserve branch — matches the old SQL's ELSE (column reassigned
+            # to its own current value, unrounded). write_elo_result() does
+            # not round base_category_elo itself; pass it through as-is.
+            final_base_cat = existing_base_cat
+
+        beh_mod, adv_mod, kelly, patience, timing = behavioral_snapshot.get(
+            addr, (None, None, None, None, None)
+        )
+        write_elo_result(
+            conn, addr, result,
+            base_category_elo=final_base_cat,
+            behavioral_modifier=beh_mod,
+            advanced_modifier=adv_mod,
+            kelly_alignment_score=kelly,
+            patience_score=patience,
+            timing_score=timing,
+        )
     for _attempt in range(15):
         try:
             conn.commit()
@@ -268,7 +282,7 @@ def main():
                 _time.sleep(2)
             else:
                 raise
-    written = len(write_rows_flat)
+    written = len(updates)
 
     # Final stats
     print(f"\n  Written {written} updates to database")

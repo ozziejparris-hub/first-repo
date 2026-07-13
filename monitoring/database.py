@@ -26,6 +26,75 @@ def retry_on_locked(max_retries=3, delay=1):
     return decorator
 
 
+@retry_on_locked(max_retries=15, delay=2)
+def write_elo_result(conn, address: str, result, *,
+                      base_category_elo: float,
+                      behavioral_modifier: float,
+                      advanced_modifier: float,
+                      kelly_alignment_score,
+                      patience_score,
+                      timing_score,
+                      elo_last_updated: str = None) -> None:
+    """
+    Atomic full-column-set write for comprehensive_elo (ELO arc design §4.1).
+
+    Writes ALL of comprehensive_elo, base_category_elo, behavioral_modifier,
+    advanced_modifier, pnl_modifier, kelly_alignment_score, patience_score,
+    timing_score, and elo_last_updated in ONE UPDATE, every time. No caller
+    may write a subset of these columns some other way -- this is what makes
+    the "behavioral_modifier from Sunday, comprehensive_elo from Monday"
+    artifact class (RQ-CONTESTED-001) structurally impossible: every write
+    refreshes every column from one coherent computation.
+
+    `result` is an analysis.comprehensive_elo_formula.EloResult (or anything
+    with `.comp` and `.pnl_gated` attributes) -- pnl_modifier is taken from
+    `result.pnl_gated`, the gated P&L multiplier, matching what Writer B has
+    always stored under that column name.
+
+    `base_category_elo` is the value the CALLER has already decided to write
+    (e.g. Writer B's "backfill on first touch, then preserve" rule, or
+    Writer A's "always overwrite with freshly re-derived value" rule) --
+    this helper does not itself impose a policy on that column, since the
+    two writers legitimately want different policies for it. It is written
+    EXACTLY as given, with no rounding applied here -- round it yourself if
+    you're writing a freshly-computed value; if you're preserving an
+    existing stored value verbatim (Writer B's "preserve" branch), passing
+    it through unrounded matches the legacy behavior exactly (the old
+    inline SQL's CASE/ELSE branch reassigned the column's own current value
+    without touching its precision at all).
+
+    `elo_last_updated` defaults to the canonical space-separated format
+    (`str(datetime.now())`) -- this is the O-3 timestamp-debt generator fix.
+    Only pass an explicit value for tests/backfills that need to pin a time.
+    """
+    if elo_last_updated is None:
+        elo_last_updated = str(datetime.now())
+    conn.execute("""
+        UPDATE traders
+        SET comprehensive_elo = ?,
+            base_category_elo = ?,
+            behavioral_modifier = ?,
+            advanced_modifier = ?,
+            pnl_modifier = ?,
+            kelly_alignment_score = ?,
+            patience_score = ?,
+            timing_score = ?,
+            elo_last_updated = ?
+        WHERE address = ?
+    """, (
+        round(result.comp, 4),
+        base_category_elo,
+        behavioral_modifier,
+        advanced_modifier,
+        round(result.pnl_gated, 4),
+        kelly_alignment_score,
+        patience_score,
+        timing_score,
+        elo_last_updated,
+        address,
+    ))
+
+
 class Database:
     """Handle SQLite database operations for tracking traders and trades."""
 
