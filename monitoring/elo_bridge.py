@@ -472,25 +472,41 @@ class UnifiedELOMonitoringBridge:
                               skip_contrarian: bool = False,
                               skip_advanced_metrics: bool = False) -> Dict:
         """
-        Full ELO recalculation for ALL traders (6/6 dimensions).
+        Full ELO recalculation for ALL traders.
 
-        Used for periodic deep analysis (daily). Updates:
+        ELO ARC STAGE 3 (2026-07): comprehensive_elo is computed via the
+        canonical formula (analysis.comprehensive_elo_formula
+        .compute_comprehensive_elo, w_beh=0, bounds ON) — the same formula
+        Writer B (apply_full_elo_modifiers.py) uses since Stage 2. The
+        canonical formula has no network or contrarian terms at all (design
+        §2.5/§8.6; this matches production reality already, since
+        run_sunday_elo.sh has always passed --skip-correlation
+        --skip-contrarian). "6/6 dimensions" is aspirational language kept
+        for the skip_* args' backward-compat CLI surface — honest accounting
+        is really ~4 dimensions (base, behavioral-mult, behavioral-bonus
+        [inert at w_beh=0], pnl). Updates:
         1. Base category ELO (resolution-based) ✓
-        2. Behavioral modifiers (fresh calculation) ✓
-        3. Advanced metrics (fresh calculation) ✓  [skipped if skip_advanced_metrics=True]
-        4. Network analysis (fresh calculation) ✓  [skipped if skip_correlation=True]
-        5. Contrarian analysis (fresh calculation) ✓  [skipped if skip_contrarian=True]
-        6. P&L modifiers (fresh calculation) ✓
+        2. Behavioral modifiers (fresh calculation) — stored, but only the
+           multiplicative term feeds the formula (at w_beh=0, inert)
+        3. Advanced metrics (fresh calculation) — stored, excluded from the
+           formula entirely (design §2.5)
+        4. Network analysis — NOT applied (canonical formula has no term)
+        5. Contrarian analysis — NOT applied (canonical formula has no term)
+        6. P&L modifiers (fresh calculation) ✓ — dominant term
 
         Args:
             verbose: Print detailed progress
             force_refresh: Force ELO system re-initialization (default: True)
-            skip_correlation: Skip correlation matrix (8.26M pairs, ~5h). Uses
-                cached/neutral scores instead. Reduces runtime to ~15 minutes.
-            skip_contrarian: Skip contrarian analysis (internal ELO recalc + market
-                resolution pass). Uses neutral modifiers instead.
-            skip_advanced_metrics: Skip calibration/risk/regret analysis. Uses
-                neutral modifiers (1.0x) instead. Safety valve for analysis errors.
+            skip_correlation: No longer gates anything (kept for CLI backward
+                compat) — network analysis is structurally excluded from the
+                canonical formula regardless of this flag.
+            skip_contrarian: No longer gates anything (kept for CLI backward
+                compat) — contrarian analysis is structurally excluded from
+                the canonical formula regardless of this flag.
+            skip_advanced_metrics: No longer gates anything (kept for CLI
+                backward compat) — advanced_modifier is always computed and
+                stored, but was already excluded from comprehensive_elo in
+                practice (production always passes this flag).
 
         Returns:
             Dictionary with update results:
@@ -554,35 +570,48 @@ class UnifiedELOMonitoringBridge:
         elo_values = []
         _behavioral_keys_logged = False
 
+        # ELO ARC STAGE 3 (2026-07): this loop's formula internals were replaced
+        # with analysis.comprehensive_elo_formula.compute_comprehensive_elo
+        # (w_beh=0, apply_soft_cap=True, apply_floor=True) + the atomic
+        # monitoring.database.write_elo_result() helper — the same canonical
+        # formula + single-writer machinery Writer B adopted in Stage 2.
+        # Local imports to avoid circular imports (matches this module's
+        # existing __init__ convention).
+        #
+        # skip_correlation / skip_contrarian / skip_advanced_metrics no longer
+        # gate anything in this loop: the canonical formula has no network,
+        # contrarian, or advanced-metrics terms at all (design §2.5/§8.6),
+        # and production (run_sunday_elo.sh) has always passed all three skip
+        # flags anyway, so apply_network/apply_contrarian were already dead in
+        # practice. advanced_modifier is still computed and stored fresh every
+        # week (Writer A's own job), just never folded into comprehensive_elo
+        # — identical treatment to Writer B's Stage 2.
+        from comprehensive_elo_formula import compute_comprehensive_elo
+        from .database import write_elo_result
+
         for i, trader_address in enumerate(trader_addresses):
             try:
-                # Get comprehensive ELO with ALL modifiers
-                comprehensive_elo = elo_system.get_trader_global_elo(
-                    trader_address,
-                    apply_behavioral=True,
-                    apply_advanced=not skip_advanced_metrics,
-                    apply_network=not skip_correlation,
-                    apply_contrarian=not skip_contrarian,
-                    apply_pnl=True
-                )
-
-                # Soft cap: prevent multiplier inflation for thin-sample traders
-                if comprehensive_elo > 0:
-                    res_count = resolved_counts.get(trader_address, 0)
-                    max_comprehensive = 1500.0 + (res_count * 150.0)
-                    comprehensive_elo = min(comprehensive_elo, max_comprehensive)
-
-                # Get base category ELO (without any modifiers)
+                # Base ELO (no modifiers) — re-derived fresh every Sunday from
+                # this run's calculate_elo_ratings() pass, unchanged from before.
                 base_category_elo = elo_system.get_trader_global_elo(trader_address)
 
-                # Get component modifiers for storage
+                # Component modifiers — still computed and stored fresh every
+                # week.
                 behavioral_data = elo_system.calculate_behavioral_multiplier(trader_address)
                 advanced_data = elo_system.calculate_advanced_metrics_multiplier(trader_address)
                 pnl_data = elo_system.calculate_pnl_multiplier(trader_address)
 
                 behavioral_modifier = behavioral_data['combined_multiplier']
                 advanced_modifier = advanced_data['combined_multiplier']
-                pnl_modifier = pnl_data['combined_multiplier']
+                pnl_raw = pnl_data['combined_multiplier']
+                closed_positions = pnl_data['raw_metrics']['closed_positions']
+
+                # Copy-trader exclusion guard — mirrors Writer B's Stage 2 guard.
+                # calculate_pnl_multiplier clamps to [0.40, 2.50] so mult==0.0
+                # is not currently reachable for this population; kept for
+                # parity/defense-in-depth, matching Writer B exactly.
+                if pnl_raw == 0.0:
+                    continue
 
                 # Persist behavioral snapshot scores — already computed in cache, no new
                 # computation. Cache key 'optimal_timing_score' != DB column 'timing_score'.
@@ -595,34 +624,34 @@ class UnifiedELOMonitoringBridge:
                     print(f"[ELO_BRIDGE] Behavioral cache keys (snapshot): {sorted(behavior_raw.keys())}")
                     _behavioral_keys_logged = True
 
-                # Store in database
-                cursor.execute("""
-                    UPDATE traders
-                    SET comprehensive_elo = ?,
-                        base_category_elo = ?,
-                        behavioral_modifier = ?,
-                        advanced_modifier = ?,
-                        pnl_modifier = ?,
-                        kelly_alignment_score = ?,
-                        patience_score = ?,
-                        timing_score = ?,
-                        elo_last_updated = ?
-                    WHERE address = ?
-                """, (
-                    comprehensive_elo,
-                    base_category_elo,
-                    behavioral_modifier,
-                    advanced_modifier,
-                    pnl_modifier,
-                    kelly_snap,
-                    patience_snap,
-                    timing_snap,
-                    datetime.now(),
-                    trader_address
-                ))
+                # bonus=0.0 placeholder — mathematically inert at w_beh=0.0
+                # (same reasoning as Writer B's Stage 2: reconstructing the
+                # real kelly/patience bonus step-function is unnecessary while
+                # it's zeroed out by w_beh; Stage 4 revisits this).
+                result = compute_comprehensive_elo(
+                    base=base_category_elo, beh_mult=behavioral_modifier, bonus=0.0,
+                    pnl_raw=pnl_raw, closed=closed_positions,
+                    resolved=resolved_counts.get(trader_address, 0),
+                    w_beh=0.0, apply_soft_cap=True, apply_floor=True,
+                )
+
+                # Atomic full-column-set write (design §4.1) — replaces the
+                # inline UPDATE. base_category_elo is passed through exactly as
+                # computed above, unrounded, matching this writer's pre-Stage-3
+                # behavior (Writer B's backfill-branch rounding is a Writer-B-
+                # specific legacy quirk that never applied to Writer A).
+                write_elo_result(
+                    conn, trader_address, result,
+                    base_category_elo=base_category_elo,
+                    behavioral_modifier=behavioral_modifier,
+                    advanced_modifier=advanced_modifier,
+                    kelly_alignment_score=kelly_snap,
+                    patience_score=patience_snap,
+                    timing_score=timing_snap,
+                )
 
                 traders_updated += 1
-                elo_values.append(comprehensive_elo)
+                elo_values.append(result.comp)
 
                 if (i + 1) % 500 == 0:
                     conn.commit()

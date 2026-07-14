@@ -37,6 +37,15 @@ component-column set atomically every time (this is the O-3 elo_last_updated
 canonical-format fix, and closes the "columns from different writers at
 different times" artifact class — see the ELO arc design doc §4.1).
 
+ELO ARC STAGE 3 (2026-07): apply_soft_cap and apply_floor flipped to True.
+Stage 2 deliberately ran bounds-OFF to reproduce this script's pre-migration
+output exactly; Stage 3 turns on the soft cap (1500 + resolved*150) and the
+400 floor for both writers (this one and Writer A / full_elo_recalculation),
+unifying the bounds across both cadences. w_beh stays 0 (Stage 0b: no
+measurable behavioral signal). Only traders whose uncapped value exceeds the
+soft cap or falls below the floor are affected — see the Stage 3 dry-run
+(scripts/dry_run_stage3.py) for the exact predicted set.
+
 When to re-run:
   - After P&L worker coverage increases significantly (currently ~40%)
   - After behavioral scores are populated
@@ -199,18 +208,18 @@ def main():
             pnl_entry = eligible.get(addr, {})
             closed_pos = pnl_entry.get('closed_positions', 0)
 
-            # ELO ARC STAGE 2: canonical formula at output-neutral settings.
-            # w_beh=0 (Stage 0b), apply_soft_cap=False, apply_floor=False —
-            # at these settings this IS Writer B's formula, term for term
-            # (proven: zero-diff equivalence test + live-data validation).
-            # beh_mult/bonus are mathematically inert at w_beh=0 (also
-            # proven), so plain placeholders are used here rather than
-            # reconstructing the real bonus step-function.
+            # ELO ARC STAGE 3: canonical formula, bounds ON. w_beh=0 (Stage
+            # 0b: no measurable behavioral signal) — beh_mult/bonus remain
+            # mathematically inert at w_beh=0 (proven in Stage 2), so plain
+            # placeholders are used here rather than reconstructing the real
+            # bonus step-function. apply_soft_cap=True, apply_floor=True from
+            # this stage on (previously both False, to reproduce this
+            # script's pre-migration output exactly during Stage 2).
             result = compute_comprehensive_elo(
                 base=base_elo, beh_mult=1.0, bonus=0.0,
                 pnl_raw=mult, closed=closed_pos,
                 resolved=resolved_counts.get(addr, 0),
-                w_beh=0.0, apply_soft_cap=False, apply_floor=False,
+                w_beh=0.0, apply_soft_cap=True, apply_floor=True,
             )
             updates.append((addr, base_elo, mult, result, pnl_data['breakdown']))
         except Exception as e:
