@@ -64,7 +64,12 @@ FLOOR_UNKNOWN_CAT       = 122417  # denormalized-category-cache drift; deferred 
 FLOOR_TS_TRADES         = 0      # trades.timestamp: all space-sep (YYYY-MM-DD HH:MM:SS)
 FLOOR_TS_MARKET_END     = 946    # markets.end_date: 946 T-sep rows mixed in (minority)
 FLOOR_TS_MARKET_RES     = 881    # markets.resolution_date: 881 T-sep rows (minority)
-FLOOR_TS_TRADER_ELO     = 23163  # traders.elo_last_updated: 23,163 space-sep rows (T is dominant)
+FLOOR_TS_TRADER_ELO     = 22560  # traders.elo_last_updated: 22,560 T-sep rows remaining (legacy
+                                   # format; space-sep is canonical per contract §16 / O-3-Stage-2).
+                                   # Corrected 2026-07-14 — was inverted (canonical_T=True), scoring
+                                   # write_elo_result's correct space-sep migration as a REGRESSION.
+                                   # Floor = today's actual T-sep debt; expected to drop toward 0 as
+                                   # write_elo_result rewrites rows, hitting ~0 after Stage 5 backfill.
 FLOOR_TS_POS_ENTRY      = 0      # positions.entry_timestamp: all T-sep
 FLOOR_TS_POS_EXIT       = 0      # positions.exit_timestamp: all T-sep
 FLOOR_TS_POS_CREATED    = 0      # positions.created_at: all space-sep
@@ -332,7 +337,7 @@ def check_timestamp_formats(cur, verbose):
         ("trades",    "timestamp",       False, FLOOR_TS_TRADES),
         ("markets",   "end_date",        False, FLOOR_TS_MARKET_END),
         ("markets",   "resolution_date", False, FLOOR_TS_MARKET_RES),
-        ("traders",   "elo_last_updated", True,  FLOOR_TS_TRADER_ELO),
+        ("traders",   "elo_last_updated", False, FLOOR_TS_TRADER_ELO),
         ("positions", "entry_timestamp",  True,  FLOOR_TS_POS_ENTRY),
         ("positions", "exit_timestamp",   True,  FLOOR_TS_POS_EXIT),
         ("positions", "created_at",       False, FLOOR_TS_POS_CREATED),
