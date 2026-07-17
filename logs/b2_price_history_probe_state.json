@@ -1,0 +1,2195 @@
+{
+  "sample": [
+    {
+      "market_id": "0x7cbf8f09953ba84f925b75a505be66bc99d94b02fe4222e0300e7fa707068f1b",
+      "title": "Will another person be the next Prime Minister of France?",
+      "category": "Elections",
+      "resolution_date": "2025-12-31 00:00:00",
+      "condition_id": "0x7cbf8f09953ba84f925b75a505be66bc99d94b02fe4222e0300e7fa707068f1b",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 0.0767,
+      "trade_count": 1,
+      "age": "old"
+    },
+    {
+      "market_id": "0x17495d6e2ffe35c848dc1a121991174e968d5c5dccf6b80461dda04e1e90c369",
+      "title": "Will the government shutdown end November 20?",
+      "category": "Geopolitics",
+      "resolution_date": "2025-11-21 00:00:00",
+      "condition_id": "0x17495d6e2ffe35c848dc1a121991174e968d5c5dccf6b80461dda04e1e90c369",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 6.999999,
+      "trade_count": 3,
+      "age": "old"
+    },
+    {
+      "market_id": "0x0b73136f982962092d500a87bcefb52f111ff849445dca9204e69ee4af238e93",
+      "title": "Will Donald or Melania Trump say \"Linda\" or \"McMahon\" during executive order signing events on November 13?",
+      "category": "Elections",
+      "resolution_date": "2025-11-13 23:24:32",
+      "condition_id": "0x0b73136f982962092d500a87bcefb52f111ff849445dca9204e69ee4af238e93",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 68.59999599992442,
+      "trade_count": 2,
+      "age": "old"
+    },
+    {
+      "market_id": "0x8a0d905976e0b0c210df7a3967bddeb126ca47b688eaf0c5c3bbc7e8f05dd449",
+      "title": "Will \u00c9lisabeth Borne be the next Prime Minister of France?",
+      "category": "Elections",
+      "resolution_date": "2025-12-31 00:00:00",
+      "condition_id": "0x8a0d905976e0b0c210df7a3967bddeb126ca47b688eaf0c5c3bbc7e8f05dd449",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 1.0,
+      "trade_count": 1,
+      "age": "old"
+    },
+    {
+      "market_id": "0x194093818ed7ab8110c042e14bc8b1bfd48175e7f18aa4f4c171dca6d0150f89",
+      "title": "Will Irma Rosibel Moncada Godoy win the 2025 Honduran presidential election by between 3% and 6%?",
+      "category": "Elections",
+      "resolution_date": "2025-11-30 00:00:00",
+      "condition_id": "0x194093818ed7ab8110c042e14bc8b1bfd48175e7f18aa4f4c171dca6d0150f89",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 41.985,
+      "trade_count": 3,
+      "age": "old"
+    },
+    {
+      "market_id": "0x901bccf554ef7c62ea9e2bdb1792fb58030a94d4302e2a4866bc2288a77e037a",
+      "title": "Will Sorin Grindeanu finish third in the 2025 Bucharest mayoral by-election?",
+      "category": "Elections",
+      "resolution_date": "2025-12-08 06:29:27",
+      "condition_id": "0x901bccf554ef7c62ea9e2bdb1792fb58030a94d4302e2a4866bc2288a77e037a",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 0,
+      "trade_count": 0,
+      "age": "old"
+    },
+    {
+      "market_id": "0xaaa219cff0f1a418e0fa2aa11b47a3bc642e499dffc19312c55b25fad570bd18",
+      "title": "Will Trump say \"Family\" or \"Friend\" 3+ times at Christmas Tree Lighting on December 4?",
+      "category": "Elections",
+      "resolution_date": "2025-12-05 07:15:43",
+      "condition_id": "0xaaa219cff0f1a418e0fa2aa11b47a3bc642e499dffc19312c55b25fad570bd18",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 0,
+      "trade_count": 0,
+      "age": "old"
+    },
+    {
+      "market_id": "0x83e670fd628dc76016696a01fd235ccca81b5796d0fb073a8d2672a56504419e",
+      "title": "Will Cuomo x Mamdani debate three times before election?",
+      "category": "Elections",
+      "resolution_date": "2025-11-04 08:19:17",
+      "condition_id": "0x83e670fd628dc76016696a01fd235ccca81b5796d0fb073a8d2672a56504419e",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 0,
+      "trade_count": 0,
+      "age": "old"
+    },
+    {
+      "market_id": "0x47604457f7f994633c0f0052868419b6dcb5292d365cfcb01385ae08def18ea6",
+      "title": "Will Trump say \"Hottest\" during Signing tonight?",
+      "category": "Elections",
+      "resolution_date": "2025-11-12 00:00:00",
+      "condition_id": "0x47604457f7f994633c0f0052868419b6dcb5292d365cfcb01385ae08def18ea6",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 3.15,
+      "trade_count": 1,
+      "age": "old"
+    },
+    {
+      "market_id": "0x22f188372d45d1ccae6358611d5d9d418a5e61610fafe9b03befe829b1a368b1",
+      "title": "Will Trump say \"Communist\" or \"Radical\" 2+ times during the McDonald's Summit on November 17?",
+      "category": "Elections",
+      "resolution_date": "2025-11-18 03:45:27",
+      "condition_id": "0x22f188372d45d1ccae6358611d5d9d418a5e61610fafe9b03befe829b1a368b1",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 4.0,
+      "trade_count": 2,
+      "age": "old"
+    },
+    {
+      "market_id": "0xff4eb17d2099edee5b029aa49843f1c6f0ae83be4af5ce465842002e13d9c5bc",
+      "title": "Will Trump's approval rating be between 41.5 and 41.9 on December 12, 2025?",
+      "category": "Elections",
+      "resolution_date": "2025-12-13 15:18:59",
+      "condition_id": "0xff4eb17d2099edee5b029aa49843f1c6f0ae83be4af5ce465842002e13d9c5bc",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 0.3,
+      "trade_count": 1,
+      "age": "old"
+    },
+    {
+      "market_id": "0x9d59ce82a9989c7980b6722665480a4e57d7d6cdaf94a485a36b9efc8d362700",
+      "title": "Will the People's Party for Freedom and Democracy win the fifth most seats in the 2025 Netherlands parliamentary election?",
+      "category": "Elections",
+      "resolution_date": "2025-11-03 03:59:43",
+      "condition_id": "0x9d59ce82a9989c7980b6722665480a4e57d7d6cdaf94a485a36b9efc8d362700",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 0,
+      "trade_count": 0,
+      "age": "old"
+    },
+    {
+      "market_id": "0xf20e1825339f7e4c0b8868176f7d1f876674a554ef838dbaf266814098887fc2",
+      "title": "VA-4 Special Election: McClellan (D) vs. Benjamin (R)",
+      "category": "Elections",
+      "resolution_date": "2025-12-11 20:35:22",
+      "condition_id": "0xf20e1825339f7e4c0b8868176f7d1f876674a554ef838dbaf266814098887fc2",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 0,
+      "trade_count": 0,
+      "age": "old"
+    },
+    {
+      "market_id": "0x63f5f9a647781e3c8cb3b34bb847f5ba6172fd07330827a5197e9135dca49a95",
+      "title": "Will Trump and Mamdani shake hands for between 2 and 6 seconds on November 21 2025?",
+      "category": "Elections",
+      "resolution_date": "2025-11-21 00:00:00",
+      "condition_id": "0x63f5f9a647781e3c8cb3b34bb847f5ba6172fd07330827a5197e9135dca49a95",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 249.225192,
+      "trade_count": 11,
+      "age": "old"
+    },
+    {
+      "market_id": "0x77b5bfe44beb0641905f76ee2f32f96f47d8863bcad586678224a6dc02f03ad3",
+      "title": "US forces in Iran in 2025?",
+      "category": "Geopolitics",
+      "resolution_date": "2025-12-31 00:00:00",
+      "condition_id": "0x77b5bfe44beb0641905f76ee2f32f96f47d8863bcad586678224a6dc02f03ad3",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 11628.117988,
+      "trade_count": 26,
+      "age": "old"
+    },
+    {
+      "market_id": "0x44dcfd813569f30bc8ecda61aaa47d94804c2e2d3614189aecc0a8dd0c164671",
+      "title": "Will C\u0103t\u0103lin Drul\u0103 get between 20% and 25% of the vote in the Bucharest Mayoral election?",
+      "category": "Elections",
+      "resolution_date": "2025-12-08 08:28:45",
+      "condition_id": "0x44dcfd813569f30bc8ecda61aaa47d94804c2e2d3614189aecc0a8dd0c164671",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 147.96620000000001,
+      "trade_count": 4,
+      "age": "old"
+    },
+    {
+      "market_id": "0xab50f81fc9f77e7c0a08165664f564fa6a34076dfdadc4ab4e8bc1904774a6db",
+      "title": "Will Russia enter Lyman by November 30?",
+      "category": "Geopolitics",
+      "resolution_date": "2025-11-30 00:00:00",
+      "condition_id": "0xab50f81fc9f77e7c0a08165664f564fa6a34076dfdadc4ab4e8bc1904774a6db",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 3749.8776759973302,
+      "trade_count": 40,
+      "age": "old"
+    },
+    {
+      "market_id": "0x12eacf9f9fb7c122bf45985259b1ad158c30889dc4f0779a21b63d451abbfaba",
+      "title": "US x Venezuela military engagement by November 5?",
+      "category": "Geopolitics",
+      "resolution_date": "2025-11-05 00:00:00",
+      "condition_id": "0x12eacf9f9fb7c122bf45985259b1ad158c30889dc4f0779a21b63d451abbfaba",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 1022.5318399933091,
+      "trade_count": 17,
+      "age": "old"
+    },
+    {
+      "market_id": "0xbb0e4120b64af4ff962dae9fda5e73f3ea14c689dd22e4099adeafe69700e546",
+      "title": "Will Francesca Mu\u00f1oz win the Chilean presidential election?",
+      "category": "Elections",
+      "resolution_date": "2025-11-16 00:00:00",
+      "condition_id": "0xbb0e4120b64af4ff962dae9fda5e73f3ea14c689dd22e4099adeafe69700e546",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 822.0629789999999,
+      "trade_count": 37,
+      "age": "old"
+    },
+    {
+      "market_id": "0xc8605ba9c73fc42350af7efb509f0e99cd02ea2c8da360cc74e145f9210f3a00",
+      "title": "Will Zelenskyy talk to Putin by November 30?",
+      "category": "Geopolitics",
+      "resolution_date": "2025-12-01 07:07:38",
+      "condition_id": "0xc8605ba9c73fc42350af7efb509f0e99cd02ea2c8da360cc74e145f9210f3a00",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 192.129876,
+      "trade_count": 1,
+      "age": "old"
+    },
+    {
+      "market_id": "0x0d35112c4b54c098a5a9ca2d9df09eff427419e64bb87ae7b425de7ced2c5174",
+      "title": "Will Russia capture Kupiansk-Vuzlovyi by December 31?",
+      "category": "Geopolitics",
+      "resolution_date": "2025-11-30 00:00:00",
+      "condition_id": "0x0d35112c4b54c098a5a9ca2d9df09eff427419e64bb87ae7b425de7ced2c5174",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 7104.649203,
+      "trade_count": 25,
+      "age": "old"
+    },
+    {
+      "market_id": "0x18ec17d5bd6b1c5605cc51e7c228722de8b6e78a42318b1576986aaa7ef7847b",
+      "title": "Will Trump say \"Howard\" or \"Witkoff\" during the Hanukkah Reception event on Tuesday?",
+      "category": "Elections",
+      "resolution_date": "2025-12-16 00:00:00",
+      "condition_id": null,
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 101.605899,
+      "trade_count": 7,
+      "age": "old"
+    },
+    {
+      "market_id": "0xc68c21f8497c9f4edf6127e6215aa118fd753f8bef0f2f3dda469e6adad43b21",
+      "title": "Will Marco Enr\u00edquez-Ominami win the Chilean presidential election?",
+      "category": "Elections",
+      "resolution_date": "2025-11-16 00:00:00",
+      "condition_id": "0xc68c21f8497c9f4edf6127e6215aa118fd753f8bef0f2f3dda469e6adad43b21",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 22184.939307999997,
+      "trade_count": 41,
+      "age": "old"
+    },
+    {
+      "market_id": "0xee44d5936019f87f0fee643d930ac34139e7211ebdde3f3d27c290bb9fdd5929",
+      "title": "Will Rudy Giuliani win the 2025 NYC mayoral election?",
+      "category": "Elections",
+      "resolution_date": "2025-11-05 06:14:19",
+      "condition_id": "0xee44d5936019f87f0fee643d930ac34139e7211ebdde3f3d27c290bb9fdd5929",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 95591.690508,
+      "trade_count": 102,
+      "age": "old"
+    },
+    {
+      "market_id": "0x2bf7d4a444ffb3f1d1cf1be7f7f3ede324893edb75a81f2b5c03ec3e23cffd90",
+      "title": "Will Trump say \"Autism\" or \"Tylenol\" during the America Business Forum on November 5?",
+      "category": "Elections",
+      "resolution_date": "2025-11-05 00:00:00",
+      "condition_id": "0x2bf7d4a444ffb3f1d1cf1be7f7f3ede324893edb75a81f2b5c03ec3e23cffd90",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 1115.5264,
+      "trade_count": 3,
+      "age": "old"
+    },
+    {
+      "market_id": "0xe2b9b33787692abed2a43c31f9dac13172560523d970584d9f922679decdad87",
+      "title": "Will Patriotic Electoral Bloc (BEP) be part of the next Government of the Moldova?",
+      "category": "Elections",
+      "resolution_date": "2025-11-05 14:50:33",
+      "condition_id": "0xe2b9b33787692abed2a43c31f9dac13172560523d970584d9f922679decdad87",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 99.49995,
+      "trade_count": 3,
+      "age": "old"
+    },
+    {
+      "market_id": "0x5ab86507431fa87dab1bae357937bfb7574a9c65a0d09f3343f10abf31b91b84",
+      "title": "Will Corey Edwards be the Democratic Nominee for KY-06?",
+      "category": "Elections",
+      "resolution_date": "2026-05-19 00:00:00",
+      "condition_id": null,
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 6.619914,
+      "trade_count": 2,
+      "age": "recent"
+    },
+    {
+      "market_id": "0x3523a6cd9082c05d1d5e70b91d54e3c89f72ead2fbb6060ef3ae905e50427576",
+      "title": "Will Russia capture Havrylivka by June 30, 2026?",
+      "category": "Geopolitics",
+      "resolution_date": "2026-06-30 00:00:00",
+      "condition_id": null,
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 34.899974,
+      "trade_count": 3,
+      "age": "recent"
+    },
+    {
+      "market_id": "0xf748cc0f6be221956c42877065c972f0dbb402d52e63a51c34c1e9868fc9f00e",
+      "title": "Will Hassan Shariatmadari be the next Supreme Leader of Iran?",
+      "category": "Geopolitics",
+      "resolution_date": "2026-05-19 06:25:09",
+      "condition_id": null,
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 13.50016,
+      "trade_count": 4,
+      "age": "recent"
+    },
+    {
+      "market_id": "0x3a36e6988c6d0a3eb59869784fbd981961d4332bb8b61c56f12e982e3c0af5fd",
+      "title": "Will Mike Thurmond finish first in the first round of the 2026 Georgia Governor Democratic primary election?",
+      "category": "Elections",
+      "resolution_date": "2026-05-19 00:00:00",
+      "condition_id": null,
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 6.3500000000000005,
+      "trade_count": 2,
+      "age": "recent"
+    },
+    {
+      "market_id": "0x6a5a2f0dee907cdb831d2f697674cd6827ab0cafdab130615b8ec656b62ce51a",
+      "title": "Mahmoud Abbas out as Palestinian President by June 30?",
+      "category": "Geopolitics",
+      "resolution_date": "2026-06-30 00:00:00",
+      "condition_id": null,
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 648.894846001432,
+      "trade_count": 24,
+      "age": "recent"
+    },
+    {
+      "market_id": "0x352ac53453f995e751d2d90c7d781441eba9d1c4c7ebbc8e738fc570a543665b",
+      "title": "Will a Republican win Wisconsin US Senate Election?",
+      "category": "Elections",
+      "resolution_date": "2026-06-04 21:36:39",
+      "condition_id": "0x352ac53453f995e751d2d90c7d781441eba9d1c4c7ebbc8e738fc570a543665b",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 648.898191998109,
+      "trade_count": 13,
+      "age": "recent"
+    },
+    {
+      "market_id": "0x1370bc457e501465c15c52e4c6037472142e06671e71fcf6e5c8c432e34c8521",
+      "title": "Will Trump say \"Epstein\" in May?",
+      "category": "Elections",
+      "resolution_date": "2026-05-31 00:00:00",
+      "condition_id": null,
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 130.569498,
+      "trade_count": 14,
+      "age": "recent"
+    },
+    {
+      "market_id": "0x61478e8924681a9a25ac25efb47da236381ea2d7ea8fd4299c0b2b1d673635ac",
+      "title": "Will Ron Meinhardt be the Republican nominee for Senate in Oklahoma?",
+      "category": "Elections",
+      "resolution_date": "2026-06-16 00:00:00",
+      "condition_id": null,
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 3.7439999999999998,
+      "trade_count": 1,
+      "age": "recent"
+    },
+    {
+      "market_id": "0x99b920706e0941d4cb3d12e93cecd40a7b54b5bca204aaa3fc6c1837bc52e9d8",
+      "title": "Will Eman Alexander Cross be the next Prime Minister of Malta following the 2026 Maltese general election?",
+      "category": "Elections",
+      "resolution_date": "2026-05-30 00:00:00",
+      "condition_id": null,
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 41.418,
+      "trade_count": 3,
+      "age": "recent"
+    },
+    {
+      "market_id": "0xd792e8eb343605e3ab3b44f5eb7ceffaa1ee2464dc697a8638124fdd443d81a6",
+      "title": "Will Candace Owens or Hunter Biden say \"Election\" on Thursday?",
+      "category": "Elections",
+      "resolution_date": "2026-05-21 00:00:00",
+      "condition_id": null,
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 102.9334,
+      "trade_count": 3,
+      "age": "recent"
+    },
+    {
+      "market_id": "0x6f469bb6d087323e8fe41d5bb3d9c32ae243fafdcee240e4aef3252e8ffc59c4",
+      "title": "Will Cory Booker be the Democratic nominee for Senate in New Jersey?",
+      "category": "Elections",
+      "resolution_date": "2026-06-02 00:00:00",
+      "condition_id": "0x6f469bb6d087323e8fe41d5bb3d9c32ae243fafdcee240e4aef3252e8ffc59c4",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 505.61739,
+      "trade_count": 6,
+      "age": "recent"
+    },
+    {
+      "market_id": "0xf53df1407851c4f67e9c0afb3a9d44b67122544db525088d57f92d9c9a1b821d",
+      "title": "Will Logan Forsythe be the Democratic nominee for Senate in Kentucky?",
+      "category": "Elections",
+      "resolution_date": "2026-05-20 06:08:51",
+      "condition_id": "0xf53df1407851c4f67e9c0afb3a9d44b67122544db525088d57f92d9c9a1b821d",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 0,
+      "trade_count": 0,
+      "age": "recent"
+    },
+    {
+      "market_id": "0xd86a816093fcd0a0e1ca440bc5ce199bd3c5a8d6139e044b076958164f8c5423",
+      "title": "US x Iran permanent peace deal by June 15, 2026?",
+      "category": "Geopolitics",
+      "resolution_date": "2026-06-15 00:00:00",
+      "condition_id": null,
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 1762198.401746593,
+      "trade_count": 2916,
+      "age": "recent"
+    },
+    {
+      "market_id": "0x09c314ec8306ecadfd263d7fdef1425a44791547474a92be675c70ae451277ad",
+      "title": "Conservatives win majority in Canadian election?",
+      "category": "Elections",
+      "resolution_date": "2026-06-04 21:36:39",
+      "condition_id": "0x09c314ec8306ecadfd263d7fdef1425a44791547474a92be675c70ae451277ad",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 125710.3326689716,
+      "trade_count": 299,
+      "age": "recent"
+    },
+    {
+      "market_id": "0x2682960748b5b1a868fe9726901f21d93465a7b253c30826d346049d0e679973",
+      "title": "Will the Liberal Party win the most seats in Ontario in the next Canadian Election?",
+      "category": "Elections",
+      "resolution_date": "2026-06-04 21:36:39",
+      "condition_id": "0x2682960748b5b1a868fe9726901f21d93465a7b253c30826d346049d0e679973",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 13470.466211989595,
+      "trade_count": 62,
+      "age": "recent"
+    },
+    {
+      "market_id": "0xb82d5aec1ad294e21e835cee5ecf2f56ec40ddc925d7f30d6a7831d1679505c5",
+      "title": "Will LDP win the most seats in the House of Councillors following the 2025 Japan election?",
+      "category": "Elections",
+      "resolution_date": "2026-06-04 21:36:39",
+      "condition_id": "0xb82d5aec1ad294e21e835cee5ecf2f56ec40ddc925d7f30d6a7831d1679505c5",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 20877.22946300014,
+      "trade_count": 109,
+      "age": "recent"
+    },
+    {
+      "market_id": "0x715eb3d786c7d27ff65c28b3122ad0ecb41e3d0ca588dc1e291317a06c1ec47f",
+      "title": "Will Jordan Wood be the Democratic nominee for Senate in Maine?",
+      "category": "Elections",
+      "resolution_date": "2026-06-09 00:00:00",
+      "condition_id": "0x715eb3d786c7d27ff65c28b3122ad0ecb41e3d0ca588dc1e291317a06c1ec47f",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 1500.5962449941217,
+      "trade_count": 16,
+      "age": "recent"
+    },
+    {
+      "market_id": "0x1c4370663538d05ac11da9b5371d4951d8788d77e8447941c5141773855c8fc4",
+      "title": "Will Katie Porter advance from the 2026 California Governor primary election?",
+      "category": "Elections",
+      "resolution_date": "2026-06-02 00:00:00",
+      "condition_id": "0x1c4370663538d05ac11da9b5371d4951d8788d77e8447941c5141773855c8fc4",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 2556.536508,
+      "trade_count": 10,
+      "age": "recent"
+    },
+    {
+      "market_id": "0x88d67705780a3d922317ecb0c78a947a306174d0510df2ae89394d5abfb28206",
+      "title": "Will Barack Obama win the 2028 Democratic presidential nomination?",
+      "category": "Elections",
+      "resolution_date": "2028-11-07 00:00:00",
+      "condition_id": "0x88d67705780a3d922317ecb0c78a947a306174d0510df2ae89394d5abfb28206",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 2066192.4925155805,
+      "trade_count": 6055,
+      "age": "recent"
+    },
+    {
+      "market_id": "0x4d0c4865bdecc5f7971dbab47bb6c069d93909dec75bdff52fb766ae6094a6d6",
+      "title": "Will Donald Trump announce that the United States blockade of the Strait of Hormuz has been lifted by June 30, 2026?",
+      "category": "Geopolitics",
+      "resolution_date": "2026-06-15 09:34:27",
+      "condition_id": null,
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 112695.93052203624,
+      "trade_count": 702,
+      "age": "recent"
+    },
+    {
+      "market_id": "0x1e7a237f7852453254324f57cd5b74288e116b642ce686250c84c6aba7bc368f",
+      "title": "Will there be 155,000,000-160,000,000 votes cast in the U.S. Presidential Election?",
+      "category": "Elections",
+      "resolution_date": "2026-06-04 21:36:39",
+      "condition_id": "0x1e7a237f7852453254324f57cd5b74288e116b642ce686250c84c6aba7bc368f",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 123822.3184679987,
+      "trade_count": 102,
+      "age": "recent"
+    },
+    {
+      "market_id": "0x9031561489f77ba1f89c0b963170a6853c39840e6e89a6a658a05d12b60a1ff0",
+      "title": "Will Trump and Putin meet next in Russia?",
+      "category": "Geopolitics",
+      "resolution_date": "2026-06-30 00:00:00",
+      "condition_id": "0x9031561489f77ba1f89c0b963170a6853c39840e6e89a6a658a05d12b60a1ff0",
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 2394.968816908165,
+      "trade_count": 93,
+      "age": "recent"
+    },
+    {
+      "market_id": "0xf526b2fbff94ae996818e76c8b54cc99ffbfa0a1a9972a48253ada65e32786f7",
+      "title": "US announces new Iran agreement/ceasefire extension by June 3?",
+      "category": "Geopolitics",
+      "resolution_date": "2026-06-03 00:00:00",
+      "condition_id": null,
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 46689.81726899152,
+      "trade_count": 161,
+      "age": "recent"
+    },
+    {
+      "market_id": "0x683106ac1b76fbad311d603e42ae76fe499fecae9f046fe473694537c3e223b1",
+      "title": "Will Trump say \"Friend of mine\" during events with Xi Jinping?",
+      "category": "Geopolitics",
+      "resolution_date": "2026-06-04 21:36:39",
+      "condition_id": null,
+      "clob_token_id_yes": null,
+      "clob_token_id_no": null,
+      "notional": 5692.003913010851,
+      "trade_count": 147,
+      "age": "recent"
+    }
+  ],
+  "results": {
+    "0x7cbf8f09953ba84f925b75a505be66bc99d94b02fe4222e0300e7fa707068f1b": {
+      "market_id": "0x7cbf8f09953ba84f925b75a505be66bc99d94b02fe4222e0300e7fa707068f1b",
+      "title": "Will another person be the next Prime Minister of France?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 0.0767,
+      "resolution_date": "2025-12-31 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 6,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 6,
+        "median_gap_minutes": 30.1,
+        "span_days": 0.1,
+        "first_point": 1760131807,
+        "last_point": 1760140815,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x17495d6e2ffe35c848dc1a121991174e968d5c5dccf6b80461dda04e1e90c369": {
+      "market_id": "0x17495d6e2ffe35c848dc1a121991174e968d5c5dccf6b80461dda04e1e90c369",
+      "title": "Will the government shutdown end November 20?",
+      "category": "Geopolitics",
+      "age": "old",
+      "notional": 6.999999,
+      "resolution_date": "2025-11-21 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 165,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 165,
+        "median_gap_minutes": 30.0,
+        "span_days": 3.42,
+        "first_point": 1762741809,
+        "last_point": 1763037013,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x0b73136f982962092d500a87bcefb52f111ff849445dca9204e69ee4af238e93": {
+      "market_id": "0x0b73136f982962092d500a87bcefb52f111ff849445dca9204e69ee4af238e93",
+      "title": "Will Donald or Melania Trump say \"Linda\" or \"McMahon\" during executive order signing events on November 13?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 68.59999599992442,
+      "resolution_date": "2025-11-13 23:24:32",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 38,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 38,
+        "median_gap_minutes": 30.1,
+        "span_days": 0.77,
+        "first_point": 1763008212,
+        "last_point": 1763074824,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x8a0d905976e0b0c210df7a3967bddeb126ca47b688eaf0c5c3bbc7e8f05dd449": {
+      "market_id": "0x8a0d905976e0b0c210df7a3967bddeb126ca47b688eaf0c5c3bbc7e8f05dd449",
+      "title": "Will \u00c9lisabeth Borne be the next Prime Minister of France?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 1.0,
+      "resolution_date": "2025-12-31 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 24,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 24,
+        "median_gap_minutes": 30.0,
+        "span_days": 0.48,
+        "first_point": 1760090405,
+        "last_point": 1760131822,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x194093818ed7ab8110c042e14bc8b1bfd48175e7f18aa4f4c171dca6d0150f89": {
+      "market_id": "0x194093818ed7ab8110c042e14bc8b1bfd48175e7f18aa4f4c171dca6d0150f89",
+      "title": "Will Irma Rosibel Moncada Godoy win the 2025 Honduran presidential election by between 3% and 6%?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 41.985,
+      "resolution_date": "2025-11-30 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 56,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 56,
+        "median_gap_minutes": 30.0,
+        "span_days": 1.15,
+        "first_point": 1764482421,
+        "last_point": 1764581412,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x901bccf554ef7c62ea9e2bdb1792fb58030a94d4302e2a4866bc2288a77e037a": {
+      "market_id": "0x901bccf554ef7c62ea9e2bdb1792fb58030a94d4302e2a4866bc2288a77e037a",
+      "title": "Will Sorin Grindeanu finish third in the 2025 Bucharest mayoral by-election?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 0,
+      "resolution_date": "2025-12-08 06:29:27",
+      "anchor_source": "resolution_date_fallback",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 642,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 642,
+        "median_gap_minutes": 30.0,
+        "span_days": 13.35,
+        "first_point": 1764019810,
+        "last_point": 1765173611,
+        "coverage_full_to_anchor_window": false,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 3
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0xaaa219cff0f1a418e0fa2aa11b47a3bc642e499dffc19312c55b25fad570bd18": {
+      "market_id": "0xaaa219cff0f1a418e0fa2aa11b47a3bc642e499dffc19312c55b25fad570bd18",
+      "title": "Will Trump say \"Family\" or \"Friend\" 3+ times at Christmas Tree Lighting on December 4?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 0,
+      "resolution_date": "2025-12-05 07:15:43",
+      "anchor_source": "resolution_date_fallback",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 33,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 33,
+        "median_gap_minutes": 30.0,
+        "span_days": 0.67,
+        "first_point": 1764860419,
+        "last_point": 1764918011,
+        "coverage_full_to_anchor_window": false,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 3
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x83e670fd628dc76016696a01fd235ccca81b5796d0fb073a8d2672a56504419e": {
+      "market_id": "0x83e670fd628dc76016696a01fd235ccca81b5796d0fb073a8d2672a56504419e",
+      "title": "Will Cuomo x Mamdani debate three times before election?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 0,
+      "resolution_date": "2025-11-04 08:19:17",
+      "anchor_source": "resolution_date_fallback",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 666,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 1434,
+        "median_gap_minutes": 30.0,
+        "span_days": 29.98,
+        "first_point": 1759653005,
+        "last_point": 1762243210,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 3
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x47604457f7f994633c0f0052868419b6dcb5292d365cfcb01385ae08def18ea6": {
+      "market_id": "0x47604457f7f994633c0f0052868419b6dcb5292d365cfcb01385ae08def18ea6",
+      "title": "Will Trump say \"Hottest\" during Signing tonight?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 3.15,
+      "resolution_date": "2025-11-12 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 10,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 10,
+        "median_gap_minutes": 30.0,
+        "span_days": 0.19,
+        "first_point": 1762999214,
+        "last_point": 1763015417,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x22f188372d45d1ccae6358611d5d9d418a5e61610fafe9b03befe829b1a368b1": {
+      "market_id": "0x22f188372d45d1ccae6358611d5d9d418a5e61610fafe9b03befe829b1a368b1",
+      "title": "Will Trump say \"Communist\" or \"Radical\" 2+ times during the McDonald's Summit on November 17?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 4.0,
+      "resolution_date": "2025-11-18 03:45:27",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 19,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 19,
+        "median_gap_minutes": 30.0,
+        "span_days": 0.37,
+        "first_point": 1763404207,
+        "last_point": 1763436606,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0xff4eb17d2099edee5b029aa49843f1c6f0ae83be4af5ce465842002e13d9c5bc": {
+      "market_id": "0xff4eb17d2099edee5b029aa49843f1c6f0ae83be4af5ce465842002e13d9c5bc",
+      "title": "Will Trump's approval rating be between 41.5 and 41.9 on December 12, 2025?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 0.3,
+      "resolution_date": "2025-12-13 15:18:59",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 24,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 24,
+        "median_gap_minutes": 30.0,
+        "span_days": 0.48,
+        "first_point": 1765396807,
+        "last_point": 1765438209,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x9d59ce82a9989c7980b6722665480a4e57d7d6cdaf94a485a36b9efc8d362700": {
+      "market_id": "0x9d59ce82a9989c7980b6722665480a4e57d7d6cdaf94a485a36b9efc8d362700",
+      "title": "Will the People's Party for Freedom and Democracy win the fifth most seats in the 2025 Netherlands parliamentary election?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 0,
+      "resolution_date": "2025-11-03 03:59:43",
+      "anchor_source": "resolution_date_fallback",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 240,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 240,
+        "median_gap_minutes": 30.0,
+        "span_days": 5.12,
+        "first_point": 1761697811,
+        "last_point": 1762140607,
+        "coverage_full_to_anchor_window": false,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 3
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0xf20e1825339f7e4c0b8868176f7d1f876674a554ef838dbaf266814098887fc2": {
+      "market_id": "0xf20e1825339f7e4c0b8868176f7d1f876674a554ef838dbaf266814098887fc2",
+      "title": "VA-4 Special Election: McClellan (D) vs. Benjamin (R)",
+      "category": "Elections",
+      "age": "old",
+      "notional": 0,
+      "resolution_date": "2025-12-11 20:35:22",
+      "anchor_source": "resolution_date_fallback",
+      "token_resolved": false,
+      "token_source": null,
+      "token_resolve_note": "gamma returned no matching conditionId",
+      "clob": {
+        "retained": false,
+        "point_count": 0
+      },
+      "trade_tape": {
+        "has_trades": false,
+        "trade_count": 0
+      },
+      "status": "done"
+    },
+    "0x63f5f9a647781e3c8cb3b34bb847f5ba6172fd07330827a5197e9135dca49a95": {
+      "market_id": "0x63f5f9a647781e3c8cb3b34bb847f5ba6172fd07330827a5197e9135dca49a95",
+      "title": "Will Trump and Mamdani shake hands for between 2 and 6 seconds on November 21 2025?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 249.225192,
+      "resolution_date": "2025-11-21 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 70,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 70,
+        "median_gap_minutes": 30.0,
+        "span_days": 1.44,
+        "first_point": 1763659822,
+        "last_point": 1763784027,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x77b5bfe44beb0641905f76ee2f32f96f47d8863bcad586678224a6dc02f03ad3": {
+      "market_id": "0x77b5bfe44beb0641905f76ee2f32f96f47d8863bcad586678224a6dc02f03ad3",
+      "title": "US forces in Iran in 2025?",
+      "category": "Geopolitics",
+      "age": "old",
+      "notional": 11628.117988,
+      "resolution_date": "2025-12-31 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 672,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 5369,
+        "median_gap_minutes": 30.0,
+        "span_days": 111.98,
+        "first_point": 1756918812,
+        "last_point": 1766593817,
+        "coverage_full_to_anchor_window": false,
+        "chunks_capped": true,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 8
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x44dcfd813569f30bc8ecda61aaa47d94804c2e2d3614189aecc0a8dd0c164671": {
+      "market_id": "0x44dcfd813569f30bc8ecda61aaa47d94804c2e2d3614189aecc0a8dd0c164671",
+      "title": "Will C\u0103t\u0103lin Drul\u0103 get between 20% and 25% of the vote in the Bucharest Mayoral election?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 147.96620000000001,
+      "resolution_date": "2025-12-08 08:28:45",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 27,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 27,
+        "median_gap_minutes": 30.0,
+        "span_days": 0.54,
+        "first_point": 1764732613,
+        "last_point": 1764779414,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0xab50f81fc9f77e7c0a08165664f564fa6a34076dfdadc4ab4e8bc1904774a6db": {
+      "market_id": "0xab50f81fc9f77e7c0a08165664f564fa6a34076dfdadc4ab4e8bc1904774a6db",
+      "title": "Will Russia enter Lyman by November 30?",
+      "category": "Geopolitics",
+      "age": "old",
+      "notional": 3749.8776759973302,
+      "resolution_date": "2025-11-30 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 669,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 1574,
+        "median_gap_minutes": 30.0,
+        "span_days": 32.92,
+        "first_point": 1761730206,
+        "last_point": 1764574206,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 3
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x12eacf9f9fb7c122bf45985259b1ad158c30889dc4f0779a21b63d451abbfaba": {
+      "market_id": "0x12eacf9f9fb7c122bf45985259b1ad158c30889dc4f0779a21b63d451abbfaba",
+      "title": "US x Venezuela military engagement by November 5?",
+      "category": "Geopolitics",
+      "age": "old",
+      "notional": 1022.5318399933091,
+      "resolution_date": "2025-11-05 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 179,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 179,
+        "median_gap_minutes": 30.0,
+        "span_days": 3.71,
+        "first_point": 1762084823,
+        "last_point": 1762405220,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0xbb0e4120b64af4ff962dae9fda5e73f3ea14c689dd22e4099adeafe69700e546": {
+      "market_id": "0xbb0e4120b64af4ff962dae9fda5e73f3ea14c689dd22e4099adeafe69700e546",
+      "title": "Will Francesca Mu\u00f1oz win the Chilean presidential election?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 822.0629789999999,
+      "resolution_date": "2025-11-16 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 672,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 5370,
+        "median_gap_minutes": 30.0,
+        "span_days": 111.98,
+        "first_point": 1753662608,
+        "last_point": 1763337623,
+        "coverage_full_to_anchor_window": false,
+        "chunks_capped": true,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 8
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0xc8605ba9c73fc42350af7efb509f0e99cd02ea2c8da360cc74e145f9210f3a00": {
+      "market_id": "0xc8605ba9c73fc42350af7efb509f0e99cd02ea2c8da360cc74e145f9210f3a00",
+      "title": "Will Zelenskyy talk to Putin by November 30?",
+      "category": "Geopolitics",
+      "age": "old",
+      "notional": 192.129876,
+      "resolution_date": "2025-12-01 07:07:38",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 24,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 24,
+        "median_gap_minutes": 30.0,
+        "span_days": 0.48,
+        "first_point": 1764277240,
+        "last_point": 1764318617,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x0d35112c4b54c098a5a9ca2d9df09eff427419e64bb87ae7b425de7ced2c5174": {
+      "market_id": "0x0d35112c4b54c098a5a9ca2d9df09eff427419e64bb87ae7b425de7ced2c5174",
+      "title": "Will Russia capture Kupiansk-Vuzlovyi by December 31?",
+      "category": "Geopolitics",
+      "age": "old",
+      "notional": 7104.649203,
+      "resolution_date": "2025-11-30 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 664,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 2732,
+        "median_gap_minutes": 30.0,
+        "span_days": 56.94,
+        "first_point": 1762338612,
+        "last_point": 1767258017,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 5
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x18ec17d5bd6b1c5605cc51e7c228722de8b6e78a42318b1576986aaa7ef7847b": {
+      "market_id": "0x18ec17d5bd6b1c5605cc51e7c228722de8b6e78a42318b1576986aaa7ef7847b",
+      "title": "Will Trump say \"Howard\" or \"Witkoff\" during the Hanukkah Reception event on Tuesday?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 101.605899,
+      "resolution_date": "2025-12-16 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 53,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 53,
+        "median_gap_minutes": 30.0,
+        "span_days": 1.06,
+        "first_point": 1765864819,
+        "last_point": 1765956619,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0xc68c21f8497c9f4edf6127e6215aa118fd753f8bef0f2f3dda469e6adad43b21": {
+      "market_id": "0xc68c21f8497c9f4edf6127e6215aa118fd753f8bef0f2f3dda469e6adad43b21",
+      "title": "Will Marco Enr\u00edquez-Ominami win the Chilean presidential election?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 22184.939307999997,
+      "resolution_date": "2025-11-16 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 672,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 5370,
+        "median_gap_minutes": 30.0,
+        "span_days": 111.98,
+        "first_point": 1753686007,
+        "last_point": 1763361010,
+        "coverage_full_to_anchor_window": false,
+        "chunks_capped": true,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 8
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0xee44d5936019f87f0fee643d930ac34139e7211ebdde3f3d27c290bb9fdd5929": {
+      "market_id": "0xee44d5936019f87f0fee643d930ac34139e7211ebdde3f3d27c290bb9fdd5929",
+      "title": "Will Rudy Giuliani win the 2025 NYC mayoral election?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 95591.690508,
+      "resolution_date": "2025-11-05 06:14:19",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 666,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 5372,
+        "median_gap_minutes": 30.0,
+        "span_days": 111.98,
+        "first_point": 1752490807,
+        "last_point": 1762165808,
+        "coverage_full_to_anchor_window": false,
+        "chunks_capped": true,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 8
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x2bf7d4a444ffb3f1d1cf1be7f7f3ede324893edb75a81f2b5c03ec3e23cffd90": {
+      "market_id": "0x2bf7d4a444ffb3f1d1cf1be7f7f3ede324893edb75a81f2b5c03ec3e23cffd90",
+      "title": "Will Trump say \"Autism\" or \"Tylenol\" during the America Business Forum on November 5?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 1115.5264,
+      "resolution_date": "2025-11-05 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 267,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 267,
+        "median_gap_minutes": 30.0,
+        "span_days": 5.54,
+        "first_point": 1761901208,
+        "last_point": 1762380009,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0xe2b9b33787692abed2a43c31f9dac13172560523d970584d9f922679decdad87": {
+      "market_id": "0xe2b9b33787692abed2a43c31f9dac13172560523d970584d9f922679decdad87",
+      "title": "Will Patriotic Electoral Bloc (BEP) be part of the next Government of the Moldova?",
+      "category": "Elections",
+      "age": "old",
+      "notional": 99.49995,
+      "resolution_date": "2025-11-05 14:50:33",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 656,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 1862,
+        "median_gap_minutes": 30.0,
+        "span_days": 38.9,
+        "first_point": 1758992416,
+        "last_point": 1762353011,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 3
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x5ab86507431fa87dab1bae357937bfb7574a9c65a0d09f3343f10abf31b91b84": {
+      "market_id": "0x5ab86507431fa87dab1bae357937bfb7574a9c65a0d09f3343f10abf31b91b84",
+      "title": "Will Corey Edwards be the Democratic Nominee for KY-06?",
+      "category": "Elections",
+      "age": "recent",
+      "notional": 6.619914,
+      "resolution_date": "2026-05-19 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 23,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 23,
+        "median_gap_minutes": 30.0,
+        "span_days": 0.48,
+        "first_point": 1778821211,
+        "last_point": 1778862613,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x3523a6cd9082c05d1d5e70b91d54e3c89f72ead2fbb6060ef3ae905e50427576": {
+      "market_id": "0x3523a6cd9082c05d1d5e70b91d54e3c89f72ead2fbb6060ef3ae905e50427576",
+      "title": "Will Russia capture Havrylivka by June 30, 2026?",
+      "category": "Geopolitics",
+      "age": "recent",
+      "notional": 34.899974,
+      "resolution_date": "2026-06-30 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 28,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 28,
+        "median_gap_minutes": 30.0,
+        "span_days": 0.56,
+        "first_point": 1780282805,
+        "last_point": 1780331406,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0xf748cc0f6be221956c42877065c972f0dbb402d52e63a51c34c1e9868fc9f00e": {
+      "market_id": "0xf748cc0f6be221956c42877065c972f0dbb402d52e63a51c34c1e9868fc9f00e",
+      "title": "Will Hassan Shariatmadari be the next Supreme Leader of Iran?",
+      "category": "Geopolitics",
+      "age": "recent",
+      "notional": 13.50016,
+      "resolution_date": "2026-05-19 06:25:09",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 185,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 185,
+        "median_gap_minutes": 30.0,
+        "span_days": 3.83,
+        "first_point": 1772560827,
+        "last_point": 1772892022,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x3a36e6988c6d0a3eb59869784fbd981961d4332bb8b61c56f12e982e3c0af5fd": {
+      "market_id": "0x3a36e6988c6d0a3eb59869784fbd981961d4332bb8b61c56f12e982e3c0af5fd",
+      "title": "Will Mike Thurmond finish first in the first round of the 2026 Georgia Governor Democratic primary election?",
+      "category": "Elections",
+      "age": "recent",
+      "notional": 6.3500000000000005,
+      "resolution_date": "2026-05-19 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 24,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 24,
+        "median_gap_minutes": 30.0,
+        "span_days": 0.48,
+        "first_point": 1779152406,
+        "last_point": 1779193806,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x6a5a2f0dee907cdb831d2f697674cd6827ab0cafdab130615b8ec656b62ce51a": {
+      "market_id": "0x6a5a2f0dee907cdb831d2f697674cd6827ab0cafdab130615b8ec656b62ce51a",
+      "title": "Mahmoud Abbas out as Palestinian President by June 30?",
+      "category": "Geopolitics",
+      "age": "recent",
+      "notional": 648.894846001432,
+      "resolution_date": "2026-06-30 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 670,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 4484,
+        "median_gap_minutes": 30.0,
+        "span_days": 111.98,
+        "first_point": 1772753433,
+        "last_point": 1782428405,
+        "coverage_full_to_anchor_window": false,
+        "chunks_capped": true,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 8
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x352ac53453f995e751d2d90c7d781441eba9d1c4c7ebbc8e738fc570a543665b": {
+      "market_id": "0x352ac53453f995e751d2d90c7d781441eba9d1c4c7ebbc8e738fc570a543665b",
+      "title": "Will a Republican win Wisconsin US Senate Election?",
+      "category": "Elections",
+      "age": "recent",
+      "notional": 648.898191998109,
+      "resolution_date": "2026-06-04 21:36:39",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 671,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 3829,
+        "median_gap_minutes": 30.0,
+        "span_days": 79.75,
+        "first_point": 1724007602,
+        "last_point": 1730898002,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 6
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x1370bc457e501465c15c52e4c6037472142e06671e71fcf6e5c8c432e34c8521": {
+      "market_id": "0x1370bc457e501465c15c52e4c6037472142e06671e71fcf6e5c8c432e34c8521",
+      "title": "Will Trump say \"Epstein\" in May?",
+      "category": "Elections",
+      "age": "recent",
+      "notional": 130.569498,
+      "resolution_date": "2026-05-31 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 637,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 637,
+        "median_gap_minutes": 30.0,
+        "span_days": 13.31,
+        "first_point": 1778040007,
+        "last_point": 1779190207,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x61478e8924681a9a25ac25efb47da236381ea2d7ea8fd4299c0b2b1d673635ac": {
+      "market_id": "0x61478e8924681a9a25ac25efb47da236381ea2d7ea8fd4299c0b2b1d673635ac",
+      "title": "Will Ron Meinhardt be the Republican nominee for Senate in Oklahoma?",
+      "category": "Elections",
+      "age": "recent",
+      "notional": 3.7439999999999998,
+      "resolution_date": "2026-06-16 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 24,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 24,
+        "median_gap_minutes": 30.0,
+        "span_days": 0.48,
+        "first_point": 1772798441,
+        "last_point": 1772839826,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x99b920706e0941d4cb3d12e93cecd40a7b54b5bca204aaa3fc6c1837bc52e9d8": {
+      "market_id": "0x99b920706e0941d4cb3d12e93cecd40a7b54b5bca204aaa3fc6c1837bc52e9d8",
+      "title": "Will Eman Alexander Cross be the next Prime Minister of Malta following the 2026 Maltese general election?",
+      "category": "Elections",
+      "age": "recent",
+      "notional": 41.418,
+      "resolution_date": "2026-05-30 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 236,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 236,
+        "median_gap_minutes": 30.0,
+        "span_days": 4.92,
+        "first_point": 1777739407,
+        "last_point": 1778164205,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0xd792e8eb343605e3ab3b44f5eb7ceffaa1ee2464dc697a8638124fdd443d81a6": {
+      "market_id": "0xd792e8eb343605e3ab3b44f5eb7ceffaa1ee2464dc697a8638124fdd443d81a6",
+      "title": "Will Candace Owens or Hunter Biden say \"Election\" on Thursday?",
+      "category": "Elections",
+      "age": "recent",
+      "notional": 102.9334,
+      "resolution_date": "2026-05-21 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 18,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 18,
+        "median_gap_minutes": 30.0,
+        "span_days": 0.35,
+        "first_point": 1779377409,
+        "last_point": 1779408018,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x6f469bb6d087323e8fe41d5bb3d9c32ae243fafdcee240e4aef3252e8ffc59c4": {
+      "market_id": "0x6f469bb6d087323e8fe41d5bb3d9c32ae243fafdcee240e4aef3252e8ffc59c4",
+      "title": "Will Cory Booker be the Democratic nominee for Senate in New Jersey?",
+      "category": "Elections",
+      "age": "recent",
+      "notional": 505.61739,
+      "resolution_date": "2026-06-02 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 670,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 4184,
+        "median_gap_minutes": 30.0,
+        "span_days": 103.48,
+        "first_point": 1771317025,
+        "last_point": 1780257606,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 8
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0xf53df1407851c4f67e9c0afb3a9d44b67122544db525088d57f92d9c9a1b821d": {
+      "market_id": "0xf53df1407851c4f67e9c0afb3a9d44b67122544db525088d57f92d9c9a1b821d",
+      "title": "Will Logan Forsythe be the Democratic nominee for Senate in Kentucky?",
+      "category": "Elections",
+      "age": "recent",
+      "notional": 0,
+      "resolution_date": "2026-05-20 06:08:51",
+      "anchor_source": "resolution_date_fallback",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 670,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 1395,
+        "median_gap_minutes": 30.0,
+        "span_days": 29.96,
+        "first_point": 1776668456,
+        "last_point": 1779256808,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 3
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0xd86a816093fcd0a0e1ca440bc5ce199bd3c5a8d6139e044b076958164f8c5423": {
+      "market_id": "0xd86a816093fcd0a0e1ca440bc5ce199bd3c5a8d6139e044b076958164f8c5423",
+      "title": "US x Iran permanent peace deal by June 15, 2026?",
+      "category": "Geopolitics",
+      "age": "recent",
+      "notional": 1762198.401746593,
+      "resolution_date": "2026-06-15 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 664,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 1589,
+        "median_gap_minutes": 30.0,
+        "span_days": 33.17,
+        "first_point": 1778877010,
+        "last_point": 1781742607,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 3
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x09c314ec8306ecadfd263d7fdef1425a44791547474a92be675c70ae451277ad": {
+      "market_id": "0x09c314ec8306ecadfd263d7fdef1425a44791547474a92be675c70ae451277ad",
+      "title": "Conservatives win majority in Canadian election?",
+      "category": "Elections",
+      "age": "recent",
+      "notional": 125710.3326689716,
+      "resolution_date": "2026-06-04 21:36:39",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 672,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 5376,
+        "median_gap_minutes": 30.0,
+        "span_days": 111.98,
+        "first_point": 1736307003,
+        "last_point": 1745982006,
+        "coverage_full_to_anchor_window": false,
+        "chunks_capped": true,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 8
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x2682960748b5b1a868fe9726901f21d93465a7b253c30826d346049d0e679973": {
+      "market_id": "0x2682960748b5b1a868fe9726901f21d93465a7b253c30826d346049d0e679973",
+      "title": "Will the Liberal Party win the most seats in Ontario in the next Canadian Election?",
+      "category": "Elections",
+      "age": "recent",
+      "notional": 13470.466211989595,
+      "resolution_date": "2026-06-04 21:36:39",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 672,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 1554,
+        "median_gap_minutes": 30.0,
+        "span_days": 32.35,
+        "first_point": 1743159606,
+        "last_point": 1745955006,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 3
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0xb82d5aec1ad294e21e835cee5ecf2f56ec40ddc925d7f30d6a7831d1679505c5": {
+      "market_id": "0xb82d5aec1ad294e21e835cee5ecf2f56ec40ddc925d7f30d6a7831d1679505c5",
+      "title": "Will LDP win the most seats in the House of Councillors following the 2025 Japan election?",
+      "category": "Elections",
+      "age": "recent",
+      "notional": 20877.22946300014,
+      "resolution_date": "2026-06-04 21:36:39",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 673,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 1788,
+        "median_gap_minutes": 30.0,
+        "span_days": 37.23,
+        "first_point": 1749956408,
+        "last_point": 1753173009,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 3
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x715eb3d786c7d27ff65c28b3122ad0ecb41e3d0ca588dc1e291317a06c1ec47f": {
+      "market_id": "0x715eb3d786c7d27ff65c28b3122ad0ecb41e3d0ca588dc1e291317a06c1ec47f",
+      "title": "Will Jordan Wood be the Democratic nominee for Senate in Maine?",
+      "category": "Elections",
+      "age": "recent",
+      "notional": 1500.5962449941217,
+      "resolution_date": "2026-06-09 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 670,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 5013,
+        "median_gap_minutes": 30.0,
+        "span_days": 111.98,
+        "first_point": 1768676420,
+        "last_point": 1778351414,
+        "coverage_full_to_anchor_window": false,
+        "chunks_capped": true,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 8
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x1c4370663538d05ac11da9b5371d4951d8788d77e8447941c5141773855c8fc4": {
+      "market_id": "0x1c4370663538d05ac11da9b5371d4951d8788d77e8447941c5141773855c8fc4",
+      "title": "Will Katie Porter advance from the 2026 California Governor primary election?",
+      "category": "Elections",
+      "age": "recent",
+      "notional": 2556.536508,
+      "resolution_date": "2026-06-02 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 671,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 5006,
+        "median_gap_minutes": 30.0,
+        "span_days": 111.98,
+        "first_point": 1769783432,
+        "last_point": 1779458409,
+        "coverage_full_to_anchor_window": false,
+        "chunks_capped": true,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 8
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x88d67705780a3d922317ecb0c78a947a306174d0510df2ae89394d5abfb28206": {
+      "market_id": "0x88d67705780a3d922317ecb0c78a947a306174d0510df2ae89394d5abfb28206",
+      "title": "Will Barack Obama win the 2028 Democratic presidential nomination?",
+      "category": "Elections",
+      "age": "recent",
+      "notional": 2066192.4925155805,
+      "resolution_date": "2028-11-07 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 671,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 5269,
+        "median_gap_minutes": 30.0,
+        "span_days": 112.19,
+        "first_point": 1774629025,
+        "last_point": 1784322424,
+        "coverage_full_to_anchor_window": false,
+        "chunks_capped": true,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 8
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x4d0c4865bdecc5f7971dbab47bb6c069d93909dec75bdff52fb766ae6094a6d6": {
+      "market_id": "0x4d0c4865bdecc5f7971dbab47bb6c069d93909dec75bdff52fb766ae6094a6d6",
+      "title": "Will Donald Trump announce that the United States blockade of the Strait of Hormuz has been lifted by June 30, 2026?",
+      "category": "Geopolitics",
+      "age": "recent",
+      "notional": 112695.93052203624,
+      "resolution_date": "2026-06-15 09:34:27",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 661,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 1980,
+        "median_gap_minutes": 30.0,
+        "span_days": 41.38,
+        "first_point": 1777906808,
+        "last_point": 1781481608,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 3
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x1e7a237f7852453254324f57cd5b74288e116b642ce686250c84c6aba7bc368f": {
+      "market_id": "0x1e7a237f7852453254324f57cd5b74288e116b642ce686250c84c6aba7bc368f",
+      "title": "Will there be 155,000,000-160,000,000 votes cast in the U.S. Presidential Election?",
+      "category": "Elections",
+      "age": "recent",
+      "notional": 123822.3184679987,
+      "resolution_date": "2026-06-04 21:36:39",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 672,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 2060,
+        "median_gap_minutes": 30.0,
+        "span_days": 42.92,
+        "first_point": 1730719802,
+        "last_point": 1734427803,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 4
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x9031561489f77ba1f89c0b963170a6853c39840e6e89a6a658a05d12b60a1ff0": {
+      "market_id": "0x9031561489f77ba1f89c0b963170a6853c39840e6e89a6a658a05d12b60a1ff0",
+      "title": "Will Trump and Putin meet next in Russia?",
+      "category": "Geopolitics",
+      "age": "recent",
+      "notional": 2394.968816908165,
+      "resolution_date": "2026-06-30 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 670,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 4551,
+        "median_gap_minutes": 30.0,
+        "span_days": 111.98,
+        "first_point": 1773005426,
+        "last_point": 1782680423,
+        "coverage_full_to_anchor_window": false,
+        "chunks_capped": true,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 8
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0xf526b2fbff94ae996818e76c8b54cc99ffbfa0a1a9972a48253ada65e32786f7": {
+      "market_id": "0xf526b2fbff94ae996818e76c8b54cc99ffbfa0a1a9972a48253ada65e32786f7",
+      "title": "US announces new Iran agreement/ceasefire extension by June 3?",
+      "category": "Geopolitics",
+      "age": "recent",
+      "notional": 46689.81726899152,
+      "resolution_date": "2026-06-03 00:00:00",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 390,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 390,
+        "median_gap_minutes": 30.0,
+        "span_days": 8.17,
+        "first_point": 1779847203,
+        "last_point": 1780552803,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    },
+    "0x683106ac1b76fbad311d603e42ae76fe499fecae9f046fe473694537c3e223b1": {
+      "market_id": "0x683106ac1b76fbad311d603e42ae76fe499fecae9f046fe473694537c3e223b1",
+      "title": "Will Trump say \"Friend of mine\" during events with Xi Jinping?",
+      "category": "Geopolitics",
+      "age": "recent",
+      "notional": 5692.003913010851,
+      "resolution_date": "2026-06-04 21:36:39",
+      "anchor_source": "local_trades",
+      "token_resolved": true,
+      "token_source": "clob",
+      "fidelity_probe": [
+        {
+          "fidelity": 30,
+          "point_count": 363,
+          "error": null
+        }
+      ],
+      "clob": {
+        "retained": true,
+        "point_count": 363,
+        "median_gap_minutes": 30.0,
+        "span_days": 7.54,
+        "first_point": 1778189403,
+        "last_point": 1778841005,
+        "coverage_full_to_anchor_window": true,
+        "chunks_capped": false,
+        "fidelity_used_minutes": 30,
+        "chunks_used": 1
+      },
+      "trade_tape": null,
+      "status": "done"
+    }
+  }
+}
