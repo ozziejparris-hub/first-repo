@@ -161,13 +161,21 @@ def snapshot_market(conn, signal_id, market_id, direction, snapshot_type='daily'
               token_id, json.dumps(bids), json.dumps(asks),
               mid_price, spread, bid_depth, ask_depth, clob_yes_price))
         conn.commit()
-        yes_str = f'{clob_yes_price:.4f}' if clob_yes_price is not None else 'N/A'
-        print(f'  ✓ {signal_id} {direction}: YES={yes_str} mid={mid_price:.3f} '
-              f'bid_depth={bid_depth:.0f} ask_depth={ask_depth:.0f}')
-        return True
     except Exception as e:
         print(f'  DB write error: {e}')
         return False
+
+    # Logging only, below this line -- the write already succeeded and
+    # committed above, so nothing here may turn a successful capture into a
+    # reported failure. mid_price/bid_depth/ask_depth are legitimately None
+    # for a one-sided or empty book (see fetch_book), not an error condition.
+    yes_str = f'{clob_yes_price:.4f}' if clob_yes_price is not None else 'N/A'
+    mid_str = f'{mid_price:.3f}' if mid_price is not None else 'N/A'
+    bid_depth_str = f'{bid_depth:.0f}' if bid_depth is not None else 'N/A'
+    ask_depth_str = f'{ask_depth:.0f}' if ask_depth is not None else 'N/A'
+    print(f'  ✓ {signal_id} {direction}: YES={yes_str} mid={mid_str} '
+          f'bid_depth={bid_depth_str} ask_depth={ask_depth_str}')
+    return True
 
 def show_stats():
     conn = sqlite3.connect(DB_PATH)
