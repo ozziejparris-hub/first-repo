@@ -376,6 +376,108 @@ DATA_SOURCE_BACKFILL_POSITIONS_SYNTHETIC_SQL = (
 
 
 # =============================================================================
+# SECTION 6 — BACKTEST WINDOW / POPULATION SELECTION
+#
+# Canonical definition of "did this market conclude within window [start, end)."
+# Anchored on tape_end (MAX(trades.timestamp) per market) via INNER JOIN, never
+# on markets.resolution_date. See BACKTEST_WINDOW_RATIONALE below for why.
+#
+# Independently reinvented on resolution_date 3 times before this existed
+# (B2/B1b-prices' population figure, the RQ1.1 ELO-persistence period split,
+# B5 event-clustering scoping) — that's why this is now canonical rather than
+# left to each consumer.
+# =============================================================================
+
+BACKTEST_WINDOW_RATIONALE = """
+Why tape_end, not resolution_date, defines the backtest-window population
+============================================================================
+resolution_date is WRITE-time: when our own pipeline detected and stamped a
+market as resolved. It is not reliable as a population filter:
+  - O-36: ~29% of resolved geo/elec markets have resolution_date off by
+    >14 days from the market's real conclusion, 84% of those biased LATE.
+  - Two distinct bulk-backfill events (2026-04-01 16:19:1X and
+    2026-06-04 21:36:39) stamped hundreds of genuinely 2023/2024 markets
+    (the entire 2024 US Presidential Election family among them) with a
+    resolution_date that makes them look like they concluded in 2026.
+  - Net effect measured directly: filtering on resolution_date >= 2025-11-01
+    returns 5,774 markets, of which 573 (9.9%) are false positives (real
+    tape_end before the window) and which simultaneously EXCLUDES 54 markets
+    that genuinely concluded in-window but happen to carry an early or NULL
+    resolution_date.
+
+tape_end (MAX(trades.timestamp) per market) is EVENT-time: when the market
+actually stopped trading in the real world. For a population-selection
+question — "did this market conclude within this window" — event-time is
+the only thing that answers the actual question being asked. resolution_date
+answers a different question ("when did we find out"), which is not what a
+backtest window needs.
+
+THIS IS THE INVERSE OF O-33, DELIBERATELY — read both rules, do not collapse
+them:
+  - O-33: gate STALENESS checks on WRITE-time, never event-time — because a
+    legitimate backfill can insert old event-timestamps that would otherwise
+    make a fresh write look instantly stale.
+  - Here: gate POPULATION WINDOWING on EVENT-time, never write-time — because
+    the question is "when did this conclude in the world," and write-time
+    (resolution_date) can be arbitrarily wrong or batch-stamped independent
+    of when the thing actually happened.
+  Both are correct for the question they each answer. The next reader who
+  sees "gate on write-time" in O-33 and reflexively "fixes" this back to
+  resolution_date is solving the wrong problem — check which question you're
+  actually asking (when did it conclude vs. when did we learn/write it)
+  before picking the column.
+"""
+
+BACKTEST_WINDOW_TAPE_END_CTE = """
+    SELECT market_id, MAX(timestamp) AS tape_end FROM trades GROUP BY market_id
+"""
+
+# Base filters, independent of window bounds. category IN (...) reads
+# markets.category — never trades.market_category (O-2/O-30: the trades-table
+# column is a write-time denormalization that can lag or diverge from the
+# markets table's own category, which is canonical for this purpose).
+#
+# (trade_gap_flag = 0 OR trade_gap_flag IS NULL) is the ONLY gap condition
+# needed — it already excludes both known trade_gap_flag=1 populations (the
+# April 7-18 2026 monitoring-outage gap, flag_reason IS NULL, and the O-37
+# synthetic-market quarantine, flag_reason='synthetic_quarantine_2026-07-19').
+# A market can't have trade_gap_flag=1 for one reason and pass this check for
+# the other — checking flag_reason separately here would be redundant, not
+# more precise.
+BACKTEST_WINDOW_BASE_WHERE = (
+    "m.resolved = 1"
+    "\n  AND m.category IN ('Geopolitics', 'Elections')"
+    "\n  AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)"
+)
+
+
+def backtest_window_sql(window_start: str, window_end: str | None = None) -> str:
+    """
+    Canonical backtest-window market population query. Half-open interval:
+    tape_end >= window_start (AND tape_end < window_end, if given) — so
+    adjacent train/validate/holdout windows (FABLE §4.5) compose without
+    double-counting a boundary market.
+
+    Bind params: :window_start (always), :window_end (only if window_end
+    is not None — the caller must supply matching params to conn.execute()).
+
+    Returns market_id, title, condition_id, resolution_date (kept for
+    reference/debugging — NOT the filter column), and tape_end.
+    """
+    end_clause = "\n          AND te.tape_end < :window_end" if window_end else ""
+    return f"""
+        WITH tape_end AS ({BACKTEST_WINDOW_TAPE_END_CTE})
+        SELECT m.market_id, m.title, m.condition_id,
+               m.resolution_date,  -- reference/debug only; DO NOT filter on this column (see BACKTEST_WINDOW_RATIONALE)
+               te.tape_end
+        FROM markets m
+        JOIN tape_end te ON te.market_id = m.market_id
+        WHERE {BACKTEST_WINDOW_BASE_WHERE}
+          AND te.tape_end >= :window_start{end_clause}
+    """
+
+
+# =============================================================================
 # SELF-TEST  (python3 monitoring/column_definitions.py)
 # =============================================================================
 
@@ -508,9 +610,50 @@ if __name__ == '__main__':
             s5_ok = False
         print(f"  {name:<10}: {'OK' if ok else 'FAIL'}")
 
+    # ── Section 6: backtest window structural checks ─────────────────────
+    print("\n── Section 6: backtest_window_sql structural checks ──")
+    s6_ok = True
+
+    sql_open_ended = backtest_window_sql('2025-11-01')
+    sql_bounded = backtest_window_sql('2025-11-01', '2026-01-01')
+
+    s6_checks = [
+        ("open-ended query references tape_end CTE",
+         'tape_end' in sql_open_ended),
+        ("open-ended query has :window_start bind param",
+         ':window_start' in sql_open_ended),
+        ("open-ended query has NO :window_end clause (window_end=None omitted)",
+         ':window_end' not in sql_open_ended),
+        ("bounded query HAS :window_end clause",
+         ':window_end' in sql_bounded),
+        ("bounded query's end clause is strictly '<' (half-open, not '<=')",
+         'te.tape_end < :window_end' in sql_bounded
+         and 'te.tape_end <= :window_end' not in sql_bounded),
+        ("start clause is inclusive '>=' in both variants",
+         'te.tape_end >= :window_start' in sql_open_ended
+         and 'te.tape_end >= :window_start' in sql_bounded),
+        ("base WHERE requires resolved=1",
+         'm.resolved = 1' in sql_open_ended),
+        ("base WHERE filters category via markets.category, not trades.market_category",
+         "m.category IN ('Geopolitics', 'Elections')" in sql_open_ended
+         and 'trades.market_category' not in sql_open_ended
+         and 'tr.market_category' not in sql_open_ended),
+        ("base WHERE excludes trade_gap_flag=1 (covers both April gap and O-37)",
+         '(m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)' in sql_open_ended),
+        ("resolution_date column carries the DO-NOT-FILTER warning comment",
+         'DO NOT filter on this column' in sql_open_ended),
+        ("query is an INNER JOIN on tape_end (zero-trade markets drop structurally)",
+         'JOIN tape_end te ON te.market_id = m.market_id' in sql_open_ended
+         and 'LEFT JOIN tape_end' not in sql_open_ended),
+    ]
+    for label, ok in s6_checks:
+        if not ok:
+            s6_ok = False
+        print(f"  {'OK' if ok else 'FAIL'}  {label}")
+
     # ── Summary ───────────────────────────────────────────────────────────
     print("\n── Summary ──")
-    if win_rate_ok and tier_ok and s5_ok:
+    if win_rate_ok and tier_ok and s5_ok and s6_ok:
         print("  All assertions passed.")
     else:
         failures = []
@@ -520,5 +663,7 @@ if __name__ == '__main__':
             failures.append("derive_tier")
         if not s5_ok:
             failures.append("section_5_provenance")
+        if not s6_ok:
+            failures.append("section_6_backtest_window")
         print(f"  FAILURES in: {', '.join(failures)}")
         sys.exit(1)
