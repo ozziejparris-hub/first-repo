@@ -5,6 +5,40 @@ Pre-registration: brain/strategy-notes/rq1-1-preregistration-2026-06-01.md
 Pre-registered: 2026-05-13
 
 Do not adjust thresholds or methodology after observing results.
+
+================================================================================
+WARNING — Period 2 population is contaminated (O-45, 2026-07-23). Any output
+this script produces (or has produced) is PROVISIONAL until re-run against the
+corrected population below.
+================================================================================
+PERIOD_1_END / PERIOD_2_START / PERIOD_2_END below are markets.resolution_date
+boundaries — a write-time column proven unreliable (O-36), and specifically
+here it lines up with a bulk-backfill contamination timestamp:
+  PERIOD_2_START = '2026-04-01' is EXACTLY the resolution_date stamped onto a
+  2026-04-01 16:19:13 bulk-backfill event that mis-dated hundreds of genuinely
+  2023/2024 markets (including the entire 2024 US Presidential Election
+  family) as if they concluded in 2026.
+Measured 2026-07-23: of the 15,239 markets whose resolution_date falls in this
+script's Period-2 window, 1,083 have tape_end (MAX(trades.timestamp), their
+real conclusion time) BEFORE 2025-11-01 -- i.e. they concluded in the real
+world long before Period 2 and are misclassified in here, sitting alongside
+genuine April-May 2026 trader positions in whatever Period-2 result this
+script reports.
+This has NOT been re-derived on a corrected population. Whether removing
+those 1,083 markets changes the direction or magnitude of this study's
+conclusion is UNKNOWN -- not measured, not assumed either way. Treat any
+existing r/Brier/signal output from this script as provisional pending that
+re-run.
+The corrected approach exists and is canonical: monitoring/column_definitions.py
+Section 6 (backtest_window_sql(), tape_end-anchored, not resolution_date).
+See the overhang ledger's O-45 entry for the full derivation. Repointing this
+script is NOT a one-line change -- the boundary is duplicated as string
+literals at 4 call sites (see PERIOD_1_END/2_START/2_END below and their
+usages) that never reference these named constants in the first place, so a
+fix means touching all 4, not swapping one filter. Deliberately not done as
+part of this annotation: re-running a pre-registered research script's
+numbers is its own before/after decision, not a tail-end repoint.
+================================================================================
 """
 
 import sqlite3
@@ -30,6 +64,10 @@ JSON_OUTPUT = os.path.join(OUTPUT_DIR, "rq1_1_rerun_june2026.json")
 MD_OUTPUT = os.path.join(OUTPUT_DIR, "rq1_1_rerun_june2026_ranked.md")
 
 # Fixed period boundaries — do not change (pre-registration §3.1)
+# CONTAMINATED (O-45, see module docstring above): these are resolution_date
+# (write-time) boundaries, not tape_end (event-time). PERIOD_2_START
+# ('2026-04-01') coincides exactly with a bulk-backfill mis-stamping event.
+# 1,083 of 15,239 Period-2 markets have a real tape_end before 2025-11-01.
 PERIOD_1_END = '2026-04-01'
 PERIOD_2_START = '2026-04-01'
 PERIOD_2_END = '2026-06-01'
@@ -126,7 +164,11 @@ def validate_contract(conn):
 
 
 def check_sample_size_gate(conn):
-    """Query 2 — Sample Size Gate. Hard exit if n < 30 (pre-registration §4 Query 2)."""
+    """Query 2 — Sample Size Gate. Hard exit if n < 30 (pre-registration §4 Query 2).
+
+    CONTAMINATED (O-45, see module docstring) -- both resolution_date filters
+    below select on write-time, not tape_end. The Period 2 arm's population
+    includes markets that concluded years before 2026-04-01; see docstring."""
     print("[GATE] Checking sample size (minimum n=30 required)...")
     row = conn.execute("""
         SELECT COUNT(*) AS qualifying_n
@@ -150,6 +192,7 @@ def check_sample_size_gate(conn):
           ) >= 20
 
           AND (
+            -- CONTAMINATED: resolution_date, not tape_end -- see module docstring (O-45)
             SELECT COUNT(*)
             FROM positions p
             JOIN markets m ON m.market_id = p.market_id
@@ -295,6 +338,7 @@ def main():
     _ = check_sample_size_gate(conn)
 
     # Step 3: Period 1 positions (for position count confirmation)
+    # CONTAMINATED: resolution_date, not tape_end -- see module docstring (O-45)
     print("[QUERY] Fetching Period 1 positions...")
     p1_data = fetch_period_positions(
         conn, "Period1",
@@ -303,6 +347,9 @@ def main():
     p1_brier = compute_brier_scores(p1_data, min_positions=20)
 
     # Step 4: Period 2 positions (for Brier score in correlation)
+    # CONTAMINATED: 1,083 of these 15,239-window markets have tape_end before
+    # 2025-11-01 -- see module docstring (O-45). Any p2_brier/correlation
+    # computed from this population is provisional pending a re-run.
     print("[QUERY] Fetching Period 2 positions...")
     p2_data = fetch_period_positions(
         conn, "Period2",
