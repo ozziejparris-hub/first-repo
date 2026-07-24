@@ -7,32 +7,55 @@ real production DB (read-only, mode=ro -- no writes). This is the numeric
 counterpart to column_definitions.py's own self-test, which only checks the
 SQL text structurally (stdlib-only, no DB dependency by module design).
 
-Background: the current population selector (resolution_date >= window_start)
-is unreliable -- O-36 (~29% off by >14d) plus two bulk-backfill events
+Background: the original population selector (resolution_date >= window_start)
+was unreliable -- O-36 (~29% off by >14d) plus two bulk-backfill events
 (2026-04-01 16:19:1X, 2026-06-04 21:36:39) that stamped hundreds of genuinely
 2023/2024 markets as if they resolved in 2026. Measured directly against the
-2025-11-01 window: 5,774 markets by resolution_date vs 4,690 by tape_end
-(MAX(trades.timestamp) per market) -- 573 false positives (old markets
-wrongly pulled in), 54 false negatives (in-window markets wrongly excluded),
-565 zero-trade markets (correctly dropped by both methods, structurally).
+2025-11-01 window at the time of the original fix: 5,774 markets by
+resolution_date vs 4,690 by tape_end (MAX(trades.timestamp) per market).
 
-T1  Canonical count at window_start=2025-11-01 is exactly 4,690.
-T2  Reconciliation holds: 4,690 = 4,636 (agree with the old resolution_date
-    method) + 54 (false negatives the old method wrongly excluded).
+2026-07-24 FOLLOW-UP (O-45 addendum): backtest_window_sql() is a LIVE query
+and is legitimately time-varying -- tape_end grows as new trades accrue, so
+the population at a fixed window_start moves day to day BY DESIGN (measured:
+4,690 -> 4,702 -> 4,712 within a single day). The original version of this
+test hardcoded exact counts (4,690 / 4,636 / etc.) against that moving query,
+which is the actual bug -- not the population moving. Fixed here by splitting
+assertions into two kinds:
+  - INVARIANTS, asserted against the LIVE query: things that are true of the
+    *rule* regardless of how many markets currently satisfy it (reconciliation
+    identities, named-market classification, monotonicity, half-open boundary).
+  - SNAPSHOT facts, asserted against the FROZEN backtest_population_snapshots
+    table (snapshot_id='bt_pop_2025-11-01_v1', scripts/snapshot_backtest_population.py):
+    a specific population instance pinned at a point in time, for consumers
+    (B5 labelling, B3 splits) that need a population that does not move under
+    them. These numbers are fixed by construction and will never legitimately
+    change -- if they do, the snapshot table was tampered with.
+
+T1  SNAPSHOT count: snapshot 'bt_pop_2025-11-01_v1' is frozen at exactly 4,712
+    markets, and a live re-run of the same window_start is >= that (population
+    only grows from its frozen baseline, never shrinks).
+T2  SNAPSHOT reconciliation: the frozen snapshot's 4,712 = 4,658 (agree with
+    the old resolution_date method) + 54 (false negatives the old method
+    wrongly excluded) -- fixed facts about this specific pinned population.
+T2L LIVE reconciliation INVARIANT: whatever the live canonical/old sets are
+    *right now*, they always partition consistently (agree+false_negatives==
+    canonical total; agree+zero_trade+false_positives==old total) -- true by
+    construction of the split, verified fresh each run, independent of any
+    specific counts.
 T3  Parameterisation: 3 other window starts give sane monotonic behaviour
-    (earlier start -> more or equal markets).
+    (earlier start -> more or equal markets), live query.
 T4  NON-TAUTOLOGICAL regression guard, false positives: Harris/Michelle
     Obama/Nikki Haley 2024 markets are EXCLUDED by the canonical (tape_end)
-    query. Run the same assertion against a resolution_date-based query
+    query, live. Run the same assertion against a resolution_date-based query
     FIRST and confirm it FAILS there (they'd wrongly appear) -- proving the
     assertion is actually discriminating, not vacuously true.
 T5  NON-TAUTOLOGICAL regression guard, false negatives: US-Venezuela military
     engagement / Zelenskyy-Putin meet / Babis-next-Czech-PM markets are
-    INCLUDED by the canonical query. Same before/after proof against the
-    resolution_date version, which wrongly excludes them.
+    INCLUDED by the canonical query, live. Same before/after proof against
+    the resolution_date version, which wrongly excludes them.
 T6  Half-open boundary: a market's own tape_end value used as the shared
     boundary between two adjacent windows places it in exactly the LATER
-    window, never both, never neither.
+    window, never both, never neither. Live.
 """
 
 import os
@@ -46,6 +69,18 @@ sys.path.insert(0, str(ROOT))
 from monitoring.column_definitions import backtest_window_sql
 
 DB_PATH = ROOT / 'data' / 'polymarket_tracker.db'
+
+SNAPSHOT_ID = 'bt_pop_2025-11-01_v1'
+
+# Fixed facts about the frozen snapshot -- these describe a specific pinned
+# population instance and will never legitimately change. If they do, the
+# backtest_population_snapshots table was modified after generation, which
+# violates the append-only/immutable contract.
+SNAPSHOT_COUNT = 4712
+SNAPSHOT_AGREE_WITH_OLD = 4658
+SNAPSHOT_FALSE_NEGATIVES = 54
+SNAPSHOT_ZERO_TRADE = 555
+SNAPSHOT_FALSE_POSITIVES = 573
 
 # Known false positives (real event 2024, wrongly pulled into the
 # resolution_date>=2025-11-01 window by bulk-backfill contamination).
@@ -121,6 +156,14 @@ def canonical_market_ids(conn, window_start, window_end=None):
     return {r[0] for r in rows}
 
 
+def snapshot_market_ids(conn, snapshot_id):
+    rows = conn.execute(
+        'SELECT market_id FROM backtest_population_snapshots WHERE snapshot_id = ?',
+        (snapshot_id,)
+    ).fetchall()
+    return {r[0] for r in rows}
+
+
 def old_method_market_ids(conn, window_start):
     """The pre-existing resolution_date-based selector, for before/after
     non-tautology proof only -- never used for real population selection."""
@@ -152,57 +195,90 @@ def run_tests() -> bool:
     r = TestResults()
     conn = _ro_conn()
 
-    print("\n[SECTION 1] Canonical count at 2025-11-01")
+    print("\n[SECTION 1] SNAPSHOT count -- frozen population instance")
     print("-" * 50)
-    canonical = canonical_market_ids(conn, '2025-11-01')
+    snapshot = snapshot_market_ids(conn, SNAPSHOT_ID)
     r.check(
-        "T1  canonical (tape_end) count at window_start=2025-11-01 is exactly 4,690",
-        len(canonical) == 4690,
-        f"Expected 4690, got {len(canonical)}",
+        f"T1  snapshot '{SNAPSHOT_ID}' is frozen at exactly {SNAPSHOT_COUNT} markets",
+        len(snapshot) == SNAPSHOT_COUNT,
+        f"Expected {SNAPSHOT_COUNT}, got {len(snapshot)} -- the snapshot table "
+        f"should be append-only/immutable; this would indicate it was modified "
+        f"after generation",
+    )
+    live_now = canonical_market_ids(conn, '2025-11-01')
+    r.check(
+        "T1b SANITY: live count at window_start=2025-11-01 is >= the frozen "
+        "snapshot count (population only grows from its pinned baseline)",
+        len(live_now) >= len(snapshot),
+        f"Live count {len(live_now)} < frozen snapshot count {len(snapshot)} -- "
+        f"population should be non-decreasing as more trades accrue",
     )
 
-    print("\n[SECTION 2] Reconciliation: 4,690 = 4,636 (agree) + 54 (false negatives)")
+    print("\n[SECTION 2] SNAPSHOT reconciliation (fixed facts about the frozen instance)")
     print("-" * 50)
     old = old_method_market_ids(conn, '2025-11-01')
-    agree = canonical & old
-    false_negatives = canonical - old
-    old_only = old - canonical  # splits into zero-trade + genuine stale-tape_end false positives
-    old_only_tape_end = tape_end_map(conn, old_only)
-    zero_trade = {mid for mid, te in old_only_tape_end.items() if te is None}
-    false_positives = {mid for mid, te in old_only_tape_end.items()
-                        if te is not None and te < '2025-11-01'}
+    agree_snap = snapshot & old
+    false_negatives_snap = snapshot - old
+    old_only_snap = old - snapshot
+    old_only_snap_tape_end = tape_end_map(conn, old_only_snap)
+    zero_trade_snap = {mid for mid, te in old_only_snap_tape_end.items() if te is None}
+    false_positives_snap = {mid for mid, te in old_only_snap_tape_end.items()
+                             if te is not None and te < '2025-11-01'}
 
     r.check(
-        "T2  4,636 markets agree between old and canonical methods",
-        len(agree) == 4636,
-        f"Expected 4636, got {len(agree)}",
+        f"T2  {SNAPSHOT_AGREE_WITH_OLD} markets agree between old and the frozen snapshot",
+        len(agree_snap) == SNAPSHOT_AGREE_WITH_OLD,
+        f"Expected {SNAPSHOT_AGREE_WITH_OLD}, got {len(agree_snap)}",
     )
     r.check(
-        "T2b 54 false negatives (canonical includes, old method excluded)",
-        len(false_negatives) == 54,
-        f"Expected 54, got {len(false_negatives)}",
+        f"T2b {SNAPSHOT_FALSE_NEGATIVES} false negatives (snapshot includes, old method excluded)",
+        len(false_negatives_snap) == SNAPSHOT_FALSE_NEGATIVES,
+        f"Expected {SNAPSHOT_FALSE_NEGATIVES}, got {len(false_negatives_snap)}",
     )
     r.check(
-        "T2c 565 zero-trade markets (old method included, no tape_end to anchor on -- "
-        "dropped structurally by canonical's INNER JOIN, not a resolution_date error)",
-        len(zero_trade) == 565,
-        f"Expected 565, got {len(zero_trade)}",
+        f"T2c {SNAPSHOT_ZERO_TRADE} zero-trade markets (old method included, no tape_end to "
+        f"anchor on -- dropped structurally by the canonical query's INNER JOIN)",
+        len(zero_trade_snap) == SNAPSHOT_ZERO_TRADE,
+        f"Expected {SNAPSHOT_ZERO_TRADE}, got {len(zero_trade_snap)}",
     )
     r.check(
-        "T2d 573 genuine false positives (old method included, real tape_end predates "
-        "the window -- these are the resolution_date-is-wrong cases)",
-        len(false_positives) == 573,
-        f"Expected 573, got {len(false_positives)}",
+        f"T2d {SNAPSHOT_FALSE_POSITIVES} genuine false positives (old method included, real "
+        f"tape_end predates the window -- the resolution_date-is-wrong cases)",
+        len(false_positives_snap) == SNAPSHOT_FALSE_POSITIVES,
+        f"Expected {SNAPSHOT_FALSE_POSITIVES}, got {len(false_positives_snap)}",
     )
     r.check(
-        "T2e reconciliation: agree + false_negatives == canonical total",
-        len(agree) + len(false_negatives) == len(canonical),
-        f"{len(agree)} + {len(false_negatives)} != {len(canonical)}",
+        "T2e snapshot reconciliation: agree + false_negatives == snapshot total",
+        len(agree_snap) + len(false_negatives_snap) == len(snapshot),
+        f"{len(agree_snap)} + {len(false_negatives_snap)} != {len(snapshot)}",
     )
     r.check(
-        "T2f reconciliation: agree + zero_trade + false_positives == old total",
-        len(agree) + len(zero_trade) + len(false_positives) == len(old),
-        f"{len(agree)} + {len(zero_trade)} + {len(false_positives)} != {len(old)}",
+        "T2f snapshot reconciliation: agree + zero_trade + false_positives == old total",
+        len(agree_snap) + len(zero_trade_snap) + len(false_positives_snap) == len(old),
+        f"{len(agree_snap)} + {len(zero_trade_snap)} + {len(false_positives_snap)} != {len(old)}",
+    )
+
+    print("\n[SECTION 2L] LIVE reconciliation INVARIANT (no hardcoded counts)")
+    print("-" * 50)
+    canonical_live = canonical_market_ids(conn, '2025-11-01')
+    agree_live = canonical_live & old
+    false_negatives_live = canonical_live - old
+    old_only_live = old - canonical_live
+    old_only_live_tape_end = tape_end_map(conn, old_only_live)
+    zero_trade_live = {mid for mid, te in old_only_live_tape_end.items() if te is None}
+    false_positives_live = {mid for mid, te in old_only_live_tape_end.items()
+                             if te is not None and te < '2025-11-01'}
+    r.check(
+        "T2L-1 LIVE: agree + false_negatives == live canonical total, "
+        "whatever the live count currently is",
+        len(agree_live) + len(false_negatives_live) == len(canonical_live),
+        f"{len(agree_live)} + {len(false_negatives_live)} != {len(canonical_live)}",
+    )
+    r.check(
+        "T2L-2 LIVE: agree + zero_trade + false_positives == old total, "
+        "whatever the live count currently is",
+        len(agree_live) + len(zero_trade_live) + len(false_positives_live) == len(old),
+        f"{len(agree_live)} + {len(zero_trade_live)} + {len(false_positives_live)} != {len(old)}",
     )
 
     print("\n[SECTION 3] Parameterisation -- monotonic behaviour across window starts")
@@ -232,7 +308,7 @@ def run_tests() -> bool:
             f"the regression guard below would be tautological if this fails",
         )
     for mid, label in FALSE_POSITIVE_IDS.items():
-        in_canonical = mid in canonical
+        in_canonical = mid in canonical_live
         r.check(
             f"T4b  [{label}] correctly EXCLUDED from the canonical (tape_end) result",
             not in_canonical,
@@ -251,7 +327,7 @@ def run_tests() -> bool:
             f"result but was present -- the regression guard below would be tautological",
         )
     for mid, label in FALSE_NEGATIVE_IDS.items():
-        in_canonical = mid in canonical
+        in_canonical = mid in canonical_live
         r.check(
             f"T5b  [{label}] correctly INCLUDED in the canonical (tape_end) result",
             in_canonical,

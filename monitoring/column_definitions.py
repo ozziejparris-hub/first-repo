@@ -382,6 +382,23 @@ DATA_SOURCE_BACKFILL_POSITIONS_SYNTHETIC_SQL = (
 # Anchored on tape_end (MAX(trades.timestamp) per market) via INNER JOIN, never
 # on markets.resolution_date. See BACKTEST_WINDOW_RATIONALE below for why.
 #
+# VERSIONING (O-45 follow-up): this query is LIVE and legitimately time-varying
+# -- tape_end grows as new trades accrue, so the population at a fixed
+# window_start moves day to day (measured: 4,690 -> 4,702 -> 4,712 within a
+# single day, 2026-07-24). Anything that needs a population that DOESN'T move
+# (B5 labelling, B3 train/validate/holdout splits) must consume a FROZEN row
+# from the backtest_population_snapshots table (scripts/snapshot_backtest_population.py),
+# never this function's live output directly.
+#
+# BACKTEST_WINDOW_SQL_VERSION MUST BE BUMPED whenever BACKTEST_WINDOW_BASE_WHERE
+# or BACKTEST_WINDOW_TAPE_END_CTE changes -- it is recorded on every snapshot
+# row so a stale snapshot generated under an older definition is identifiable
+# after the fact. A version constant nobody remembers to bump is worse than
+# none; this note exists at the definition site so the obligation is visible
+# to whoever edits the WHERE clause or CTE below, not just to whoever wrote
+# the snapshot script.
+BACKTEST_WINDOW_SQL_VERSION = "1"
+#
 # Independently reinvented on resolution_date 3 times before this existed
 # (B2/B1b-prices' population figure, the RQ1.1 ELO-persistence period split,
 # B5 event-clustering scoping) — that's why this is now canonical rather than
@@ -428,6 +445,9 @@ them:
   before picking the column.
 """
 
+# CHANGING THIS CTE? Bump BACKTEST_WINDOW_SQL_VERSION above. It is recorded
+# on every backtest_population_snapshots row -- the version is how a snapshot
+# frozen under the old definition is told apart from one frozen under this one.
 BACKTEST_WINDOW_TAPE_END_CTE = """
     SELECT market_id, MAX(timestamp) AS tape_end FROM trades GROUP BY market_id
 """
@@ -444,6 +464,8 @@ BACKTEST_WINDOW_TAPE_END_CTE = """
 # A market can't have trade_gap_flag=1 for one reason and pass this check for
 # the other — checking flag_reason separately here would be redundant, not
 # more precise.
+# CHANGING THIS WHERE CLAUSE? Bump BACKTEST_WINDOW_SQL_VERSION above -- same
+# reason as the CTE comment above it.
 BACKTEST_WINDOW_BASE_WHERE = (
     "m.resolved = 1"
     "\n  AND m.category IN ('Geopolitics', 'Elections')"
