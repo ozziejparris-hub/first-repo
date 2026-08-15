@@ -180,7 +180,7 @@ SUCCESS_TEXT = ("Top geo_elo decile shows positive mean edge with a trader-clust
 
 def db_connect(db_path):
     conn = sqlite3.connect(db_path)
-    conn.execute("PRAGMA busy_timeout=30000")
+    conn.execute("PRAGMA busy_timeout=60000")
     conn.execute("PRAGMA journal_mode=WAL")
     return conn
 
@@ -728,13 +728,28 @@ def main():
             json.dump(result, f, indent=2, default=str)
         print(f"\n[json] written to {args.json_out}")
 
+    conn.close()
+
     if args.persist:
         generated_at = datetime.now(timezone.utc).isoformat()
-        persist(conn, df, tables, args.generator_commit, generated_at)
+        last_err = None
+        for attempt in range(5):
+            try:
+                write_conn = db_connect(args.db)
+                persist(write_conn, df, tables, args.generator_commit, generated_at)
+                write_conn.close()
+                last_err = None
+                break
+            except sqlite3.OperationalError as e:
+                last_err = e
+                print(f"[persist] attempt {attempt+1} failed ({e}); retrying...", file=sys.stderr)
+                import time as _time
+                _time.sleep(5)
+        if last_err:
+            print(f"[persist] FAILED after retries: {last_err}", file=sys.stderr)
+            sys.exit(1)
         print(f"[persist] layer0_pre_registration, layer0_position_results "
               f"({len(df)} rows), layer0_stratum_summary written, generated_at={generated_at}")
-
-    conn.close()
 
 
 if __name__ == '__main__':
