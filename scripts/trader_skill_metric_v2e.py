@@ -158,7 +158,23 @@ OBJ3_TEXT = (
 def per_trader_t_ci(pairs, sigma2_within, alpha=0.05):
     """t-distribution CI per trader, using the POPULATION sigma2_within for
     each pair's variance (sigma2_within / n_positions_in_pair) rather than
-    an unstable trader-specific estimate, with df = n_pairs - 1."""
+    an unstable trader-specific estimate.
+
+    CORRECTED mid-pass (see coverage-simulation gate below): the initial
+    build used a t-distribution critical value with df=n_pairs-1. That is
+    wrong given how this interval is constructed -- t-distributions exist
+    to correct for the EXTRA uncertainty of estimating variance from the
+    same small sample the mean is estimated from. This interval does not do
+    that; it uses the population sigma2_within (borrowed strength, not a
+    per-trader estimate), so no variance-estimation penalty is owed. Using
+    t on top of an already-known variance double-penalises small samples.
+    The coverage simulation caught this directly: 0/5000 false positives at
+    n_pairs=3 against a nominal 5% (i.e. drastically over-conservative, the
+    opposite failure mode from the original bootstrap's 30.6%). Fixed to
+    the normal (z) critical value, the correct choice when variance is
+    known rather than estimated -- the "penalise thin traders" behaviour
+    the docstring originally attributed to df=n_pairs-1 is already fully
+    carried by the 1/n_i terms inside the variance sum itself."""
     out = []
     for trader, grp in pairs.groupby('trader'):
         v = grp['pair_edge'].to_numpy()
@@ -173,9 +189,8 @@ def per_trader_t_ci(pairs, sigma2_within, alpha=0.05):
         # variance of the weighted mean via error propagation (analytic pair variances)
         var_wmean = float(np.sum((w ** 2) * pair_var) / (np.sum(w) ** 2))
         se = np.sqrt(var_wmean)
-        df = npair - 1
-        tcrit = stats.t.ppf(1 - alpha / 2, df)
-        out.append((trader, point, npair, point - tcrit * se, point + tcrit * se))
+        zcrit = stats.norm.ppf(1 - alpha / 2)  # known variance -> normal, not t
+        out.append((trader, point, npair, point - zcrit * se, point + zcrit * se))
     return pd.DataFrame(out, columns=['trader', 'point', 'n_pairs', 'ci_lo_t', 'ci_hi_t'])
 
 
@@ -248,14 +263,15 @@ def coverage_simulation(entries_df, pairs, sigma2_within, n_pairs_sim=3, reps=CO
         if lo_b > 0 or hi_b < 0:
             excl_bootstrap += 1
 
-        # new: t-interval using population sigma2_within
+        # new: z-interval using the population sigma2_within (known variance,
+        # not estimated from the sample -- see per_trader_t_ci's docstring
+        # for why z, not t, is correct here)
         point = float(np.average(pair_edges, weights=weights))
         pair_var = sigma2_within / n_positions_arr
         var_wmean = float(np.sum((weights ** 2) * pair_var) / (np.sum(weights) ** 2))
         se = np.sqrt(var_wmean)
-        df = n_pairs_sim - 1
-        tcrit = stats.t.ppf(0.975, df)
-        lo_t, hi_t = point - tcrit * se, point + tcrit * se
+        zcrit = stats.norm.ppf(0.975)
+        lo_t, hi_t = point - zcrit * se, point + zcrit * se
         if lo_t > 0 or hi_t < 0:
             excl_t += 1
 
@@ -320,7 +336,9 @@ def main():
     trader_ci_bootstrap = per_trader_weighted_bootstrap(pairs_for_ci, reps=args.bootstrap_reps, seed=args.seed)
     sweep_a = eligibility_sweep(pairs, eb, trader_ci_bootstrap, M_SWEEP, verbose=True)
 
-    print("\n--- (b) t-distribution CI (population variance, df=n_pairs-1), no eligibility filter ---")
+    print("\n--- (b) known-variance z-interval (population sigma2_within; CORRECTED from an initial "
+          "t-distribution build that failed the coverage gate at 0% -- see per_trader_t_ci docstring), "
+          "no eligibility filter ---")
     t_ci = per_trader_t_ci(pairs, sigma2_within)
     sig_t_only = t_ci[t_ci['ci_lo_t'] > 0]
     print(f"  t-CI alone: n_significant={len(sig_t_only)}/{len(t_ci)} "
@@ -409,8 +427,8 @@ def main():
             point = float(np.average(v, weights=w))
             pair_var = sigma2_within / n_pos
             se = np.sqrt(float(np.sum((w ** 2) * pair_var) / (np.sum(w) ** 2)))
-            tcrit = stats.t.ppf(1 - alpha / 2, npair - 1)
-            rows.append((trader, point, npair, point - tcrit * se, point + tcrit * se))
+            zcrit = stats.norm.ppf(1 - alpha / 2)  # known variance -> normal, not t (see per_trader_t_ci)
+            rows.append((trader, point, npair, point - zcrit * se, point + zcrit * se))
         return pd.DataFrame(rows, columns=['trader', 'point', 'n_pairs', 'ci_lo', 'ci_hi'])
 
     t_ci_99 = t_ci_at_alpha(pairs[pairs['trader'].isin(set(t_ci_elig['trader']))], sigma2_within, 0.01)
