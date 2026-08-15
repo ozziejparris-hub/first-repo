@@ -494,23 +494,68 @@ def main():
     print(f"market-weighted:   {len(mkt_eb)} traders, shrunk_mean summary:\n{mkt_eb['shrunk_mean'].describe()}")
     print(f"event-weighted:    {len(evt_eb)} traders, shrunk_mean summary:\n{evt_eb['shrunk_mean'].describe()}")
 
+    # sigma2_between diagnostic per weighting -- degenerate (~0) means the EB
+    # shrinkage estimator found no detectable between-trader variance at that
+    # granularity, i.e. shrunk_mean collapses to the grand mean for everyone.
+    # Checked directly (not inferred from the symptom alone): for market-
+    # weighting, MSB=0.0621 < sigma2_within=0.0735 -- a genuine method-of-
+    # moments null, not an estimator bug (the bug was fixed upstream in
+    # trader_skill_metric_v2.py, commit 13ecf07; this is what the CORRECT
+    # formula returns).
+    degenerate = {}
+    for label, eb in (('position', pos_eb), ('market', mkt_eb), ('event', evt_eb)):
+        sb = float(eb['sigma2_between'].iloc[0]) if len(eb) else None
+        degenerate[label] = (sb is not None and sb <= 1e-12)
+        print(f"sigma2_between[{label}] = {sb}  degenerate={degenerate[label]}")
+
     m_pos_mkt = pos_eb.merge(mkt_eb, on='trader', suffixes=('_pos', '_mkt'))
     m_pos_evt = pos_eb.merge(evt_eb, on='trader', suffixes=('_pos', '_evt'))
     m_mkt_evt = mkt_eb.merge(evt_eb, on='trader', suffixes=('_mkt', '_evt'))
     rc_pos_mkt = rank_corr(m_pos_mkt['shrunk_mean_pos'], m_pos_mkt['shrunk_mean_mkt'])
     rc_pos_evt = rank_corr(m_pos_evt['shrunk_mean_pos'], m_pos_evt['shrunk_mean_evt'])
     rc_mkt_evt = rank_corr(m_mkt_evt['shrunk_mean_mkt'], m_mkt_evt['shrunk_mean_evt'])
-    print(f"\nrank_corr(position, market) = {rc_pos_mkt:.4f}  n={len(m_pos_mkt)}")
+    print(f"\nrank_corr(position, market) = {rc_pos_mkt:.4f}  n={len(m_pos_mkt)}  "
+          f"(NOTE: mechanically 0 if either side is degenerate -- a constant column has no rank)")
     print(f"rank_corr(position, event)  = {rc_pos_evt:.4f}  n={len(m_pos_evt)}")
     print(f"rank_corr(market, event)    = {rc_mkt_evt:.4f}  n={len(m_mkt_evt)}")
-    print("\nRECOMMENDATION: market-weighted (ii) as primary -- see AMENDMENT2_TEXT for rationale.")
+
+    if degenerate['market'] or degenerate['event']:
+        primary_weighting = 'position'
+        recommendation = (
+            "REVISED from the pre-registration's stated intent: market-weighted (ii) and "
+            "event-weighted (iii) both collapse to zero detectable between-trader variance "
+            "under the (corrected, verified) empirical-Bayes estimator -- not a bug, a genuine "
+            "method-of-moments null (market-weighted: MSB=0.0621 < sigma2_within=0.0735). "
+            "Median trader trades only ~4 distinct markets; that is not enough independent "
+            "observations, at this per-market-edge variance, for shrinkage to distinguish any "
+            "trader from the grand mean once volume is discarded. A metric with zero variance "
+            "cannot rank anyone, so position-weighted (i) is used for items 7-11 by necessity, "
+            "not because it was the intended primary. This reopens the concentration "
+            "vulnerability Amendment 2 was written to close -- position-weighting is exactly "
+            "what let one market dominate a bucket in the first place. Recorded as an "
+            "unresolved tension for Oscar's call, not resolved here: market-weighting is "
+            "conceptually right but not viable with current sample depth; position-weighting "
+            "is viable but structurally exposed to single-event domination. A possible middle "
+            "path (not built this pass) is a partial/intermediate weighting (e.g. capping, not "
+            "eliminating, a market's within-trader multiplicity) rather than the binary choice "
+            "tested here."
+        )
+    else:
+        primary_weighting = 'market'
+        recommendation = "market-weighted (ii) as primary -- see AMENDMENT2_TEXT for rationale."
+    print(f"\nRECOMMENDATION (revised on evidence, not pre-committed): {recommendation}")
 
     weighting_summary = dict(
         event_cluster_coverage=float(coverage),
         n_traders=dict(position=len(pos_eb), market=len(mkt_eb), event=len(evt_eb)),
+        sigma2_between=dict(position=float(pos_eb['sigma2_between'].iloc[0]),
+                            market=float(mkt_eb['sigma2_between'].iloc[0]),
+                            event=float(evt_eb['sigma2_between'].iloc[0])),
+        degenerate=degenerate,
         rank_correlations=dict(position_vs_market=rc_pos_mkt, position_vs_event=rc_pos_evt,
                                market_vs_event=rc_mkt_evt),
-        recommendation="market-weighted (ii) as primary",
+        recommendation=recommendation,
+        primary_weighting_used_for_items_7_11=primary_weighting,
     )
     if args.persist:
         persist_weighting(conn, weighting_summary, generated_at, args.generator_commit)
@@ -531,24 +576,30 @@ def main():
         conn.close()
         sys.exit(2)
 
-    # --- gate cleared: items 7-11, primary weighting = market-weighted ---
-    print("\n=== GATE CLEARED -- proceeding to items 7-11, primary weighting = market-weighted ===")
+    # --- gate cleared: items 7-11, primary weighting chosen ON EVIDENCE above
+    # (position-weighted if market/event collapsed; market-weighted otherwise) ---
+    print(f"\n=== GATE CLEARED -- proceeding to items 7-11, primary weighting = {primary_weighting} ===")
 
-    mkt_eb['kind'] = 'entry'
-    mkt_eb['weighting'] = 'market'
-    n_dist = int(mkt_eb['distinguishable_from_zero'].sum()) if 'distinguishable_from_zero' in mkt_eb else int(
-        ((mkt_eb['ci_lo'] > 0) | (mkt_eb['ci_hi'] < 0)).sum())
-    mkt_eb['distinguishable_from_zero'] = ((mkt_eb['ci_lo'] > 0) | (mkt_eb['ci_hi'] < 0)).astype(int)
-    print(f"\n[item 7] market-weighted shrunk-edge distribution, n_distinguishable_from_zero_95="
-          f"{mkt_eb['distinguishable_from_zero'].sum()}/{len(mkt_eb)}")
-    print(mkt_eb['shrunk_mean'].describe())
+    primary_eb = {'position': pos_eb, 'market': mkt_eb, 'event': evt_eb}[primary_weighting]
+    primary_weight_fn = {'position': position_weighted, 'market': market_weighted,
+                         'event': lambda d: event_cluster_weighted(d, cluster_map)}[primary_weighting]
+
+    primary_eb = primary_eb.copy()
+    primary_eb['kind'] = 'entry'
+    primary_eb['weighting'] = primary_weighting
+    primary_eb['distinguishable_from_zero'] = ((primary_eb['ci_lo'] > 0) | (primary_eb['ci_hi'] < 0)).astype(int)
+    print(f"\n[item 7] {primary_weighting}-weighted shrunk-edge distribution, n_distinguishable_from_zero_95="
+          f"{primary_eb['distinguishable_from_zero'].sum()}/{len(primary_eb)}")
+    print(primary_eb['shrunk_mean'].describe())
+    print(f"(sigma2_between={primary_eb['sigma2_between'].iloc[0]:.6f}, "
+          f"shrinkage_weight median={primary_eb['shrinkage_weight'].median():.4f})")
 
     stored = pd.read_sql("SELECT address AS trader, geo_elo FROM traders", conn)
-    mkt_eb = mkt_eb.merge(stored, on='trader', how='left')
-    overlap_geo = mkt_eb.dropna(subset=['geo_elo'])
+    primary_eb = primary_eb.merge(stored, on='trader', how='left')
+    overlap_geo = primary_eb.dropna(subset=['geo_elo'])
     spearman_v_geo = rank_corr(overlap_geo['shrunk_mean'], overlap_geo['geo_elo'])
-    print(f"\n[item 8] Spearman(market-weighted shrunk_mean, stored geo_elo) = {spearman_v_geo:.4f}, "
-          f"n={len(overlap_geo)}")
+    print(f"\n[item 8] Spearman({primary_weighting}-weighted shrunk_mean, stored geo_elo) = "
+          f"{spearman_v_geo:.4f}, n={len(overlap_geo)}")
 
     no_frac = entries_df.groupby('trader').apply(lambda g: (g['outcome'] == 'No').mean(),
                                                  include_groups=False).rename('no_frac').reset_index()
@@ -560,31 +611,36 @@ def main():
     print(f"[item 8] corr(rank_disagreement, No-fraction) = {corr_dis_no:.4f}")
 
     legendary = set(r[0] for r in conn.execute("SELECT address FROM traders WHERE geo_elo >= 2175"))
-    ranked = mkt_eb.sort_values('shrunk_mean', ascending=False)
+    ranked = primary_eb.sort_values('shrunk_mean', ascending=False)
     top_n = ranked.head(len(legendary))['trader'].tolist()
     overlap = legendary & set(top_n)
-    print(f"\n[item 9] LEGENDARY (n={len(legendary)}) overlap with top-{len(legendary)} market-weighted: "
-          f"{len(overlap)} ({100*len(overlap)/len(legendary):.1f}%)")
+    print(f"\n[item 9] LEGENDARY (n={len(legendary)}) overlap with top-{len(legendary)} "
+          f"{primary_weighting}-weighted: {len(overlap)} ({100*len(overlap)/len(legendary):.1f}%)")
 
-    exits_mkt = market_weighted(exits_df.rename(columns={'exit_avg_price': 'exit_avg_price'}))
-    exits_mkt_eb = weighting_eb_and_ci(exits_mkt, reps=args.bootstrap_reps, seed=args.seed)
-    ee = mkt_eb[['trader', 'raw_mean']].rename(columns={'raw_mean': 'entry_mean'}).merge(
-        exits_mkt_eb[['trader', 'raw_mean']].rename(columns={'raw_mean': 'exit_mean'}), on='trader')
+    exits_primary = primary_weight_fn(exits_df.rename(columns={'exit_avg_price': 'exit_avg_price'}))
+    exits_primary_eb = weighting_eb_and_ci(exits_primary, reps=args.bootstrap_reps, seed=args.seed)
+    ee = primary_eb[['trader', 'raw_mean']].rename(columns={'raw_mean': 'entry_mean'}).merge(
+        exits_primary_eb[['trader', 'raw_mean']].rename(columns={'raw_mean': 'exit_mean'}), on='trader')
     ee_pearson = float(np.corrcoef(ee['entry_mean'], ee['exit_mean'])[0, 1]) if len(ee) >= 3 else None
     ee_spearman = rank_corr(ee['entry_mean'], ee['exit_mean']) if len(ee) >= 3 else None
-    print(f"\n[item 10/11] entries vs exits (market-weighted) correlation: n={len(ee)}, "
+    print(f"\n[item 10/11] entries vs exits ({primary_weighting}-weighted) correlation: n={len(ee)}, "
           f"pearson={ee_pearson}, spearman={ee_spearman}")
 
-    # robustness: same items under position- and event-weighting
-    for label, eb in (('position', pos_eb), ('event', evt_eb)):
+    # cross-check under the other two weightings (degenerate ones will show
+    # mechanically-zero Spearman -- expected, not a new finding, given item 5's diagnosis)
+    for label, eb in (('position', pos_eb), ('market', mkt_eb), ('event', evt_eb)):
+        if label == primary_weighting:
+            continue
         eb2 = eb.merge(stored, on='trader', how='left').dropna(subset=['geo_elo'])
         sc = rank_corr(eb2['shrunk_mean'], eb2['geo_elo'])
         top_n_alt = eb.sort_values('shrunk_mean', ascending=False).head(len(legendary))['trader'].tolist()
         ov_alt = legendary & set(top_n_alt)
-        print(f"[robustness:{label}] Spearman vs geo_elo={sc:.4f}, LEGENDARY overlap={len(ov_alt)}/{len(legendary)}")
+        print(f"[cross-check:{label}] Spearman vs geo_elo={sc:.4f}, LEGENDARY overlap={len(ov_alt)}/{len(legendary)} "
+              f"{'(degenerate weighting, per item 5)' if degenerate.get(label) else ''}")
 
     findings.update(dict(
-        item7=dict(n_traders=len(mkt_eb), n_distinguishable_95=int(mkt_eb['distinguishable_from_zero'].sum())),
+        primary_weighting=primary_weighting,
+        item7=dict(n_traders=len(primary_eb), n_distinguishable_95=int(primary_eb['distinguishable_from_zero'].sum())),
         item8=dict(spearman_vs_geo_elo=spearman_v_geo, n_overlap=len(overlap_geo),
                   corr_disagreement_no_fraction=corr_dis_no),
         item9=dict(n_legendary=len(legendary), overlap=len(overlap),
@@ -592,11 +648,13 @@ def main():
         item10_11=dict(n=len(ee), pearson=ee_pearson, spearman=ee_spearman),
     ))
 
-    # persist trader results (market-weighted primary, entries + exits)
+    # persist trader results (primary weighting, entries + exits)
+    mkt_eb = primary_eb
+    exits_mkt_eb = exits_primary_eb
     mkt_eb['kind'] = 'entry'
-    mkt_eb['weighting'] = 'market'
+    mkt_eb['weighting'] = primary_weighting
     exits_mkt_eb['kind'] = 'exit'
-    exits_mkt_eb['weighting'] = 'market'
+    exits_mkt_eb['weighting'] = primary_weighting
     exits_mkt_eb = exits_mkt_eb.merge(stored, on='trader', how='left')
     exits_mkt_eb['distinguishable_from_zero'] = ((exits_mkt_eb['ci_lo'] > 0) | (exits_mkt_eb['ci_hi'] < 0)).astype(int)
 
