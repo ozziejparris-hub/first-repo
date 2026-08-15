@@ -258,11 +258,24 @@ def eb_shrinkage(df, value_col='edge', trader_col='trader'):
     estimated as the pooled sample variance of individual edges (a common,
     transparent approximation -- treats per-position noise as roughly
     homogeneous across traders rather than modelling price-dependent
-    Bernoulli variance separately). sigma2_between estimated by method of
-    moments from the variance of raw per-trader means net of expected
-    sampling variance; clipped to >=0 (negative implies no detectable
-    between-trader true-skill variance beyond noise -- shrink fully to the
-    grand mean)."""
+    Bernoulli variance separately). sigma2_between estimated via the
+    standard UNBALANCED one-way ANOVA method-of-moments estimator (Efron-
+    Morris style: sigma2_between = max(0, (MSB - sigma2_within) / n_0),
+    n_0 = (N - sum(n_i^2)/N) / (K-1)) rather than a naive n_i-weighted
+    variance-of-means minus mean-sampling-variance -- the naive version
+    degenerates (collapses sigma2_between to ~0 for EVERY trader) on
+    populations dominated by small groups (e.g. market-weighted or event-
+    weighted aggregation, where most traders have very few distinct
+    markets/clusters), because weighting the "between" term by n_i lets a
+    few high-n traders' own internal averaging (which mechanically pulls
+    their mean toward the grand mean) dominate the estimate. Caught via a
+    concrete symptom: shrunk_mean was bit-for-bit identical across all
+    27,236 traders under market-/event-weighting in an initial run of
+    trader_skill_metric_v2b.py -- not a real finding, a degenerate
+    estimator. Fixed here (shared by v2 and v2b) before any interpretive
+    result was reported. sigma2_between clipped to >=0 (negative implies
+    no detectable between-trader true-skill variance beyond noise --
+    shrink fully to the grand mean)."""
     per_trader = df.groupby(trader_col)[value_col].agg(['mean', 'var', 'count']).rename(
         columns={'mean': 'raw_mean', 'var': 'raw_var', 'count': 'n'})
     per_trader['raw_var'] = per_trader['raw_var'].fillna(df[value_col].var())
@@ -271,11 +284,16 @@ def eb_shrinkage(df, value_col='edge', trader_col='trader'):
     sigma2_within = df[value_col].var()  # pooled individual-observation variance
 
     sampling_var = sigma2_within / per_trader['n']
-    weighted_var_of_means = np.average(
-        (per_trader['raw_mean'] - grand_mean) ** 2, weights=per_trader['n']
-    )
-    mean_sampling_var = np.average(sampling_var, weights=per_trader['n'])
-    sigma2_between = max(0.0, weighted_var_of_means - mean_sampling_var)
+
+    n_i = per_trader['n'].to_numpy(dtype=float)
+    K = len(per_trader)
+    N = n_i.sum()
+    if K > 1 and N > 0:
+        msb = float(np.sum(n_i * (per_trader['raw_mean'].to_numpy() - grand_mean) ** 2) / (K - 1))
+        n0 = float((N - np.sum(n_i ** 2) / N) / (K - 1))
+        sigma2_between = max(0.0, (msb - sigma2_within) / n0) if n0 > 0 else 0.0
+    else:
+        sigma2_between = 0.0
 
     per_trader['shrinkage_weight'] = sigma2_between / (sigma2_between + sampling_var)
     per_trader['shrunk_mean'] = (per_trader['shrinkage_weight'] * per_trader['raw_mean'] +
