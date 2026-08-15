@@ -182,7 +182,7 @@ def per_trader_t_ci(pairs, sigma2_within, alpha=0.05):
 def eligibility_sweep(pairs, eb, trader_ci_bootstrap, m_values, verbose=False):
     """Approach (a): minimum-pairs eligibility gating the ORIGINAL v2d
     bootstrap CI (isolates the eligibility filter's own effect)."""
-    n_pairs_per_trader = pairs.groupby('trader').size().rename('n_pairs')
+    n_pairs_per_trader = pairs.groupby('trader').size().rename('n_pairs').reset_index()
     merged = eb.merge(trader_ci_bootstrap, on='trader').merge(n_pairs_per_trader, on='trader')
     rows = []
     for m in m_values:
