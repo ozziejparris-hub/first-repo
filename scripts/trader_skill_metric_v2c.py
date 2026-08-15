@@ -433,10 +433,26 @@ def main():
 
     gap = real_corr_pearson - placebo_corr_pearson
     print(f"\n[interpretation] observed - placebo (pearson) = {gap:.4f}")
+    # Three cases, not two -- the pre-registration anticipated "comparable" or
+    # "placebo less negative than observed" but not this one: placebo MORE
+    # negative than observed means real exit timing DAMPENS the purely
+    # mechanical effect relative to random timing, i.e. real (positive) skill,
+    # not "no signal" and not "entries/exits are simply anti-correlated by
+    # construction."
     if abs(gap) < 0.10:
         verdict = "MECHANICAL -- placebo reproduces the observed correlation; not behavioural."
+    elif gap > 0:
+        verdict = (f"REAL, POSITIVE EXIT-TIMING SKILL -- placebo (random exit timing) is MORE negative "
+                  f"({placebo_corr_pearson:.4f}) than observed ({real_corr_pearson:.4f}) by {gap:.3f}. "
+                  f"Pure mechanics (the shared `won` term) alone would produce a stronger anti-correlation "
+                  f"than what real traders actually show -- their real exit decisions partially COUNTERACT "
+                  f"the mechanical effect. This is evidence of genuine, non-mechanical exit-timing skill "
+                  f"that pulls the correlation back toward zero, not evidence that entry and exit skill are "
+                  f"behaviourally opposed.")
     else:
-        verdict = f"PARTIALLY REAL -- placebo is materially less negative than observed by {abs(gap):.3f}; a residual signal survives."
+        verdict = (f"REAL, NEGATIVE RESIDUAL -- placebo ({placebo_corr_pearson:.4f}) is LESS negative than "
+                  f"observed ({real_corr_pearson:.4f}) by {abs(gap):.3f}; a residual anti-correlation beyond "
+                  f"pure mechanics survives, consistent with genuine entry/exit skill trade-off.")
     print(f"[VERDICT] {verdict}")
 
     if args.persist:
