@@ -1,0 +1,726 @@
+{
+  "generated_at": "2026-08-18T19:25:10.166116+00:00",
+  "db_path": "/home/parison/projects/first-repo/data/polymarket_tracker.db",
+  "six_sites": [
+    "scripts/trader_skill_metric_v2.py:390",
+    "scripts/trader_skill_metric_v2b.py:613",
+    "scripts/trader_skill_metric_v2c.py:506",
+    "scripts/trader_skill_metric_v2d.py:418",
+    "scripts/trader_skill_metric_v2e.py:437",
+    "scripts/trader_skill_metric_v2f.py:380"
+  ],
+  "hardcoded_where": "geo_elo >= 2175",
+  "canonical_where": "geo_elo_active >= 2175\n  AND geo_accuracy_pool = 1\n  AND research_excluded = 0\n  AND bot_type IS NULL",
+  "cohort_source_table": "metric_v2f_intersection_cohort",
+  "cohort_meta": {
+    "generated_at": "2026-08-15T19:36:56.852700+00:00",
+    "generator_commit": "eaeabbc",
+    "spec_version": "SKILLV2F-2026-08-15-v1"
+  },
+  "n_cohort": 295,
+  "inflated": {
+    "n_legendary": 81,
+    "overlap": 15,
+    "overlap_fraction": 0.18518518518518517,
+    "matches_handover_15_of_81": true
+  },
+  "canonical": {
+    "n_legendary": 10,
+    "overlap": 3,
+    "overlap_fraction": 0.3
+  },
+  "decomposition": {
+    "n_inflated": 81,
+    "fails_active_decay": 69,
+    "fails_accuracy_pool": 21,
+    "fails_research_excluded": 4,
+    "fails_bot_type": 1,
+    "fails_any_condition": 71,
+    "fails_multiple_conditions": 20,
+    "n_canonical_survivors": 10,
+    "per_trader": [
+      {
+        "address": "0x011faf988122d41ccba0a8f7333caab1349749fe",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 2
+      },
+      {
+        "address": "0x019b0c47f0eecaaa5a8d28c2f9ab62677634af03",
+        "fails_active_decay": false,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x0b498c2501f1c3a541f76218f083d48c92e7f2df",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x10fc6c4395bc1690ee6b79a1f0e93a1a0b6b9606",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x1104d937f3635fc20f42d56c2855e72f0ec5002a",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x1d8c256b15d3cd1f5db221e70c77f552eb8d757a",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x1e13c83d9bbdf8247c0f9e0d3d1a5cee7bd92ac4",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 2
+      },
+      {
+        "address": "0x2884f98185d2005691d245f3e2e70b15d1e1d0c3",
+        "fails_active_decay": false,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 0
+      },
+      {
+        "address": "0x2a75388b9addd6082889dbde5141b6fe03307d66",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x2ad51e85859ce37f71fc4c6a64a57d8e22344758",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x30cecdf29f069563ea21b8ae94492e41e53a6b2b",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x32c0e202df02901c40232c8e4906333e08e83643",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 2
+      },
+      {
+        "address": "0x353838e900ce4d41d861877be8dddf9148e32b2f",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x3af27d251a4d28f9202657eb4bc9f910da085212",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 2
+      },
+      {
+        "address": "0x3d03c46d2e4594ea6fa03f7b571342d8ee249d52",
+        "fails_active_decay": false,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 0
+      },
+      {
+        "address": "0x44a1159b925c145e70f746bb3f0f58380553bd21",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": true,
+        "fails_bot_type": false,
+        "n_conditions_failed": 2
+      },
+      {
+        "address": "0x45183d9422c447dd1d55687edf3aef07965a1cac",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x460bbcfa7eb40e9ec8616758933771f3b9f4a326",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 2
+      },
+      {
+        "address": "0x465e4affbbea5b9a420a78cbd02201dcc04fbd07",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 2
+      },
+      {
+        "address": "0x4f6ab4802404d7e337c98ab83f59184f8f192871",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x4fd3503c78bd1ececdbe034a4dfe156ce659ef31",
+        "fails_active_decay": false,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 0
+      },
+      {
+        "address": "0x51b5b8b1574994d5472351b368f6e6e4a1af9975",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x59c1de28a506d64c96d8172af1754423c49b12ce",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 2
+      },
+      {
+        "address": "0x5c3cf11c2ab2a7038d5097a29f8a9386f8c9ef04",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 2
+      },
+      {
+        "address": "0x5e3d9733fa5876a5e7a07799445a25a5fb5a6143",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": true,
+        "fails_bot_type": false,
+        "n_conditions_failed": 3
+      },
+      {
+        "address": "0x5f0b2ef77500dcda06d15179720b39772d1f2305",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x5f6f3ddf07a83c14022db618b00a0b4561339bf3",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 2
+      },
+      {
+        "address": "0x600a7303d79089bfbe86105ac52bfaf353545827",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 2
+      },
+      {
+        "address": "0x606ed7945996ae85a8002b05f83319c518b96b3a",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x63c6169ce52343b2de939559cfc7cc42d66a3e53",
+        "fails_active_decay": false,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 0
+      },
+      {
+        "address": "0x63cc40081ebb2b5563bd2949816169d720f8eec5",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x63d43bbb87f85af03b8f2f9e2fad7b54334fa2f1",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": true,
+        "fails_bot_type": true,
+        "n_conditions_failed": 4
+      },
+      {
+        "address": "0x677aec88bba252680728e717538f44a3cc22bd2e",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x6b025355d035a679205ae23de33c7e9abe71e5fc",
+        "fails_active_decay": false,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 0
+      },
+      {
+        "address": "0x6c979ffcc3528a5d2395a2f7c89135711da0988c",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x73192b9597c4496f8c338b36239bdf4218ac0299",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x743dba2242eb96a629f2b10aef8f543c298661da",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x821ebe19a8979904476f3ab6d23879dbccf6e7a9",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x83ed9ed0667edd1e8eee3d484f17b76df65713fd",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 2
+      },
+      {
+        "address": "0x848df648f91091f0f90d941990764c895d1235e6",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x8e9eedf20dfa70956d49f608a205e402d9df38e4",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x9287bd3d7f9cc43198c98974cbbdfa1c48fe41f2",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x931a9f13ef24df89553ad0fd6b5082aaca1db3cc",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x99dc663547fe7f12113f7b01e7d53a86c6e6bcda",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 2
+      },
+      {
+        "address": "0x9aa516edbff6688595987727b4edc530cff14010",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0x9cb98fc57fe8a3bdf75c3b48bd419e5d262f7b80",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xa83c7adfd9c81b49f69b8a16e8c77641fa9aa8f4",
+        "fails_active_decay": false,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xa972613376a5c6df8ad4f761057107340f7540c2",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 2
+      },
+      {
+        "address": "0xad265725062d5dfcbc6067ae8d8be225c2e4bf29",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xb6ce892dd3e01d4e30264f15fd9e61a4f62f895d",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xb9ca9eba31d931828353947de1706d9409f555ff",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xba0253723e4381d7f4c6ea717715f7e99770014d",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 2
+      },
+      {
+        "address": "0xbc1775a8bc4dda029c04bc4976c5612430f6289a",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xbc54e69667ceb6ccec538e5a0ba1927fc1fe680f",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xc31516291191961a882c5b6e22fe9ba8035afe18",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xc624cccd414dc90ea329f06cf535fafa40d2ee24",
+        "fails_active_decay": false,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 0
+      },
+      {
+        "address": "0xc722c1a1a0bfddf4e0edb3286f7ebce127221334",
+        "fails_active_decay": false,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 0
+      },
+      {
+        "address": "0xc9ceaf3031d0c99fec2e07c49c6c4e9f94ffa6ca",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 2
+      },
+      {
+        "address": "0xcc2620f9e3cb4498e8aea556764ec341357932ca",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xd218e474776403a330142299f7796e8ba32eb5c9",
+        "fails_active_decay": false,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 0
+      },
+      {
+        "address": "0xd44e974a3edb232aa4aedbdcc59792b76a5f67e2",
+        "fails_active_decay": false,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 0
+      },
+      {
+        "address": "0xd684df320961d73d746a59e7b5343a0b7a733d4c",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xd71c7cacf7ab47c9dae037cfcd340313eff520b3",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xdbade4c82fb72780a0db9a38f821d8671aba9c95",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xdc700b60c6ed2f9eb28a216314a167777ee3cc56",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xdde1a0257ddcc19522df5128049ce5619944f1d7",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xdfdbce9d29eabf65c130d61f1425f1c4d786d762",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xe0bc6311306558d71f68fc085c26f0337996ad7c",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xe0f1e7751df4035f78a5eb2f4296c98b4d5bc4bd",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xe234959595e01dacd391a9502a6ad0edf4e3304a",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xe2cbf5c728f9bd2a5d561cd350c5f04128ca6e8f",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xe3d176f5eb48cd7c370236020cb6baee37a4d312",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xe948e9a171352efb09e48b8f2164e4dabaacecc7",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": true,
+        "fails_bot_type": false,
+        "n_conditions_failed": 3
+      },
+      {
+        "address": "0xec1f0396d8cd31ef3129bf227e77a9714dcb03d6",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": true,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 2
+      },
+      {
+        "address": "0xecaa8806a9a05049d7d5260a33dc924220e377a9",
+        "fails_active_decay": false,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 0
+      },
+      {
+        "address": "0xedc2834124c0465fb2ccbf239896ef65f975ad9f",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xeea75cd940a8abc193b04ca78be589af3d41d491",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xf009b0e19d041a860a63af3350598db8b2bce274",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xf8855dadc0e94d49e63ce1149850b60a74dc5274",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xfbe2f1f7066a035dacaf1cf625135427ff776f8d",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      },
+      {
+        "address": "0xfeb883a49668ebbda2ad61ac713a00f4880c55e3",
+        "fails_active_decay": true,
+        "fails_accuracy_pool": false,
+        "fails_research_excluded": false,
+        "fails_bot_type": false,
+        "n_conditions_failed": 1
+      }
+    ]
+  },
+  "overlap_traders_inflated": [
+    "0x2a75388b9addd6082889dbde5141b6fe03307d66",
+    "0x2ad51e85859ce37f71fc4c6a64a57d8e22344758",
+    "0x3d03c46d2e4594ea6fa03f7b571342d8ee249d52",
+    "0x606ed7945996ae85a8002b05f83319c518b96b3a",
+    "0x848df648f91091f0f90d941990764c895d1235e6",
+    "0x9cb98fc57fe8a3bdf75c3b48bd419e5d262f7b80",
+    "0xad265725062d5dfcbc6067ae8d8be225c2e4bf29",
+    "0xbc1775a8bc4dda029c04bc4976c5612430f6289a",
+    "0xbc54e69667ceb6ccec538e5a0ba1927fc1fe680f",
+    "0xd44e974a3edb232aa4aedbdcc59792b76a5f67e2",
+    "0xdc700b60c6ed2f9eb28a216314a167777ee3cc56",
+    "0xe0f1e7751df4035f78a5eb2f4296c98b4d5bc4bd",
+    "0xecaa8806a9a05049d7d5260a33dc924220e377a9",
+    "0xedc2834124c0465fb2ccbf239896ef65f975ad9f",
+    "0xeea75cd940a8abc193b04ca78be589af3d41d491"
+  ],
+  "overlap_traders_canonical": [
+    "0x3d03c46d2e4594ea6fa03f7b571342d8ee249d52",
+    "0xd44e974a3edb232aa4aedbdcc59792b76a5f67e2",
+    "0xecaa8806a9a05049d7d5260a33dc924220e377a9"
+  ],
+  "legendary_canonical_addresses": [
+    "0x2884f98185d2005691d245f3e2e70b15d1e1d0c3",
+    "0x3d03c46d2e4594ea6fa03f7b571342d8ee249d52",
+    "0x4fd3503c78bd1ececdbe034a4dfe156ce659ef31",
+    "0x63c6169ce52343b2de939559cfc7cc42d66a3e53",
+    "0x6b025355d035a679205ae23de33c7e9abe71e5fc",
+    "0xc624cccd414dc90ea329f06cf535fafa40d2ee24",
+    "0xc722c1a1a0bfddf4e0edb3286f7ebce127221334",
+    "0xd218e474776403a330142299f7796e8ba32eb5c9",
+    "0xd44e974a3edb232aa4aedbdcc59792b76a5f67e2",
+    "0xecaa8806a9a05049d7d5260a33dc924220e377a9"
+  ]
+}
