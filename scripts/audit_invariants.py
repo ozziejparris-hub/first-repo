@@ -737,6 +737,64 @@ def check_comp_elo_population_drift(cur, verbose):
     return (name, 0, 0, count, examples)
 
 
+def check_resolution_write_atomicity(cur, verbose):
+    """Design: brain/decisions/2026-08-19-canonical-resolution-write-design.md §E
+    (canonical resolution write path, Stage 0 — first-repo commit adding
+    monitoring/resolution_writer.py). Same shape as check_comp_elo_write_atomicity
+    (design's own analogy): a row whose resolution_recorded_at has been touched
+    can only have been touched by mark_market_resolved() (monitoring/resolution_writer.py),
+    since that is the only code that writes that column — and it always sets
+    resolution_evidence_source in the same statement. A row with
+    resolution_recorded_at set but resolution_evidence_source NULL is evidence
+    something else wrote to it. NON-TAUTOLOGICAL: this is not "does
+    mark_market_resolved() set both columns together" (trivially true by
+    construction) — it is "did anything OTHER than mark_market_resolved() touch
+    resolution_recorded_at without also setting resolution_evidence_source."
+    KNOWN INCOMPLETE, stated in the design rather than oversold: a rogue writer
+    that ignores resolution_recorded_at entirely (never touches it at all) is
+    invisible to this check — it only catches a writer that touches the column
+    but not its paired tag. Floor: 0.
+
+    TIER: 0 / OBSERVE, gates nothing, by design (see determine_status() — tier
+    0 always returns OBSERVE regardless of count). As of Stage 0, this floor
+    is trivially 0 for every row, since resolution_recorded_at is not yet set
+    by anything (mark_market_resolved() is called by nothing — see the
+    module's own docstring). The check exists now so its own history starts
+    accumulating from Stage 0, not from whenever someone remembers to add it.
+
+    PROMOTION CONDITION — stated mechanically, not as a date, per the design's
+    own explicit instruction not to repeat the ELO arc's Stage-0d checks (which
+    specified a prose promotion condition, "gating from end of Stage 3", that
+    was never actually wired into this file's tier logic and are still, as of
+    this check's own addition, permanently hardcoded to tier 0):
+      Promote to Tier 1 (CRITICAL) exactly when a re-run of
+      scripts/scan_write_paths.py reports ZERO direct
+      `UPDATE markets SET (resolved|winning_outcome|resolution_date)`
+      statements outside monitoring/resolution_writer.py's own module — i.e.
+      when Migration Stage 5 (design §G) is verified complete by that same
+      tooling. Not before. Do not promote this tier by editing this docstring
+      alone; the promotion also requires changing the tier value in the
+      return statement below, and should cite the scan_write_paths.py run
+      that satisfied the condition in the commit that does it."""
+    name = "[resolution-stage0/OBSERVE] resolution_recorded_at set without resolution_evidence_source"
+    count = _count(cur, """
+        SELECT COUNT(*) FROM markets
+        WHERE resolution_recorded_at IS NOT NULL
+          AND resolution_evidence_source IS NULL
+    """)
+    examples = []
+    if verbose and count:
+        examples = _fetch_examples(cur, """
+            SELECT market_id, resolved, winning_outcome, resolution_date,
+                   resolution_recorded_at, resolution_evidence_source
+            FROM markets
+            WHERE resolution_recorded_at IS NOT NULL
+              AND resolution_evidence_source IS NULL
+            LIMIT 5
+        """)
+    return (name, 0, 0, count, examples)
+
+
 # ---------------------------------------------------------------------------
 # All checks in display order
 # ---------------------------------------------------------------------------
@@ -770,6 +828,7 @@ ALL_CHECKS = [
     check_comp_elo_write_atomicity,
     check_comp_elo_behavioral_materialization,
     check_comp_elo_population_drift,
+    check_resolution_write_atomicity,
 ]
 
 
