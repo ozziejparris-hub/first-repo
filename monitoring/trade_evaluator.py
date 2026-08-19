@@ -32,8 +32,16 @@ class TradeEvaluator:
         if not trade_outcome or not winning_outcome:
             return "invalid"
 
-        # Handle side (BUY = betting on outcome, SELL = betting against)
-        side = trade.get('side', 'buy').lower()
+        # Handle side (BUY = betting on outcome, SELL = betting against).
+        # (side or 'buy') covers a present-but-falsy value (None, '') as well as a
+        # missing key -- trade.get('side', 'buy') only covers the latter and would
+        # raise AttributeError on side=None. .strip() guards a padded value (' buy ')
+        # from being misread as SELL. 2026-08-19: hardened here (not in any one
+        # caller) so all three TradeEvaluator callers get the fix, matching what
+        # scripts/backfill_trade_results_geo.py's own evaluate_trade() already did
+        # before being repointed at this method -- see
+        # 2026-08-19-trade-evaluator-repoint.md.
+        side = (trade.get('side') or 'buy').strip().lower()
 
         if side == 'buy':
             # They bought the outcome - they win if it matches

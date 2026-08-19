@@ -5,6 +5,13 @@ Backfill pending trade results for ALL traders on resolved Geopolitics/Elections
 evaluate_new_trader_results.py only processes is_flagged=1 traders. After the category
 backfill reclassified ~11K markets, many traders have trade_result='pending' on resolved
 geo/elections markets. This script fixes that gap regardless of is_flagged status.
+
+Win/loss determination is delegated to monitoring.trade_evaluator.TradeEvaluator (the
+canonical evaluator, also used by evaluate_new_trader_results.py and
+scripts/backfill_trade_results.py) rather than a local reimplementation -- repointed
+2026-08-19, see brain/decisions/2026-08-19-trade-evaluator-repoint.md. Confirmed
+zero-disagreement equivalence against the prior local implementation across 1,582,064
+already-evaluated rows before this change (2026-08-19-trade-evaluator-convergence.md).
 """
 
 import sys
@@ -14,9 +21,17 @@ import sqlite3
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import monitoring.column_definitions as cd
+from monitoring.trade_evaluator import TradeEvaluator
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'polymarket_tracker.db')
 BATCH_SIZE = 1000
+
+# database/polymarket_client are unused by TradeEvaluator.evaluate_trade() (it reads
+# only its `trade` dict and `winning_outcome` arg -- verified by reading
+# monitoring/trade_evaluator.py in full, 2026-08-19-trade-evaluator-convergence.md
+# Q4) -- constructing the real Database/PolymarketClient objects here would pull in
+# a live API client for a script that is otherwise read-only against the local DB.
+_EVALUATOR = TradeEvaluator(None, None)
 
 
 def get_connection(db_path: str) -> sqlite3.Connection:
@@ -27,26 +42,13 @@ def get_connection(db_path: str) -> sqlite3.Connection:
     return conn
 
 
-def evaluate_trade(outcome_bet: str | None, side: str, winning_outcome: str) -> str:
-    """Return 'won', 'lost', or 'invalid' using the same logic as TradeEvaluator."""
-    if not outcome_bet:
-        return 'invalid'
-    trade_outcome = str(outcome_bet).strip().lower()
-    winner = str(winning_outcome).strip().lower()
-    if not trade_outcome or not winner:
-        return 'invalid'
-    if (side or 'buy').strip().lower() == 'buy':
-        return 'won' if trade_outcome == winner else 'lost'
-    else:  # sell
-        return 'won' if trade_outcome != winner else 'lost'
-
-
 def fetch_pending_trades(conn: sqlite3.Connection, limit: int | None) -> list[dict]:
     sql = """
         SELECT
             t.trade_id,
             t.trader_address,
             t.outcome_bet,
+            t.outcome,
             t.side,
             m.winning_outcome
         FROM trades t
@@ -83,7 +85,7 @@ def run(db_path: str, dry_run: bool, limit: int | None) -> None:
 
     if dry_run:
         for trade in trades:
-            result = evaluate_trade(trade['outcome_bet'], trade['side'], trade['winning_outcome'])
+            result = _EVALUATOR.evaluate_trade(trade, trade['winning_outcome'])
             counts[result] += 1
             traders_seen.add(trade['trader_address'])
         print(f"\n[DRY RUN] Would write: won={counts['won']}, lost={counts['lost']}, invalid={counts['invalid']}")
@@ -97,7 +99,7 @@ def run(db_path: str, dry_run: bool, limit: int | None) -> None:
     for batch_start in range(0, total, BATCH_SIZE):
         batch = trades[batch_start: batch_start + BATCH_SIZE]
         for trade in batch:
-            result = evaluate_trade(trade['outcome_bet'], trade['side'], trade['winning_outcome'])
+            result = _EVALUATOR.evaluate_trade(trade, trade['winning_outcome'])
             cursor.execute(
                 "UPDATE trades SET trade_result = ? WHERE trade_id = ?",
                 (result, trade['trade_id'])

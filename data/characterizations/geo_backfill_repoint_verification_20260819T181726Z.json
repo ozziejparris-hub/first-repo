@@ -1,0 +1,17 @@
+{
+  "generated_at": "2026-08-19T18:17:26.382989+00:00",
+  "db_path": "/home/parison/projects/first-repo/data/polymarket_tracker.db",
+  "pre_repoint_rev": "HEAD",
+  "already_evaluated_population": {
+    "compared": 1582064,
+    "agree": 1582064,
+    "disagree": 0,
+    "disagreement_examples": []
+  },
+  "current_stuck_pending_population": {
+    "compared": 24719,
+    "agree": 24719,
+    "disagree": 0,
+    "disagreement_examples": []
+  }
+}
