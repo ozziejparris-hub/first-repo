@@ -265,7 +265,7 @@ class FastResolutionChecker:
                             UPDATE markets
                             SET resolved = 1,
                                 winning_outcome = ?,
-                                resolution_date = ?,
+                                resolution_date = COALESCE(resolution_date, ?),
                                 last_checked = ?
                             WHERE market_id = ?
                         """, (winner, datetime.now(), datetime.now(), market_id))
