@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-08-19T19:02:04.209721+00:00",
+  "db_path": "/home/parison/projects/first-repo/data/polymarket_tracker.db",
+  "counts": {
+    "resolved_1_winning_outcome_null_or_empty": 123,
+    "winning_outcome_set_resolved_0": 0,
+    "resolution_date_set_resolved_0": 1349,
+    "resolved_1_resolution_date_null": 8
+  },
+  "context_breakdown": {
+    "total_markets": 735451,
+    "total_resolved_1": 224910,
+    "total_resolved_0_or_null": 510541,
+    "resolved_1_geo_elec_winning_outcome_null": 0,
+    "resolved_1_winning_outcome_null_by_data_source": {
+      "gamma_backfill_tier2_2026-07-06": 123
+    }
+  },
+  "note": "resolved_1_winning_outcome_null_or_empty is not purely a defect count -- some markets legitimately resolve with no winner (voided/all-zero-price markets); this schema has no distinct sentinel for that case, so a true defect vs. legitimate-no-winner split is not derivable from this query alone."
+}
