@@ -1,0 +1,62 @@
+{
+  "generated_at": "2026-08-19T17:29:40.247620+00:00",
+  "db_path": "/home/parison/projects/first-repo/data/polymarket_tracker.db",
+  "pending92_artifact_used": "/home/parison/projects/first-repo/data/characterizations/pending_resolution_inconsistency_20260819T170702Z.json",
+  "invariant_predicate_unit": "trade rows (COUNT(*) FROM trades JOIN markets [JOIN traders]), NOT markets and NOT (trader,market) pairs",
+  "live_readings": {
+    "check_pending_flagged_trade_rows": 0,
+    "check_pending_geo_trade_rows": 24704,
+    "geo_distinct_markets": 2650,
+    "geo_distinct_traders": 1730,
+    "flagged_distinct_traders": 0
+  },
+  "audit_json_readings_this_morning": {
+    "date": "2026-08-19",
+    "run_at": "2026-08-19T06:02:09",
+    "pending_flagged": 60345,
+    "pending_geo": 36213
+  },
+  "audit_json_readings_prior_day": {
+    "date": "2026-08-18",
+    "run_at": "2026-08-18T06:02:43",
+    "pending_flagged": 0,
+    "pending_geo": 24082
+  },
+  "geo_population_data_source_breakdown": {
+    "background_backfill": 15719,
+    "polymarket_api": 8985
+  },
+  "market_overlap_92_vs_geo_invariant": {
+    "pending92_market_count": 92,
+    "geo_invariant_market_count": 2650,
+    "intersection": 92,
+    "pending92_minus_geo_invariant": 0,
+    "note": "expect pending92 to be a strict subset of geo_invariant markets: 92 requires ALL position entry-trades pending + canonical-symmetric-diff-only + tape_end<T_split; the invariant requires only >=1 pending trade row, any category filter is Geo/Elections only for the geo variant, DB-wide with no T_split bound."
+  },
+  "true_objective2_membership": {
+    "true_cohort_n": 155,
+    "true_cohort_survivors_n": 126,
+    "true_placebo_pool_n": 155,
+    "true_placebo_survivors_n": 113
+  },
+  "cohort_overlap": {
+    "geo_pending_traders_x_true_cohort": [
+      "0x604e43850248f9424f4129cb92966ac96e44f1cd",
+      "0x6bcc22657cb3ffbcc3fe5bd018f037057f35f8b2",
+      "0xc97b0b2a2547bb3ed57167092ef8a6e816c347e5"
+    ],
+    "geo_pending_traders_x_true_cohort_survivors": [],
+    "geo_pending_traders_x_true_placebo_pool": [
+      "0x54b5eacb474921051d62ad0f6ae2f4fc31b92e90",
+      "0x5c7482fa935e3ae89ccf7eeca2b11c671ea3cc9f",
+      "0x5cfd881133ff44d1f7b81ea8a819a30dfc39ca1b",
+      "0x89619f499b74c8d6bf7044cfe6a186b3f72bcca0"
+    ],
+    "geo_pending_traders_x_true_placebo_survivors": [
+      "0x54b5eacb474921051d62ad0f6ae2f4fc31b92e90",
+      "0x5cfd881133ff44d1f7b81ea8a819a30dfc39ca1b"
+    ],
+    "flagged_pending_traders_x_true_cohort_NOW": [],
+    "note": "flagged_pending_traders_x_true_cohort_NOW is measured AFTER today's evaluate_new_trader_results.py step already drained the flagged population to (near-)zero; it does NOT reconstruct this morning's 60,345-row population, which left no persisted snapshot (audit ran with verbose=False, examples=[]) and is not reconstructable post-hoc."
+  }
+}
