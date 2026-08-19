@@ -1,0 +1,271 @@
+{
+  "generated_at": "2026-08-19T18:04:23.965894+00:00",
+  "db_path": "/home/parison/projects/first-repo/data/polymarket_tracker.db",
+  "population": "trade_result IN ('won','lost') AND markets.category IN ('Geopolitics','Elections')",
+  "rows_compared": 1582064,
+  "trade_evaluator_vs_geo_backfill": {
+    "agree": 1582064,
+    "disagree": 0,
+    "disagreement_examples": []
+  },
+  "trade_evaluator_result_distribution": {
+    "won": 704517,
+    "lost": 877547,
+    "invalid": 0
+  },
+  "geo_backfill_result_distribution": {
+    "won": 704517,
+    "lost": 877547,
+    "invalid": 0
+  },
+  "trade_evaluator_vs_stored_trade_result": {
+    "mismatch_count": 24,
+    "examples": [
+      {
+        "trade_id": "0x29e203cdcf470f01229cbf5b94caf37373110485a82e8e2c6644a9fcf271bee9-55699095",
+        "stored": "lost",
+        "trade_evaluator_result": "won"
+      },
+      {
+        "trade_id": "0x3b68d0be0d3e9613c78c9e5a3f36525cb4b31f86be4cbb25cfa5c7a917f6fcf9-68401123",
+        "stored": "won",
+        "trade_evaluator_result": "lost"
+      },
+      {
+        "trade_id": "0x7f2b31cd5b38b7bfef053f8f53b53374a2e5f95b4e3d8f2d345e01ab7225118a-24375438",
+        "stored": "lost",
+        "trade_evaluator_result": "won"
+      },
+      {
+        "trade_id": "0x0c174f253cd52a8109cb926fa12ab8ac16829a12333c1c17b8a0d4d28d45440a-86964554",
+        "stored": "lost",
+        "trade_evaluator_result": "won"
+      },
+      {
+        "trade_id": "0xcbfff50fe00e430d0c341e564f36b0704b87ee0610ffa6885124e26c435faff9-85465567",
+        "stored": "lost",
+        "trade_evaluator_result": "won"
+      },
+      {
+        "trade_id": "0x94bc3321bd6cdfbcbe28b6e2f606e290cb72460cae2340b2d6909709e2bb3f78-11164188",
+        "stored": "lost",
+        "trade_evaluator_result": "won"
+      },
+      {
+        "trade_id": "0xce07d8ca82df12a7f9f7d36cee081fc789b99f53ff7f8f2fc1c61652825e10ae-90448145",
+        "stored": "won",
+        "trade_evaluator_result": "lost"
+      },
+      {
+        "trade_id": "0xbc1b454f4cb48d0e404340f5ce535dfa18a3fb753829d6b95a4e85f6355930e6-10216944",
+        "stored": "won",
+        "trade_evaluator_result": "lost"
+      },
+      {
+        "trade_id": "0xf0d0c0791459551fe99b40c1cec40e78ee8c9a3257b78d28c1ba977c62dc19ce-75505728",
+        "stored": "lost",
+        "trade_evaluator_result": "won"
+      },
+      {
+        "trade_id": "0x0317a4891b7baf29f3a9c66dfe25b8d03ea922da5cfe7d2f9961b3d87c50c259-82855088",
+        "stored": "won",
+        "trade_evaluator_result": "lost"
+      },
+      {
+        "trade_id": "0x2b1f360d9e9dcf95cd62a72f01d4777613edbf3351410bd84e5e4d33af442c4a-29161841",
+        "stored": "won",
+        "trade_evaluator_result": "lost"
+      },
+      {
+        "trade_id": "0xf81af5fbab8d61f6c644948cf6e10a463f59d7f344a419bc62465dbf68718e2a-85191934",
+        "stored": "won",
+        "trade_evaluator_result": "lost"
+      },
+      {
+        "trade_id": "0x7ed4e2b1f00c93dd208894b26d9730a121beeb8e0cf398c94699795dc97c6a8b-48825140",
+        "stored": "lost",
+        "trade_evaluator_result": "won"
+      },
+      {
+        "trade_id": "0xa3ee59b5ec09bb2222c859d9058de84b1dad65dd0890be428f88c8437e31fe8f-99485657",
+        "stored": "lost",
+        "trade_evaluator_result": "won"
+      },
+      {
+        "trade_id": "0x975827c4f3ca61e6701e981046a28f61938db664c2077d474f138e375a513123-27211877",
+        "stored": "lost",
+        "trade_evaluator_result": "won"
+      },
+      {
+        "trade_id": "0x67cf1c6d96a01c65a6b5a480fc0840ab75b7fe385831c8b50b316d0480f21247-25227556",
+        "stored": "lost",
+        "trade_evaluator_result": "won"
+      },
+      {
+        "trade_id": "0x8ce6a168813fc5516a8057269fe438c8c3a765443e3f50a5bd59448001f65b05-19989240",
+        "stored": "lost",
+        "trade_evaluator_result": "won"
+      },
+      {
+        "trade_id": "0x08e1d90df21c223638c3bb8bf98374507b6db869fea94f3dadeb40d1002d66ab-11079000",
+        "stored": "won",
+        "trade_evaluator_result": "lost"
+      },
+      {
+        "trade_id": "0xd3f6a6268f65ea9b055320cd1d8a97c6aaa0c1b79b2b6d35cca57d9e31eac4f1-10832696",
+        "stored": "lost",
+        "trade_evaluator_result": "won"
+      },
+      {
+        "trade_id": "0x2d7a3ff0ba0e31a1efd32d6ce09064a2a8aed6c7a45c18775c3d10d1d1c725c7-70936298",
+        "stored": "lost",
+        "trade_evaluator_result": "won"
+      },
+      {
+        "trade_id": "0x496f1bde0fa965e3b8cd9cf54ae9478c2e7c937b6a501a2804be692f1998cb45-10709679",
+        "stored": "won",
+        "trade_evaluator_result": "lost"
+      },
+      {
+        "trade_id": "0xbbc3ed0d5fb063f4a3a4b5dd6662cc4dc74662cda2a7839a105bb8ca15add827-32991671",
+        "stored": "lost",
+        "trade_evaluator_result": "won"
+      },
+      {
+        "trade_id": "0xfbb9144eaf364642bf22511c02ae9dedf4cea41b8602378405e5ab97d3db64ae-24772066",
+        "stored": "won",
+        "trade_evaluator_result": "lost"
+      },
+      {
+        "trade_id": "0x57f1d165b52c3d962924e48ad7b37afb8eec74738f66fb7378607722966d2333-10678570",
+        "stored": "lost",
+        "trade_evaluator_result": "won"
+      }
+    ]
+  },
+  "geo_backfill_vs_stored_trade_result": {
+    "mismatch_count": 24,
+    "examples": [
+      {
+        "trade_id": "0x29e203cdcf470f01229cbf5b94caf37373110485a82e8e2c6644a9fcf271bee9-55699095",
+        "stored": "lost",
+        "geo_backfill_result": "won"
+      },
+      {
+        "trade_id": "0x3b68d0be0d3e9613c78c9e5a3f36525cb4b31f86be4cbb25cfa5c7a917f6fcf9-68401123",
+        "stored": "won",
+        "geo_backfill_result": "lost"
+      },
+      {
+        "trade_id": "0x7f2b31cd5b38b7bfef053f8f53b53374a2e5f95b4e3d8f2d345e01ab7225118a-24375438",
+        "stored": "lost",
+        "geo_backfill_result": "won"
+      },
+      {
+        "trade_id": "0x0c174f253cd52a8109cb926fa12ab8ac16829a12333c1c17b8a0d4d28d45440a-86964554",
+        "stored": "lost",
+        "geo_backfill_result": "won"
+      },
+      {
+        "trade_id": "0xcbfff50fe00e430d0c341e564f36b0704b87ee0610ffa6885124e26c435faff9-85465567",
+        "stored": "lost",
+        "geo_backfill_result": "won"
+      },
+      {
+        "trade_id": "0x94bc3321bd6cdfbcbe28b6e2f606e290cb72460cae2340b2d6909709e2bb3f78-11164188",
+        "stored": "lost",
+        "geo_backfill_result": "won"
+      },
+      {
+        "trade_id": "0xce07d8ca82df12a7f9f7d36cee081fc789b99f53ff7f8f2fc1c61652825e10ae-90448145",
+        "stored": "won",
+        "geo_backfill_result": "lost"
+      },
+      {
+        "trade_id": "0xbc1b454f4cb48d0e404340f5ce535dfa18a3fb753829d6b95a4e85f6355930e6-10216944",
+        "stored": "won",
+        "geo_backfill_result": "lost"
+      },
+      {
+        "trade_id": "0xf0d0c0791459551fe99b40c1cec40e78ee8c9a3257b78d28c1ba977c62dc19ce-75505728",
+        "stored": "lost",
+        "geo_backfill_result": "won"
+      },
+      {
+        "trade_id": "0x0317a4891b7baf29f3a9c66dfe25b8d03ea922da5cfe7d2f9961b3d87c50c259-82855088",
+        "stored": "won",
+        "geo_backfill_result": "lost"
+      },
+      {
+        "trade_id": "0x2b1f360d9e9dcf95cd62a72f01d4777613edbf3351410bd84e5e4d33af442c4a-29161841",
+        "stored": "won",
+        "geo_backfill_result": "lost"
+      },
+      {
+        "trade_id": "0xf81af5fbab8d61f6c644948cf6e10a463f59d7f344a419bc62465dbf68718e2a-85191934",
+        "stored": "won",
+        "geo_backfill_result": "lost"
+      },
+      {
+        "trade_id": "0x7ed4e2b1f00c93dd208894b26d9730a121beeb8e0cf398c94699795dc97c6a8b-48825140",
+        "stored": "lost",
+        "geo_backfill_result": "won"
+      },
+      {
+        "trade_id": "0xa3ee59b5ec09bb2222c859d9058de84b1dad65dd0890be428f88c8437e31fe8f-99485657",
+        "stored": "lost",
+        "geo_backfill_result": "won"
+      },
+      {
+        "trade_id": "0x975827c4f3ca61e6701e981046a28f61938db664c2077d474f138e375a513123-27211877",
+        "stored": "lost",
+        "geo_backfill_result": "won"
+      },
+      {
+        "trade_id": "0x67cf1c6d96a01c65a6b5a480fc0840ab75b7fe385831c8b50b316d0480f21247-25227556",
+        "stored": "lost",
+        "geo_backfill_result": "won"
+      },
+      {
+        "trade_id": "0x8ce6a168813fc5516a8057269fe438c8c3a765443e3f50a5bd59448001f65b05-19989240",
+        "stored": "lost",
+        "geo_backfill_result": "won"
+      },
+      {
+        "trade_id": "0x08e1d90df21c223638c3bb8bf98374507b6db869fea94f3dadeb40d1002d66ab-11079000",
+        "stored": "won",
+        "geo_backfill_result": "lost"
+      },
+      {
+        "trade_id": "0xd3f6a6268f65ea9b055320cd1d8a97c6aaa0c1b79b2b6d35cca57d9e31eac4f1-10832696",
+        "stored": "lost",
+        "geo_backfill_result": "won"
+      },
+      {
+        "trade_id": "0x2d7a3ff0ba0e31a1efd32d6ce09064a2a8aed6c7a45c18775c3d10d1d1c725c7-70936298",
+        "stored": "lost",
+        "geo_backfill_result": "won"
+      },
+      {
+        "trade_id": "0x496f1bde0fa965e3b8cd9cf54ae9478c2e7c937b6a501a2804be692f1998cb45-10709679",
+        "stored": "won",
+        "geo_backfill_result": "lost"
+      },
+      {
+        "trade_id": "0xbbc3ed0d5fb063f4a3a4b5dd6662cc4dc74662cda2a7839a105bb8ca15add827-32991671",
+        "stored": "lost",
+        "geo_backfill_result": "won"
+      },
+      {
+        "trade_id": "0xfbb9144eaf364642bf22511c02ae9dedf4cea41b8602378405e5ab97d3db64ae-24772066",
+        "stored": "won",
+        "geo_backfill_result": "lost"
+      },
+      {
+        "trade_id": "0x57f1d165b52c3d962924e48ad7b37afb8eec74738f66fb7378607722966d2333-10678570",
+        "stored": "lost",
+        "geo_backfill_result": "won"
+      }
+    ]
+  }
+}
