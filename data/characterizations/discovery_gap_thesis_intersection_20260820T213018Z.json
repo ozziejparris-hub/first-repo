@@ -1,0 +1,4723 @@
+{
+  "generated_at": "2026-08-20T21:30:18.278719",
+  "input_census": "data/characterizations/discovery_gap_sizing_20260820T211955Z.json",
+  "n_markets_203": 203,
+  "q1_temporal": {
+    "n_pre_split": 164,
+    "n_post_split": 39,
+    "n_no_tape_end": 0,
+    "tape_end_min": "2025-02-10 07:45:16",
+    "tape_end_max": "2026-07-06 21:00:14",
+    "tape_end_median": "2025-12-28 22:08:55",
+    "per_market": [
+      {
+        "market_id": "0x005aa3a9e019fade8240f0651b631d27fa74549aed52dea9a95a5de9533b119f",
+        "tape_end": "2025-10-29 10:54:15",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x02f8dd15d4c674a75fccbd0e00f0cf1256101c45ef41f6d0c5dfde9c36d4141e",
+        "tape_end": "2026-05-01 00:12:16",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x0425c582c43e27c6d74af7a553c1ce68b32bacdc77f0b23d62cdfe8aa1da0556",
+        "tape_end": "2026-05-26 00:50:27",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x08314247ca5dbad3d2e0b7c49eafe4876425b214c1103db65054a39aad773035",
+        "tape_end": "2026-04-21 15:46:22",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x0881547b72d4e95cd1a04a2149a5ab89f48f0f87dc2bfaca01c2d809fcb2703c",
+        "tape_end": "2025-12-24 12:54:31",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x08b25cc98d052b9791719e819f93c145dc91d512f020073245bed93090221b94",
+        "tape_end": "2026-04-23 06:59:20",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x0e0c5054cb3ee522c689e00a72e0e1cc874293cb613ea835059fce6df7a35957",
+        "tape_end": "2025-12-30 01:28:29",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x0fb536d5f0f2bc012b51ecfa347c8458a7ff1f51d66aa36e66058c3d326049c4",
+        "tape_end": "2025-12-30 00:28:49",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x101b7888bf1b299591d674e5f0a29c6444bab247c950a51fc15b7ab38d02529e",
+        "tape_end": "2026-03-31 18:19:41",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x11176fe75f4b11e08f3bfb8ee704ce7d7536fb52061855e9294afba569183b2b",
+        "tape_end": "2025-02-10 07:45:50",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x132bb77ee16950047538a65d73d0e430d7193c779929e552bf6205f6ae874d14",
+        "tape_end": "2025-12-24 14:42:07",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x13419cc3e895bf60225558dadd022c11597814a40ea15b25f99539a111ca5592",
+        "tape_end": "2026-05-26 01:29:14",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x13badb4becfa64ea1c0c07d372304abdcc2c5f3c45253537cbaacd8e10e7a6a0",
+        "tape_end": "2026-02-15 13:21:25",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x14102086b9a7b8d2b6a0ce31cf0f9b03a825780e80bdccfce8c732b7db8123cb",
+        "tape_end": "2025-10-08 17:23:15",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x16eab142ef1f6a1a39257f703a13d5fa552ace003887b7c6b7892e9c0b6158f5",
+        "tape_end": "2025-12-10 03:33:09",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x179791767d3bad170d6c8670821bca9cb4a0d0c11bf13f5023d4b6adf2d009a7",
+        "tape_end": "2025-12-01 03:30:40",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x1c711cdf3910be7611ec794f0855cd558dbb42cf4225d66bc0f7999547262e75",
+        "tape_end": "2025-12-31 14:56:39",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x1d2b34156107ca30b27d2673eb5af990559a4dfa2ea99589f927593c307d2067",
+        "tape_end": "2025-10-08 20:41:16",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x1e3b73f92bdca9479b9822cc5004bd1023e8963b1e355a92aa2d0dc71fe2bbaa",
+        "tape_end": "2025-12-28 22:08:55",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x1f78a02341c8993efc78cfea37699799951debfc9c195ae21ee73c40bd54a31d",
+        "tape_end": "2025-12-09 08:07:07",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x2064296b3739eb6e7b983f77c24ec6c92b2db9f2c91304f98e359976acbfd290",
+        "tape_end": "2026-02-19 15:38:02",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x22fe0f993bb899d3ae33bbdfbeb7f7d06df0982f578ae26592b55cf581396376",
+        "tape_end": "2026-04-01 06:53:27",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x25472a241bfe8d256cb904e85fc2a612ca687763bc8f835acf5513a7e6efeee0",
+        "tape_end": "2025-06-21 15:47:57",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x26427ad21db2772d5265934dd9500588ffbb4070b8829284c1a2338add42d5b7",
+        "tape_end": "2025-10-04 16:51:34",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x276a14b8bc1bc374bebd16407761d530528a05097d2bc53524ba21d38842d5f3",
+        "tape_end": "2026-05-22 01:18:33",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x293aeb6dd98468c3f4b04fad42be3ea656d26cd7976a2565c602bcb848b384dc",
+        "tape_end": "2026-03-23 18:51:23",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x2bb23a4c06f1de1ce4e6e031bbbb2335228632fa5e98443598780b3268c0bed0",
+        "tape_end": "2025-11-27 02:59:55",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x2c590f64dae5c9bf349c58c1f0f1a18f11dbf04c4b4b296a6e5bd0f5386dda6e",
+        "tape_end": "2026-03-31 21:20:55",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x2e3e4685c17020bb4417e4efc802b6509572c430db0317fa2cf37d19c3a3efa1",
+        "tape_end": "2025-10-24 22:55:46",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x2e91b977e2e53873f97a6fbd8821987d2f68b007c9c26c611fe6c16abee12280",
+        "tape_end": "2025-10-03 15:52:08",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x2f65bf28b7957d730b216d4f74a9a1c047e426cbd6bb5532c7dcecf274c6bd88",
+        "tape_end": "2025-12-30 01:29:17",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x2f7fa03d7387acee6140c2feada2e3876378549defc075856373adccd3c53a84",
+        "tape_end": "2026-06-17 02:37:48",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x33c6c4906d923ac54100a3c760965ffb7ba9f49d9767597eb2358adaf89f9817",
+        "tape_end": "2025-11-06 18:58:01",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x34dd11cea3bd299fa683c73a06cfb2e7d60c0c8684688683b54551e954e90dc9",
+        "tape_end": "2025-12-27 06:43:03",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x352fe955652102d0c2305ff58916b9fce78cb356c53d2eae6569062183e22931",
+        "tape_end": "2025-09-15 09:33:14",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x369a8e8477f567964629465f05dd66486b4bc530a65505cc8cc529209e5b1f2f",
+        "tape_end": "2025-12-01 13:38:42",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x37e2d5e6fc0a3d7a30c134f2f90892f10979577955572132b3fe8e9e0195dd8b",
+        "tape_end": "2025-10-04 14:47:22",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x38ae1c7137234dbf49d5d6296af009737e75e6b29ff0484fe717cb0e764b899d",
+        "tape_end": "2025-12-06 20:53:13",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x393fb0be5ca5832188657b34ad914c8f24a3ea6dfca233d1b996aba14399b48f",
+        "tape_end": "2026-05-23 05:55:30",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x397b09f00bafba0d28ae03adc9fdb0dbe14f8519e014db2e2870e64d8ecede6a",
+        "tape_end": "2026-04-21 15:52:28",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x3982b6b324e34f850076855826649019133e5799ddb30479547c474947539d11",
+        "tape_end": "2026-05-24 06:04:50",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x3c169e95aea67be5fac1529b3ad8e891fe97ec54d1f272fab43b02cce948f6c2",
+        "tape_end": "2026-06-19 02:12:26",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x3c6bcb7da14ea576e5af25547dbd96f2bb24ac34e748e76aecff2ee9195dd1ac",
+        "tape_end": "2026-04-01 08:18:05",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x3cde82ee842dab107358c32c23aec26d8ac41b05dbab5497490cb3853b90f671",
+        "tape_end": "2026-02-25 02:04:16",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x3d12e34161b87cc1d700f490c52dba1f26a6ba378d8a29aa59d571fc586b361a",
+        "tape_end": "2025-11-24 08:33:45",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x3f41815785f3b5032e0a5e9da2759592988901f15a1941196b1a0610e1fea17e",
+        "tape_end": "2025-12-29 13:47:13",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x400644f216fb6712b7d0c88cb6810299d0939411b7492865dbfe2a9325b711aa",
+        "tape_end": "2026-03-19 08:40:49",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x403edf195ed20a0fe0d9665a25a9b7473d62c038a8b9a9aa7bebbf32084804b7",
+        "tape_end": "2025-10-09 12:34:47",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x4048fed324ac27f378ce44da1b12f0d338c8340ef82962989f38eea05409baab",
+        "tape_end": "2025-12-19 22:28:09",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x40a0d836da9f5e6b4abfa237330e23895ad89ecd10abb0d48e5347b91d2dba3e",
+        "tape_end": "2025-09-30 19:38:47",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x40cf230326551f5c767d88fc96d0266eff3791a49874f292397124444071d173",
+        "tape_end": "2026-03-07 19:53:49",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x4187222f43512fd1a0460a26c847622a19211d669c020f20b15c64024b2d971b",
+        "tape_end": "2025-12-28 21:42:41",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x433f0e14de07b6a841021ec537ea1bc64f41146912966af74f347aa8f5bee013",
+        "tape_end": "2025-12-06 20:52:49",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x454fb3cd3e0f3c6fb55b303839fbf74e4daa50b49e57f43691447aa046e959c2",
+        "tape_end": "2025-12-29 20:18:59",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x45c94e343c9b3b850ac84f8a4f4ea575f1254333ad00652493fcdb2011609e65",
+        "tape_end": "2025-11-29 13:06:11",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x463740b94f81e794eff8892c50fc221a2e774a8a4484284752ee73149ffd46d1",
+        "tape_end": "2026-03-02 14:10:17",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x4668b63cb67ab4c34184b770186a947e4431d26d71ec8793f889628250f628bd",
+        "tape_end": "2025-10-09 03:58:41",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x46c09232d356fdbe5e4e543ce1a4e90c84a6e3bd4668a24852fd25563e36b32a",
+        "tape_end": "2026-05-26 01:30:26",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x4761e83680407e28e2fe96691b4b5a00d958293d4e52b9ff0ad728710fa665b5",
+        "tape_end": "2025-12-16 01:10:07",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x4784665f5baa12fa9ee97d49eb39c0f8dae4e0478c991fff7f632bc4e8dc8ff2",
+        "tape_end": "2026-06-13 23:01:58",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x4997c22d314ed5e9f3712e46eb4847441b51fa730d10ad26240afa85f5d902be",
+        "tape_end": "2026-05-24 02:12:20",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x4c238bfea00c8c8aca469223f5b158342f12e24dc4b29dea6802fbdead0a3bdf",
+        "tape_end": "2026-01-01 14:28:25",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x4c31f81c148cbbec790106b7211a8eedd9304528ebd098606c0a9c5b781c6ddb",
+        "tape_end": "2025-10-08 20:35:22",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x4cee84284b7b630d17d0a1644fa26b04790bc9cfd43c1a6de6ce87fa26c451b0",
+        "tape_end": "2025-12-01 03:56:54",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x5258ec0ea2daab97917f0bb2e8fa349f5081cafc71bd643c414f74fc893cb7c7",
+        "tape_end": "2025-05-01 15:35:47",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x54644fe42bf2db082bd02694ba14f6acd0b610cf0559287166933523cef6c47e",
+        "tape_end": "2026-05-25 05:27:57",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x551c1b3d6eafb24321c7b21c2de2456a3a52a388b9802bbd8f9415c6015d702e",
+        "tape_end": "2025-12-28 22:12:19",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x56c45af8a9da0502092edaa3ca192d0798fa02460c838f09764c90d4635b6577",
+        "tape_end": "2026-02-13 07:13:29",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x56f52514f054738842f0f0059e81c01e27a1266af89d64a74f482e8d23d9eb9b",
+        "tape_end": "2026-04-26 08:49:52",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x592b2718bb5e413afd45924bf4d230d1322f1951f6b6c10a1ab804c3d6d97efb",
+        "tape_end": "2025-10-08 20:36:20",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x5a50b19d1e20072ff36ec4ca6801fed3acd0b1d1e3e607211104a1237b129efb",
+        "tape_end": "2026-03-07 13:50:35",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x5a63aec184cfbb229ce83d4e040ce0900515fc9b87690bf3026c381c0d091b61",
+        "tape_end": "2025-10-08 20:35:12",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x5c630cce90873c62161bdd6994b02f9c8e3203a858f578456b7bfae936cc04c8",
+        "tape_end": "2026-05-26 00:38:20",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x5cfc17a6d372438a3f94bfd384d09d0d25dc25f5bba54dbe0e13a68096d591ae",
+        "tape_end": "2025-10-30 03:31:15",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x5d837be188a2b5e8232bafb0958d5e8e45856587e91e43ccf034320055514e0b",
+        "tape_end": "2026-03-02 15:10:03",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x5d87eb09704572f515e1dc472bc1f3dac6835cbb06a6c72c1d0b3486cd0ad97c",
+        "tape_end": "2026-04-05 01:48:59",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x5d88fc90a7da80471162bf8f97ddfc1a0d5251ebcaf541e67c1fbf34d65df515",
+        "tape_end": "2025-12-21 07:36:00",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x5dc02c6c95ae9baef24a9f53fcc216cb1e028258a343ecddbc31a444c48b6a2d",
+        "tape_end": "2026-01-21 20:12:50",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x5df7c923f86f4423f4e1fef435f0cf483c83f2544b57911052258258e7b303ca",
+        "tape_end": "2025-11-18 16:26:23",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x5e3f1626b2f88d8a49d36399b841f084c6195645bdb67f8cf42f31a463490e84",
+        "tape_end": "2025-11-06 14:03:39",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x5f1cb9d93988cabaa450aba016cdd430031f6cfe9e0ac6ca51e15b7d71deb55a",
+        "tape_end": "2026-03-07 21:36:05",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x60dc5260cf54c0de7b46e6815ee38643358452c9b22f897b3c057ce800cb5cba",
+        "tape_end": "2025-12-12 02:57:28",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x6344fb580313e25b272350c3abfd9feb55bfd152c188150f9fbe6c7017f8c0f5",
+        "tape_end": "2025-12-28 22:44:37",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x67f82fa52d453615c9d7e49d4b36fb3c16295fa5df95d3c56e3ee135698fac10",
+        "tape_end": "2025-10-30 12:54:39",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x6a5578ca9b6790213951aae24929478a7e11ccbd50574b7436b9cf97c8d344ad",
+        "tape_end": "2025-12-29 23:57:37",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x6b22117356fe309620d6c0a42cf82d48f283dedaac2f80c8d2161432e8366588",
+        "tape_end": "2025-06-28 11:59:28",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x6be90743c85abc7187c8800bee8cdf713627529a7fdf42b93426f2c33b2117fb",
+        "tape_end": "2026-04-01 00:23:59",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x6d30f1f27c99af0b7103919bc67ede91e5701a67b50085921ba77227de2539b0",
+        "tape_end": "2025-08-29 14:57:49",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x6dc5125685720ea000689b32611bc5e2d0fc216fe4cb838b18b5a20ff2c40432",
+        "tape_end": "2025-08-27 17:54:17",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x749fa95d944039c3f06a026522a77501c2a6bcf6cfb8184cc18dbeadbb712a0c",
+        "tape_end": "2026-02-23 23:54:30",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x76096c72551a49950373c593cdd067d31393c414436363c5f36d72520d4a969b",
+        "tape_end": "2025-12-30 01:49:21",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x771de080638c0fd0deff3e2016dfb22f16c1f6edad690c75d1f4cb9b240add51",
+        "tape_end": "2026-03-17 15:20:07",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x78d3b7cca892a75d9bb521920352d66003e1295c46756698fd9c4f9dd6cca72f",
+        "tape_end": "2026-03-13 22:21:37",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x797a35eb9faaa2c744b86b9636f8e02fcf57cd4e3bd5bdcc0d97e3f12c7612a7",
+        "tape_end": "2025-08-29 14:55:25",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x79eb18cbc8a2b3b37ffa75decc788819d43564ec2a4a9dfea37c98a7c39c3b4f",
+        "tape_end": "2025-12-06 20:53:41",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x7a4e96623e5baf75e3a039b1fdae23b288f84333f8d3c1ae6dbfbf6075330325",
+        "tape_end": "2026-03-11 22:52:49",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x7ace3e54bbcc73376c98cf888f67569c6801d03f1d54f5def535c555193c9322",
+        "tape_end": "2025-10-08 20:34:42",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x7ae9b97cc4620d5d8183405c535d8c85458ba72f4ca0ff59c96e3420237da7b4",
+        "tape_end": "2025-10-08 15:51:20",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x7aed2fb58e173740f68ba2b75c1a948a657c279eabd6fce7bfe1a3330a5455d3",
+        "tape_end": "2025-11-20 09:55:35",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x7d8558a5749492f844be4d48d47c1e5e74f95c303f1bfaa7c210f3e37e2e83c6",
+        "tape_end": "2026-01-01 03:41:55",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x7d85e6bf4804095db2fb3105424a77cee3d27be20f7bedff3b8ad472fc11e5b8",
+        "tape_end": "2026-03-08 01:29:05",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x7dffbcce1d6720ec06000fb6ec2553fb6a707c6b6dd868e8a873dc57544dcaa4",
+        "tape_end": "2025-05-29 19:45:49",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x80059ff4e694f878c0498f6f3a067ee7ca62dc2fc46251a4287b58355ce47bc5",
+        "tape_end": "2026-04-08 01:28:11",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x81a5c6375be55c1a20b279c07f9dbd217bc81c900cc38a3752e57506d565ae68",
+        "tape_end": "2025-10-25 08:33:59",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x81ec388b5717ed05da3e00e7d0fcc5cd2ac77fa1cadb1c0441cc2672a98c5b34",
+        "tape_end": "2026-03-08 14:20:59",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x83ae11433d9fbfc2d1b0ac20737238e14de1a49aad8ac9c843f0095929076992",
+        "tape_end": "2026-06-15 02:41:58",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x84bc2087e714147971fbd5ea97b47909e0ceea7756515ba88ff51ce7b23245d6",
+        "tape_end": "2025-11-19 21:51:03",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x855893bae6050fcaef492f3ab4072fd66cb075b13bc63df7b759237fb7d7fd2c",
+        "tape_end": "2025-09-30 23:10:05",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x855eac97a2b24dfbcfe57dccd5a8f1aad64804f1d3a321106ccdb82cd6955fca",
+        "tape_end": "2025-12-06 20:53:33",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x85980a4d08e4cf7911782b632108d17b124171c1e1610cf7861e260c6daf3538",
+        "tape_end": "2026-06-19 02:42:44",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x85f1d95de21a349d18564257faaa08af119b7ea292a9bf89840df90339f2e11e",
+        "tape_end": "2025-10-08 21:02:22",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x87aa0528695acd3266625acb21e282379e8bd15964a729576015542af3b36b17",
+        "tape_end": "2025-12-04 15:42:43",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x88b574b3b47ecfae33ae3bc930438cb98beaa26cc925dbffc64191567e060443",
+        "tape_end": "2025-04-26 13:25:40",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x897defe14e58b0dfd49e486435d34b4f2c6e1022e7a86d26f03bf6a2293016bf",
+        "tape_end": "2026-03-31 14:26:39",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x8d3378d5c859b2f27173627df2edecb3c0c578eb5a0c977bbbef3ec86a7eb9e7",
+        "tape_end": "2026-03-09 16:11:07",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x8e14bfbece423d7c5ff95ee9b1e82df25c3623af5540cd97579cb2e7744f172f",
+        "tape_end": "2025-12-30 01:46:09",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x901298837932c44136433c5c86237cf32ce75b7d7131ef3ae33e86df99c942e0",
+        "tape_end": "2025-10-01 02:27:57",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x93b0c61b22b921a81856e69363b5fbd5f1f01ea307a57c17f5109aa321e56199",
+        "tape_end": "2026-06-29 22:51:08",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0x94877b77d42e820573c761e94565a75b52be2a60f4cb423be0a8ba111f26e57b",
+        "tape_end": "2026-02-18 20:50:42",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x9512261b151118f08f755e5061a65eeabd545fdef180468c1f7ad63e10a7e0df",
+        "tape_end": "2026-02-08 22:10:25",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x9551f6c71d9b944c22300a5e586e112cf3d3f763b2b98007cf97ddd43bd2ed20",
+        "tape_end": "2025-09-21 04:14:20",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x96ac4da75d9f560b48734168c17c17c813e084eeea84c23b630a71ee3f9bd573",
+        "tape_end": "2025-02-10 07:45:16",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x96b46ed5ecdc2d38e5cfac1a1e112b9abf9065de846dd015b7b8c4c2e5443d3c",
+        "tape_end": "2025-11-04 10:48:27",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x974d4abaaba1707d0ce5e9b2db8df7d9e3e9a5ce3c3c28fc52df4dcfc72d467f",
+        "tape_end": "2025-12-07 16:38:13",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x9965a014a66ba22e681b4fab73743950ff1d774deda01d0884acb11b7bfcc7c9",
+        "tape_end": "2026-03-01 18:30:17",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x9a57653d64d44bf591f13dcd3953b7be367e6167f5e8d0a2ee0a2e1e92307831",
+        "tape_end": "2026-03-23 06:34:29",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0x9b13e676a964d0c87f3b44203d71e64cc361df39c0a1b3b93f129c93076354d9",
+        "tape_end": "2026-03-03 08:30:13",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xa0c363fd4e398676a492d174445d8b0f87f760274b29e324c18eab76ab68f515",
+        "tape_end": "2025-12-28 23:18:23",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xa39a77208f3520d79b0ae386d46fb8e604da6153fe4b256e3b4590e447f3ac7e",
+        "tape_end": "2026-03-07 15:50:41",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xa4dc02763b1395ffde5f948aa72e0d81d386aadfc973031ef8b5739e6fae8533",
+        "tape_end": "2025-10-07 11:28:02",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xa506b4f34e0b07f982ab96ff05ce26902ed772ca6752909d0c927d1e1e37ee6d",
+        "tape_end": "2026-04-01 08:27:49",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0xa5fbd535bcf6b79584cdc83ba6200845094575f66d05b028152f316e7a11f958",
+        "tape_end": "2025-10-08 15:49:56",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xa7d9620a13637f04a948e197fbf3dda58f042f4f63d9eaa622b0596a41c2975a",
+        "tape_end": "2025-10-04 22:47:34",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xa825060543929a11ab634061cfa410dbc3ba3d216e2c3449474c548dde0178b6",
+        "tape_end": "2026-03-31 16:57:55",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xa9331a9cceb4d83a5bc12a26ae3e79a647122024ab6f1fd4c785fefd0dca0fc6",
+        "tape_end": "2026-04-13 12:29:41",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0xaa85f738ed5451cae20480cb3ed4799485c683c033961f462e698b8c770dd758",
+        "tape_end": "2026-04-01 03:56:25",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0xab8270630627edc601c7381f8be00f3c6961c2ea0a121eec04d92db32b7acfff",
+        "tape_end": "2025-12-30 00:29:03",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xac916b490bff5080b326eb4086a4281a0da1f678fc6453e1dbe182d03d40505e",
+        "tape_end": "2025-12-20 02:59:42",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xada6b6f60fa72066bcdd5e0eb185e483636831a3f2b70a229a2361773d3cb048",
+        "tape_end": "2025-09-30 11:58:31",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xaec55d60592ee1ca55d7d6cc0ec80ecd33d41256d7279e23aa6b3a29c45ce87b",
+        "tape_end": "2025-12-19 04:48:39",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xaf469095c53313acfcfc4b34659779739c31d179cca6d960be2e777f0ef32742",
+        "tape_end": "2026-06-16 07:38:03",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0xaf752a45f5e17cefffc7f3d1bd64ea8f651399857102a267409bfb8c0e83cfd2",
+        "tape_end": "2025-10-08 17:22:21",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xb02bee7451a745aa0f47d76ea8b15c2eb44b63ba78d122a6aa4d8f60ad4fda22",
+        "tape_end": "2025-12-09 01:03:41",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xb106577faa4d93cf6d54a1e0076253b62ec642efd651d151e35230cba77072eb",
+        "tape_end": "2025-10-08 19:34:21",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xb1097a9c4491522f8c1b5ad251c234ad885ad0d9b8aa34091e04397db29a58bd",
+        "tape_end": "2026-03-18 20:37:53",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xb289110c3ef8994b605532fd2161488dc4daa62c0bd35f1e75b8115872f98f96",
+        "tape_end": "2025-10-08 20:36:42",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xb5791a0f136a848d8d560adcd1dc315e30a6616caa29569ebb390115abe81757",
+        "tape_end": "2026-03-07 11:52:31",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xb82b77689a74a55992d01281871e301b6c127e2cfab9476c19bf01b734a85e35",
+        "tape_end": "2026-02-22 09:56:02",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xb89a21f2452a9fa13b9fcaf8361e805deaac21c5f6788ed89e32e635fdd1b90b",
+        "tape_end": "2025-10-20 10:04:33",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xb92fb935fa97388ad8df45fd008ac6dcba3e2e56c0ce56f38c7c2290dc0632f6",
+        "tape_end": "2025-10-08 15:49:46",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xb98f79bbe554133c77057f8e947f72e1d591276a6b47540141152bb8995920b9",
+        "tape_end": "2026-03-05 14:26:13",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xbb2753ceb17c793035fecd4dbe645681054bcc1e0d2446e0ebdc05990e9282bf",
+        "tape_end": "2025-12-30 01:49:33",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xbe7131f857f854ae8d2304dc019d21b97c370c01fd78e83f5f640973b44aeae1",
+        "tape_end": "2025-10-22 08:46:04",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xbf37aaf85117c05dcb9eca4e1c9035993332948d88ba06cbdf4ef49ed19b76db",
+        "tape_end": "2025-11-14 23:07:48",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xbf94f3bd13dd1641dbc68da9a6b2bbf28708d94b5446d43f10690854186a7eba",
+        "tape_end": "2026-07-01 07:14:49",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0xbfff1c8bf34207d78d35bd98389270253db3f0b1a3483a0b06fd9adc881ce8cd",
+        "tape_end": "2025-12-28 22:43:15",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xc02886e2161b78960364c1740fad9241c359b05a74c205935bb2acaf8580a4e5",
+        "tape_end": "2026-06-19 02:53:32",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0xc05733ff4abddbf855f9c247fd57fcebfa0e756e624718c19e0abc545e8a0993",
+        "tape_end": "2026-06-24 08:49:20",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0xc07aead761a45bcd987340bb58858e89cdcdca8361b1387690423bd873dcb234",
+        "tape_end": "2025-12-28 21:17:27",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xc432af9280482e26f71cb60e0f6f73b302cecb95371e1b076b99da1daa240211",
+        "tape_end": "2025-10-13 05:02:51",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xc4e55f04f4b9d0f89835c5aaa72244c09e9444dbca346d7a9711491520cebfbb",
+        "tape_end": "2026-03-06 07:43:41",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xc8b51854e0903a4ae71bf33d66a1ac14b7314ac50cb223b86f56cd2144076a53",
+        "tape_end": "2026-07-06 21:00:14",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0xc937a7b568c0861b6274cb6b891810ecfdab112dbe2f42533df5ec4f6d733358",
+        "tape_end": "2025-10-26 09:19:37",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xca3af960f7ce5bb8419fa53768e0fb3ebd5f1ebef90299816ea69de313b872ca",
+        "tape_end": "2025-12-28 22:16:03",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xcc7226e019e769b68c6798f5df11a6ba474d9e60b864e2faecfb8024e23d53e6",
+        "tape_end": "2026-03-30 09:03:50",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xcf11482b4f1e7707d886852550e977d17ca548df2d4efd9ba88a619bbd767dfb",
+        "tape_end": "2025-12-28 23:42:31",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xcffd90a1bb9b1a0918687f9952c9fe613375011c1f495782ead9b2cf07f58e88",
+        "tape_end": "2026-06-19 07:41:25",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0xd0e62a962f3198fde69cb89f8db7f3640c64d205b138c6d017803f4f855a5a79",
+        "tape_end": "2025-12-06 20:53:23",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xd28b5c3b00f5346c5d7f4661f764bf0fff56816b2728d9f281eb172d464c3248",
+        "tape_end": "2026-05-16 01:31:35",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0xd32cda436b37f2dddd35dcedde9d7b681f122cedd517da3785dc40a8156036ce",
+        "tape_end": "2025-12-10 14:32:44",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xd3635a3419bcccea334cf212a0a2563757361bc3975d74784c7d43fdffcf473e",
+        "tape_end": "2026-04-24 11:48:18",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0xd6fa28dce85f3fd0c3a25f6eec7980775a9c1e321e1f988c9fbd91760908be8f",
+        "tape_end": "2026-01-05 18:02:43",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xd7540d64e03b1894ececcbb54c02b88d9c5c0e854ba66ec4e1ece20477994ac5",
+        "tape_end": "2026-06-02 01:16:28",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0xd7e2d49bb1c6819ea7335997f89daff41c0b038c6347256eaf4fafebc3ac6776",
+        "tape_end": "2025-12-29 20:37:59",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xda26f4dba3e89da7b8e84c2ed66166d479c5d97067855eb22395ca7b89dc8ec6",
+        "tape_end": "2026-03-01 18:03:59",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xda77c4d3089e6746ee65bc2dacb209ddad22e7d3fd9aed07e14dbd1e4dc0c420",
+        "tape_end": "2025-10-21 20:47:23",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xdba270dd6b3f42281d1002cc9b821bfea90a5310cc05436e2fc0c71936001031",
+        "tape_end": "2026-06-17 13:09:04",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0xdbc36161e346ab332c68434b0216595e6047ba9b64a827b2f48524e642bf4e7b",
+        "tape_end": "2025-10-31 09:42:06",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xdbf40215541bf867c4e03c2a37f27eb38180178dd41943215a7aefe64ede2cd0",
+        "tape_end": "2025-10-26 09:37:11",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xdc13285057d1be111ce23eb8a6b74d0a857c9d9eab267dfd53c8944f085b7c2d",
+        "tape_end": "2025-10-08 21:01:56",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xde296740dae16572bf6f754534df8ebb90f8244ccb7e13041f7605e2cd26f5c4",
+        "tape_end": "2026-03-31 23:20:05",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xde7d04363a3ccbb4a2bd27b052cb045997d87e0cf2f2f565fe18021b94860061",
+        "tape_end": "2025-12-20 02:57:34",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xe2abc7b99067945a75cc308dd009e27e4191e09df00b77b3d314545287eb6cee",
+        "tape_end": "2025-11-06 16:10:45",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xe2b19fb8d5a69727d6b624896e2d4a39a13b8623480a5b8449c421859311e52b",
+        "tape_end": "2025-10-08 17:23:03",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xe3bc10985dced6ccc4525dc35f0a8107bd033ad21e5a0573da780b899448c124",
+        "tape_end": "2025-10-08 20:34:52",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xe4993c046014cc672fb0816b73b0792844c1e28579c44b8fe2b483e13e4566c3",
+        "tape_end": "2025-12-02 11:04:22",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xe59619ba3a363c42a9ff003286646afaef477e915e217a565205efdad2ced5ab",
+        "tape_end": "2026-03-11 20:53:57",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xe8054b2f43f0d8c1678a0d2eab094120d6f3787a5a119285634f161c64b8e70e",
+        "tape_end": "2025-10-04 13:58:58",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xe96d90c07572ae1f1b111f9764e55942312001c30d4cca8e911764241e601fee",
+        "tape_end": "2025-10-25 08:37:27",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xee73ea99f126df52a3bbc37a51c9bd1254dd6185e3a0ae1aef0693af4bd4879f",
+        "tape_end": "2025-06-28 08:27:56",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xee7ddfaf60b69388000ee3eddfd5547ef98290e7315b32a3216a8ca41a99ab16",
+        "tape_end": "2025-10-21 19:43:47",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xef1a05315e15b48e84757c7e78c4b7e1e725ed204770b1d0a031bad99d8da8cc",
+        "tape_end": "2025-12-28 22:53:31",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xef40614f8bf95a9e755b276094b22586fd67e7478ef18f30b08bfe1520adf330",
+        "tape_end": "2025-10-08 18:31:04",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xef904c695153f74bf0f66334e26617558474e2233b4b35670e862f3e958fb459",
+        "tape_end": "2025-12-25 03:05:51",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xf53121b46c9f35ebae9a837f56963ebc0ecd5ad7895e4a67074f4063af78bf8c",
+        "tape_end": "2025-12-28 23:42:51",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xf57615e15797c8fa399c0a7c6caa134844db58895d6e3dc98b439e60c0b7e45e",
+        "tape_end": "2026-02-03 06:14:46",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xf6cf2744cab27c2088a863b6488da644bd8fce4b573d86891c95ba4d6d4b8307",
+        "tape_end": "2025-12-11 07:48:05",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xf7ad79d04f2dc95740b512d657957bf16b521342ae41be894fa44c56b8b1d1ab",
+        "tape_end": "2026-05-26 05:27:40",
+        "side": "post_split"
+      },
+      {
+        "market_id": "0xf8b914c55a23b2d69270208a6ec43d3f02dd4e31b3ff462079b09dc120819dc5",
+        "tape_end": "2025-11-12 07:01:17",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xf981fb146169eac1cf8bd6e35a2102cc4f7efe92369ae1c413d532dc51d1cfe0",
+        "tape_end": "2025-12-02 11:04:14",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xfc19590ddd9f305c635dadf762d3ec35d77d04814144a9c299a2da36572568aa",
+        "tape_end": "2025-12-28 21:09:53",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xfcb24dab90b784bd9e36306c0c298b483757bbba476cf9fc0d5271e9cdf3b84e",
+        "tape_end": "2025-09-24 07:26:47",
+        "side": "pre_split"
+      },
+      {
+        "market_id": "0xfd275579a551279b39d7ea320ddd8b224006c02ca38595ad401e0546c941c2dc",
+        "tape_end": "2025-12-28 21:53:57",
+        "side": "pre_split"
+      }
+    ]
+  },
+  "q2_canonical_population": {
+    "overlap_today_resolved1_required": 0,
+    "would_enter_presplit_window": 164,
+    "would_enter_postsplit_only_window": 39
+  },
+  "q3_reach": {
+    "148_presplit_cohort": {
+      "population_size": 154,
+      "traders_touching_203": 104,
+      "positions_in_203": 695,
+      "markets_of_203_touched": 73,
+      "touching_trader_ids": [
+        "0x03710baffa9885597676ed34778136ea36e170c3",
+        "0x042a1caf0b0d51d4fe5abc5d8832c2c9a5ffb153",
+        "0x04ec75cbba2a7f2407eb0a48a8468d25ee14580f",
+        "0x06e8cb40376ff9f06d926e71a0740821f1914675",
+        "0x0b9ee332cef4ace68b10a546475af5cbf331154a",
+        "0x0cb10c40b0776e9ee8cef970af85724654dda76c",
+        "0x11a1e9de18c36eb0991c9c3797aaaefc7ebe7afe",
+        "0x1209f2ea7e67c4efda9f35d05aa17b1d075c0133",
+        "0x1244b4619ce8b602153452e851d44009b5ed0068",
+        "0x1424a9e0a0def5a86c3c6cffbd8b6c65e1b12c7f",
+        "0x1e3bbbcfe29a1417a24196e3adea3086ad19b1cc",
+        "0x21d5d6326f480863e1d00c5d52bba19d9cec9925",
+        "0x2288d665507b64b6b4687fd633cbab7346fda717",
+        "0x23a876d4bd29f9d59b1f9052d13cb4df4a8e8004",
+        "0x25bc994df017253d16b9e3056984753bdaffc4af",
+        "0x29170d3d0bfdb77b46ebac4f7a3033fba68ebe8f",
+        "0x29d337076f24d135b7b2b08796edfff4e32cb2ed",
+        "0x2a61dd4da2dda38898515542f818d1c94cd1588b",
+        "0x2c0e7bc014f7ca17b07350fb2290e40bbfa27ee8",
+        "0x30d1c420d1abde9442d6762dd6f6d5f92df04525",
+        "0x30d6c15abbce361921eb9a251462036c4b078c9d",
+        "0x328ef94bc7f57183eb62d57306509c93401f4475",
+        "0x356ca9cbba6a892917f13906455cc0290eea80b7",
+        "0x368ba69507fd67972059fa178af5e459b72f2458",
+        "0x3838f51dd3e558db22a10a1ba520a81b4aa02c6f",
+        "0x387fa87c9354d532a966b4ab058615fe433b158a",
+        "0x3e1ccffd4dcc271a41430b475cc5db5fe39253f2",
+        "0x404e7ba5cd81e003552b6c4e8042b5f04547a0d3",
+        "0x4512b74d3d1bbe6128ce430169cd7f1f5618c4a9",
+        "0x478b202e6bb184505db2dbd382349cbd55518edb",
+        "0x4a7082261f570297d3052f5cbdb0a0e33f85a50b",
+        "0x4b9d62ded3fc660628594803da42e2e8283cc0da",
+        "0x4d1bcbaeed22c6da173b1a356c3c6d2270081419",
+        "0x4dc2ce59c39f7ca8155c88e88a635f0034d60933",
+        "0x51b22927d7b99ea9477a6c99b8c9397e6a4110ce",
+        "0x5482dd559db53e79f431e986504bfd85a58088d7",
+        "0x55f35253852930ef05a1a3f8dcd0007f6b0acada",
+        "0x598e55c3a20e5ac9193ab0eed24bc18884cbbe98",
+        "0x5f0b2ef77500dcda06d15179720b39772d1f2305",
+        "0x604e43850248f9424f4129cb92966ac96e44f1cd",
+        "0x610cf7527305f724d059694fc755b678a67b90d2",
+        "0x6404033a678d17f11ae2293a95d3dd98deb1edbd",
+        "0x67a95cf07880baacc5d1ea4d549b26de186be29e",
+        "0x686d5bfc5aee6aaed7bf6a11baef5b57e57d1a68",
+        "0x696d665903d1e9bdde1570fc1917b26f0f43be14",
+        "0x6f36ce54f16757df7f4dd693433dfe8932f089ca",
+        "0x75d0cb443843a4c91de3314da9dae3f401f477cb",
+        "0x7818687f1c2cda416877ab68d18d2c9c25f9d185",
+        "0x7a3c613f4db5ec4f6f9cb8583ba45fd2fe41977c",
+        "0x7f51fe892219f137305b68f29d3189ec26ecd389",
+        "0x848df648f91091f0f90d941990764c895d1235e6",
+        "0x8a1e1e8fec1fb91f12ba3b8ebec52d2eda21bd03",
+        "0x8a7b576b7a53ef54876f9eca18bcd84f12d8782f",
+        "0x94d4feeed43ad8b47ae0d29db252fff61e0965ee",
+        "0x9690d9f51b618222c29567c3b39aac2935a5f2d5",
+        "0x97ead83eb0e6b7f142e63284791882f05ddf3363",
+        "0x983ef5555a3784411bc9b15e7708d9025c45f6c8",
+        "0x993ea2ef918b9ac9b428609532b02691fdc77c69",
+        "0x9b5fb62ff41e104e65fa6cc4e57575ebd05f11c5",
+        "0x9c274a7dfe8829cc8e178b27e3ff5eb7bdb5d050",
+        "0x9ca119b8cd7bdb890aecf1ff3b0f6e3a45cc13b5",
+        "0x9cb98fc57fe8a3bdf75c3b48bd419e5d262f7b80",
+        "0x9def9524630e31ff90f884eed32c3eecfbf8d1a5",
+        "0xa0b9c52dcacc522b3e73b7756c44c9581d566048",
+        "0xa49d959d91aa535793d1d07a9b3a11e003a5f4e3",
+        "0xad0e0da5c2a0a35af061690320aa08d46b57e763",
+        "0xae460abfd723d5b9005adcec714c21c9cb4779a6",
+        "0xb41aabe82d353b04754af7a31972a8319cb01935",
+        "0xb557dc93416e066a090e504fe9691bffad0def84",
+        "0xb8d2bf9500e4731b09f54c7ebec6bf89899ec66b",
+        "0xbc43a2f0deb85ba4ad316300762972089c911540",
+        "0xbc54e69667ceb6ccec538e5a0ba1927fc1fe680f",
+        "0xbc6bfbf1a94c441516b022a70f85a02c6dfffa9e",
+        "0xbd351aa7c2afa992df1b6d006dd9489d192d2bb6",
+        "0xbdd08fc7a71196e4aa28741b903cb8e8ccbe550a",
+        "0xc8fdab31c245f31767fb8f88374a689149666b3a",
+        "0xca886a7ed635c3b770fccfd251c86eec34967caa",
+        "0xcba0b2e108b3974de8ff5bb592d4b0aced2597bf",
+        "0xcc2b9f6f0aedc8336a5e89bc99f135772d9ccb90",
+        "0xcd93ac28d9897b74b6903931436664f2d4ab7182",
+        "0xd104818fcf10456f12cf87356bde14e79c4d7c02",
+        "0xd10f60b88b8528db901b0fb7aecc07aa820cf12f",
+        "0xd44e974a3edb232aa4aedbdcc59792b76a5f67e2",
+        "0xd706807a87696333af277be68d4c75e59ad3fac2",
+        "0xdaa6a2cd4ba545befb3dbdc25d2b444c46873e62",
+        "0xdc03d611e5bcc9f1c87edb95edeb91671471804c",
+        "0xdd225a03cd7ed89e3931906c67c75ab31cf89ef1",
+        "0xdfe3fedc5c7679be42c3d393e99d4b55247b73c4",
+        "0xe097a66a04a3afd6de8929d19fcc41211402d811",
+        "0xe0f1e7751df4035f78a5eb2f4296c98b4d5bc4bd",
+        "0xe33a76226eb570e53095b437f3af03335379d8f7",
+        "0xe3fca04b0cdb7ba99d596c30b5735fc80b84e300",
+        "0xe4539c7b5f89574710dfcac65551cbcd41b7b05d",
+        "0xe5a35b635142e3bbfd3d5e3f70d01be53c3944ed",
+        "0xe7ec1224a01d96d86021eb630c76376b57e79dda",
+        "0xedc2834124c0465fb2ccbf239896ef65f975ad9f",
+        "0xeea75cd940a8abc193b04ca78be589af3d41d491",
+        "0xeee9c7196b5cbf3a77ce90259e93cf4218a06e94",
+        "0xef0d80a3431ec2fd3357a11442ea90256fb78733",
+        "0xf23313b2d009b671667cb158658f63e9f4d66ab2",
+        "0xf2b05d854e0af18e70b76e96534e2e7f7a04b26b",
+        "0xf3b550c43f97a626049036e6f6dbb1f9413e4c72",
+        "0xfd2b117412a698f322b0cd18d6827dad262b8e50",
+        "0xfd6deb2c6c5ee9c07c7c6826bbc24fed34ce962d"
+      ]
+    },
+    "120_oos_survivors": {
+      "population_size": 126,
+      "traders_touching_203": 90,
+      "positions_in_203": 637,
+      "markets_of_203_touched": 62,
+      "touching_trader_ids": [
+        "0x03710baffa9885597676ed34778136ea36e170c3",
+        "0x042a1caf0b0d51d4fe5abc5d8832c2c9a5ffb153",
+        "0x04ec75cbba2a7f2407eb0a48a8468d25ee14580f",
+        "0x06e8cb40376ff9f06d926e71a0740821f1914675",
+        "0x0b9ee332cef4ace68b10a546475af5cbf331154a",
+        "0x0cb10c40b0776e9ee8cef970af85724654dda76c",
+        "0x1424a9e0a0def5a86c3c6cffbd8b6c65e1b12c7f",
+        "0x1e3bbbcfe29a1417a24196e3adea3086ad19b1cc",
+        "0x21d5d6326f480863e1d00c5d52bba19d9cec9925",
+        "0x2288d665507b64b6b4687fd633cbab7346fda717",
+        "0x23a876d4bd29f9d59b1f9052d13cb4df4a8e8004",
+        "0x25bc994df017253d16b9e3056984753bdaffc4af",
+        "0x29170d3d0bfdb77b46ebac4f7a3033fba68ebe8f",
+        "0x29d337076f24d135b7b2b08796edfff4e32cb2ed",
+        "0x2c0e7bc014f7ca17b07350fb2290e40bbfa27ee8",
+        "0x30d1c420d1abde9442d6762dd6f6d5f92df04525",
+        "0x328ef94bc7f57183eb62d57306509c93401f4475",
+        "0x356ca9cbba6a892917f13906455cc0290eea80b7",
+        "0x368ba69507fd67972059fa178af5e459b72f2458",
+        "0x3838f51dd3e558db22a10a1ba520a81b4aa02c6f",
+        "0x387fa87c9354d532a966b4ab058615fe433b158a",
+        "0x404e7ba5cd81e003552b6c4e8042b5f04547a0d3",
+        "0x4512b74d3d1bbe6128ce430169cd7f1f5618c4a9",
+        "0x478b202e6bb184505db2dbd382349cbd55518edb",
+        "0x4a7082261f570297d3052f5cbdb0a0e33f85a50b",
+        "0x4d1bcbaeed22c6da173b1a356c3c6d2270081419",
+        "0x4dc2ce59c39f7ca8155c88e88a635f0034d60933",
+        "0x51b22927d7b99ea9477a6c99b8c9397e6a4110ce",
+        "0x5482dd559db53e79f431e986504bfd85a58088d7",
+        "0x55f35253852930ef05a1a3f8dcd0007f6b0acada",
+        "0x598e55c3a20e5ac9193ab0eed24bc18884cbbe98",
+        "0x5f0b2ef77500dcda06d15179720b39772d1f2305",
+        "0x610cf7527305f724d059694fc755b678a67b90d2",
+        "0x6404033a678d17f11ae2293a95d3dd98deb1edbd",
+        "0x686d5bfc5aee6aaed7bf6a11baef5b57e57d1a68",
+        "0x696d665903d1e9bdde1570fc1917b26f0f43be14",
+        "0x6f36ce54f16757df7f4dd693433dfe8932f089ca",
+        "0x75d0cb443843a4c91de3314da9dae3f401f477cb",
+        "0x7818687f1c2cda416877ab68d18d2c9c25f9d185",
+        "0x7a3c613f4db5ec4f6f9cb8583ba45fd2fe41977c",
+        "0x7f51fe892219f137305b68f29d3189ec26ecd389",
+        "0x848df648f91091f0f90d941990764c895d1235e6",
+        "0x8a1e1e8fec1fb91f12ba3b8ebec52d2eda21bd03",
+        "0x8a7b576b7a53ef54876f9eca18bcd84f12d8782f",
+        "0x9690d9f51b618222c29567c3b39aac2935a5f2d5",
+        "0x97ead83eb0e6b7f142e63284791882f05ddf3363",
+        "0x983ef5555a3784411bc9b15e7708d9025c45f6c8",
+        "0x993ea2ef918b9ac9b428609532b02691fdc77c69",
+        "0x9b5fb62ff41e104e65fa6cc4e57575ebd05f11c5",
+        "0x9c274a7dfe8829cc8e178b27e3ff5eb7bdb5d050",
+        "0x9ca119b8cd7bdb890aecf1ff3b0f6e3a45cc13b5",
+        "0x9cb98fc57fe8a3bdf75c3b48bd419e5d262f7b80",
+        "0x9def9524630e31ff90f884eed32c3eecfbf8d1a5",
+        "0xa0b9c52dcacc522b3e73b7756c44c9581d566048",
+        "0xa49d959d91aa535793d1d07a9b3a11e003a5f4e3",
+        "0xae460abfd723d5b9005adcec714c21c9cb4779a6",
+        "0xb41aabe82d353b04754af7a31972a8319cb01935",
+        "0xb557dc93416e066a090e504fe9691bffad0def84",
+        "0xb8d2bf9500e4731b09f54c7ebec6bf89899ec66b",
+        "0xbc43a2f0deb85ba4ad316300762972089c911540",
+        "0xbc54e69667ceb6ccec538e5a0ba1927fc1fe680f",
+        "0xbc6bfbf1a94c441516b022a70f85a02c6dfffa9e",
+        "0xbd351aa7c2afa992df1b6d006dd9489d192d2bb6",
+        "0xbdd08fc7a71196e4aa28741b903cb8e8ccbe550a",
+        "0xc8fdab31c245f31767fb8f88374a689149666b3a",
+        "0xca886a7ed635c3b770fccfd251c86eec34967caa",
+        "0xcba0b2e108b3974de8ff5bb592d4b0aced2597bf",
+        "0xd104818fcf10456f12cf87356bde14e79c4d7c02",
+        "0xd10f60b88b8528db901b0fb7aecc07aa820cf12f",
+        "0xd44e974a3edb232aa4aedbdcc59792b76a5f67e2",
+        "0xdaa6a2cd4ba545befb3dbdc25d2b444c46873e62",
+        "0xdc03d611e5bcc9f1c87edb95edeb91671471804c",
+        "0xdd225a03cd7ed89e3931906c67c75ab31cf89ef1",
+        "0xdfe3fedc5c7679be42c3d393e99d4b55247b73c4",
+        "0xe097a66a04a3afd6de8929d19fcc41211402d811",
+        "0xe0f1e7751df4035f78a5eb2f4296c98b4d5bc4bd",
+        "0xe33a76226eb570e53095b437f3af03335379d8f7",
+        "0xe3fca04b0cdb7ba99d596c30b5735fc80b84e300",
+        "0xe4539c7b5f89574710dfcac65551cbcd41b7b05d",
+        "0xe5a35b635142e3bbfd3d5e3f70d01be53c3944ed",
+        "0xe7ec1224a01d96d86021eb630c76376b57e79dda",
+        "0xedc2834124c0465fb2ccbf239896ef65f975ad9f",
+        "0xeea75cd940a8abc193b04ca78be589af3d41d491",
+        "0xeee9c7196b5cbf3a77ce90259e93cf4218a06e94",
+        "0xef0d80a3431ec2fd3357a11442ea90256fb78733",
+        "0xf23313b2d009b671667cb158658f63e9f4d66ab2",
+        "0xf2b05d854e0af18e70b76e96534e2e7f7a04b26b",
+        "0xf3b550c43f97a626049036e6f6dbb1f9413e4c72",
+        "0xfd2b117412a698f322b0cd18d6827dad262b8e50",
+        "0xfd6deb2c6c5ee9c07c7c6826bbc24fed34ce962d"
+      ]
+    },
+    "148_placebo_pool": {
+      "population_size": 154,
+      "traders_touching_203": 75,
+      "positions_in_203": 438,
+      "markets_of_203_touched": 70,
+      "touching_trader_ids": [
+        "0x0054ee7dfb882d2d016fa13ef5f5cdb3b0ebcf1f",
+        "0x131a9f5401b17992b470093c4b95563b650b73f9",
+        "0x197040709ae61627d3685a8d6ce1f9e82e6b398d",
+        "0x1c144e30f405a25f991cbd8baa15d40599090869",
+        "0x1cea7192af5d7b1826083a19c5be75115a2df32a",
+        "0x228281cbae85e092daef8c9409c8e1c963f61051",
+        "0x242588a253d3ba08702ce63737891b467b393dd1",
+        "0x24f48a8ce6040cc793c834b218be9a1f9201714e",
+        "0x260d13a4c27f7edf65b07248a015ccc26ac5fbc2",
+        "0x2843d543c60a54106f572ab74f0e2e04f293b3d2",
+        "0x29e50f2f1d8acad69598e811bfbf99782aa48b3b",
+        "0x2ad51e85859ce37f71fc4c6a64a57d8e22344758",
+        "0x2d29b686abeb99266ca8f9817dcfddf75921f683",
+        "0x32d1623dddbd4841a98da71e47f0436d2ef2b949",
+        "0x3570b00a5cdeb52fd9a7f9979a46b42f2f8a53fa",
+        "0x407d04dacce5aba2e397cfc4bacd8ef044e2efcd",
+        "0x40cfb29411d29f4fa0908f2a121297042cccd21d",
+        "0x4d0121458bb2f96c6440c0f3835d675ad3ce1645",
+        "0x4f5e6216719c7347caf4dc42cf49013ce4671773",
+        "0x50396e4d9d11d38b0dcfd75280101a315f50946d",
+        "0x54dbd1c68d13b54a2b39f852bb0c0510f25f14a4",
+        "0x5a8fa665393acb4d847b4ce526e05d52e1701553",
+        "0x5be78e99197891cd5b07c432d1ab7eba50b1d440",
+        "0x5cfd881133ff44d1f7b81ea8a819a30dfc39ca1b",
+        "0x5e30f433ca5ed19cc926c3b30ff8ba8fcb5a1ebd",
+        "0x606ed7945996ae85a8002b05f83319c518b96b3a",
+        "0x6cd517eaa88ba717fa3aa3d5047feb0ce387f2cf",
+        "0x70efc9362ddb0d4cb5eed9be133250b7a05963b4",
+        "0x70f251dc3c772898098548a31975c109bf8c7532",
+        "0x73192b9597c4496f8c338b36239bdf4218ac0299",
+        "0x7d81681b4428796141a4c61e6b5d8aa3fa41259b",
+        "0x7f4ec29ff568c6cc57372e516b747fcd2c1e52f2",
+        "0x835016acae562e76b64b54d35bc4e667f4eec2bd",
+        "0x846afa98be552b9699275cea7a7b4583deb1e4f8",
+        "0x9360ff91d62b418bbb4cbac940eb2066495b0f48",
+        "0x9419d77566df79c2f8c6679c9933c2ac76aea40f",
+        "0x96489abcb9f583d6835c8ef95ffc923d05a86825",
+        "0x993f451b6d5c21996b1bf688493cea9c4c823ee3",
+        "0x9b6d706ca6e6385ab63840ef511b9bb79709cce5",
+        "0x9e9020fc48ad48fa31a2dcc8d0de36ea9b37373f",
+        "0xa5c2f1ebf995f8fd62c02d493913087e66b81bbe",
+        "0xaa9f65acf563e0c257b5ba92e6d52301311f0df3",
+        "0xae299cbae1204822f8b5e41c1b522fbe878e1c87",
+        "0xb38ea393a17280ebcfd9be6b47b161d5cdb8272b",
+        "0xb6d397514208c740cdcdd36c188b7f51e1bfa093",
+        "0xbdfab28bbd99b7f0a8d1dbc58493db9b55874a1c",
+        "0xc24f0686aae913fd32032ee03eb2db371891adf8",
+        "0xc281ad222df6d91ba397fb3b086130998fd6e079",
+        "0xc3eb1d9facf62b0a62b2e43e40f97d6850ef376c",
+        "0xc4d1a863e9cc45d02ba22d3a1ae9ba7822018ce8",
+        "0xc695e1c32a30650eda67e8e0e74f9e18f36566d1",
+        "0xc781e8dd03946230f2f32ab36077998bcb4a59d7",
+        "0xcbac4f6000f7b2ca616fea834545d77ed905732c",
+        "0xcbff940cfb4d3a91a9dc1012d513c6046b16e8e7",
+        "0xcc8a15f59f09128e8c0c4391b88d17bfd6a536cf",
+        "0xcf7e4dafc21f1505d73bc381f71bf893f56ad8af",
+        "0xd06113c05feb46f15749d02b7bb920122213d5e4",
+        "0xd2a857c2889af21403c3c6f92731640d4ced5bac",
+        "0xd2b8e73e3bd41432ef7ad3de1bde60b50efd9d3b",
+        "0xd5196bdf50199e195c58a6aff2114cc0e455932c",
+        "0xd5db05423b6718497684ae1bbe1557746d2c3c45",
+        "0xd9813dd48cbda560fe9e3c37de6e764a6f4d2da8",
+        "0xdcd962e5da7c9506bba32ea99cfff18a3e9a35d4",
+        "0xdd287fd025c76163eeb23345c3a8595f728a374a",
+        "0xe64bab48399e612bf7a585eacc9b2e9c2f31ce05",
+        "0xe6fd18067d9b8768ee4dc45e926cf54867288bc3",
+        "0xe7437fa6d599b2413c72a07681b995e54f3f451c",
+        "0xf0575f0dda3b9405e45a93419dc8bcd3ad586ec2",
+        "0xf0d9af9effd0b4a039899901ba19a05ea1a3e4ee",
+        "0xf32417a339933e6533687be421b9983cb5fccac4",
+        "0xf6df086fd5520e86df5408d5b9871895956865b1",
+        "0xf9ac2cd779925b1bafa42a31f14fbd8996bea816",
+        "0xf9bf37d7120e17a716d1fc9805ef52b9758f129f",
+        "0xfa323e40632edca701abc6c8cf1f82175909bd9a",
+        "0xfd166a584511e587678d9c97831f3cb8a5be0be8"
+      ]
+    },
+    "placebo_oos_survivors": {
+      "population_size": 113,
+      "traders_touching_203": 68,
+      "positions_in_203": 424,
+      "markets_of_203_touched": 70,
+      "touching_trader_ids": [
+        "0x0054ee7dfb882d2d016fa13ef5f5cdb3b0ebcf1f",
+        "0x131a9f5401b17992b470093c4b95563b650b73f9",
+        "0x197040709ae61627d3685a8d6ce1f9e82e6b398d",
+        "0x1c144e30f405a25f991cbd8baa15d40599090869",
+        "0x1cea7192af5d7b1826083a19c5be75115a2df32a",
+        "0x242588a253d3ba08702ce63737891b467b393dd1",
+        "0x260d13a4c27f7edf65b07248a015ccc26ac5fbc2",
+        "0x2843d543c60a54106f572ab74f0e2e04f293b3d2",
+        "0x29e50f2f1d8acad69598e811bfbf99782aa48b3b",
+        "0x2ad51e85859ce37f71fc4c6a64a57d8e22344758",
+        "0x2d29b686abeb99266ca8f9817dcfddf75921f683",
+        "0x32d1623dddbd4841a98da71e47f0436d2ef2b949",
+        "0x3570b00a5cdeb52fd9a7f9979a46b42f2f8a53fa",
+        "0x407d04dacce5aba2e397cfc4bacd8ef044e2efcd",
+        "0x40cfb29411d29f4fa0908f2a121297042cccd21d",
+        "0x4d0121458bb2f96c6440c0f3835d675ad3ce1645",
+        "0x4f5e6216719c7347caf4dc42cf49013ce4671773",
+        "0x50396e4d9d11d38b0dcfd75280101a315f50946d",
+        "0x54dbd1c68d13b54a2b39f852bb0c0510f25f14a4",
+        "0x5be78e99197891cd5b07c432d1ab7eba50b1d440",
+        "0x5cfd881133ff44d1f7b81ea8a819a30dfc39ca1b",
+        "0x5e30f433ca5ed19cc926c3b30ff8ba8fcb5a1ebd",
+        "0x606ed7945996ae85a8002b05f83319c518b96b3a",
+        "0x6cd517eaa88ba717fa3aa3d5047feb0ce387f2cf",
+        "0x70efc9362ddb0d4cb5eed9be133250b7a05963b4",
+        "0x70f251dc3c772898098548a31975c109bf8c7532",
+        "0x73192b9597c4496f8c338b36239bdf4218ac0299",
+        "0x7d81681b4428796141a4c61e6b5d8aa3fa41259b",
+        "0x7f4ec29ff568c6cc57372e516b747fcd2c1e52f2",
+        "0x835016acae562e76b64b54d35bc4e667f4eec2bd",
+        "0x846afa98be552b9699275cea7a7b4583deb1e4f8",
+        "0x9360ff91d62b418bbb4cbac940eb2066495b0f48",
+        "0x9419d77566df79c2f8c6679c9933c2ac76aea40f",
+        "0x96489abcb9f583d6835c8ef95ffc923d05a86825",
+        "0x993f451b6d5c21996b1bf688493cea9c4c823ee3",
+        "0x9e9020fc48ad48fa31a2dcc8d0de36ea9b37373f",
+        "0xa5c2f1ebf995f8fd62c02d493913087e66b81bbe",
+        "0xaa9f65acf563e0c257b5ba92e6d52301311f0df3",
+        "0xb38ea393a17280ebcfd9be6b47b161d5cdb8272b",
+        "0xb6d397514208c740cdcdd36c188b7f51e1bfa093",
+        "0xbdfab28bbd99b7f0a8d1dbc58493db9b55874a1c",
+        "0xc24f0686aae913fd32032ee03eb2db371891adf8",
+        "0xc281ad222df6d91ba397fb3b086130998fd6e079",
+        "0xc3eb1d9facf62b0a62b2e43e40f97d6850ef376c",
+        "0xc4d1a863e9cc45d02ba22d3a1ae9ba7822018ce8",
+        "0xc695e1c32a30650eda67e8e0e74f9e18f36566d1",
+        "0xc781e8dd03946230f2f32ab36077998bcb4a59d7",
+        "0xcbac4f6000f7b2ca616fea834545d77ed905732c",
+        "0xcbff940cfb4d3a91a9dc1012d513c6046b16e8e7",
+        "0xcc8a15f59f09128e8c0c4391b88d17bfd6a536cf",
+        "0xd06113c05feb46f15749d02b7bb920122213d5e4",
+        "0xd2a857c2889af21403c3c6f92731640d4ced5bac",
+        "0xd2b8e73e3bd41432ef7ad3de1bde60b50efd9d3b",
+        "0xd5196bdf50199e195c58a6aff2114cc0e455932c",
+        "0xd5db05423b6718497684ae1bbe1557746d2c3c45",
+        "0xd9813dd48cbda560fe9e3c37de6e764a6f4d2da8",
+        "0xdcd962e5da7c9506bba32ea99cfff18a3e9a35d4",
+        "0xe64bab48399e612bf7a585eacc9b2e9c2f31ce05",
+        "0xe6fd18067d9b8768ee4dc45e926cf54867288bc3",
+        "0xe7437fa6d599b2413c72a07681b995e54f3f451c",
+        "0xf0575f0dda3b9405e45a93419dc8bcd3ad586ec2",
+        "0xf0d9af9effd0b4a039899901ba19a05ea1a3e4ee",
+        "0xf32417a339933e6533687be421b9983cb5fccac4",
+        "0xf6df086fd5520e86df5408d5b9871895956865b1",
+        "0xf9ac2cd779925b1bafa42a31f14fbd8996bea816",
+        "0xf9bf37d7120e17a716d1fc9805ef52b9758f129f",
+        "0xfa323e40632edca701abc6c8cf1f82175909bd9a",
+        "0xfd166a584511e587678d9c97831f3cb8a5be0be8"
+      ]
+    }
+  },
+  "q4_per_trader": [
+    {
+      "trader": "0x0054ee7dfb882d2d016fa13ef5f5cdb3b0ebcf1f",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 70,
+      "total_positions_won_lost_pop": 136,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.014285714285714285
+    },
+    {
+      "trader": "0x03710baffa9885597676ed34778136ea36e170c3",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 49,
+      "total_positions_won_lost_pop": 83,
+      "n_of_203_touched": 4,
+      "fraction_of_total_markets": 0.08163265306122448
+    },
+    {
+      "trader": "0x042a1caf0b0d51d4fe5abc5d8832c2c9a5ffb153",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 26,
+      "total_positions_won_lost_pop": 79,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.11538461538461539
+    },
+    {
+      "trader": "0x04ec75cbba2a7f2407eb0a48a8468d25ee14580f",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 85,
+      "total_positions_won_lost_pop": 154,
+      "n_of_203_touched": 4,
+      "fraction_of_total_markets": 0.047058823529411764
+    },
+    {
+      "trader": "0x06e8cb40376ff9f06d926e71a0740821f1914675",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 41,
+      "total_positions_won_lost_pop": 89,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.04878048780487805
+    },
+    {
+      "trader": "0x0b9ee332cef4ace68b10a546475af5cbf331154a",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 50,
+      "total_positions_won_lost_pop": 66,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.04
+    },
+    {
+      "trader": "0x0cb10c40b0776e9ee8cef970af85724654dda76c",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 167,
+      "total_positions_won_lost_pop": 219,
+      "n_of_203_touched": 6,
+      "fraction_of_total_markets": 0.03592814371257485
+    },
+    {
+      "trader": "0x11a1e9de18c36eb0991c9c3797aaaefc7ebe7afe",
+      "memberships": [
+        "148_presplit_cohort"
+      ],
+      "total_markets_won_lost_pop": 44,
+      "total_positions_won_lost_pop": 141,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.045454545454545456
+    },
+    {
+      "trader": "0x1209f2ea7e67c4efda9f35d05aa17b1d075c0133",
+      "memberships": [
+        "148_presplit_cohort"
+      ],
+      "total_markets_won_lost_pop": 16,
+      "total_positions_won_lost_pop": 23,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.0625
+    },
+    {
+      "trader": "0x1244b4619ce8b602153452e851d44009b5ed0068",
+      "memberships": [
+        "148_presplit_cohort"
+      ],
+      "total_markets_won_lost_pop": 36,
+      "total_positions_won_lost_pop": 66,
+      "n_of_203_touched": 4,
+      "fraction_of_total_markets": 0.1111111111111111
+    },
+    {
+      "trader": "0x131a9f5401b17992b470093c4b95563b650b73f9",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 44,
+      "total_positions_won_lost_pop": 98,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.045454545454545456
+    },
+    {
+      "trader": "0x1424a9e0a0def5a86c3c6cffbd8b6c65e1b12c7f",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 28,
+      "total_positions_won_lost_pop": 80,
+      "n_of_203_touched": 5,
+      "fraction_of_total_markets": 0.17857142857142858
+    },
+    {
+      "trader": "0x197040709ae61627d3685a8d6ce1f9e82e6b398d",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 82,
+      "total_positions_won_lost_pop": 175,
+      "n_of_203_touched": 5,
+      "fraction_of_total_markets": 0.06097560975609756
+    },
+    {
+      "trader": "0x1c144e30f405a25f991cbd8baa15d40599090869",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 235,
+      "total_positions_won_lost_pop": 546,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.00851063829787234
+    },
+    {
+      "trader": "0x1cea7192af5d7b1826083a19c5be75115a2df32a",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 163,
+      "total_positions_won_lost_pop": 348,
+      "n_of_203_touched": 8,
+      "fraction_of_total_markets": 0.049079754601226995
+    },
+    {
+      "trader": "0x1e3bbbcfe29a1417a24196e3adea3086ad19b1cc",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 37,
+      "total_positions_won_lost_pop": 44,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.08108108108108109
+    },
+    {
+      "trader": "0x21d5d6326f480863e1d00c5d52bba19d9cec9925",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 122,
+      "total_positions_won_lost_pop": 317,
+      "n_of_203_touched": 5,
+      "fraction_of_total_markets": 0.040983606557377046
+    },
+    {
+      "trader": "0x228281cbae85e092daef8c9409c8e1c963f61051",
+      "memberships": [
+        "148_placebo_pool"
+      ],
+      "total_markets_won_lost_pop": 64,
+      "total_positions_won_lost_pop": 105,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.03125
+    },
+    {
+      "trader": "0x2288d665507b64b6b4687fd633cbab7346fda717",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 22,
+      "total_positions_won_lost_pop": 32,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.045454545454545456
+    },
+    {
+      "trader": "0x23a876d4bd29f9d59b1f9052d13cb4df4a8e8004",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 16,
+      "total_positions_won_lost_pop": 20,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.0625
+    },
+    {
+      "trader": "0x242588a253d3ba08702ce63737891b467b393dd1",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 64,
+      "total_positions_won_lost_pop": 97,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.015625
+    },
+    {
+      "trader": "0x24f48a8ce6040cc793c834b218be9a1f9201714e",
+      "memberships": [
+        "148_placebo_pool"
+      ],
+      "total_markets_won_lost_pop": 15,
+      "total_positions_won_lost_pop": 22,
+      "n_of_203_touched": 4,
+      "fraction_of_total_markets": 0.26666666666666666
+    },
+    {
+      "trader": "0x25bc994df017253d16b9e3056984753bdaffc4af",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 23,
+      "total_positions_won_lost_pop": 24,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.08695652173913043
+    },
+    {
+      "trader": "0x260d13a4c27f7edf65b07248a015ccc26ac5fbc2",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 86,
+      "total_positions_won_lost_pop": 167,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.011627906976744186
+    },
+    {
+      "trader": "0x2843d543c60a54106f572ab74f0e2e04f293b3d2",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 215,
+      "total_positions_won_lost_pop": 358,
+      "n_of_203_touched": 5,
+      "fraction_of_total_markets": 0.023255813953488372
+    },
+    {
+      "trader": "0x29170d3d0bfdb77b46ebac4f7a3033fba68ebe8f",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 84,
+      "total_positions_won_lost_pop": 181,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.011904761904761904
+    },
+    {
+      "trader": "0x29d337076f24d135b7b2b08796edfff4e32cb2ed",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 62,
+      "total_positions_won_lost_pop": 149,
+      "n_of_203_touched": 4,
+      "fraction_of_total_markets": 0.06451612903225806
+    },
+    {
+      "trader": "0x29e50f2f1d8acad69598e811bfbf99782aa48b3b",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 18,
+      "total_positions_won_lost_pop": 26,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.1111111111111111
+    },
+    {
+      "trader": "0x2a61dd4da2dda38898515542f818d1c94cd1588b",
+      "memberships": [
+        "148_presplit_cohort"
+      ],
+      "total_markets_won_lost_pop": 19,
+      "total_positions_won_lost_pop": 21,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.05263157894736842
+    },
+    {
+      "trader": "0x2ad51e85859ce37f71fc4c6a64a57d8e22344758",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 31,
+      "total_positions_won_lost_pop": 88,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.03225806451612903
+    },
+    {
+      "trader": "0x2c0e7bc014f7ca17b07350fb2290e40bbfa27ee8",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 53,
+      "total_positions_won_lost_pop": 74,
+      "n_of_203_touched": 5,
+      "fraction_of_total_markets": 0.09433962264150944
+    },
+    {
+      "trader": "0x2d29b686abeb99266ca8f9817dcfddf75921f683",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 39,
+      "total_positions_won_lost_pop": 82,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.02564102564102564
+    },
+    {
+      "trader": "0x30d1c420d1abde9442d6762dd6f6d5f92df04525",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 247,
+      "total_positions_won_lost_pop": 747,
+      "n_of_203_touched": 9,
+      "fraction_of_total_markets": 0.03643724696356275
+    },
+    {
+      "trader": "0x30d6c15abbce361921eb9a251462036c4b078c9d",
+      "memberships": [
+        "148_presplit_cohort"
+      ],
+      "total_markets_won_lost_pop": 15,
+      "total_positions_won_lost_pop": 25,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.06666666666666667
+    },
+    {
+      "trader": "0x328ef94bc7f57183eb62d57306509c93401f4475",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 32,
+      "total_positions_won_lost_pop": 52,
+      "n_of_203_touched": 6,
+      "fraction_of_total_markets": 0.1875
+    },
+    {
+      "trader": "0x32d1623dddbd4841a98da71e47f0436d2ef2b949",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 96,
+      "total_positions_won_lost_pop": 261,
+      "n_of_203_touched": 10,
+      "fraction_of_total_markets": 0.10416666666666667
+    },
+    {
+      "trader": "0x356ca9cbba6a892917f13906455cc0290eea80b7",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 21,
+      "total_positions_won_lost_pop": 22,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.047619047619047616
+    },
+    {
+      "trader": "0x3570b00a5cdeb52fd9a7f9979a46b42f2f8a53fa",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 64,
+      "total_positions_won_lost_pop": 74,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.015625
+    },
+    {
+      "trader": "0x368ba69507fd67972059fa178af5e459b72f2458",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 47,
+      "total_positions_won_lost_pop": 135,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.06382978723404255
+    },
+    {
+      "trader": "0x3838f51dd3e558db22a10a1ba520a81b4aa02c6f",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 35,
+      "total_positions_won_lost_pop": 84,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.05714285714285714
+    },
+    {
+      "trader": "0x387fa87c9354d532a966b4ab058615fe433b158a",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 54,
+      "total_positions_won_lost_pop": 78,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.05555555555555555
+    },
+    {
+      "trader": "0x3e1ccffd4dcc271a41430b475cc5db5fe39253f2",
+      "memberships": [
+        "148_presplit_cohort"
+      ],
+      "total_markets_won_lost_pop": 12,
+      "total_positions_won_lost_pop": 13,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.08333333333333333
+    },
+    {
+      "trader": "0x404e7ba5cd81e003552b6c4e8042b5f04547a0d3",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 23,
+      "total_positions_won_lost_pop": 55,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.13043478260869565
+    },
+    {
+      "trader": "0x407d04dacce5aba2e397cfc4bacd8ef044e2efcd",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 79,
+      "total_positions_won_lost_pop": 198,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.012658227848101266
+    },
+    {
+      "trader": "0x40cfb29411d29f4fa0908f2a121297042cccd21d",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 138,
+      "total_positions_won_lost_pop": 301,
+      "n_of_203_touched": 4,
+      "fraction_of_total_markets": 0.028985507246376812
+    },
+    {
+      "trader": "0x4512b74d3d1bbe6128ce430169cd7f1f5618c4a9",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 92,
+      "total_positions_won_lost_pop": 157,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.021739130434782608
+    },
+    {
+      "trader": "0x478b202e6bb184505db2dbd382349cbd55518edb",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 39,
+      "total_positions_won_lost_pop": 61,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.02564102564102564
+    },
+    {
+      "trader": "0x4a7082261f570297d3052f5cbdb0a0e33f85a50b",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 62,
+      "total_positions_won_lost_pop": 103,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.016129032258064516
+    },
+    {
+      "trader": "0x4b9d62ded3fc660628594803da42e2e8283cc0da",
+      "memberships": [
+        "148_presplit_cohort"
+      ],
+      "total_markets_won_lost_pop": 11,
+      "total_positions_won_lost_pop": 17,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.09090909090909091
+    },
+    {
+      "trader": "0x4d0121458bb2f96c6440c0f3835d675ad3ce1645",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 189,
+      "total_positions_won_lost_pop": 472,
+      "n_of_203_touched": 4,
+      "fraction_of_total_markets": 0.021164021164021163
+    },
+    {
+      "trader": "0x4d1bcbaeed22c6da173b1a356c3c6d2270081419",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 78,
+      "total_positions_won_lost_pop": 180,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.038461538461538464
+    },
+    {
+      "trader": "0x4dc2ce59c39f7ca8155c88e88a635f0034d60933",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 41,
+      "total_positions_won_lost_pop": 178,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.024390243902439025
+    },
+    {
+      "trader": "0x4f5e6216719c7347caf4dc42cf49013ce4671773",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 107,
+      "total_positions_won_lost_pop": 166,
+      "n_of_203_touched": 6,
+      "fraction_of_total_markets": 0.056074766355140186
+    },
+    {
+      "trader": "0x50396e4d9d11d38b0dcfd75280101a315f50946d",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 72,
+      "total_positions_won_lost_pop": 101,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.013888888888888888
+    },
+    {
+      "trader": "0x51b22927d7b99ea9477a6c99b8c9397e6a4110ce",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 68,
+      "total_positions_won_lost_pop": 138,
+      "n_of_203_touched": 5,
+      "fraction_of_total_markets": 0.07352941176470588
+    },
+    {
+      "trader": "0x5482dd559db53e79f431e986504bfd85a58088d7",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 20,
+      "total_positions_won_lost_pop": 22,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.1
+    },
+    {
+      "trader": "0x54dbd1c68d13b54a2b39f852bb0c0510f25f14a4",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 52,
+      "total_positions_won_lost_pop": 64,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.019230769230769232
+    },
+    {
+      "trader": "0x55f35253852930ef05a1a3f8dcd0007f6b0acada",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 33,
+      "total_positions_won_lost_pop": 97,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.06060606060606061
+    },
+    {
+      "trader": "0x598e55c3a20e5ac9193ab0eed24bc18884cbbe98",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 62,
+      "total_positions_won_lost_pop": 126,
+      "n_of_203_touched": 4,
+      "fraction_of_total_markets": 0.06451612903225806
+    },
+    {
+      "trader": "0x5a8fa665393acb4d847b4ce526e05d52e1701553",
+      "memberships": [
+        "148_placebo_pool"
+      ],
+      "total_markets_won_lost_pop": 13,
+      "total_positions_won_lost_pop": 22,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.07692307692307693
+    },
+    {
+      "trader": "0x5be78e99197891cd5b07c432d1ab7eba50b1d440",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 121,
+      "total_positions_won_lost_pop": 289,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.01652892561983471
+    },
+    {
+      "trader": "0x5cfd881133ff44d1f7b81ea8a819a30dfc39ca1b",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 56,
+      "total_positions_won_lost_pop": 64,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.03571428571428571
+    },
+    {
+      "trader": "0x5e30f433ca5ed19cc926c3b30ff8ba8fcb5a1ebd",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 15,
+      "total_positions_won_lost_pop": 31,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.13333333333333333
+    },
+    {
+      "trader": "0x5f0b2ef77500dcda06d15179720b39772d1f2305",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 78,
+      "total_positions_won_lost_pop": 172,
+      "n_of_203_touched": 5,
+      "fraction_of_total_markets": 0.0641025641025641
+    },
+    {
+      "trader": "0x604e43850248f9424f4129cb92966ac96e44f1cd",
+      "memberships": [
+        "148_presplit_cohort"
+      ],
+      "total_markets_won_lost_pop": 11,
+      "total_positions_won_lost_pop": 18,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.09090909090909091
+    },
+    {
+      "trader": "0x606ed7945996ae85a8002b05f83319c518b96b3a",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 128,
+      "total_positions_won_lost_pop": 337,
+      "n_of_203_touched": 10,
+      "fraction_of_total_markets": 0.078125
+    },
+    {
+      "trader": "0x610cf7527305f724d059694fc755b678a67b90d2",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 24,
+      "total_positions_won_lost_pop": 33,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.041666666666666664
+    },
+    {
+      "trader": "0x6404033a678d17f11ae2293a95d3dd98deb1edbd",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 20,
+      "total_positions_won_lost_pop": 28,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.05
+    },
+    {
+      "trader": "0x67a95cf07880baacc5d1ea4d549b26de186be29e",
+      "memberships": [
+        "148_presplit_cohort"
+      ],
+      "total_markets_won_lost_pop": 20,
+      "total_positions_won_lost_pop": 31,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.05
+    },
+    {
+      "trader": "0x686d5bfc5aee6aaed7bf6a11baef5b57e57d1a68",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 99,
+      "total_positions_won_lost_pop": 207,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.010101010101010102
+    },
+    {
+      "trader": "0x696d665903d1e9bdde1570fc1917b26f0f43be14",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 33,
+      "total_positions_won_lost_pop": 38,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.030303030303030304
+    },
+    {
+      "trader": "0x6cd517eaa88ba717fa3aa3d5047feb0ce387f2cf",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 72,
+      "total_positions_won_lost_pop": 138,
+      "n_of_203_touched": 5,
+      "fraction_of_total_markets": 0.06944444444444445
+    },
+    {
+      "trader": "0x6f36ce54f16757df7f4dd693433dfe8932f089ca",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 41,
+      "total_positions_won_lost_pop": 107,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.024390243902439025
+    },
+    {
+      "trader": "0x70efc9362ddb0d4cb5eed9be133250b7a05963b4",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 33,
+      "total_positions_won_lost_pop": 47,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.030303030303030304
+    },
+    {
+      "trader": "0x70f251dc3c772898098548a31975c109bf8c7532",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 43,
+      "total_positions_won_lost_pop": 60,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.023255813953488372
+    },
+    {
+      "trader": "0x73192b9597c4496f8c338b36239bdf4218ac0299",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 110,
+      "total_positions_won_lost_pop": 259,
+      "n_of_203_touched": 4,
+      "fraction_of_total_markets": 0.03636363636363636
+    },
+    {
+      "trader": "0x75d0cb443843a4c91de3314da9dae3f401f477cb",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 44,
+      "total_positions_won_lost_pop": 51,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.045454545454545456
+    },
+    {
+      "trader": "0x7818687f1c2cda416877ab68d18d2c9c25f9d185",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 41,
+      "total_positions_won_lost_pop": 77,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.024390243902439025
+    },
+    {
+      "trader": "0x7a3c613f4db5ec4f6f9cb8583ba45fd2fe41977c",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 21,
+      "total_positions_won_lost_pop": 54,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.047619047619047616
+    },
+    {
+      "trader": "0x7d81681b4428796141a4c61e6b5d8aa3fa41259b",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 36,
+      "total_positions_won_lost_pop": 55,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.05555555555555555
+    },
+    {
+      "trader": "0x7f4ec29ff568c6cc57372e516b747fcd2c1e52f2",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 18,
+      "total_positions_won_lost_pop": 22,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.05555555555555555
+    },
+    {
+      "trader": "0x7f51fe892219f137305b68f29d3189ec26ecd389",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 67,
+      "total_positions_won_lost_pop": 117,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.029850746268656716
+    },
+    {
+      "trader": "0x835016acae562e76b64b54d35bc4e667f4eec2bd",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 23,
+      "total_positions_won_lost_pop": 44,
+      "n_of_203_touched": 6,
+      "fraction_of_total_markets": 0.2608695652173913
+    },
+    {
+      "trader": "0x846afa98be552b9699275cea7a7b4583deb1e4f8",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 12,
+      "total_positions_won_lost_pop": 18,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.08333333333333333
+    },
+    {
+      "trader": "0x848df648f91091f0f90d941990764c895d1235e6",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 106,
+      "total_positions_won_lost_pop": 218,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.02830188679245283
+    },
+    {
+      "trader": "0x8a1e1e8fec1fb91f12ba3b8ebec52d2eda21bd03",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 67,
+      "total_positions_won_lost_pop": 119,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.014925373134328358
+    },
+    {
+      "trader": "0x8a7b576b7a53ef54876f9eca18bcd84f12d8782f",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 54,
+      "total_positions_won_lost_pop": 83,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.018518518518518517
+    },
+    {
+      "trader": "0x9360ff91d62b418bbb4cbac940eb2066495b0f48",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 33,
+      "total_positions_won_lost_pop": 60,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.09090909090909091
+    },
+    {
+      "trader": "0x9419d77566df79c2f8c6679c9933c2ac76aea40f",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 48,
+      "total_positions_won_lost_pop": 101,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.020833333333333332
+    },
+    {
+      "trader": "0x94d4feeed43ad8b47ae0d29db252fff61e0965ee",
+      "memberships": [
+        "148_presplit_cohort"
+      ],
+      "total_markets_won_lost_pop": 17,
+      "total_positions_won_lost_pop": 20,
+      "n_of_203_touched": 4,
+      "fraction_of_total_markets": 0.23529411764705882
+    },
+    {
+      "trader": "0x96489abcb9f583d6835c8ef95ffc923d05a86825",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 95,
+      "total_positions_won_lost_pop": 301,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.021052631578947368
+    },
+    {
+      "trader": "0x9690d9f51b618222c29567c3b39aac2935a5f2d5",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 103,
+      "total_positions_won_lost_pop": 192,
+      "n_of_203_touched": 4,
+      "fraction_of_total_markets": 0.038834951456310676
+    },
+    {
+      "trader": "0x97ead83eb0e6b7f142e63284791882f05ddf3363",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 101,
+      "total_positions_won_lost_pop": 178,
+      "n_of_203_touched": 10,
+      "fraction_of_total_markets": 0.09900990099009901
+    },
+    {
+      "trader": "0x983ef5555a3784411bc9b15e7708d9025c45f6c8",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 27,
+      "total_positions_won_lost_pop": 30,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.1111111111111111
+    },
+    {
+      "trader": "0x993ea2ef918b9ac9b428609532b02691fdc77c69",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 18,
+      "total_positions_won_lost_pop": 31,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.05555555555555555
+    },
+    {
+      "trader": "0x993f451b6d5c21996b1bf688493cea9c4c823ee3",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 49,
+      "total_positions_won_lost_pop": 108,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.02040816326530612
+    },
+    {
+      "trader": "0x9b5fb62ff41e104e65fa6cc4e57575ebd05f11c5",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 102,
+      "total_positions_won_lost_pop": 320,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.029411764705882353
+    },
+    {
+      "trader": "0x9b6d706ca6e6385ab63840ef511b9bb79709cce5",
+      "memberships": [
+        "148_placebo_pool"
+      ],
+      "total_markets_won_lost_pop": 17,
+      "total_positions_won_lost_pop": 22,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.058823529411764705
+    },
+    {
+      "trader": "0x9c274a7dfe8829cc8e178b27e3ff5eb7bdb5d050",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 25,
+      "total_positions_won_lost_pop": 78,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.12
+    },
+    {
+      "trader": "0x9ca119b8cd7bdb890aecf1ff3b0f6e3a45cc13b5",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 174,
+      "total_positions_won_lost_pop": 422,
+      "n_of_203_touched": 4,
+      "fraction_of_total_markets": 0.022988505747126436
+    },
+    {
+      "trader": "0x9cb98fc57fe8a3bdf75c3b48bd419e5d262f7b80",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 194,
+      "total_positions_won_lost_pop": 543,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.015463917525773196
+    },
+    {
+      "trader": "0x9def9524630e31ff90f884eed32c3eecfbf8d1a5",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 56,
+      "total_positions_won_lost_pop": 101,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.05357142857142857
+    },
+    {
+      "trader": "0x9e9020fc48ad48fa31a2dcc8d0de36ea9b37373f",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 12,
+      "total_positions_won_lost_pop": 48,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.08333333333333333
+    },
+    {
+      "trader": "0xa0b9c52dcacc522b3e73b7756c44c9581d566048",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 67,
+      "total_positions_won_lost_pop": 80,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.014925373134328358
+    },
+    {
+      "trader": "0xa49d959d91aa535793d1d07a9b3a11e003a5f4e3",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 28,
+      "total_positions_won_lost_pop": 49,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.03571428571428571
+    },
+    {
+      "trader": "0xa5c2f1ebf995f8fd62c02d493913087e66b81bbe",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 123,
+      "total_positions_won_lost_pop": 192,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.024390243902439025
+    },
+    {
+      "trader": "0xaa9f65acf563e0c257b5ba92e6d52301311f0df3",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 58,
+      "total_positions_won_lost_pop": 168,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.05172413793103448
+    },
+    {
+      "trader": "0xad0e0da5c2a0a35af061690320aa08d46b57e763",
+      "memberships": [
+        "148_presplit_cohort"
+      ],
+      "total_markets_won_lost_pop": 22,
+      "total_positions_won_lost_pop": 60,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.045454545454545456
+    },
+    {
+      "trader": "0xae299cbae1204822f8b5e41c1b522fbe878e1c87",
+      "memberships": [
+        "148_placebo_pool"
+      ],
+      "total_markets_won_lost_pop": 19,
+      "total_positions_won_lost_pop": 35,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.05263157894736842
+    },
+    {
+      "trader": "0xae460abfd723d5b9005adcec714c21c9cb4779a6",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 45,
+      "total_positions_won_lost_pop": 95,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.022222222222222223
+    },
+    {
+      "trader": "0xb38ea393a17280ebcfd9be6b47b161d5cdb8272b",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 56,
+      "total_positions_won_lost_pop": 100,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.017857142857142856
+    },
+    {
+      "trader": "0xb41aabe82d353b04754af7a31972a8319cb01935",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 20,
+      "total_positions_won_lost_pop": 56,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.05
+    },
+    {
+      "trader": "0xb557dc93416e066a090e504fe9691bffad0def84",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 126,
+      "total_positions_won_lost_pop": 160,
+      "n_of_203_touched": 4,
+      "fraction_of_total_markets": 0.031746031746031744
+    },
+    {
+      "trader": "0xb6d397514208c740cdcdd36c188b7f51e1bfa093",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 257,
+      "total_positions_won_lost_pop": 322,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.0038910505836575876
+    },
+    {
+      "trader": "0xb8d2bf9500e4731b09f54c7ebec6bf89899ec66b",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 23,
+      "total_positions_won_lost_pop": 60,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.043478260869565216
+    },
+    {
+      "trader": "0xbc43a2f0deb85ba4ad316300762972089c911540",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 30,
+      "total_positions_won_lost_pop": 85,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.06666666666666667
+    },
+    {
+      "trader": "0xbc54e69667ceb6ccec538e5a0ba1927fc1fe680f",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 123,
+      "total_positions_won_lost_pop": 273,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.024390243902439025
+    },
+    {
+      "trader": "0xbc6bfbf1a94c441516b022a70f85a02c6dfffa9e",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 25,
+      "total_positions_won_lost_pop": 97,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.08
+    },
+    {
+      "trader": "0xbd351aa7c2afa992df1b6d006dd9489d192d2bb6",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 55,
+      "total_positions_won_lost_pop": 81,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.01818181818181818
+    },
+    {
+      "trader": "0xbdd08fc7a71196e4aa28741b903cb8e8ccbe550a",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 88,
+      "total_positions_won_lost_pop": 148,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.03409090909090909
+    },
+    {
+      "trader": "0xbdfab28bbd99b7f0a8d1dbc58493db9b55874a1c",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 16,
+      "total_positions_won_lost_pop": 45,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.125
+    },
+    {
+      "trader": "0xc24f0686aae913fd32032ee03eb2db371891adf8",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 32,
+      "total_positions_won_lost_pop": 64,
+      "n_of_203_touched": 8,
+      "fraction_of_total_markets": 0.25
+    },
+    {
+      "trader": "0xc281ad222df6d91ba397fb3b086130998fd6e079",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 24,
+      "total_positions_won_lost_pop": 32,
+      "n_of_203_touched": 4,
+      "fraction_of_total_markets": 0.16666666666666666
+    },
+    {
+      "trader": "0xc3eb1d9facf62b0a62b2e43e40f97d6850ef376c",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 27,
+      "total_positions_won_lost_pop": 61,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.07407407407407407
+    },
+    {
+      "trader": "0xc4d1a863e9cc45d02ba22d3a1ae9ba7822018ce8",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 34,
+      "total_positions_won_lost_pop": 126,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.029411764705882353
+    },
+    {
+      "trader": "0xc695e1c32a30650eda67e8e0e74f9e18f36566d1",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 75,
+      "total_positions_won_lost_pop": 244,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.04
+    },
+    {
+      "trader": "0xc781e8dd03946230f2f32ab36077998bcb4a59d7",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 94,
+      "total_positions_won_lost_pop": 186,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.010638297872340425
+    },
+    {
+      "trader": "0xc8fdab31c245f31767fb8f88374a689149666b3a",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 40,
+      "total_positions_won_lost_pop": 79,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.025
+    },
+    {
+      "trader": "0xca886a7ed635c3b770fccfd251c86eec34967caa",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 19,
+      "total_positions_won_lost_pop": 39,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.10526315789473684
+    },
+    {
+      "trader": "0xcba0b2e108b3974de8ff5bb592d4b0aced2597bf",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 18,
+      "total_positions_won_lost_pop": 30,
+      "n_of_203_touched": 4,
+      "fraction_of_total_markets": 0.2222222222222222
+    },
+    {
+      "trader": "0xcbac4f6000f7b2ca616fea834545d77ed905732c",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 43,
+      "total_positions_won_lost_pop": 64,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.023255813953488372
+    },
+    {
+      "trader": "0xcbff940cfb4d3a91a9dc1012d513c6046b16e8e7",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 55,
+      "total_positions_won_lost_pop": 79,
+      "n_of_203_touched": 6,
+      "fraction_of_total_markets": 0.10909090909090909
+    },
+    {
+      "trader": "0xcc2b9f6f0aedc8336a5e89bc99f135772d9ccb90",
+      "memberships": [
+        "148_presplit_cohort"
+      ],
+      "total_markets_won_lost_pop": 14,
+      "total_positions_won_lost_pop": 18,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.07142857142857142
+    },
+    {
+      "trader": "0xcc8a15f59f09128e8c0c4391b88d17bfd6a536cf",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 19,
+      "total_positions_won_lost_pop": 26,
+      "n_of_203_touched": 4,
+      "fraction_of_total_markets": 0.21052631578947367
+    },
+    {
+      "trader": "0xcd93ac28d9897b74b6903931436664f2d4ab7182",
+      "memberships": [
+        "148_presplit_cohort"
+      ],
+      "total_markets_won_lost_pop": 14,
+      "total_positions_won_lost_pop": 19,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.14285714285714285
+    },
+    {
+      "trader": "0xcf7e4dafc21f1505d73bc381f71bf893f56ad8af",
+      "memberships": [
+        "148_placebo_pool"
+      ],
+      "total_markets_won_lost_pop": 39,
+      "total_positions_won_lost_pop": 155,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.02564102564102564
+    },
+    {
+      "trader": "0xd06113c05feb46f15749d02b7bb920122213d5e4",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 85,
+      "total_positions_won_lost_pop": 167,
+      "n_of_203_touched": 5,
+      "fraction_of_total_markets": 0.058823529411764705
+    },
+    {
+      "trader": "0xd104818fcf10456f12cf87356bde14e79c4d7c02",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 64,
+      "total_positions_won_lost_pop": 125,
+      "n_of_203_touched": 8,
+      "fraction_of_total_markets": 0.125
+    },
+    {
+      "trader": "0xd10f60b88b8528db901b0fb7aecc07aa820cf12f",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 30,
+      "total_positions_won_lost_pop": 77,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.06666666666666667
+    },
+    {
+      "trader": "0xd2a857c2889af21403c3c6f92731640d4ced5bac",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 22,
+      "total_positions_won_lost_pop": 49,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.13636363636363635
+    },
+    {
+      "trader": "0xd2b8e73e3bd41432ef7ad3de1bde60b50efd9d3b",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 37,
+      "total_positions_won_lost_pop": 56,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.05405405405405406
+    },
+    {
+      "trader": "0xd44e974a3edb232aa4aedbdcc59792b76a5f67e2",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 182,
+      "total_positions_won_lost_pop": 543,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.016483516483516484
+    },
+    {
+      "trader": "0xd5196bdf50199e195c58a6aff2114cc0e455932c",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 19,
+      "total_positions_won_lost_pop": 25,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.15789473684210525
+    },
+    {
+      "trader": "0xd5db05423b6718497684ae1bbe1557746d2c3c45",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 204,
+      "total_positions_won_lost_pop": 541,
+      "n_of_203_touched": 10,
+      "fraction_of_total_markets": 0.049019607843137254
+    },
+    {
+      "trader": "0xd706807a87696333af277be68d4c75e59ad3fac2",
+      "memberships": [
+        "148_presplit_cohort"
+      ],
+      "total_markets_won_lost_pop": 57,
+      "total_positions_won_lost_pop": 75,
+      "n_of_203_touched": 13,
+      "fraction_of_total_markets": 0.22807017543859648
+    },
+    {
+      "trader": "0xd9813dd48cbda560fe9e3c37de6e764a6f4d2da8",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 61,
+      "total_positions_won_lost_pop": 98,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.03278688524590164
+    },
+    {
+      "trader": "0xdaa6a2cd4ba545befb3dbdc25d2b444c46873e62",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 59,
+      "total_positions_won_lost_pop": 141,
+      "n_of_203_touched": 9,
+      "fraction_of_total_markets": 0.15254237288135594
+    },
+    {
+      "trader": "0xdc03d611e5bcc9f1c87edb95edeb91671471804c",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 47,
+      "total_positions_won_lost_pop": 187,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.06382978723404255
+    },
+    {
+      "trader": "0xdcd962e5da7c9506bba32ea99cfff18a3e9a35d4",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 53,
+      "total_positions_won_lost_pop": 62,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.018867924528301886
+    },
+    {
+      "trader": "0xdd225a03cd7ed89e3931906c67c75ab31cf89ef1",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 87,
+      "total_positions_won_lost_pop": 221,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.022988505747126436
+    },
+    {
+      "trader": "0xdd287fd025c76163eeb23345c3a8595f728a374a",
+      "memberships": [
+        "148_placebo_pool"
+      ],
+      "total_markets_won_lost_pop": 72,
+      "total_positions_won_lost_pop": 129,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.013888888888888888
+    },
+    {
+      "trader": "0xdfe3fedc5c7679be42c3d393e99d4b55247b73c4",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 107,
+      "total_positions_won_lost_pop": 196,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.028037383177570093
+    },
+    {
+      "trader": "0xe097a66a04a3afd6de8929d19fcc41211402d811",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 56,
+      "total_positions_won_lost_pop": 75,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.017857142857142856
+    },
+    {
+      "trader": "0xe0f1e7751df4035f78a5eb2f4296c98b4d5bc4bd",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 269,
+      "total_positions_won_lost_pop": 570,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.011152416356877323
+    },
+    {
+      "trader": "0xe33a76226eb570e53095b437f3af03335379d8f7",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 46,
+      "total_positions_won_lost_pop": 98,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.043478260869565216
+    },
+    {
+      "trader": "0xe3fca04b0cdb7ba99d596c30b5735fc80b84e300",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 27,
+      "total_positions_won_lost_pop": 38,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.037037037037037035
+    },
+    {
+      "trader": "0xe4539c7b5f89574710dfcac65551cbcd41b7b05d",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 21,
+      "total_positions_won_lost_pop": 27,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.09523809523809523
+    },
+    {
+      "trader": "0xe5a35b635142e3bbfd3d5e3f70d01be53c3944ed",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 37,
+      "total_positions_won_lost_pop": 59,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.05405405405405406
+    },
+    {
+      "trader": "0xe64bab48399e612bf7a585eacc9b2e9c2f31ce05",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 24,
+      "total_positions_won_lost_pop": 39,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.125
+    },
+    {
+      "trader": "0xe6fd18067d9b8768ee4dc45e926cf54867288bc3",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 186,
+      "total_positions_won_lost_pop": 377,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.010752688172043012
+    },
+    {
+      "trader": "0xe7437fa6d599b2413c72a07681b995e54f3f451c",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 19,
+      "total_positions_won_lost_pop": 24,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.10526315789473684
+    },
+    {
+      "trader": "0xe7ec1224a01d96d86021eb630c76376b57e79dda",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 31,
+      "total_positions_won_lost_pop": 66,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.03225806451612903
+    },
+    {
+      "trader": "0xedc2834124c0465fb2ccbf239896ef65f975ad9f",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 94,
+      "total_positions_won_lost_pop": 302,
+      "n_of_203_touched": 7,
+      "fraction_of_total_markets": 0.07446808510638298
+    },
+    {
+      "trader": "0xeea75cd940a8abc193b04ca78be589af3d41d491",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 52,
+      "total_positions_won_lost_pop": 144,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.019230769230769232
+    },
+    {
+      "trader": "0xeee9c7196b5cbf3a77ce90259e93cf4218a06e94",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 14,
+      "total_positions_won_lost_pop": 18,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.14285714285714285
+    },
+    {
+      "trader": "0xef0d80a3431ec2fd3357a11442ea90256fb78733",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 15,
+      "total_positions_won_lost_pop": 20,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.06666666666666667
+    },
+    {
+      "trader": "0xf0575f0dda3b9405e45a93419dc8bcd3ad586ec2",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 42,
+      "total_positions_won_lost_pop": 56,
+      "n_of_203_touched": 6,
+      "fraction_of_total_markets": 0.14285714285714285
+    },
+    {
+      "trader": "0xf0d9af9effd0b4a039899901ba19a05ea1a3e4ee",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 53,
+      "total_positions_won_lost_pop": 138,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.05660377358490566
+    },
+    {
+      "trader": "0xf23313b2d009b671667cb158658f63e9f4d66ab2",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 55,
+      "total_positions_won_lost_pop": 181,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.03636363636363636
+    },
+    {
+      "trader": "0xf2b05d854e0af18e70b76e96534e2e7f7a04b26b",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 69,
+      "total_positions_won_lost_pop": 156,
+      "n_of_203_touched": 8,
+      "fraction_of_total_markets": 0.11594202898550725
+    },
+    {
+      "trader": "0xf32417a339933e6533687be421b9983cb5fccac4",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 41,
+      "total_positions_won_lost_pop": 83,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.024390243902439025
+    },
+    {
+      "trader": "0xf3b550c43f97a626049036e6f6dbb1f9413e4c72",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 44,
+      "total_positions_won_lost_pop": 98,
+      "n_of_203_touched": 5,
+      "fraction_of_total_markets": 0.11363636363636363
+    },
+    {
+      "trader": "0xf6df086fd5520e86df5408d5b9871895956865b1",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 101,
+      "total_positions_won_lost_pop": 258,
+      "n_of_203_touched": 2,
+      "fraction_of_total_markets": 0.019801980198019802
+    },
+    {
+      "trader": "0xf9ac2cd779925b1bafa42a31f14fbd8996bea816",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 16,
+      "total_positions_won_lost_pop": 18,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.0625
+    },
+    {
+      "trader": "0xf9bf37d7120e17a716d1fc9805ef52b9758f129f",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 16,
+      "total_positions_won_lost_pop": 19,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.0625
+    },
+    {
+      "trader": "0xfa323e40632edca701abc6c8cf1f82175909bd9a",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 89,
+      "total_positions_won_lost_pop": 169,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.011235955056179775
+    },
+    {
+      "trader": "0xfd166a584511e587678d9c97831f3cb8a5be0be8",
+      "memberships": [
+        "148_placebo_pool",
+        "placebo_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 25,
+      "total_positions_won_lost_pop": 58,
+      "n_of_203_touched": 1,
+      "fraction_of_total_markets": 0.04
+    },
+    {
+      "trader": "0xfd2b117412a698f322b0cd18d6827dad262b8e50",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 49,
+      "total_positions_won_lost_pop": 108,
+      "n_of_203_touched": 3,
+      "fraction_of_total_markets": 0.061224489795918366
+    },
+    {
+      "trader": "0xfd6deb2c6c5ee9c07c7c6826bbc24fed34ce962d",
+      "memberships": [
+        "148_presplit_cohort",
+        "120_oos_survivors"
+      ],
+      "total_markets_won_lost_pop": 56,
+      "total_positions_won_lost_pop": 120,
+      "n_of_203_touched": 6,
+      "fraction_of_total_markets": 0.10714285714285714
+    }
+  ],
+  "q5_qualification_boundary": {
+    "n_presplit_203_markets": 164,
+    "distinct_traders_in_presplit_203": 1077,
+    "near_boundary_candidates": [
+      {
+        "trader": "0xc044aaa466bec72b01c2263b56dc5a2c1c48de04",
+        "current_n_pairs": 7,
+        "additional_markets_in_presplit_203": 4,
+        "upper_bound_n_pairs_if_resolved": 11
+      },
+      {
+        "trader": "0xfe224037770a1c637d36116f2b39a7a054006f6a",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0x4f57c4add23e9f9f3ff5aeb9a96eb8bb51576b72",
+        "current_n_pairs": 8,
+        "additional_markets_in_presplit_203": 2,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0xc1ba69c7bed3fd1df60f665529bf535bac6eddbf",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0x0ad915c789c133e17180168254673bee1a84b9f7",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0x295ca0bd1ca3e50b0f9c27e09e3ca2b139180f9a",
+        "current_n_pairs": 8,
+        "additional_markets_in_presplit_203": 3,
+        "upper_bound_n_pairs_if_resolved": 11
+      },
+      {
+        "trader": "0x3f52c2cd815b20f7557c173b76c2956b422543de",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0x817997d188ab6a5bc85180d561b727401b044403",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0x398fcd96993bf4c8b4b6ce6f0becd0c03ca99515",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0xdff5bd6dff8aba00eb5369bccd8d65d6860122bc",
+        "current_n_pairs": 8,
+        "additional_markets_in_presplit_203": 3,
+        "upper_bound_n_pairs_if_resolved": 11
+      },
+      {
+        "trader": "0xb1a9b1be962f58e9aa55f9150c97aedfd38ad58b",
+        "current_n_pairs": 7,
+        "additional_markets_in_presplit_203": 6,
+        "upper_bound_n_pairs_if_resolved": 13
+      },
+      {
+        "trader": "0xd8af7b4404f0b2fc74e6c6e9003df661cae604e7",
+        "current_n_pairs": 8,
+        "additional_markets_in_presplit_203": 2,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0x2dc244ba95ff7cdd2bf632c1c76fbce1233c1e51",
+        "current_n_pairs": 8,
+        "additional_markets_in_presplit_203": 3,
+        "upper_bound_n_pairs_if_resolved": 11
+      },
+      {
+        "trader": "0x9dbfaff48c7b33dcb3c618905580cebef819c42d",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0xad265725062d5dfcbc6067ae8d8be225c2e4bf29",
+        "current_n_pairs": 7,
+        "additional_markets_in_presplit_203": 3,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0x3eff37009f83f65578bc23e990d36a642606be7b",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0xcd09c7f5132a160b41578a79a9e3453da7aeda63",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0x730da7d292794217736d5e4c4653c6cf0473d448",
+        "current_n_pairs": 8,
+        "additional_markets_in_presplit_203": 2,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0x1aacf02365e0f2be274fb0330f312d8a0fa4d1e3",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0x9a7eda4f61644d72ca5d6b3bb21e7982aa3d5c1c",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0x244d89e9e053b477dfb6a6cbb17f74345d479bf4",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0x1f5377f67a420ea431458780c88e0de0ae0d7d97",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0xadaec68c391d6d011382fd9fbcd3a25c8d4392ca",
+        "current_n_pairs": 7,
+        "additional_markets_in_presplit_203": 4,
+        "upper_bound_n_pairs_if_resolved": 11
+      },
+      {
+        "trader": "0x39404080b26100c954e5ffa43d6977eeb83828f1",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0xd2306fa4d3bc5cf6a08e6a0fb416042b5ceaf600",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 4,
+        "upper_bound_n_pairs_if_resolved": 13
+      },
+      {
+        "trader": "0x95f13739807fdcf73e2cb1864c29aba854063322",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 2,
+        "upper_bound_n_pairs_if_resolved": 11
+      },
+      {
+        "trader": "0x25c5f36b0b016ec83a14965fea1bc5c3ec398581",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 3,
+        "upper_bound_n_pairs_if_resolved": 12
+      },
+      {
+        "trader": "0xc9ceaf3031d0c99fec2e07c49c6c4e9f94ffa6ca",
+        "current_n_pairs": 7,
+        "additional_markets_in_presplit_203": 3,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0xe4d7a4228c1b48fff9e406e535f3dbd4e111824d",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0x06c2698abdc64530ad5a5be1b5d8dd24e7eb612a",
+        "current_n_pairs": 7,
+        "additional_markets_in_presplit_203": 4,
+        "upper_bound_n_pairs_if_resolved": 11
+      },
+      {
+        "trader": "0x0ea266e459774bb7e0e06e053d2741a09b229c1c",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0x43e3e6bb664cb736bddbb2682e68fab64e71d311",
+        "current_n_pairs": 8,
+        "additional_markets_in_presplit_203": 2,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0xac52cef5ffe242560482d938f819c691f49e4f2e",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0x9780ad41adaaeb54a230bee8c9f3b7d46efc7fe8",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0xa3a63f4261425580acc1e8543ee7d009f397263a",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 2,
+        "upper_bound_n_pairs_if_resolved": 11
+      },
+      {
+        "trader": "0x04b26f4f28716d305e7eb746e8953de5833de801",
+        "current_n_pairs": 0,
+        "additional_markets_in_presplit_203": 26,
+        "upper_bound_n_pairs_if_resolved": 26
+      },
+      {
+        "trader": "0x043123e2a5b6e8022949e36cc7533619b2a3fcb4",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0xa5e6c3984fa027a90abe03d07ed336c8230bb340",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0x7c30ee60b7f53f80211ca65df99d48cce53b7673",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0xf141295f307a680a747085b7e899b4cbb0b1d9aa",
+        "current_n_pairs": 8,
+        "additional_markets_in_presplit_203": 6,
+        "upper_bound_n_pairs_if_resolved": 14
+      },
+      {
+        "trader": "0x45d3339d705d63eebff0d2d1eb1c2fd5bb55eda0",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0x791976e861822c1f6d13f719d2c80e8deb9b72b2",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 2,
+        "upper_bound_n_pairs_if_resolved": 11
+      },
+      {
+        "trader": "0x57684ad0b4391b8d4d2c7a379b8c7803f3b408fd",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 2,
+        "upper_bound_n_pairs_if_resolved": 11
+      },
+      {
+        "trader": "0xe4acc2143799978e646bc33ac66bddfa756aad7f",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0xeb076b4cfec6bccdc42a9638289f98f99f972e36",
+        "current_n_pairs": 8,
+        "additional_markets_in_presplit_203": 2,
+        "upper_bound_n_pairs_if_resolved": 10
+      },
+      {
+        "trader": "0xcc6cca2a76a08ddaae92cbee471101e879540573",
+        "current_n_pairs": 9,
+        "additional_markets_in_presplit_203": 1,
+        "upper_bound_n_pairs_if_resolved": 10
+      }
+    ]
+  },
+  "q6_edge": {
+    "120_oos_survivors": {
+      "n_positions": 637,
+      "n_no_winner_extractable": 0,
+      "mean_edge": 0.0005639860428221915,
+      "median_edge": 0.010000000000000009,
+      "edge_values": [
+        -0.001,
+        -0.2001,
+        -0.238,
+        -0.25,
+        -0.2253,
+        -0.09,
+        0.46,
+        -0.007,
+        -0.007,
+        -0.0802,
+        -0.003,
+        -0.002,
+        -0.001,
+        -0.001,
+        0.9449,
+        0.9514,
+        0.9558,
+        0.9505,
+        -0.033,
+        -0.01,
+        -0.003,
+        -0.001,
+        0.021,
+        0.31,
+        -0.24,
+        -0.53,
+        -0.47,
+        -0.53,
+        -0.3493,
+        0.12,
+        -0.0548,
+        0.2,
+        0.3498,
+        -0.03,
+        -0.2993,
+        0.456,
+        0.5681,
+        0.5036,
+        0.62,
+        -0.16,
+        0.48,
+        -0.018,
+        0.02,
+        -0.14,
+        -0.3159,
+        -0.2785,
+        -0.02,
+        -0.04,
+        -0.2298,
+        -0.1501,
+        -0.018,
+        -0.018,
+        0.1199,
+        0.14,
+        0.77,
+        -0.1662,
+        -0.19,
+        -0.45,
+        0.14,
+        0.14,
+        0.14,
+        -0.76,
+        0.31,
+        0.32,
+        0.08,
+        0.1,
+        0.02,
+        0.72,
+        0.215,
+        -0.18,
+        0.032,
+        0.04,
+        -0.7304,
+        0.6041,
+        0.2288,
+        0.15,
+        0.13,
+        0.09,
+        0.25,
+        0.26,
+        0.22,
+        0.19,
+        0.17,
+        0.18,
+        0.11,
+        0.12,
+        -0.6549,
+        -0.73,
+        -0.73,
+        -0.73,
+        -0.72,
+        -0.61,
+        -0.55,
+        0.62,
+        -0.32,
+        -0.32,
+        -0.31,
+        -0.29,
+        -0.1,
+        -0.11,
+        -0.14,
+        -0.24,
+        -0.16,
+        -0.16,
+        -0.16,
+        -0.16,
+        0.5033,
+        -0.4329,
+        -0.75,
+        -0.003,
+        0.3053,
+        0.16,
+        0.16,
+        -0.677,
+        -0.62,
+        -0.61,
+        0.325,
+        0.25,
+        0.34,
+        0.07,
+        0.07,
+        0.1,
+        0.1,
+        0.2439,
+        0.09,
+        0.29,
+        0.06,
+        -0.39,
+        0.005,
+        0.17,
+        0.18,
+        0.18,
+        0.14,
+        0.081,
+        0.1561,
+        0.16,
+        0.156,
+        0.125,
+        0.128,
+        0.18,
+        0.1486,
+        0.122,
+        0.049,
+        0.01,
+        0.14,
+        0.15,
+        0.18,
+        0.16,
+        0.16,
+        0.15,
+        0.15,
+        0.15,
+        0.15,
+        -0.79,
+        -0.79,
+        -0.79,
+        -0.79,
+        -0.79,
+        -0.79,
+        0.91,
+        0.2002,
+        0.17,
+        0.18,
+        0.203,
+        0.19,
+        0.172,
+        0.73,
+        -0.59,
+        -0.25,
+        0.19,
+        -0.3512,
+        -0.3864,
+        -0.22,
+        -0.17,
+        -0.1017,
+        -0.0069,
+        -0.001,
+        0.3437,
+        0.53,
+        0.3643,
+        0.2084,
+        0.3863,
+        0.001,
+        0.69,
+        0.002,
+        0.002,
+        -0.3153,
+        -0.32,
+        -0.32,
+        -0.32,
+        -0.29,
+        -0.26,
+        -0.24,
+        -0.28,
+        -0.26,
+        -0.19,
+        -0.2279,
+        -0.28,
+        -0.31,
+        -0.37,
+        -0.37,
+        -0.37,
+        -0.37,
+        -0.21,
+        -0.076,
+        0.07,
+        -0.2,
+        0.25,
+        -0.08,
+        0.44,
+        -0.69,
+        0.5076,
+        0.34,
+        -0.332,
+        -0.37,
+        -0.32,
+        -0.19,
+        -0.22,
+        -0.006,
+        0.221,
+        0.12,
+        -0.2829,
+        -0.27,
+        0.21,
+        -0.28,
+        0.17,
+        0.19,
+        0.047,
+        0.046,
+        0.044,
+        0.05,
+        0.0702,
+        0.07,
+        0.2426,
+        0.1608,
+        0.0723,
+        0.0554,
+        0.0504,
+        0.117,
+        0.1181,
+        0.1333,
+        0.0803,
+        -0.6102,
+        -0.4325,
+        -0.019,
+        -0.0317,
+        -0.0191,
+        -0.0473,
+        -0.058,
+        -0.1015,
+        -0.11,
+        -0.05,
+        -0.04,
+        -0.016,
+        -0.0204,
+        0.64,
+        -0.24,
+        0.35,
+        0.3403,
+        -0.64,
+        -0.8249,
+        -0.54,
+        0.2109,
+        0.12,
+        0.12,
+        -0.65,
+        -0.61,
+        -0.83,
+        -0.83,
+        -0.31,
+        -0.31,
+        -0.32,
+        -0.28,
+        0.06,
+        0.08,
+        0.13,
+        0.14,
+        0.33,
+        0.82,
+        0.003,
+        0.03,
+        0.24,
+        -0.1133,
+        -0.12,
+        0.499,
+        0.5243,
+        0.5722,
+        0.6,
+        0.6954,
+        0.7471,
+        0.7663,
+        0.8017,
+        0.7892,
+        0.73,
+        0.005,
+        0.32,
+        0.29,
+        -0.6396,
+        0.68,
+        0.53,
+        0.6098,
+        0.43,
+        -0.36,
+        -0.34,
+        -0.37,
+        -0.28,
+        0.0418,
+        0.51,
+        -0.0048,
+        0.13,
+        -0.62,
+        0.1683,
+        0.19,
+        0.17,
+        -0.55,
+        -0.63,
+        -0.7,
+        -0.62,
+        -0.62,
+        -0.62,
+        -0.61,
+        -0.77,
+        -0.37,
+        -0.4844,
+        -0.5,
+        -0.5,
+        -0.002,
+        -0.003,
+        -0.003,
+        -0.82,
+        -0.33,
+        -0.3499,
+        0.16,
+        0.23,
+        -0.2967,
+        -0.32,
+        -0.12,
+        0.024,
+        -0.0798,
+        0.0635,
+        0.0707,
+        -0.7812,
+        0.0627,
+        0.1,
+        0.07,
+        -0.7399,
+        -0.7522,
+        -0.0256,
+        0.13,
+        0.0701,
+        -0.7459,
+        0.0052,
+        -0.5781,
+        -0.5902,
+        -0.815,
+        0.69,
+        0.3595,
+        0.72,
+        -0.33,
+        -0.25,
+        -0.17,
+        -0.25,
+        0.45,
+        0.29,
+        0.27,
+        0.42,
+        -0.6463,
+        -0.6494,
+        -0.63,
+        -0.0154,
+        -0.0153,
+        -0.68,
+        -0.1711,
+        -0.18,
+        0.2065,
+        -0.46,
+        0.2682,
+        0.7288,
+        0.2,
+        0.27,
+        -0.5498,
+        -0.7224,
+        -0.75,
+        -0.67,
+        -0.68,
+        -0.5,
+        0.56,
+        0.18,
+        0.21,
+        0.37,
+        0.5367,
+        0.581,
+        0.57,
+        0.3,
+        0.21,
+        0.21,
+        0.2,
+        0.2,
+        0.26,
+        0.26,
+        0.36,
+        0.3,
+        0.27,
+        -0.4694,
+        -0.4626,
+        -0.5072,
+        -0.3077,
+        -0.2349,
+        -0.2448,
+        -0.34,
+        -0.3056,
+        -0.304,
+        -0.31,
+        -0.2,
+        -0.25,
+        0.6956,
+        0.5893,
+        0.64,
+        -0.56,
+        -0.2399,
+        -0.19,
+        0.154,
+        0.23,
+        0.1156,
+        0.11,
+        -0.48,
+        -0.344,
+        -0.33,
+        -0.2,
+        -0.2029,
+        -0.22,
+        -0.19,
+        0.6328,
+        0.83,
+        -0.27,
+        -0.09,
+        -0.34,
+        -0.14,
+        0.24,
+        0.08,
+        0.11,
+        0.1,
+        0.07,
+        -0.06,
+        0.042,
+        0.1501,
+        0.1026,
+        -0.62,
+        0.26,
+        -0.23,
+        -0.54,
+        -0.015,
+        0.7989,
+        0.6063,
+        0.55,
+        -0.3845,
+        0.2807,
+        0.15,
+        0.37,
+        -0.002,
+        0.351,
+        0.42,
+        0.37,
+        0.37,
+        0.008,
+        0.29,
+        0.1,
+        -0.14,
+        0.52,
+        0.33,
+        0.33,
+        -0.61,
+        0.7,
+        -0.326,
+        -0.6,
+        -0.5444,
+        -0.5,
+        0.64,
+        -0.2,
+        0.6119,
+        -0.1807,
+        -0.2149,
+        -0.2215,
+        -0.23,
+        -0.11,
+        -0.33,
+        -0.3087,
+        0.571,
+        -0.2664,
+        -0.3384,
+        -0.1467,
+        -0.1667,
+        0.5693,
+        -0.3224,
+        -0.3296,
+        -0.4991,
+        0.26,
+        0.2675,
+        0.21,
+        0.21,
+        0.519,
+        0.52,
+        0.52,
+        -0.28,
+        -0.34,
+        -0.21,
+        -0.21,
+        -0.3197,
+        0.19,
+        0.14,
+        -0.53,
+        0.649,
+        0.6,
+        0.65,
+        0.48,
+        0.46,
+        0.5,
+        0.09,
+        -0.16,
+        -0.2485,
+        0.2211,
+        0.19,
+        0.1,
+        0.11,
+        0.11,
+        0.006,
+        0.008,
+        0.003,
+        0.32,
+        0.34,
+        0.33,
+        0.3001,
+        0.16,
+        0.16,
+        0.14,
+        -0.6367,
+        -0.69,
+        -0.26,
+        -0.35,
+        0.8,
+        0.77,
+        0.12,
+        0.007,
+        0.007,
+        0.006,
+        0.008,
+        -0.09,
+        0.26,
+        0.5,
+        -0.21,
+        -0.2463,
+        -0.17,
+        -0.0516,
+        -0.016,
+        0.77,
+        -0.2093,
+        -0.539,
+        0.6,
+        0.6,
+        -0.78,
+        0.33,
+        -0.16,
+        -0.033,
+        -0.15,
+        -0.4015,
+        0.6304,
+        -0.48,
+        0.82,
+        -0.3148,
+        0.2173,
+        0.2141,
+        -0.47,
+        -0.36,
+        -0.28,
+        0.001,
+        0.001,
+        -0.1453,
+        0.3802,
+        0.44,
+        -0.17,
+        -0.17,
+        -0.17,
+        -0.14,
+        -0.15,
+        -0.18,
+        0.13,
+        0.13,
+        0.12,
+        0.017,
+        0.3553,
+        0.1433,
+        0.146,
+        0.148,
+        0.141,
+        0.121,
+        0.009,
+        0.05,
+        0.024,
+        0.133,
+        0.131,
+        0.0715,
+        0.061,
+        0.057,
+        0.149,
+        0.145,
+        0.121,
+        0.646,
+        0.3148,
+        0.432,
+        0.411,
+        0.41,
+        -0.79,
+        0.5937,
+        0.11,
+        0.1,
+        0.08,
+        0.8062,
+        -0.11,
+        0.8691,
+        0.82,
+        -0.17,
+        -0.2386,
+        -0.15,
+        -0.34,
+        -0.27,
+        -0.07,
+        -0.08,
+        0.69,
+        0.1399,
+        0.1209,
+        0.45,
+        0.37,
+        -0.44,
+        0.63,
+        -0.38,
+        0.37,
+        -0.31
+      ]
+    },
+    "placebo_oos_survivors": {
+      "n_positions": 424,
+      "n_no_winner_extractable": 0,
+      "mean_edge": 0.011427497369615658,
+      "median_edge": 0.0034875612903204622,
+      "edge_values": [
+        0.06,
+        -0.2772,
+        -0.4802,
+        -0.4802,
+        0.1801,
+        0.7298,
+        0.6934,
+        0.2,
+        0.1767,
+        -0.09,
+        0.08,
+        0.068,
+        0.089,
+        0.11,
+        0.11,
+        0.11,
+        0.11,
+        0.11,
+        0.9175,
+        0.9,
+        0.36,
+        0.072,
+        0.0702,
+        0.71,
+        -0.09,
+        -0.47,
+        -0.47,
+        -0.4802,
+        -0.5,
+        -0.25,
+        0.47,
+        0.45,
+        -0.25,
+        -0.25,
+        -0.25,
+        -0.1569,
+        -0.19,
+        -0.2252,
+        0.897,
+        0.8876,
+        0.8944,
+        0.8314,
+        0.8129,
+        0.88,
+        0.7912,
+        0.81,
+        0.7957,
+        -0.1885,
+        -0.79,
+        -0.73,
+        -0.1063,
+        -0.25,
+        -0.15,
+        -0.3083,
+        -0.09,
+        -0.24,
+        -0.66,
+        0.72,
+        -0.205,
+        -0.6239,
+        0.094,
+        -0.28,
+        -0.019,
+        -0.019,
+        -0.019,
+        -0.025,
+        -0.0711,
+        -0.1353,
+        -0.0108,
+        -0.017,
+        -0.0149,
+        -0.001,
+        -0.001,
+        -0.1021,
+        -0.4299,
+        -0.4348,
+        -0.4434,
+        0.4793,
+        -0.577,
+        -0.1548,
+        0.7147,
+        0.66,
+        0.66,
+        0.62,
+        -0.1242,
+        -0.2011,
+        0.9739,
+        -0.2214,
+        -0.2895,
+        -0.474,
+        -0.45,
+        -0.343,
+        -0.09,
+        -0.89,
+        0.71,
+        0.71,
+        0.6098,
+        0.48,
+        0.46,
+        -0.2497,
+        -0.3,
+        -0.383,
+        0.7082,
+        -0.3494,
+        -0.005,
+        0.36,
+        -0.31,
+        -0.31,
+        0.06,
+        0.01,
+        0.008,
+        0.004,
+        0.0011,
+        0.027,
+        0.2822,
+        0.22,
+        0.029,
+        0.07,
+        -0.5923,
+        -0.67,
+        0.08,
+        -0.37,
+        0.017,
+        0.001,
+        0.0018,
+        0.1912,
+        0.2339,
+        0.0665,
+        0.8757,
+        -0.02,
+        -0.7449,
+        0.1926,
+        0.15,
+        0.11,
+        0.27,
+        0.2505,
+        0.251,
+        0.221,
+        0.18,
+        0.17,
+        0.1,
+        0.07,
+        0.19,
+        0.21,
+        0.04,
+        0.02,
+        -0.86,
+        -0.86,
+        -0.86,
+        0.1307,
+        0.13,
+        0.12,
+        0.12,
+        0.018,
+        0.038,
+        0.5626,
+        0.58,
+        0.07,
+        -0.6872,
+        -0.6252,
+        0.37,
+        0.23,
+        0.4858,
+        0.1247,
+        0.11,
+        0.2263,
+        0.3931,
+        0.0898,
+        0.017,
+        0.03,
+        -0.6,
+        -0.61,
+        -0.57,
+        -0.58,
+        0.008,
+        0.001,
+        0.0287,
+        0.0806,
+        0.19,
+        0.84,
+        0.56,
+        0.05,
+        0.05,
+        0.0534,
+        0.03,
+        -0.07,
+        -0.15,
+        -0.07,
+        -0.45,
+        0.093,
+        0.1,
+        0.19,
+        0.14,
+        0.4,
+        -0.32,
+        -0.29,
+        -0.62,
+        -0.59,
+        -0.41,
+        0.26,
+        0.21,
+        -0.7191,
+        -0.3314,
+        -0.3182,
+        -0.28,
+        0.001,
+        -0.0794,
+        0.0383,
+        0.033,
+        0.2726,
+        0.15,
+        0.011,
+        0.016,
+        0.012,
+        0.003,
+        0.003,
+        -0.0814,
+        0.06,
+        0.024,
+        0.105,
+        -0.06,
+        -0.018,
+        -0.29,
+        -0.34,
+        -0.5587,
+        -0.5588,
+        0.6,
+        0.6,
+        0.62,
+        0.3901,
+        0.0217,
+        0.009,
+        0.012,
+        0.01,
+        0.006,
+        0.005,
+        0.004,
+        -0.32,
+        0.1922,
+        0.4696,
+        0.47,
+        -0.4145,
+        -0.18,
+        0.06,
+        0.06,
+        -0.16,
+        -0.17,
+        -0.1,
+        0.6,
+        0.64,
+        0.73,
+        -0.038,
+        -0.024,
+        0.08,
+        0.087,
+        0.015,
+        -0.6592,
+        -0.6951,
+        -0.7253,
+        -0.74,
+        0.7,
+        -0.1799,
+        -0.16,
+        0.85,
+        0.84,
+        0.81,
+        0.81,
+        -0.44,
+        0.53,
+        0.71,
+        -0.5,
+        -0.55,
+        -0.02,
+        -0.0464,
+        0.017,
+        -0.7,
+        0.05,
+        0.12,
+        0.34,
+        0.51,
+        0.5,
+        0.03,
+        0.5516,
+        0.76,
+        0.57,
+        -0.239,
+        0.27,
+        -0.32,
+        -0.31,
+        -0.46,
+        -0.51,
+        -0.8,
+        -0.81,
+        -0.63,
+        -0.63,
+        0.7411,
+        0.58,
+        0.0749,
+        -0.5962,
+        -0.74,
+        0.23,
+        -0.87,
+        0.49,
+        -0.019,
+        -0.022,
+        0.09,
+        0.2888,
+        0.182,
+        0.08,
+        0.08,
+        0.2315,
+        0.23,
+        -0.6803,
+        -0.7198,
+        0.46,
+        0.3354,
+        -0.31,
+        -0.35,
+        -0.25,
+        -0.19,
+        -0.28,
+        -0.2987,
+        -0.49,
+        -0.18,
+        -0.2,
+        -0.12,
+        -0.13,
+        -0.08,
+        -0.251,
+        -0.259,
+        -0.06,
+        -0.045,
+        -0.0449,
+        -0.0354,
+        -0.036,
+        0.006,
+        0.6,
+        0.69,
+        0.69,
+        0.6968,
+        0.6968,
+        -0.16,
+        -0.7459,
+        -0.18,
+        -0.18,
+        -0.2551,
+        0.05,
+        0.0452,
+        0.001,
+        -0.64,
+        -0.77,
+        -0.8699,
+        -0.004,
+        -0.004,
+        -0.027,
+        0.13,
+        -0.2499,
+        -0.25,
+        -0.11,
+        0.27,
+        0.15,
+        0.15,
+        -0.5193,
+        -0.56,
+        -0.57,
+        -0.26,
+        -0.2103,
+        -0.2201,
+        -0.25,
+        -0.0511,
+        -0.0514,
+        -0.49,
+        -0.49,
+        0.3775,
+        0.37,
+        -0.42,
+        -0.4246,
+        0.44,
+        0.1,
+        0.1,
+        -0.31,
+        0.28,
+        -0.69,
+        -0.21,
+        -0.15,
+        -0.35,
+        -0.0039,
+        -0.001,
+        0.604,
+        -0.002,
+        0.19,
+        -0.38,
+        0.65,
+        0.21,
+        -0.24,
+        0.0785,
+        0.178,
+        -0.37,
+        -0.18,
+        0.2,
+        0.297,
+        -0.08,
+        0.64,
+        0.67,
+        0.6404,
+        0.62,
+        0.76,
+        0.76,
+        0.82,
+        0.7397,
+        -0.2688,
+        0.002,
+        0.002,
+        0.002,
+        0.001,
+        0.001,
+        -0.07,
+        -0.124,
+        -0.368,
+        0.003,
+        0.001,
+        -0.33,
+        0.26,
+        0.26
+      ]
+    }
+  },
+  "q7_overlap": {
+    "pending_resolution_set_size": 92,
+    "overlap_pending": 0,
+    "nofifo_close_set_size": 162,
+    "overlap_nofifo": 0
+  }
+}
