@@ -30,6 +30,7 @@ from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "monitoring"))
 from database import Database
+from resolution_writer import mark_market_resolved
 
 
 class FastResolutionChecker:
@@ -260,17 +261,36 @@ class FastResolutionChecker:
 
                 if winner:
                     if not test_mode:
-                        # Update database
-                        cursor.execute("""
-                            UPDATE markets
-                            SET resolved = 1,
-                                winning_outcome = ?,
-                                resolution_date = COALESCE(resolution_date, ?),
-                                last_checked = ?
-                            WHERE market_id = ?
-                        """, (winner, datetime.now(), datetime.now(), market_id))
+                        # Stage 2 (design §A4, §G): resolved/winning_outcome/
+                        # resolution_date route through the canonical path.
+                        # is_resolved was already confirmed False above (the
+                        # hard-skip guard, kept per §A4 policy 1) so this call
+                        # always lands on the unconditional-accept branch --
+                        # behaviour-preserving, not a legacy-tag backfill.
+                        # resolution_event_time is always None: this writer
+                        # never holds a true Gamma event-time (Stage 2 stop,
+                        # Q1), only write-time, which the canonical
+                        # three-tier fallback already supplies identically to
+                        # the retired COALESCE(resolution_date, ?) patch.
+                        mmr_result = mark_market_resolved(
+                            conn,
+                            market_id,
+                            winning_outcome=winner,
+                            resolution_event_time=None,
+                            evidence_source="gamma",
+                            evidence_detail="outcomePrices>=0.99",
+                        )
+                        # last_checked is not a canonical-path column --
+                        # stays a direct write, unchanged.
+                        cursor.execute(
+                            "UPDATE markets SET last_checked = ? WHERE market_id = ?",
+                            (datetime.now(), market_id),
+                        )
 
                         conn.commit()
+
+                        if not mmr_result.accepted:
+                            print(f"   [WARN] mark_market_resolved() did not accept {market_id}: {mmr_result.reason}")
 
                     updated += 1
 
