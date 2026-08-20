@@ -13,6 +13,22 @@ fetches that metadata from the Gamma API and fills in the gaps.
 Targets: markets where resolution_date IS NULL AND market_id appears in trades
 by external_seed traders.
 
+STAGE 1 MIGRATION (2026-08-20): this script contains two operations sharing
+one candidate query -- see brain/decisions/2026-08-19-canonical-resolution-write-design.md
+§A (scope statement, added in the 2026-08-20 amendment) and
+brain/decisions/2026-08-20-stage1-implementation.md for the full record.
+  - Gamma reports is_resolved == 1: a resolution ASSERTION. Routed through
+    monitoring.resolution_writer.mark_market_resolved(evidence_source=
+    "hydration_fill") instead of a direct UPDATE of resolved/winning_outcome/
+    resolution_date.
+  - Gamma reports is_resolved == 0: a scheduled-end-date PROXY FILL on a
+    still-open market -- not a resolution claim. Per §A this is out of the
+    canonical path's scope (same category as monitor.py's proxy writes,
+    already excluded) and remains a direct write, unchanged from before this
+    migration.
+category/title filling is a separate concern in both branches and is
+untouched by this migration.
+
 Usage:
     python scripts/hydrate_stub_markets.py [--limit N] [--dry-run]
 
@@ -23,12 +39,17 @@ Flags:
 
 import argparse
 import json
+import os
 import sqlite3
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
 
 import requests
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from monitoring.resolution_writer import mark_market_resolved
 
 DB_PATH = Path(__file__).parent.parent / "data" / "polymarket_tracker.db"
 GAMMA_API = "https://gamma-api.polymarket.com"
@@ -42,16 +63,25 @@ def _get_connection():
     return conn
 
 
-def _parse_date(raw) -> str | None:
+def _parse_date_dt(raw) -> datetime | None:
+    """Same parsing as the pre-migration _parse_date, returning the datetime
+    object rather than its isoformat() string -- needed so the assertion
+    branch can pass a real datetime to mark_market_resolved()'s
+    resolution_event_time (typed datetime | None), not a re-parsed string."""
     if not raw:
         return None
     try:
         if isinstance(raw, (int, float)):
             ts = raw / 1000 if raw > 1e10 else raw
-            return datetime.fromtimestamp(ts).isoformat()
-        return datetime.fromisoformat(str(raw).replace("Z", "+00:00")).isoformat()
+            return datetime.fromtimestamp(ts)
+        return datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
     except Exception:
         return None
+
+
+def _parse_date(raw) -> str | None:
+    dt = _parse_date_dt(raw)
+    return dt.isoformat() if dt is not None else None
 
 
 def _extract_winner(market_data: dict) -> str | None:
@@ -159,7 +189,8 @@ def hydrate(limit: int, dry_run: bool):
             or market_data.get("end_date_iso")
             or market_data.get("resolutionTime")
         )
-        resolution_date = _parse_date(end_date_raw)
+        resolution_date_dt = _parse_date_dt(end_date_raw)
+        resolution_date = resolution_date_dt.isoformat() if resolution_date_dt is not None else None
 
         if not resolution_date:
             not_found += 1
@@ -193,7 +224,53 @@ def hydrate(limit: int, dry_run: bool):
                 f"title_update={bool(new_title)}"
             )
             updated += 1
+        elif is_resolved:
+            # Resolution ASSERTION -- route resolved/winning_outcome/
+            # resolution_date through the canonical path (design §A scope
+            # statement, §G Stage 1). end_date/category/title are not
+            # canonical-path columns and stay a direct write, unchanged.
+            try:
+                result = mark_market_resolved(
+                    conn,
+                    market_id,
+                    winning_outcome=winning_outcome,
+                    allow_no_winner=True,
+                    resolution_event_time=resolution_date_dt,
+                    evidence_source="hydration_fill",
+                    evidence_detail="outcomePrices>=0.99",
+                    dry_run=False,
+                )
+                conn.execute(
+                    """
+                    UPDATE markets
+                    SET end_date = COALESCE(end_date, ?),
+                        category = CASE WHEN (category IS NULL OR category IN ('', 'Unknown'))
+                                             AND ? IS NOT NULL
+                                        THEN ? ELSE category END,
+                        title    = CASE WHEN (title IS NULL OR title IN ('', 'Unknown Market'))
+                                             AND ? IS NOT NULL
+                                        THEN ? ELSE title END
+                    WHERE market_id = ?
+                    """,
+                    (
+                        resolution_date,
+                        new_category, new_category,
+                        new_title, new_title,
+                        market_id,
+                    ),
+                )
+                conn.commit()
+                if not result.accepted:
+                    print(f"[HYDRATE] {market_id}: mark_market_resolved() did not accept — {result.reason}")
+                updated += 1
+            except Exception as e:
+                print(f"[HYDRATE] ERROR updating {market_id}: {e}")
+                errors += 1
         else:
+            # Scheduled-end-date PROXY FILL on a still-open market -- out of
+            # the canonical path's scope (design §A scope statement, §E
+            # allowlist). Unchanged, direct write, byte-for-byte identical
+            # to the pre-migration statement.
             try:
                 conn.execute(
                     """
