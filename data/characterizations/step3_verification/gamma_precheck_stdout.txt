@@ -1,0 +1,8 @@
+[PRECHECK] Snapshot size: 2100
+[PRECHECK] already_resolved=1612, not_found=484, no_winner=0, genuine candidates=4
+
+[PRECHECK] usable closedTime: 4/4
+[PRECHECK] unusable/absent closedTime: 0/4
+[PRECHECK] resolution_date IDENTICAL before/after: 0
+[PRECHECK] resolution_date DIFFERS before/after: 4
+[PRECHECK] Wrote /home/parison/projects/first-repo/data/characterizations/step3_verification/gamma_pass_closedtime_precheck_result.json

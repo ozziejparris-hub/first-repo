@@ -33,6 +33,38 @@ from database import Database
 from resolution_writer import mark_market_resolved
 
 
+def _parse_closed_time(raw) -> Optional[datetime]:
+    """
+    Parse Gamma's `closedTime` field into a real datetime object.
+
+    Discovery-gap closure, step 3 (2026-08-21-discovery-gap-closure-prereg.md
+    SS A step 3). closedTime is the true resolution event-time this pass's
+    own Gamma bulk-fetch response carries (empirically confirmed this
+    session -- 50/50 sampled closed markets had it populated; `end_date_iso`
+    and `resolutionTime`, which other passes check, were 0/50). Observed
+    format: "2026-08-08 20:33:13+00" (space-separated, no minutes on the UTC
+    offset) -- `datetime.fromisoformat` on Python 3.11+ parses this directly;
+    the `Z`-replace below is defensive, matching the exact precedent
+    `hydrate_stub_markets.py:_parse_date_dt` already established for the
+    same reason: `mark_market_resolved()`'s `resolution_event_time` is typed
+    `datetime | None`, not `str`, so this returns the object itself rather
+    than a re-parsed string.
+
+    Returns None (not a substitute field) if `closedTime` is absent or
+    unparseable -- callers fall through to the existing write-time
+    behaviour via the 3-tier fallback, unchanged.
+    """
+    if not raw:
+        return None
+    try:
+        if isinstance(raw, (int, float)):
+            ts = raw / 1000 if raw > 1e10 else raw
+            return datetime.fromtimestamp(ts)
+        return datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
 class FastResolutionChecker:
     """Fast batch resolution checker using Gamma API."""
 
@@ -267,16 +299,19 @@ class FastResolutionChecker:
                         # hard-skip guard, kept per §A4 policy 1) so this call
                         # always lands on the unconditional-accept branch --
                         # behaviour-preserving, not a legacy-tag backfill.
-                        # resolution_event_time is always None: this writer
-                        # never holds a true Gamma event-time (Stage 2 stop,
-                        # Q1), only write-time, which the canonical
-                        # three-tier fallback already supplies identically to
-                        # the retired COALESCE(resolution_date, ?) patch.
+                        # resolution_event_time: discovery-gap closure step 3
+                        # (2026-08-21-discovery-gap-closure-prereg.md SS A step
+                        # 3) -- Gamma's own `closedTime` field, the true
+                        # resolution event-time (Rank 1, design SS A2), parsed
+                        # by _parse_closed_time. None (falling to the 3-tier
+                        # fallback's write-time tier, unchanged) only when
+                        # closedTime is absent or unparseable for this market.
+                        resolution_event_time = _parse_closed_time(market_data.get('closedTime'))
                         mmr_result = mark_market_resolved(
                             conn,
                             market_id,
                             winning_outcome=winner,
-                            resolution_event_time=None,
+                            resolution_event_time=resolution_event_time,
                             evidence_source="gamma",
                             evidence_detail="outcomePrices>=0.99",
                         )

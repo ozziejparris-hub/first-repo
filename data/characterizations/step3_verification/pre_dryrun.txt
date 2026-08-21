@@ -1,0 +1,30 @@
+======================================================================
+UPDATING DATABASE WITH RESOLVED MARKETS
+======================================================================
+
+[TEST MODE] Would update markets (not writing to DB)
+
+Unresolved markets in database: 516866
+Resolved markets from API: 2100
+
+Matching and updating markets...
+   [OK] Updated: Will Lighter reach $3 before 2027?
+        Winner: Yes
+   [OK] Updated: Will Pump.fun reach $0.0042 by December 31, 2026?
+        Winner: Yes
+   [OK] Updated: Will Jorge Jesus attend Cristiano Ronaldo's weddin
+        Winner: No
+   [OK] Updated: Will Leonardo Bonucci attend Cristiano Ronaldo's w
+        Winner: No
+
+======================================================================
+BATCH UPDATE COMPLETE
+======================================================================
+
+Resolved markets from API: 2100
+[OK] Markets updated: 4
+Already resolved: 1612
+Not found in database: 484
+API requests made: 0
+
+[TEST MODE] No changes made to database

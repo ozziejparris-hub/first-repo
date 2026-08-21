@@ -1,0 +1,37 @@
+{
+  "snapshot_size": 2100,
+  "already_resolved": 1612,
+  "not_found": 484,
+  "no_winner": 0,
+  "genuine_candidates": 4,
+  "usable_closed_time": 4,
+  "unusable_closed_time": 0,
+  "identical": 0,
+  "differ": 4,
+  "diffs": [
+    {
+      "market_id": "0x6cc6478d9b2ac0fa5787137c07df5466ddda2fc8df41c4c69c3626a999601679",
+      "raw_closedTime": "2026-08-21 19:41:12+00",
+      "before_resolution_date": "2026-08-21 21:13:17.269292",
+      "after_resolution_date": "2026-08-21 19:41:12+00:00"
+    },
+    {
+      "market_id": "0xb24865805f2f5f37d35ebd9cd6361d64588783a1a5dda08b3f822653d0de4ae6",
+      "raw_closedTime": "2026-08-21 16:42:55+00",
+      "before_resolution_date": "2026-08-21 21:13:17.269348",
+      "after_resolution_date": "2026-08-21 16:42:55+00:00"
+    },
+    {
+      "market_id": "0xa24100a913cc199d9630236d75c41590deb798893ccf5a40ce19f55e6fbf3014",
+      "raw_closedTime": "2026-08-14 23:43:42+00",
+      "before_resolution_date": "2026-08-21 21:13:17.269369",
+      "after_resolution_date": "2026-08-14 23:43:42+00:00"
+    },
+    {
+      "market_id": "0xda1e89759ab652d4adbb09d7ef5108a4f3e2263ae56a8ecc773a14467d977a5a",
+      "raw_closedTime": "2026-08-14 23:45:42+00",
+      "before_resolution_date": "2026-08-21 21:13:17.269385",
+      "after_resolution_date": "2026-08-14 23:45:42+00:00"
+    }
+  ]
+}
