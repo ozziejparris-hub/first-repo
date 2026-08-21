@@ -1,0 +1,229 @@
+diff --git a/scripts/backfill_market_dates.py b/scripts/backfill_market_dates.py
+index 5d657ae..04fa508 100644
+--- a/scripts/backfill_market_dates.py
++++ b/scripts/backfill_market_dates.py
+@@ -24,6 +24,7 @@ Flags:
+ """
+ 
+ import argparse
++import os
+ import sqlite3
+ import sys
+ import time
+@@ -33,6 +34,9 @@ from difflib import SequenceMatcher
+ 
+ import requests
+ 
++sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
++from monitoring.resolution_writer import mark_market_resolved
++
+ DB_PATH = Path(__file__).parent.parent / "data" / "polymarket_tracker.db"
+ GAMMA_API = "https://gamma-api.polymarket.com"
+ CLOB_API = "https://clob.polymarket.com"
+@@ -78,6 +82,45 @@ def _fetch_by_clob(session: requests.Session, condition_id: str) -> dict | None:
+     return None
+ 
+ 
++def _extract_clob_resolution(market_data: dict) -> tuple[str, str | None]:
++    """
++    Classify a CLOB /markets/{condition_id} response for resolution status.
++
++    Discovery-gap closure, step 1 (2026-08-21-discovery-gap-closure-prereg.md
++    SS A step 1, SS B). Mirrors discovery_gap_sizing.py's query_clob()
++    classification exactly (resolved / open / indeterminate) -- not
++    reinvented -- since that is the already-validated method (the sizing
++    run's 527 CLOB calls, ~5% indeterminate rate). Only meaningful for a
++    response actually fetched from CLOB (Strategy 0, _fetch_by_clob) --
++    Gamma responses (Strategies 1/2) have no `tokens[].winner` field and
++    must never be classified via this function; the caller is responsible
++    for only invoking it on CLOB-sourced data.
++
++    Returns (classification, winning_outcome_or_None). classification is
++    one of {"resolved", "open", "indeterminate"}. "resolved" is returned
++    only when `closed is True` AND some token has `winner: true` -- a
++    closed market with no winning token is "indeterminate", per the
++    sizing pre-registration's own classification (a market cannot be
++    asserted resolved with a null winner via this path; allow_no_winner
++    is never set True by this script's caller).
++    """
++    closed = market_data.get("closed")
++    if closed is None:
++        return "indeterminate", None
++    if closed is False:
++        return "open", None
++
++    winning_outcome = None
++    for token in market_data.get("tokens", []) or []:
++        if token.get("winner"):
++            winning_outcome = token.get("outcome")
++            break
++
++    if winning_outcome is None:
++        return "indeterminate", None
++    return "resolved", winning_outcome
++
++
+ def _fetch_by_api_id(session: requests.Session, api_id: str) -> dict | None:
+     """
+     Direct Gamma API lookup by numeric market ID (e.g. '21742').
+@@ -154,7 +197,7 @@ def get_markets_to_backfill(conn, limit: int, geo_only: bool) -> list:
+     return [dict(r) for r in rows]
+ 
+ 
+-def backfill(limit: int, dry_run: bool, geo_only: bool):
++def backfill(limit: int, dry_run: bool, geo_only: bool, sleep: float = 0.1):
+     conn = _get_connection()
+     markets = get_markets_to_backfill(conn, limit, geo_only)
+ 
+@@ -168,6 +211,8 @@ def backfill(limit: int, dry_run: bool, geo_only: bool):
+     not_found = 0
+     errors = 0
+     skipped_no_api_id = 0
++    resolved_accepted = 0
++    resolved_rejected = 0
+ 
+     for i, row in enumerate(markets, 1):
+         market_id = row["market_id"]
+@@ -183,22 +228,28 @@ def backfill(limit: int, dry_run: bool, geo_only: bool):
+             )
+ 
+         market_data = None
++        matched_via = None
+ 
+         # Strategy 0: CLOB API lookup — market_id IS the conditionId for most markets
+         for cid in filter(None, dict.fromkeys([condition_id, market_id])):
+             market_data = _fetch_by_clob(session, cid)
+             if market_data:
++                matched_via = "clob"
+                 break
+ 
+         # Strategy 1: direct lookup via numeric api_id (guaranteed exact match)
+         if not market_data and api_id:
+             market_data = _fetch_by_api_id(session, api_id)
++            if market_data:
++                matched_via = "gamma_api_id"
+ 
+         # Strategy 2: title search (only if we have a usable title)
+         # NOTE: we deliberately skip conditionId queries because the Gamma API
+         # conditionId param does not filter — it always returns unrelated markets.
+         if not market_data and title and title != "Unknown Market":
+             market_data = _fetch_by_title(session, title)
++            if market_data:
++                matched_via = "gamma_title"
+ 
+         # If neither strategy worked, skip
+         if not market_data:
+@@ -206,7 +257,7 @@ def backfill(limit: int, dry_run: bool, geo_only: bool):
+                 skipped_no_api_id += 1
+             else:
+                 not_found += 1
+-            time.sleep(0.1)
++            time.sleep(sleep)
+             continue
+ 
+         end_date_raw = market_data.get("endDate") or market_data.get("endDateIso") or market_data.get("end_date_iso")
+@@ -214,14 +265,67 @@ def backfill(limit: int, dry_run: bool, geo_only: bool):
+ 
+         if not end_date_str:
+             not_found += 1
+-            time.sleep(0.1)
++            time.sleep(sleep)
+             continue
+ 
+-        if dry_run:
++        # Discovery-gap closure, step 1 (2026-08-21-discovery-gap-closure-prereg.md
++        # SS A step 1). Only a CLOB-sourced response (Strategy 0) carries
++        # `closed`/`tokens[].winner` — Gamma responses (Strategies 1/2) are
++        # never classified here and always fall through to the untouched
++        # proxy branch below.
++        clob_classification = None
++        clob_winner = None
++        if matched_via == "clob":
++            clob_classification, clob_winner = _extract_clob_resolution(market_data)
++
++        if clob_classification == "resolved":
++            # ASSERTION BRANCH (new). resolved/winning_outcome/resolution_date
++            # route through the canonical write path (design SS A/D,
++            # 2026-08-19-canonical-resolution-write-design.md). end_date is
++            # not a canonical-path column and keeps its existing unconditional
++            # direct write (same statement shape as the proxy branch below),
++            # unchanged. allow_no_winner is never passed True: a closed
++            # market with no winning token is "indeterminate", handled above,
++            # and never reaches this branch.
++            result = mark_market_resolved(
++                conn,
++                market_id,
++                winning_outcome=clob_winner,
++                resolution_event_time=None,
++                evidence_source="clob",
++                evidence_detail="token.winner",
++                dry_run=dry_run,
++            )
++            if result.accepted:
++                resolved_accepted += 1
++            else:
++                resolved_rejected += 1
++
++            if dry_run:
++                print(
++                    f"[DRY-RUN][CLOB-ASSERT] {market_id[:20]}... '{title[:40]}' → "
++                    f"end_date={end_date_str}, winning_outcome={clob_winner!r}, "
++                    f"accepted={result.accepted}, reason={result.reason!r}"
++                )
++                updated += 1
++            else:
++                try:
++                    conn.execute(
++                        "UPDATE markets SET end_date = ? WHERE market_id = ?",
++                        (end_date_str, market_id),
++                    )
++                    conn.commit()
++                    updated += 1
++                except Exception as e:
++                    print(f"[BACKFILL] ERROR updating end_date for {market_id}: {e}")
++                    errors += 1
++        elif dry_run:
++            # PROXY BRANCH (existing) — untouched, byte-for-byte.
+             matched_q = (market_data.get("question") or market_data.get("title") or "")[:40]
+             print(f"[DRY-RUN] {market_id[:20]}... '{title[:40]}' → end_date={end_date_str} (Gamma: '{matched_q}')")
+             updated += 1
+         else:
++            # PROXY BRANCH (existing) — untouched, byte-for-byte.
+             try:
+                 conn.execute("""
+                     UPDATE markets
+@@ -235,15 +339,16 @@ def backfill(limit: int, dry_run: bool, geo_only: bool):
+                 print(f"[BACKFILL] ERROR updating {market_id}: {e}")
+                 errors += 1
+ 
+-        time.sleep(0.1)
++        time.sleep(sleep)
+ 
+     conn.close()
+ 
+     print(
+         f"\n[BACKFILL] Done — updated={updated}, not_found={not_found}, "
+-        f"skipped_no_api_id={skipped_no_api_id}, errors={errors}, total={total}"
++        f"skipped_no_api_id={skipped_no_api_id}, errors={errors}, "
++        f"resolved_accepted={resolved_accepted}, resolved_rejected={resolved_rejected}, total={total}"
+     )
+-    return updated, not_found, errors
++    return updated, not_found, errors, resolved_accepted, resolved_rejected
+ 
+ 
+ def main():
+@@ -252,9 +357,13 @@ def main():
+     parser.add_argument("--dry-run", action="store_true", help="Print results without writing to DB")
+     parser.add_argument("--geo-only", action="store_true",
+                         help="Only backfill markets with Geopolitics/Elections trades")
++    parser.add_argument("--sleep", type=float, default=0.1,
++                        help="Seconds to sleep between API calls (default 0.1, unchanged from "
++                             "today's scheduled invocation; the discovery-gap sweep driver "
++                             "passes 0.25 explicitly per 2026-08-21-discovery-gap-closure-prereg.md)")
+     args = parser.parse_args()
+ 
+-    backfill(limit=args.limit, dry_run=args.dry_run, geo_only=args.geo_only)
++    backfill(limit=args.limit, dry_run=args.dry_run, geo_only=args.geo_only, sleep=args.sleep)
+ 
+ 
+ if __name__ == "__main__":

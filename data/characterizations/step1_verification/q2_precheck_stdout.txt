@@ -1,0 +1,6 @@
+[Q2-PRECHECK] Freshly re-derived Q2 census population: 317
+
+[Q2-PRECHECK] Final tally: {'resolved': 0, 'open': 1, 'indeterminate': 0, 'no_clob_response': 316}
+[Q2-PRECHECK] mark_market_resolved (dry_run=True) on 'resolved' classification: accepted=0, rejected=0
+[Q2-PRECHECK] reason breakdown: {}
+[Q2-PRECHECK] Wrote /home/parison/projects/first-repo/data/characterizations/step1_verification/q2_census_precheck_result.json

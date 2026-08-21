@@ -1,0 +1,6 @@
+[BACKFILL] Markets to process: 360 (limit=2000, geo_only=True, dry_run=True)
+[BACKFILL] Progress: 100/360 — updated=0, not_found=99, skipped=0, errors=0
+[BACKFILL] Progress: 200/360 — updated=0, not_found=199, skipped=0, errors=0
+[BACKFILL] Progress: 300/360 — updated=0, not_found=299, skipped=0, errors=0
+
+[BACKFILL] Done — updated=0, not_found=360, skipped_no_api_id=0, errors=0, resolved_accepted=0, resolved_rejected=0, total=360
