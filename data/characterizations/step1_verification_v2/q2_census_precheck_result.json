@@ -1,0 +1,1993 @@
+{
+  "population_n": 317,
+  "tally": {
+    "resolved": 203,
+    "open": 98,
+    "indeterminate": 0,
+    "no_clob_response": 16
+  },
+  "mark_market_resolved_dry_run": {
+    "accepted": 203,
+    "rejected": 0,
+    "reasons": {
+      "written": 203
+    }
+  },
+  "detail": [
+    {
+      "market_id": "0x005aa3a9e019fade8240f0651b631d27fa74549aed52dea9a95a5de9533b119f",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x02f8dd15d4c674a75fccbd0e00f0cf1256101c45ef41f6d0c5dfde9c36d4141e",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x0425c582c43e27c6d74af7a553c1ce68b32bacdc77f0b23d62cdfe8aa1da0556",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x0465cd005a54781e052b679e2c42c7ae5b772490fdda54316f157bf537536456",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x08314247ca5dbad3d2e0b7c49eafe4876425b214c1103db65054a39aad773035",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x086445ea07954a360aeeddc96c292160832662b0227bdc8f07bc353dd511966f",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x0881547b72d4e95cd1a04a2149a5ab89f48f0f87dc2bfaca01c2d809fcb2703c",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x08b25cc98d052b9791719e819f93c145dc91d512f020073245bed93090221b94",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x0904f38a374396adb24f03970dd1bce86e7b3ed20634e89c59a14274afbad7b7",
+      "classification": "no_clob_response"
+    },
+    {
+      "market_id": "0x0b8ca8437261accb1faed82770c861c9eca99fd58b4fe612f314a188a9a9df60",
+      "classification": "no_clob_response"
+    },
+    {
+      "market_id": "0x0e0c5054cb3ee522c689e00a72e0e1cc874293cb613ea835059fce6df7a35957",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x0fb536d5f0f2bc012b51ecfa347c8458a7ff1f51d66aa36e66058c3d326049c4",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x101b7888bf1b299591d674e5f0a29c6444bab247c950a51fc15b7ab38d02529e",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x110170493c7d4c5d438a01dbab7390bdd58ded3321ac096221cf1040f2e9270b",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x11176fe75f4b11e08f3bfb8ee704ce7d7536fb52061855e9294afba569183b2b",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x129dbcb7d39ff8df5f0d7685a2db6400b5db37d3963914486fbb7fd2bc96a923",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x132bb77ee16950047538a65d73d0e430d7193c779929e552bf6205f6ae874d14",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x13419cc3e895bf60225558dadd022c11597814a40ea15b25f99539a111ca5592",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x13badb4becfa64ea1c0c07d372304abdcc2c5f3c45253537cbaacd8e10e7a6a0",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x14102086b9a7b8d2b6a0ce31cf0f9b03a825780e80bdccfce8c732b7db8123cb",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x15de5f99db14dd323df50b4c0af7d756cea681bdc3adbe1f1b6be7194a59c978",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x16eab142ef1f6a1a39257f703a13d5fa552ace003887b7c6b7892e9c0b6158f5",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x16ec51984a9a76052ad82838efe9707ec0865f664a256d8a1ab3e24e333929c5",
+      "classification": "no_clob_response"
+    },
+    {
+      "market_id": "0x179791767d3bad170d6c8670821bca9cb4a0d0c11bf13f5023d4b6adf2d009a7",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x1a0ab6804802c59299a4c456032d6e9fad0d90635132794cccbe080af4d35a39",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x1b7fa10e6b102c964bbd4a7cb0a4b7a341e17fcb9f8a2c8a5d6a3b30dfb5c394",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x1c711cdf3910be7611ec794f0855cd558dbb42cf4225d66bc0f7999547262e75",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x1d2b34156107ca30b27d2673eb5af990559a4dfa2ea99589f927593c307d2067",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x1e3b73f92bdca9479b9822cc5004bd1023e8963b1e355a92aa2d0dc71fe2bbaa",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x1f78a02341c8993efc78cfea37699799951debfc9c195ae21ee73c40bd54a31d",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x2064296b3739eb6e7b983f77c24ec6c92b2db9f2c91304f98e359976acbfd290",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x22fe0f993bb899d3ae33bbdfbeb7f7d06df0982f578ae26592b55cf581396376",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x25472a241bfe8d256cb904e85fc2a612ca687763bc8f835acf5513a7e6efeee0",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x26427ad21db2772d5265934dd9500588ffbb4070b8829284c1a2338add42d5b7",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x26d2b09d5f5d5bfd520454b3e896f368672f3a9ee542e0af6ef08e3a25e445b0",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x276a14b8bc1bc374bebd16407761d530528a05097d2bc53524ba21d38842d5f3",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x293aeb6dd98468c3f4b04fad42be3ea656d26cd7976a2565c602bcb848b384dc",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x2bb23a4c06f1de1ce4e6e031bbbb2335228632fa5e98443598780b3268c0bed0",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x2c00cb09722a0f0501c5e49131b898ed57bb5c075db4dc2bcbc14908f45b8c48",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x2c590f64dae5c9bf349c58c1f0f1a18f11dbf04c4b4b296a6e5bd0f5386dda6e",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x2e3e4685c17020bb4417e4efc802b6509572c430db0317fa2cf37d19c3a3efa1",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x2e91b977e2e53873f97a6fbd8821987d2f68b007c9c26c611fe6c16abee12280",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x2f65bf28b7957d730b216d4f74a9a1c047e426cbd6bb5532c7dcecf274c6bd88",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x2f7fa03d7387acee6140c2feada2e3876378549defc075856373adccd3c53a84",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x2fb2b4f6d030ed03404e844400cf763a5dfc70275a3d6bd03770287cd7bced56",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x3082f67beee73c7a96a5b8dbf3762ca7d26cab01a7e5512a44ca7297b9641361",
+      "classification": "no_clob_response"
+    },
+    {
+      "market_id": "0x30de0627e0fe97569a86d909ca72654eaf6b478ef4e46b71b6b8400df4c2bd1f",
+      "classification": "no_clob_response"
+    },
+    {
+      "market_id": "0x33c6c4906d923ac54100a3c760965ffb7ba9f49d9767597eb2358adaf89f9817",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x34918035a590555ba1fb1d6a019d766ab6e557d63e7f3140b63b4550eee7f417",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x34dd11cea3bd299fa683c73a06cfb2e7d60c0c8684688683b54551e954e90dc9",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x352fe955652102d0c2305ff58916b9fce78cb356c53d2eae6569062183e22931",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x369a8e8477f567964629465f05dd66486b4bc530a65505cc8cc529209e5b1f2f",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x378f6ce7b81670608a5a4f0fcf740e3dbb44c3e402e5b0beba49871a5c05b259",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x37e2d5e6fc0a3d7a30c134f2f90892f10979577955572132b3fe8e9e0195dd8b",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x38a1025bfc56539ed1ff8fdd468283d55cf9002412decd61aa8d6c578c7d01a2",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x38ae1c7137234dbf49d5d6296af009737e75e6b29ff0484fe717cb0e764b899d",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x38fa3007c7be18a217849262667e39266341cb2fd7b5f8da75472b0a9e420480",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x393fb0be5ca5832188657b34ad914c8f24a3ea6dfca233d1b996aba14399b48f",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x397b09f00bafba0d28ae03adc9fdb0dbe14f8519e014db2e2870e64d8ecede6a",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x3982b6b324e34f850076855826649019133e5799ddb30479547c474947539d11",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x3b1d01d11565a800485bdb04958e28bab4369e3f2ebc2134d12d74bde5f3baa7",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x3b32ef6897c33e7cac03641f3b16f25de3bbba86c48193ae7250b81bd5dc8e36",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x3c169e95aea67be5fac1529b3ad8e891fe97ec54d1f272fab43b02cce948f6c2",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x3c5b93b91196c8db64e63c424979da8cfbf44a4501afd70d2480ee28fbf306a2",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x3c6bcb7da14ea576e5af25547dbd96f2bb24ac34e748e76aecff2ee9195dd1ac",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x3cde82ee842dab107358c32c23aec26d8ac41b05dbab5497490cb3853b90f671",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x3ce6295fd9f1a6e2798a8a8a8845f69aca182b8cf35dc59db7203415cbe8d48e",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x3d12e34161b87cc1d700f490c52dba1f26a6ba378d8a29aa59d571fc586b361a",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x3f41815785f3b5032e0a5e9da2759592988901f15a1941196b1a0610e1fea17e",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x3f8d20cfcf2136d0c001663603c2d7f7be0fb920534d09a193f3165a40fe9469",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x400644f216fb6712b7d0c88cb6810299d0939411b7492865dbfe2a9325b711aa",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x403edf195ed20a0fe0d9665a25a9b7473d62c038a8b9a9aa7bebbf32084804b7",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x4048fed324ac27f378ce44da1b12f0d338c8340ef82962989f38eea05409baab",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x40a0d836da9f5e6b4abfa237330e23895ad89ecd10abb0d48e5347b91d2dba3e",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x40cf230326551f5c767d88fc96d0266eff3791a49874f292397124444071d173",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x40d88a97d39118ed79152c83b87a337c07e8e027bca5363c2c87503408431a20",
+      "classification": "no_clob_response"
+    },
+    {
+      "market_id": "0x4187222f43512fd1a0460a26c847622a19211d669c020f20b15c64024b2d971b",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x433f0e14de07b6a841021ec537ea1bc64f41146912966af74f347aa8f5bee013",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x454fb3cd3e0f3c6fb55b303839fbf74e4daa50b49e57f43691447aa046e959c2",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x457e4d4fc56ca3836fccb7a8bf539c787504ac841a933d65f5de0736fcae2567",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x45c94e343c9b3b850ac84f8a4f4ea575f1254333ad00652493fcdb2011609e65",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x460d3942d385cdeda20519c0c5ad804ae48dc18efc9a82e1f1be87a29e69adb3",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x463740b94f81e794eff8892c50fc221a2e774a8a4484284752ee73149ffd46d1",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x4668b63cb67ab4c34184b770186a947e4431d26d71ec8793f889628250f628bd",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x46c09232d356fdbe5e4e543ce1a4e90c84a6e3bd4668a24852fd25563e36b32a",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x46c862237fc39f6357ce2efa748274e4539c1ffe60cd6a89e3fe689373fa27a8",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x4761e83680407e28e2fe96691b4b5a00d958293d4e52b9ff0ad728710fa665b5",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x4784665f5baa12fa9ee97d49eb39c0f8dae4e0478c991fff7f632bc4e8dc8ff2",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x479d1a77b118ac88cc0e7e5eb4659e4954d55cd87a84d7f2b22bf5c3a8333813",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x47fd8303835d9108252343069ada769162976137e4e1c22b94b1cb305cd35d8a",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x4900fd99a53dc19621b3de761cdd75401fcd5733d785b9840275fe14ccd7d74c",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x4997c22d314ed5e9f3712e46eb4847441b51fa730d10ad26240afa85f5d902be",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x4b025f45ecb861a81d74f472acd662f10553b18fa0ad71de7d5391bf2ba068ed",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x4b2eebf64eea76b09aeb3370a62b99724f0a8ac97dd521bcb8cffce7cbb53729",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x4b6d354831374f40d664728aa1cf4093e58f782c25ba82b782d0e08c06270486",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x4c238bfea00c8c8aca469223f5b158342f12e24dc4b29dea6802fbdead0a3bdf",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x4c31f81c148cbbec790106b7211a8eedd9304528ebd098606c0a9c5b781c6ddb",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x4cee84284b7b630d17d0a1644fa26b04790bc9cfd43c1a6de6ce87fa26c451b0",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x4d8d13e33bec0960ea72b2631464f34fb7b96044eb86c16f65c069d118a5bdbc",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x5258ec0ea2daab97917f0bb2e8fa349f5081cafc71bd643c414f74fc893cb7c7",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x54644fe42bf2db082bd02694ba14f6acd0b610cf0559287166933523cef6c47e",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x547885d940c44d9d45fe17fe57ffd2aad67457e3aca7b51e76b3d4d08def5d79",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x54ff2e4ca18c44b46a5d538a09054c97665cc7a01ead6e6baad4ffdd126a7c8a",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x551c1b3d6eafb24321c7b21c2de2456a3a52a388b9802bbd8f9415c6015d702e",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x56c45af8a9da0502092edaa3ca192d0798fa02460c838f09764c90d4635b6577",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x56f52514f054738842f0f0059e81c01e27a1266af89d64a74f482e8d23d9eb9b",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x57599a84bf50c94b958adb020aa2a25bf02e26453e500d3b739d86e6b783774c",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x592b2718bb5e413afd45924bf4d230d1322f1951f6b6c10a1ab804c3d6d97efb",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x5a50b19d1e20072ff36ec4ca6801fed3acd0b1d1e3e607211104a1237b129efb",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x5a63aec184cfbb229ce83d4e040ce0900515fc9b87690bf3026c381c0d091b61",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x5c630cce90873c62161bdd6994b02f9c8e3203a858f578456b7bfae936cc04c8",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x5cfc17a6d372438a3f94bfd384d09d0d25dc25f5bba54dbe0e13a68096d591ae",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x5d837be188a2b5e8232bafb0958d5e8e45856587e91e43ccf034320055514e0b",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x5d87eb09704572f515e1dc472bc1f3dac6835cbb06a6c72c1d0b3486cd0ad97c",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x5d88fc90a7da80471162bf8f97ddfc1a0d5251ebcaf541e67c1fbf34d65df515",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x5dc02c6c95ae9baef24a9f53fcc216cb1e028258a343ecddbc31a444c48b6a2d",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x5df7c923f86f4423f4e1fef435f0cf483c83f2544b57911052258258e7b303ca",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x5e3f1626b2f88d8a49d36399b841f084c6195645bdb67f8cf42f31a463490e84",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x5f1cb9d93988cabaa450aba016cdd430031f6cfe9e0ac6ca51e15b7d71deb55a",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x60dc5260cf54c0de7b46e6815ee38643358452c9b22f897b3c057ce800cb5cba",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x62bfd28175d6b282156b96909230b5838a3d19c3bc25874e84412e48ba926702",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x6344fb580313e25b272350c3abfd9feb55bfd152c188150f9fbe6c7017f8c0f5",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x6664de877892786b699c552ef88f25ff6e4828f9a847e4f40e4d6d9cd30b1485",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x66bbf6d55e0296278858b3147689f3df9259374f158f9f028b608baa322a639c",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x6710d045eb7bceb5467d0e2cf1084f353ab9eff53f627d33589e8bcbe4851162",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x67f82fa52d453615c9d7e49d4b36fb3c16295fa5df95d3c56e3ee135698fac10",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x68fc8d466ddc10a1ae37b52642f36b93e413cf98ba5fe3947c242a9a727b2e94",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x694830be50496910a77449d1f1b7bb9b9096649284cff696caab7c4171ecf129",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x6a4970cc0cb28947b838cec0bc32a6f6bc9d0f81a18e2c112d5c5974a69d77cd",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x6a5578ca9b6790213951aae24929478a7e11ccbd50574b7436b9cf97c8d344ad",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x6b22117356fe309620d6c0a42cf82d48f283dedaac2f80c8d2161432e8366588",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x6be90743c85abc7187c8800bee8cdf713627529a7fdf42b93426f2c33b2117fb",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x6d30f1f27c99af0b7103919bc67ede91e5701a67b50085921ba77227de2539b0",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x6dc5125685720ea000689b32611bc5e2d0fc216fe4cb838b18b5a20ff2c40432",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x6f56cdf896a8cdb2552661dd7b3d54dab6ef418d5be0d8a96dea3f16cbf31632",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x707eb5c6df23e32e0b770dd0ccd1245abb7fac0dcfd24d8b68dd99e5ca737180",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x71a296ae16844c65e3e65f89958177b74965386e2e46f5519b6c3e64e69ba0b2",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x72cae644cd7309b4a0f7c028393e56a1fe090d89fdb5388019f974c7fcc0e942",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x73a9911393e7bd2262904c4413d9614f68bb6290ddf7d88ed607f1562d08fb05",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x749fa95d944039c3f06a026522a77501c2a6bcf6cfb8184cc18dbeadbb712a0c",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x76096c72551a49950373c593cdd067d31393c414436363c5f36d72520d4a969b",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x76cface9f6df604ff32447bce58656b7a72b6659324d089c73a13a99f06c8aae",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x771873c365f87bffd990644e4b688aebc1be7f18396d2eab64b996ff66e88669",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x771de080638c0fd0deff3e2016dfb22f16c1f6edad690c75d1f4cb9b240add51",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x78d3b7cca892a75d9bb521920352d66003e1295c46756698fd9c4f9dd6cca72f",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x797a35eb9faaa2c744b86b9636f8e02fcf57cd4e3bd5bdcc0d97e3f12c7612a7",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x79eb18cbc8a2b3b37ffa75decc788819d43564ec2a4a9dfea37c98a7c39c3b4f",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x7a4e96623e5baf75e3a039b1fdae23b288f84333f8d3c1ae6dbfbf6075330325",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x7ace3e54bbcc73376c98cf888f67569c6801d03f1d54f5def535c555193c9322",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x7ae9b97cc4620d5d8183405c535d8c85458ba72f4ca0ff59c96e3420237da7b4",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x7aed2fb58e173740f68ba2b75c1a948a657c279eabd6fce7bfe1a3330a5455d3",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x7d8558a5749492f844be4d48d47c1e5e74f95c303f1bfaa7c210f3e37e2e83c6",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x7d85e6bf4804095db2fb3105424a77cee3d27be20f7bedff3b8ad472fc11e5b8",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x7dffbcce1d6720ec06000fb6ec2553fb6a707c6b6dd868e8a873dc57544dcaa4",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x80059ff4e694f878c0498f6f3a067ee7ca62dc2fc46251a4287b58355ce47bc5",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x812d9ea644c58f1e889643bbd9184e9c5fdacbba55d1f9fef2eb2d55ce5dc1c2",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x81a5c6375be55c1a20b279c07f9dbd217bc81c900cc38a3752e57506d565ae68",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x81ec388b5717ed05da3e00e7d0fcc5cd2ac77fa1cadb1c0441cc2672a98c5b34",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x83ae11433d9fbfc2d1b0ac20737238e14de1a49aad8ac9c843f0095929076992",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x84bc2087e714147971fbd5ea97b47909e0ceea7756515ba88ff51ce7b23245d6",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x855893bae6050fcaef492f3ab4072fd66cb075b13bc63df7b759237fb7d7fd2c",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x855eac97a2b24dfbcfe57dccd5a8f1aad64804f1d3a321106ccdb82cd6955fca",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x85980a4d08e4cf7911782b632108d17b124171c1e1610cf7861e260c6daf3538",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x85f1d95de21a349d18564257faaa08af119b7ea292a9bf89840df90339f2e11e",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x87aa0528695acd3266625acb21e282379e8bd15964a729576015542af3b36b17",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x88b574b3b47ecfae33ae3bc930438cb98beaa26cc925dbffc64191567e060443",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x897defe14e58b0dfd49e486435d34b4f2c6e1022e7a86d26f03bf6a2293016bf",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x89e2bb6a985d0ca0c23b64dd396c11dd1c16ccd004e3ee34f575578b2152c762",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x8bedadb00fb188c93101907ddc36c65bbc43c101256b0b069a451ff3f4cfaa47",
+      "classification": "no_clob_response"
+    },
+    {
+      "market_id": "0x8c9b8ad3a64088a06d45e0b296a9a836203bc7f3ef35d134c57abead446a8b72",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x8d3378d5c859b2f27173627df2edecb3c0c578eb5a0c977bbbef3ec86a7eb9e7",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x8df7be57234cff8d6eeae0d4498704fc24a81e85698d4739e1acb2007ed77c43",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x8e14bfbece423d7c5ff95ee9b1e82df25c3623af5540cd97579cb2e7744f172f",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x901298837932c44136433c5c86237cf32ce75b7d7131ef3ae33e86df99c942e0",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x93b0c61b22b921a81856e69363b5fbd5f1f01ea307a57c17f5109aa321e56199",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x94521176f57d2ce81dde01e0b7699ca4279423042d37ed53908f0c8bfefe7e14",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x94877b77d42e820573c761e94565a75b52be2a60f4cb423be0a8ba111f26e57b",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x9512261b151118f08f755e5061a65eeabd545fdef180468c1f7ad63e10a7e0df",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x9551f6c71d9b944c22300a5e586e112cf3d3f763b2b98007cf97ddd43bd2ed20",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x9654f26388e982fb566059486d3af4ded2f80564ea32ec0af4b51e04f1c02a07",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x96ac4da75d9f560b48734168c17c17c813e084eeea84c23b630a71ee3f9bd573",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x96b46ed5ecdc2d38e5cfac1a1e112b9abf9065de846dd015b7b8c4c2e5443d3c",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x974d4abaaba1707d0ce5e9b2db8df7d9e3e9a5ce3c3c28fc52df4dcfc72d467f",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x9767768d75f0fde1ad998e52b83999315cd5f45152a143a0153366915513e0d2",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x995a909b835457559e09acc7d804a40e0c87515dcab6e91f955d7aea33f7d707",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x995b9cdaa3ba93738a01d499e01048d9b43a4efb518c6966d6eb79681b961359",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x9965a014a66ba22e681b4fab73743950ff1d774deda01d0884acb11b7bfcc7c9",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x9a0de7353469fc7af319897a8a494334b8a286d5cd8ec4b4edb6b3445a4b1597",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0x9a57653d64d44bf591f13dcd3953b7be367e6167f5e8d0a2ee0a2e1e92307831",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0x9b13e676a964d0c87f3b44203d71e64cc361df39c0a1b3b93f129c93076354d9",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xa0c363fd4e398676a492d174445d8b0f87f760274b29e324c18eab76ab68f515",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xa31ff6771c847763f4f961ee85af4f2459bd8addba7d753a6ece040412927be2",
+      "classification": "no_clob_response"
+    },
+    {
+      "market_id": "0xa39a77208f3520d79b0ae386d46fb8e604da6153fe4b256e3b4590e447f3ac7e",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xa4dc02763b1395ffde5f948aa72e0d81d386aadfc973031ef8b5739e6fae8533",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xa506b4f34e0b07f982ab96ff05ce26902ed772ca6752909d0c927d1e1e37ee6d",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xa5fbd535bcf6b79584cdc83ba6200845094575f66d05b028152f316e7a11f958",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xa7d9620a13637f04a948e197fbf3dda58f042f4f63d9eaa622b0596a41c2975a",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xa7ff180532ac8e0a5efa29eeee07fc8cfdc0cd3bd830ef93b5ca53cbb9922633",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xa81e63ff4a59e8611215a7cc37c86e4ac6164924b86a1f4aab73379a073f88fb",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xa825060543929a11ab634061cfa410dbc3ba3d216e2c3449474c548dde0178b6",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xa9331a9cceb4d83a5bc12a26ae3e79a647122024ab6f1fd4c785fefd0dca0fc6",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xaa85f738ed5451cae20480cb3ed4799485c683c033961f462e698b8c770dd758",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xab68e0499ffb00a893faaabeba144fe43be8d1b69bdd0e7739f8208253a69750",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xab8270630627edc601c7381f8be00f3c6961c2ea0a121eec04d92db32b7acfff",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xac5acf33231e245fec071515eaec2245580017cbc21fd39ac9df55adc59e57e5",
+      "classification": "no_clob_response"
+    },
+    {
+      "market_id": "0xac916b490bff5080b326eb4086a4281a0da1f678fc6453e1dbe182d03d40505e",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xad23b96e7a01232f86955c2a719bd7b63f937e093a220bad52fbc8bd0664dedb",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xada6b6f60fa72066bcdd5e0eb185e483636831a3f2b70a229a2361773d3cb048",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xaec55d60592ee1ca55d7d6cc0ec80ecd33d41256d7279e23aa6b3a29c45ce87b",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xaed6455cc597aac64c06e4e85506a0efdbc1fe0d37824e77a29b09559214ada1",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xaf469095c53313acfcfc4b34659779739c31d179cca6d960be2e777f0ef32742",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xaf752a45f5e17cefffc7f3d1bd64ea8f651399857102a267409bfb8c0e83cfd2",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xaf874c80349379303164629c3962b1456f667ca1d44edf95e0474dd13483a4b3",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xb02bee7451a745aa0f47d76ea8b15c2eb44b63ba78d122a6aa4d8f60ad4fda22",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xb106577faa4d93cf6d54a1e0076253b62ec642efd651d151e35230cba77072eb",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xb1097a9c4491522f8c1b5ad251c234ad885ad0d9b8aa34091e04397db29a58bd",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xb180e9dc07c37633541744711a43aaa70bf3a537b6e669e8c16909c7af39f0ad",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xb289110c3ef8994b605532fd2161488dc4daa62c0bd35f1e75b8115872f98f96",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xb5791a0f136a848d8d560adcd1dc315e30a6616caa29569ebb390115abe81757",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xb63fbd776203cada01a13bb21b3c52c500bcf904bdfc71627022db1f891f95c5",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xb82b77689a74a55992d01281871e301b6c127e2cfab9476c19bf01b734a85e35",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xb89a21f2452a9fa13b9fcaf8361e805deaac21c5f6788ed89e32e635fdd1b90b",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xb8b5349814450b8bba2ecdda2eeb9f48bd3c795bfb858bedf7a383712b877743",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xb92fb935fa97388ad8df45fd008ac6dcba3e2e56c0ce56f38c7c2290dc0632f6",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xb98f79bbe554133c77057f8e947f72e1d591276a6b47540141152bb8995920b9",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xbb2753ceb17c793035fecd4dbe645681054bcc1e0d2446e0ebdc05990e9282bf",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xbc5fe0ee81606e86701ed494665adb1f1480513ad08aa19cd12f2abadb674a91",
+      "classification": "no_clob_response"
+    },
+    {
+      "market_id": "0xbe7131f857f854ae8d2304dc019d21b97c370c01fd78e83f5f640973b44aeae1",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xbebf0fc7a82e0a37c75f5ebd511c9a321f754bada306de51fb3ee99838754c57",
+      "classification": "no_clob_response"
+    },
+    {
+      "market_id": "0xbf37aaf85117c05dcb9eca4e1c9035993332948d88ba06cbdf4ef49ed19b76db",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xbf4144ee69c04fafaf23f455cee1e240cb4a643aec6276ef6159929a4a070280",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xbf94f3bd13dd1641dbc68da9a6b2bbf28708d94b5446d43f10690854186a7eba",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xbfeb6d4cf3eab6071e204219b0647c8224d63a12778df467311b5f2a4b3a5bd4",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xbfff1c8bf34207d78d35bd98389270253db3f0b1a3483a0b06fd9adc881ce8cd",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xc02886e2161b78960364c1740fad9241c359b05a74c205935bb2acaf8580a4e5",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xc05733ff4abddbf855f9c247fd57fcebfa0e756e624718c19e0abc545e8a0993",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xc07aead761a45bcd987340bb58858e89cdcdca8361b1387690423bd873dcb234",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xc0f076bc4d90a44df34a729277e9d1f294f0cb60d2c3b1b3800908b1e15b923b",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xc1e1d5a2814a6abf40e304c00a43cfd05519caa11b04665c709b0a94d8c34d05",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xc20bd18955fdcaea6f4f20c37d84d5388e91fc4638490ca4facf8be523dc6c13",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xc432af9280482e26f71cb60e0f6f73b302cecb95371e1b076b99da1daa240211",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xc4e55f04f4b9d0f89835c5aaa72244c09e9444dbca346d7a9711491520cebfbb",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xc5b92069aa1a3319830b2e44bf51ecee36e849790bde3fd68339f5beb5a8ffad",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xc8b51854e0903a4ae71bf33d66a1ac14b7314ac50cb223b86f56cd2144076a53",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xc8c5760c26490b0cd0bedcf1c61aa86c5e09c8b2886b84ff4ea2db81d5f29388",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xc937a7b568c0861b6274cb6b891810ecfdab112dbe2f42533df5ec4f6d733358",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xc9e6a0be2fe2d015dc1cd9d75f4dc5b48dddee1a7043935ef5d1e981c55d5ffc",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xca3af960f7ce5bb8419fa53768e0fb3ebd5f1ebef90299816ea69de313b872ca",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xcc7226e019e769b68c6798f5df11a6ba474d9e60b864e2faecfb8024e23d53e6",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xccd6eb4ec0c8ac284e280ab6ceedcdd1a1813d1e130892ed1b6e98189077013e",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xcceae66d81c60f90c9679ab531b865bd7e9f95cc54f7b0634a24095519b10d65",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xcd953913ecd5bf5387092bf447fe13190871b2bc9436c85b0918b4767c3fa58a",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xcf11482b4f1e7707d886852550e977d17ca548df2d4efd9ba88a619bbd767dfb",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xcffd90a1bb9b1a0918687f9952c9fe613375011c1f495782ead9b2cf07f58e88",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xd059a400cfceb9720559a5a67f53aa94381da88fa2007af5ce30f75facf57953",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xd0e62a962f3198fde69cb89f8db7f3640c64d205b138c6d017803f4f855a5a79",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xd28b5c3b00f5346c5d7f4661f764bf0fff56816b2728d9f281eb172d464c3248",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xd32cda436b37f2dddd35dcedde9d7b681f122cedd517da3785dc40a8156036ce",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xd3635a3419bcccea334cf212a0a2563757361bc3975d74784c7d43fdffcf473e",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xd50c016598c499fceea10a1a714e48d9b4953487fe215daeaf916068fae722f1",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xd59f25520a8c0ea44a9c9741a97c8c3d769e21f1479b9a14e1a9d475e91f522a",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xd5ca3607dd154fe4f82f691e4213ccf77547d1685b78a13a064e343dcfa3c31c",
+      "classification": "no_clob_response"
+    },
+    {
+      "market_id": "0xd66eadbd64b3e815e31c7994470b44fe15c7ef1146f78937d0cfaa4c04fcfda7",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xd6a1ff4759cfd9feca2b789e90f5081ce9fd7ba3db37bca669db8ca6c13dcf6d",
+      "classification": "no_clob_response"
+    },
+    {
+      "market_id": "0xd6fa28dce85f3fd0c3a25f6eec7980775a9c1e321e1f988c9fbd91760908be8f",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xd7540d64e03b1894ececcbb54c02b88d9c5c0e854ba66ec4e1ece20477994ac5",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xd7e2d49bb1c6819ea7335997f89daff41c0b038c6347256eaf4fafebc3ac6776",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xda26f4dba3e89da7b8e84c2ed66166d479c5d97067855eb22395ca7b89dc8ec6",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xda77c4d3089e6746ee65bc2dacb209ddad22e7d3fd9aed07e14dbd1e4dc0c420",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xdab2a45cdb460dde36d3ef90e89222f5251bfbc6d6b721764803d8d95bdab6a7",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xdba270dd6b3f42281d1002cc9b821bfea90a5310cc05436e2fc0c71936001031",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xdbc36161e346ab332c68434b0216595e6047ba9b64a827b2f48524e642bf4e7b",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xdbf40215541bf867c4e03c2a37f27eb38180178dd41943215a7aefe64ede2cd0",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xdc13285057d1be111ce23eb8a6b74d0a857c9d9eab267dfd53c8944f085b7c2d",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xde296740dae16572bf6f754534df8ebb90f8244ccb7e13041f7605e2cd26f5c4",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xde7d04363a3ccbb4a2bd27b052cb045997d87e0cf2f2f565fe18021b94860061",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xe109380d49786b25c8c20ca88bfbf5ffabbe0a91a25a9d8795312d5a9701f998",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xe2abc7b99067945a75cc308dd009e27e4191e09df00b77b3d314545287eb6cee",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xe2b19fb8d5a69727d6b624896e2d4a39a13b8623480a5b8449c421859311e52b",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xe3bc10985dced6ccc4525dc35f0a8107bd033ad21e5a0573da780b899448c124",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xe4993c046014cc672fb0816b73b0792844c1e28579c44b8fe2b483e13e4566c3",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xe59619ba3a363c42a9ff003286646afaef477e915e217a565205efdad2ced5ab",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xe655180a65e17b6959aa722821312de23513cba6c6d2e3a55f47f198977316bf",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xe682e894cc84134d5ae4e07f8f16dbee6e57543507234ac9e42fe2bf4adf75d8",
+      "classification": "no_clob_response"
+    },
+    {
+      "market_id": "0xe70151207ba1c9696abc51293ff65c9d6e8cbb133af3b5430453d112977cd252",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xe8047958f79f888990bc4857075a1df6f3144feacb6e8c6093c589d8adbe7985",
+      "classification": "no_clob_response"
+    },
+    {
+      "market_id": "0xe8054b2f43f0d8c1678a0d2eab094120d6f3787a5a119285634f161c64b8e70e",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xe8f6367e334e7440084773c1dc7ec294d37cf39ea6b84b470bbe2bb26f506436",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xe96d90c07572ae1f1b111f9764e55942312001c30d4cca8e911764241e601fee",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xe9b5814b6b770008d8ed384c45d41703e648d9dce3cdf3d2d15108431d4d865f",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xea3b1d0099085f43a3098b3e1fbcbe62284ce1bda99384b3d46b82ff202ac016",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xee73ea99f126df52a3bbc37a51c9bd1254dd6185e3a0ae1aef0693af4bd4879f",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xee7ddfaf60b69388000ee3eddfd5547ef98290e7315b32a3216a8ca41a99ab16",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xeec26e9d0efd895ba65bc3f1f0cbe99f66a56833682430dc266277a6c9e6e60f",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xeee75e18b53425c67035084fb8be5414331614ab4e5ec59574bc73e11817be93",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xef1a05315e15b48e84757c7e78c4b7e1e725ed204770b1d0a031bad99d8da8cc",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xef40614f8bf95a9e755b276094b22586fd67e7478ef18f30b08bfe1520adf330",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xef904c695153f74bf0f66334e26617558474e2233b4b35670e862f3e958fb459",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xf53121b46c9f35ebae9a837f56963ebc0ecd5ad7895e4a67074f4063af78bf8c",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xf57615e15797c8fa399c0a7c6caa134844db58895d6e3dc98b439e60c0b7e45e",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xf67cdc929ad7442696e3c61a88445a5cf06d99e1a6e7eb41f17e48d20da35ee9",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xf6cf2744cab27c2088a863b6488da644bd8fce4b573d86891c95ba4d6d4b8307",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xf7ad79d04f2dc95740b512d657957bf16b521342ae41be894fa44c56b8b1d1ab",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xf8b914c55a23b2d69270208a6ec43d3f02dd4e31b3ff462079b09dc120819dc5",
+      "classification": "resolved",
+      "winner": "Yes",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xf981fb146169eac1cf8bd6e35a2102cc4f7efe92369ae1c413d532dc51d1cfe0",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xf9b68b99b3ca714f63e49c5a595ade99bf65585e00bfa0e2ebd112cdc090456c",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xf9b998d7de887c1c905b1e1bd9ae38e32eda748c42bd958d3ba1cec9bf5ab79f",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xfaaccc2fc08feba79d3743e59af7a3d3c6e17bcb8100198d6f385a2b0d5d5cff",
+      "classification": "no_clob_response"
+    },
+    {
+      "market_id": "0xfb866625fdfccc5a58ab7f1b53d6c7b5ac214ee38fa38668312b4adc2ee2c1d0",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xfbd0a65112e26d9a2a68dc47f8a95c6c14d22650cb4837c5429b546726661b71",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xfc19590ddd9f305c635dadf762d3ec35d77d04814144a9c299a2da36572568aa",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xfc5c740e4617eb9908ceada7c91bfbe1cd41f172d703ef811d544e60a7a70bb5",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xfc63bcdc71629dd77fba7e016021e4d9283d972d2a06f8552cbd25f87e5ce918",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xfcb24dab90b784bd9e36306c0c298b483757bbba476cf9fc0d5271e9cdf3b84e",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xfd275579a551279b39d7ea320ddd8b224006c02ca38595ad401e0546c941c2dc",
+      "classification": "resolved",
+      "winner": "No",
+      "mmr_accepted": true,
+      "mmr_reason": "written"
+    },
+    {
+      "market_id": "0xfe9d1a32b46991e6895baece1bf6bb1467b814a28aefd6f33f13c6ba91b8d3c9",
+      "classification": "open",
+      "winner": null
+    },
+    {
+      "market_id": "0xffc0030fa887b259b313f7a695e34ce8776fdf1b674d1d7812f0e31782c3aca0",
+      "classification": "open",
+      "winner": null
+    }
+  ]
+}

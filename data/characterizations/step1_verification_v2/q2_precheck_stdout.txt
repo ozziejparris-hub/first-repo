@@ -1,0 +1,13 @@
+[Q2-PRECHECK-v2] Freshly re-derived Q2 census population: 317
+[Q2-PRECHECK-v2] 50/317 — {'resolved': 34, 'open': 11, 'indeterminate': 0, 'no_clob_response': 5}
+[Q2-PRECHECK-v2] 100/317 — {'resolved': 65, 'open': 29, 'indeterminate': 0, 'no_clob_response': 6}
+[Q2-PRECHECK-v2] 150/317 — {'resolved': 98, 'open': 46, 'indeterminate': 0, 'no_clob_response': 6}
+[Q2-PRECHECK-v2] 200/317 — {'resolved': 134, 'open': 58, 'indeterminate': 0, 'no_clob_response': 8}
+[Q2-PRECHECK-v2] 250/317 — {'resolved': 165, 'open': 74, 'indeterminate': 0, 'no_clob_response': 11}
+[Q2-PRECHECK-v2] 300/317 — {'resolved': 196, 'open': 89, 'indeterminate': 0, 'no_clob_response': 15}
+
+[Q2-PRECHECK-v2] Final tally: {'resolved': 203, 'open': 98, 'indeterminate': 0, 'no_clob_response': 16}
+[Q2-PRECHECK-v2] mark_market_resolved (dry_run=True) on 'resolved' classification: accepted=203, rejected=0
+[Q2-PRECHECK-v2] reason breakdown: {'written': 203}
+[Q2-PRECHECK-v2] indeterminate rate (of classifiable, excl. no_clob_response): 0/301 = 0.0%
+[Q2-PRECHECK-v2] Wrote /home/parison/projects/first-repo/data/characterizations/step1_verification_v2/q2_census_precheck_result.json
