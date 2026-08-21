@@ -299,22 +299,13 @@ def main():
         print(f"    WARNING — WAL checkpoint failed: {wal_result.stderr.strip()}")
         failed_steps.append("WAL checkpoint")
 
-    # Backfill market dates — fills end_date/resolution_date and (step 1,
-    # 2026-08-21) asserts resolved markets via the canonical write path.
-    # --geo-only dropped (discovery-gap closure step 2,
-    # 2026-08-21-step2-implementation.md): the geo-scoped population
-    # systematically undercounts due to the category-classification lag
-    # documented in that arc; full population, --limit sized to a measured,
-    # density-validated recent daily-arrival maximum (16,845, 2026-08-10)
-    # with ~2x headroom. The permanently-dead ~98-row prefix (2020-era
-    # markets CLOB has purged) is accepted, not skipped -- named follow-up,
-    # not fixed here.
+    # Backfill market dates — gradually fills end_date/resolution_date for geo markets.
     # Non-blocking: a Gamma API failure here should never abort maintenance.
     total_tracked += 1
     if not run_step(
         "Backfill market dates",
         SCRIPTS_DIR / "backfill_market_dates.py",
-        extra_args=["--limit", "35000"],
+        extra_args=["--geo-only", "--limit", "500"],
     ):
         failed_steps.append("Backfill market dates")
 
