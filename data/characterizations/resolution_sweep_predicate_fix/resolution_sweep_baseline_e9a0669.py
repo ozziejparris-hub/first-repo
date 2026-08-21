@@ -89,19 +89,13 @@ class ResolutionSweep:
         now  = datetime.now()
 
         # ── [1/4] Find recently resolved political/geopolitics markets ──────────
-        # Freshness gate: COALESCE(resolution_recorded_at, last_checked), not
-        # resolution_date (event-time; step 3 will make it a genuine historical
-        # date). resolution_recorded_at is write-time by construction, enforced
-        # by check_resolution_write_atomicity; last_checked is write-time by
-        # convention only, for writers not yet migrated to mark_market_resolved().
-        # 2026-08-21-resolution-sweep-predicate-fix.md.
         print(f"\n[1/4] Finding political/geopolitics markets resolved in last {self.days} days...")
         cur.execute("""
             SELECT market_id, title, resolution_date, winning_outcome
             FROM markets
             WHERE resolved = 1
-              AND COALESCE(resolution_recorded_at, last_checked) >= datetime('now', ?)
-              AND COALESCE(resolution_recorded_at, last_checked) <= datetime('now')
+              AND resolution_date >= datetime('now', ?)
+              AND resolution_date <= datetime('now')
               AND market_id IN (
                 SELECT market_id FROM trades
                 WHERE market_category IN ('Geopolitics', 'Elections')
