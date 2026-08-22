@@ -1,0 +1,34 @@
+{
+  "captured_at_utc": "2026-08-22T14:42:54Z",
+  "purpose": "TRANCHE 2 pre-write fingerprint -- 2026-08-21-discovery-gap-closure-prereg.md (7614ed7, as amended) SS G, captured live immediately before tranche 2's write. Backup taken immediately before this capture: backups/markets_20260822_143948.db, 16,545.4 MB, integrity-verified.",
+  "predicate_note": "Uses SS C's own predicate throughout ((resolved = 0 OR resolved IS NULL) AND (end_date IS NULL OR resolution_date IS NULL)), per pre-flight question 1 -- NOT backfill_market_dates.py's own literal query (which lacks the resolved filter). See the deliverable for the full reasoning.",
+  "fields": {
+    "traders": 171540,
+    "trades": 11663142,
+    "positions": 7692507,
+    "markets": 745067,
+    "resolved_markets": 225184,
+    "geo_elec_resolved_gapclean": 10792,
+    "trade_gap_flag_1": 250,
+    "resolution_evidence_source": {
+      "clob": 203,
+      "gamma": 12,
+      "hydration_fill": 1,
+      "null": 744851
+    },
+    "check_resolution_write_atomicity": 0,
+    "sweep_candidate_population_ss_c_predicate": 518495,
+    "sweep_candidate_population_ss_c_predicate_sql": "SELECT COUNT(*) FROM markets WHERE (resolved = 0 OR resolved IS NULL) AND (end_date IS NULL OR resolution_date IS NULL)",
+    "metric_v2f_oos_result": {
+      "cohort": {"n_positions": 3032, "n_traders": 120, "generated_at": "2026-08-15T19:36:56.852700+00:00", "generator_commit": "eaeabbc"},
+      "placebo": {"n_positions": 2569, "n_traders": 110, "generated_at": "2026-08-15T19:36:56.852700+00:00", "generator_commit": "eaeabbc"},
+      "status": "unchanged, confirmed identical to prior captures"
+    }
+  },
+  "comparison": {
+    "pre_reg_estimate_08_21": 515491,
+    "todays_earlier_capture_12_33_note": "This session's session-start baseline (cefabdd, 527,617) used the SCRIPT's literal non-resolved-filtered query, not SS C's predicate -- corrected in tranche 1's pre-write fingerprint (a2b4b82) to 518,698 using SS C's predicate. Today's figure here (518,495) is directly comparable to that corrected 518,698, not to 527,617.",
+    "delta_vs_tranche1_prewrite_518698": -203,
+    "delta_explanation": "Tranche 1 resolved exactly 203 markets, each removed from this resolved-filtered candidate query on success (resolved flips 0->1). Net change since tranche 1's pre-write capture (~518,698 -> 518,495) is almost exactly -203, meaning organic new-market arrival in the intervening ~2 hours was close to zero net against this predicate -- not a count-decrease concern, a population-dynamics observation."
+  }
+}
