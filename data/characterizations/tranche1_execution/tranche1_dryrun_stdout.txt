@@ -1,0 +1,13 @@
+[TRANCHE1-DRYRUN] Freshly re-derived Q2/tranche-1 census population: 317
+[TRANCHE1-DRYRUN] 50/317 — {'resolved': 34, 'open': 11, 'indeterminate': 0, 'no_clob_response': 5}
+[TRANCHE1-DRYRUN] 100/317 — {'resolved': 65, 'open': 29, 'indeterminate': 0, 'no_clob_response': 6}
+[TRANCHE1-DRYRUN] 150/317 — {'resolved': 98, 'open': 46, 'indeterminate': 0, 'no_clob_response': 6}
+[TRANCHE1-DRYRUN] 200/317 — {'resolved': 134, 'open': 58, 'indeterminate': 0, 'no_clob_response': 8}
+[TRANCHE1-DRYRUN] 250/317 — {'resolved': 165, 'open': 74, 'indeterminate': 0, 'no_clob_response': 11}
+[TRANCHE1-DRYRUN] 300/317 — {'resolved': 196, 'open': 89, 'indeterminate': 0, 'no_clob_response': 15}
+
+[TRANCHE1-DRYRUN] Final tally: {'resolved': 203, 'open': 98, 'indeterminate': 0, 'no_clob_response': 16}
+[TRANCHE1-DRYRUN] mark_market_resolved (dry_run=True) on 'resolved' classification: accepted=203, rejected=0
+[TRANCHE1-DRYRUN] reason breakdown: {'written': 203}
+[TRANCHE1-DRYRUN] indeterminate rate (of classifiable, excl. no_clob_response): 0/301 = 0.0%
+[TRANCHE1-DRYRUN] Wrote /home/parison/projects/first-repo/data/characterizations/tranche1_execution/tranche1_dryrun_precheck_result.json

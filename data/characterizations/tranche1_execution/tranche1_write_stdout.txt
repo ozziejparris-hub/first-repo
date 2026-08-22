@@ -1,0 +1,13 @@
+[TRANCHE1-WRITE] Pre-write check_resolution_write_atomicity: 0
+[TRANCHE1-WRITE] Tranche 1 population, re-derived at write time: 317
+[TRANCHE1-WRITE] 25/317 — tally={'resolved': 16, 'open': 6, 'indeterminate': 0, 'no_clob_response': 3} accepted=16 rejected=0 reasons={'written': 16} indet_rate=12.0% recent_pace=0.218s/call atomicity=0
+[TRANCHE1-WRITE] *** ABORT CONDITION 2 (batch >10%): indet_rate=12.0% at row 25 -- PAUSING (not a hard abort, but stopping per SS C) ***
+
+[TRANCHE1-WRITE] ABORTED
+[TRANCHE1-WRITE] Abort reason: ABORT CONDITION 2 (PAUSE, batch >10%): indet_rate=12.0% at row 25
+[TRANCHE1-WRITE] Processed: 25/317
+[TRANCHE1-WRITE] Final tally: {'resolved': 16, 'open': 6, 'indeterminate': 0, 'no_clob_response': 3}
+[TRANCHE1-WRITE] mark_market_resolved: accepted=16, rejected=0
+[TRANCHE1-WRITE] reason breakdown: {'written': 16}
+[TRANCHE1-WRITE] elapsed: 11.6s
+[TRANCHE1-WRITE] Wrote /home/parison/projects/first-repo/data/characterizations/tranche1_execution/tranche1_write_result.json
