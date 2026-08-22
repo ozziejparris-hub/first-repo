@@ -1,0 +1,36 @@
+{
+  "captured_at_utc": "2026-08-22T16:05:33Z",
+  "purpose": "SEGMENT 1 pre-write fingerprint, captured live immediately before the write, after the fresh backup (backups/markets_20260822_160034.db, 16550.6 MB, integrity-verified).",
+  "runway_arithmetic": {
+    "current_time_utc": "2026-08-22T16:03:33Z",
+    "next_maintenance_fire_utc": "2026-08-23T06:00:01Z",
+    "runway_seconds": 50188,
+    "runway_hours": 13.941,
+    "target_margin_seconds": 7200,
+    "budget_seconds": 42988,
+    "measured_rate_s_per_call": 0.416,
+    "budget_calls": 103336,
+    "batches_floor": 206,
+    "segment_size_markets": 103000,
+    "projected_processing_seconds": 42848,
+    "projected_processing_hours": 11.902,
+    "projected_finish_utc": "2026-08-23T03:57:41Z",
+    "actual_margin_hours": 2.039
+  },
+  "fields": {
+    "traders": 171540,
+    "trades": 11663146,
+    "positions": 7692511,
+    "markets": 745069,
+    "resolved_markets": 229907,
+    "geo_elec_resolved_gapclean": 10792,
+    "resolution_evidence_source": {
+      "clob": 4926,
+      "gamma": 12,
+      "hydration_fill": 1
+    },
+    "check_resolution_write_atomicity": 0,
+    "ss_c_candidate_population": 513770
+  },
+  "exclusion_method": "Segment 1's candidate list (segment1_list.json) was drawn via SS C's predicate, ORDER BY market_id ASC, LIMIT 103000, with an explicit market_id NOT IN (...) clause excluding all 5,000 tranche-2 sample market_ids. Of those 5,000, 277 were still in the live candidate population at draw time (matching tranche 2's own final open=95+indeterminate=30+no_clob_response=152=277 exactly) -- these 277 are excluded from segment 1 regardless, so they are not re-attempted immediately after having just been checked."
+}
