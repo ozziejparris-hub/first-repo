@@ -1,0 +1,53 @@
+{
+  "captured_at_utc": "2026-08-22T12:33:13Z",
+  "purpose": "TRANCHE 1 pre-write fingerprint -- 2026-08-21-discovery-gap-closure-prereg.md (60a1529) SS G, captured live immediately before the write. NOT the session-start baseline (that is presweep_baseline_fingerprint_20260822T121745Z.json, first-repo cefabdd, captured ~16 minutes earlier for the standing progress check, not for this write).",
+  "note_predicate_correction": "The session-start baseline artifact (cefabdd) reported the dateless-unresolved candidate population as 527,617, using backfill_market_dates.py's literal non-geo-only query (`end_date IS NULL OR resolution_date IS NULL`, no resolved filter). SS C's own stated predicate for 'the sweep's own candidate query' explicitly includes `(resolved = 0 OR resolved IS NULL)`. Re-run here with the correct, SS C predicate: 518,698 -- a difference of 8,919 rows, all of them markets with resolved=1 that still happen to have a null end_date or resolution_date (verified directly: `SELECT COUNT(*) FROM markets WHERE resolved=1 AND (end_date IS NULL OR resolution_date IS NULL)` = 8,919). This is not a count decrease or data loss -- it is two different predicates being compared; the 527,617 figure was the looser one. This capture uses SS C's predicate throughout.",
+  "fields": {
+    "traders": 171540,
+    "trades": 11663141,
+    "positions": 7689429,
+    "markets": 745066,
+    "resolved_markets": 224981,
+    "geo_elec_resolved_gapclean": 10589,
+    "trade_gap_flag_1": 250,
+    "max_trade_timestamp": "2026-08-22 11:03:21",
+    "resolution_evidence_source": {
+      "clob": 0,
+      "gamma": 12,
+      "hydration_fill": 1,
+      "null": 745053
+    },
+    "check_resolution_write_atomicity": 0,
+    "dateless_unresolved_candidate_population_sweep_predicate": 518698,
+    "dateless_unresolved_candidate_population_sweep_predicate_sql": "SELECT COUNT(*) FROM markets WHERE (resolved = 0 OR resolved IS NULL) AND (end_date IS NULL OR resolution_date IS NULL)",
+    "q2_canonical_relevance_census_population": 317,
+    "q2_canonical_relevance_census_population_sql": "SELECT COUNT(*) FROM markets m JOIN (SELECT DISTINCT market_id FROM trades) t ON t.market_id = m.market_id WHERE (m.resolved = 0 OR m.resolved IS NULL) AND m.resolution_date IS NULL AND m.end_date IS NULL AND m.category IN ('Elections','Geopolitics') AND (m.trade_gap_flag = 0 OR m.trade_gap_flag IS NULL)",
+    "metric_v2f_oos_result": {
+      "cohort": {
+        "n_positions": 3032,
+        "n_traders": 120,
+        "point_gap": 0.0315983580923187,
+        "ci_lo": -0.00881147179033796,
+        "ci_hi": 0.0710126418085991,
+        "spec_version": "SKILLV2F-2026-08-15-v1",
+        "generated_at": "2026-08-15T19:36:56.852700+00:00",
+        "generator_commit": "eaeabbc"
+      },
+      "placebo": {
+        "n_positions": 2569,
+        "n_traders": 110,
+        "point_gap": 0.0127065403076488,
+        "ci_lo": -0.0210094439314384,
+        "ci_hi": 0.0461439972587876,
+        "spec_version": "SKILLV2F-2026-08-15-v1",
+        "generated_at": "2026-08-15T19:36:56.852700+00:00",
+        "generator_commit": "eaeabbc"
+      },
+      "status": "unchanged, confirmed byte-identical to pre-registration spec"
+    }
+  },
+  "comparison_vs_08-21_session_end": {
+    "note": "08-21 session-end figures per this session's earlier progress-check comparison (first-repo cefabdd) against SS G's pre-registration-time snapshot; q2_tranche1_pop unchanged at 317 across both prior checks today and this capture.",
+    "count_decreases_found": "none"
+  }
+}
