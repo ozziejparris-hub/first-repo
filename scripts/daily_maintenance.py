@@ -304,17 +304,31 @@ def main():
     # --geo-only dropped (discovery-gap closure step 2,
     # 2026-08-21-step2-implementation.md): the geo-scoped population
     # systematically undercounts due to the category-classification lag
-    # documented in that arc; full population, --limit sized to a measured,
-    # density-validated recent daily-arrival maximum (16,845, 2026-08-10)
-    # with ~2x headroom. The permanently-dead ~98-row prefix (2020-era
-    # markets CLOB has purged) is accepted, not skipped -- named follow-up,
-    # not fixed here.
+    # documented in that arc; full population stays. --geo-only stays
+    # dropped permanently.
+    #
+    # --limit TEMPORARILY held at 2000 (2026-08-22-daily-limit-hold.md),
+    # pending the staged sweep: this widened step has never actually
+    # executed (5fcbffe shipped 2026-08-21, first scheduled fire
+    # 2026-08-23 06:00 was pre-empted by this hold) and would plausibly
+    # resolve ~22,600 markets unattended on its first run, with none of
+    # the pre-registration's tranche gating, checkpointing, or abort
+    # thresholds. 2000 dilutes the permanently-dead ~98-row CLOB-purged
+    # prefix from ~20% of a 500-row budget to ~5%, runs ~7 minutes at the
+    # observed 0.19-0.22s/call, and gives a bounded, recoverable first
+    # live sample of the widened step's real behaviour. 35000 remains the
+    # intended steady-state value once the staged sweep has run --
+    # derived from a measured, density-validated daily-arrival maximum
+    # (16,845, 2026-08-10) with ~2x headroom -- not fixed here, not
+    # reverted.
+    # The permanently-dead ~98-row prefix itself is accepted, not
+    # skipped -- named follow-up, not fixed here.
     # Non-blocking: a Gamma API failure here should never abort maintenance.
     total_tracked += 1
     if not run_step(
         "Backfill market dates",
         SCRIPTS_DIR / "backfill_market_dates.py",
-        extra_args=["--limit", "35000"],
+        extra_args=["--limit", "2000"],
     ):
         failed_steps.append("Backfill market dates")
 
