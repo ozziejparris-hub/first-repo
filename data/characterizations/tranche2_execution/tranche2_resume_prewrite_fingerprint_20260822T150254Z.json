@@ -1,0 +1,27 @@
+{
+  "captured_at_utc": "2026-08-22T15:02:54Z",
+  "purpose": "TRANCHE 2 RESUME (batches 2-10) pre-write fingerprint. Supersedes 1edb78f, which predates batch 1's 470 writes.",
+  "backup_note": "No new backup taken -- backups/markets_20260822_143948.db (16,545.4 MB, integrity-verified) remains the valid restore point per this task's explicit carry-forward instruction.",
+  "fields": {
+    "traders": 171540,
+    "trades": 11663146,
+    "positions": 7692511,
+    "markets": 745069,
+    "resolved_markets": 225654,
+    "geo_elec_resolved_gapclean": 10792,
+    "resolution_evidence_source": {
+      "clob": 673,
+      "gamma": 12,
+      "hydration_fill": 1
+    },
+    "check_resolution_write_atomicity": 0
+  },
+  "comparison_vs_post_batch1": {
+    "resolved_markets_delta": 470,
+    "resolved_markets_delta_note": "225184 (tranche1-completion fingerprint) -> 225654, delta +470, exact match to batch 1's confirmed-resolved count (378 fresh + 92 no-op-reconfirmed).",
+    "evidence_clob_delta": 470,
+    "evidence_clob_delta_note": "203 -> 673, exact match.",
+    "geo_elec_resolved_gapclean_delta": 0,
+    "geo_elec_resolved_gapclean_delta_note": "Unchanged at 10792 -- expected, not a discrepancy: SS C's sweep predicate has no category filter (unlike tranche 1's Geo/Elections-scoped predicate), and markets.category is 'Unknown' for 731,432/745,069 (98%) of all markets, so a random 500-row sample landing zero Geo/Elections resolutions is unsurprising."
+  }
+}
