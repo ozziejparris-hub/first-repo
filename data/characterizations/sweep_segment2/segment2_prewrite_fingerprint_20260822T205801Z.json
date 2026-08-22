@@ -1,0 +1,46 @@
+{
+  "captured_at_utc": "2026-08-22T20:58:01Z",
+  "purpose": "SEGMENT 2 pre-write fingerprint, after fresh backup (backups/markets_20260822_205434.db, 16557.4 MB, integrity-verified) and after Phase 1's combo/parlay carve-out verification (0c9ec36).",
+  "runway_arithmetic": {
+    "current_time_utc": "2026-08-22T20:57:31Z",
+    "next_maintenance_fire_utc": "2026-08-23T06:00:01Z",
+    "runway_seconds": 32550,
+    "runway_hours": 9.042,
+    "target_margin_seconds": 7200,
+    "budget_seconds": 25350,
+    "measured_rate_s_per_call": 0.416,
+    "budget_calls": 60937,
+    "batches_floor": 121,
+    "segment_size_markets": 60500,
+    "projected_processing_seconds": 25168,
+    "projected_processing_hours": 6.991,
+    "projected_finish_utc": "2026-08-23T03:56:59Z",
+    "actual_margin_hours": 2.051
+  },
+  "exclusion_and_numbering": {
+    "note": "Segment 2 draws from segment1_list.json's original remaining tail (indices 6000-102999, 97,000 markets -- what would have been batches 13-206 under segment 1's OLD numbering), with the combo/parlay carve-out predicate applied to remove 15,208 of them, leaving 81,792 filtered candidates. Segment 2 takes the first 60,500 of those 81,792 (in the same market_id order segment 1 was walking), sized to this session's runway. Segment 2's own batch numbers (1-121) are a NEW, independent sequence -- NOT a continuation of segment 1's 1-206 numbering. 'Segment 2 batch 1' does not correspond to 'segment 1 batch 13' 1:1 in content, since combo markets have been removed from the slice. This is stated explicitly per the task's own instruction not to let batch numbering silently mean something different.",
+    "segment1_remaining_tail": 97000,
+    "combo_excluded_from_tail": 15208,
+    "filtered_available": 81792,
+    "segment2_size": 60500,
+    "segment2_unused_remainder": 21292
+  },
+  "fields": {
+    "traders": 171540,
+    "trades": 11663156,
+    "positions": 7692516,
+    "markets": 745071,
+    "resolved_markets": 235721,
+    "geo_elec_resolved_gapclean": 10792,
+    "resolution_evidence_source": {
+      "clob": 10740,
+      "gamma": 12,
+      "hydration_fill": 1
+    },
+    "check_resolution_write_atomicity": 0,
+    "ss_c_candidate_population_raw": 507956,
+    "combo_carveout_count": 15427,
+    "ss_c_candidate_population_post_carveout": 492529,
+    "note": "492,529 = 507,956 - 15,427, exact match to the amended SS C figure (832198d) -- zero drift, and combo_carveout_count is unchanged from segment 1's own count (15,427), confirming zero of them were touched by segment 1's writes, consistent with the structural-impossibility finding."
+  }
+}
