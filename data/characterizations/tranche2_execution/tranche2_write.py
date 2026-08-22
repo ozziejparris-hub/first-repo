@@ -80,9 +80,82 @@ ATOMICITY_QUERY = """
     WHERE resolution_recorded_at IS NOT NULL AND resolution_evidence_source IS NULL
 """
 
+# Every reason string monitoring/resolution_writer.py's mark_market_resolved()
+# can return, verified against that file directly (2026-08-22, driver-fixes
+# session) rather than transcribed from any prior document -- full
+# enumeration, not just the one that fired in batch 1:
+#
+#   ACCEPT (market is now confirmed resolved, correctly or redundantly-but-
+#   safely so; must not count toward the unpredicted-rejection-rate pause;
+#   must enter the checkpoint skip-list on the next restart):
+#     "written"
+#       -- trivial first-write (prev_resolved was falsy). Structurally the
+#          only reachable branch for tranche 1 and for any candidate that is
+#          genuinely still unresolved when processed.
+#     "written: existing value has no recorded evidence_source "
+#     "(pre-canonical), proposal accepted"
+#       -- untagged-legacy-improvement: an existing resolved=1 row with no
+#          evidence_source recorded gets our canonical clob value. Not
+#          reachable under SS C's resolved-filtered candidate predicate
+#          (this tranche's own choice, see the deliverable's pre-flight
+#          question 1) but kept whitelisted since it is an accepted branch
+#          of the design, not something this driver should ever pause on.
+#     "written: proposed evidence outranks existing"
+#       -- cross-rank overwrite: an existing rank-2 (gamma/manual_verified/
+#          hydration_fill) value gets overwritten by our rank-1 (clob)
+#          proposal. SS C's abort condition 6 names this pattern explicitly
+#          as "allowed and expected, not an abort trigger" -- e.g. if some
+#          other live writer (fast_resolution_check.py's migrated Gamma
+#          pass, hydrate_stub_markets.py) resolves a sampled market via a
+#          lower-ranked source between this run's sample draw and its own
+#          turn through the batch. MISSING from the original ACCEPTED_REASONS
+#          -- found during this fix by full enumeration, not because it had
+#          fired yet.
+#     "no-op: same-rank value matches existing"
+#       -- a same-rank (clob-vs-clob) re-attempt on an already-correctly-
+#          resolved market: the comparator confirming an existing value and
+#          correctly declining a redundant write. This is the exact pattern
+#          batch 1's kill-and-resume test produced 92 times and the driver
+#          wrongly treated as an unpredicted rejection. THE defect this
+#          amendment fixes.
+#
+#   PAUSE (must count toward the unpredicted-rejection-rate check; must NOT
+#   enter the checkpoint skip-list -- these markets' state may still change,
+#   or the reason indicates something this driver's call pattern should
+#   never actually produce and is worth surfacing if it ever does):
+#     "rejected: winning_outcome required unless allow_no_winner=True"
+#       -- should never fire from this driver: _extract_clob_resolution()
+#          only classifies "resolved" when a winning token was found, so
+#          winner is never None when this driver calls mark_market_resolved
+#          with a "resolved" classification. A defensive/programming-error
+#          signal if it ever appears.
+#     "rejected: unknown evidence_source {evidence_source!r}"
+#       -- should never fire: this driver always passes evidence_source=
+#          "clob" literally. Same defensive category as above.
+#     "rejected: market_id not found"
+#       -- should never fire: candidate market_ids come from a live query
+#          against markets in the same session. A defensive signal if it
+#          ever appears (e.g. a row deleted concurrently, which nothing in
+#          this codebase currently does to the markets table).
+#     "no-op: existing value ranks higher than proposed"
+#       -- structurally UNREACHABLE for this driver: this fires only when
+#          new_rank > existing_rank, and this driver always proposes
+#          evidence_source="clob", EVIDENCE_RANK's rank 1 (the minimum
+#          possible rank value) -- new_rank(1) can never exceed any
+#          existing_rank (1, 2, or the unranked sentinel 99). Classified
+#          for completeness; cannot fire from this call site.
+#     "flagged: same-rank disagreement"
+#       -- the one genuine concern: two same-rank (clob-vs-clob) sources
+#          asserting DIFFERENT winning outcomes for the same market. This is
+#          exactly what SS C's abort condition 6 exists to catch and must
+#          continue to pause the run. Never whitelisted, never added to the
+#          skip-list -- the market's true state is unsettled and must
+#          remain re-attemptable / reviewable, not silently skipped.
 ACCEPTED_REASONS = {
     "written",
     "written: existing value has no recorded evidence_source (pre-canonical), proposal accepted",
+    "written: proposed evidence outranks existing",
+    "no-op: same-rank value matches existing",
 }
 
 
@@ -214,10 +287,21 @@ def main():
 
                     if result.accepted:
                         cum_accepted += 1
-                        if result.reason == "written":
-                            resolved_ids.add(market_id)
                     else:
                         cum_rejected += 1
+                    # Skip-list membership tracks "is this market now
+                    # confirmed resolved, correctly" -- ACCEPTED_REASONS
+                    # (not result.accepted alone), since "no-op: same-rank
+                    # value matches existing" has accepted=False (no UPDATE
+                    # executed) but still means the market is definitively,
+                    # correctly resolved and must not be re-attempted on a
+                    # future restart. Open/indeterminate/no_clob_response
+                    # markets never reach this branch at all (see below);
+                    # genuinely-rejected reasons (all four PAUSE-classified
+                    # reasons above) are deliberately excluded -- their
+                    # state may still change and must remain re-attemptable.
+                    if result.reason in ACCEPTED_REASONS:
+                        resolved_ids.add(market_id)
                     cum_reasons[result.reason] = cum_reasons.get(result.reason, 0) + 1
 
             batch_fresh_attempted += 1
