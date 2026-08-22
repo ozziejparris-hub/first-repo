@@ -1,0 +1,78 @@
+{
+  "generated_at": "2026-08-22T12:17:45Z",
+  "note": "SESSION-START baseline, per pre-registration §G (brain/decisions/2026-08-21-discovery-gap-closure-prereg.md, trading-swarm). This is a planning-time / session-start snapshot, NOT the operational pre-sweep baseline. §G requires a FRESH capture, via this same query pattern, immediately before the sweep (step 4) actually begins, if significant time has passed since this capture -- population counts grow continuously (~5,000+ new markets/day observed) and this capture predates the sweep's actual start.",
+  "db_path": "/home/parison/projects/first-repo/data/polymarket_tracker.db",
+  "context": "Captured during session-start progress check + post-incident state check (2026-08-22), the morning after a ~6h Mullvad/Tailscale network outage (brain/decisions/2026-08-22-overnight-incident.md, 696b49d). No sweep, no tranche has run. Compared against the pre-registration-time baseline (2026-08-21 morning, prereg doc, sec G table) and the 2026-08-21 session-end candidate-population figure (step2-implementation.md, 524410).",
+  "fingerprint": {
+    "traders": 171540,
+    "trades": 11663141,
+    "positions": 7689429,
+    "markets": 745066,
+    "resolved_markets": 224981,
+    "geo_elec_resolved_gap_clean": 10589,
+    "trade_gap_flag_eq_1": 250,
+    "max_trade_timestamp": "2026-08-22 11:03:21",
+    "resolution_evidence_source": {
+      "clob": 0,
+      "gamma": 12,
+      "hydration_fill": 1,
+      "NULL": 745053
+    },
+    "check_resolution_write_atomicity": 0,
+    "dateless_unresolved_candidate_population_sweep_predicate": 527617,
+    "q2_canonical_relevance_census_population": 317,
+    "metric_v2f_oos_result": {
+      "unchanged": true,
+      "cohort": {
+        "n_positions": 3032,
+        "n_traders": 120,
+        "point_gap": 0.0315983580923187,
+        "ci_lo": -0.00881147179033796,
+        "ci_hi": 0.0710126418085991,
+        "generated_at": "2026-08-15T19:36:56.852700+00:00",
+        "generator_commit": "eaeabbc"
+      },
+      "placebo": {
+        "n_positions": 2569,
+        "n_traders": 110,
+        "point_gap": 0.0127065403076488,
+        "ci_lo": -0.0210094439314384,
+        "ci_hi": 0.0461439972587876,
+        "generated_at": "2026-08-15T19:36:56.852700+00:00",
+        "generator_commit": "eaeabbc"
+      }
+    }
+  },
+  "comparison_vs_prereg_time_baseline_2026_08_21_morning": {
+    "traders": {"prereg": 171461, "now": 171540, "delta": 79},
+    "trades": {"prereg": 11639259, "now": 11663141, "delta": 23882},
+    "positions": {"prereg": 7673355, "now": 7689429, "delta": 16074},
+    "markets": {"prereg": 741846, "now": 745066, "delta": 3220},
+    "resolved_markets": {"prereg": 224981, "now": 224981, "delta": 0},
+    "geo_elec_resolved_gap_clean": {"prereg": 10589, "now": 10589, "delta": 0, "note": "identical, not just close -- flat despite resolution_sweep.py processing 57 newly-resolved markets and promoting 6 traders on 2026-08-22 [V]; plausible given this is a narrow canonical-relevance definition, not independently re-verified beyond the count match"},
+    "resolution_evidence_source_clob": {"prereg": 0, "now": 0, "delta": 0},
+    "resolution_evidence_source_gamma": {"prereg": 12, "now": 12, "delta": 0},
+    "resolution_evidence_source_hydration_fill": {"prereg": 1, "now": 1, "delta": 0},
+    "dateless_unresolved_candidate_population": {"prereg": 515491, "now": 527617, "delta": 12126, "note": "prereg-time figure; the more recent 2026-08-21 session-end live measurement (step2-implementation.md) was 524410, delta vs that figure is +3207"},
+    "q2_canonical_relevance_census_population": {"prereg": 317, "now": 317, "delta": 0}
+  },
+  "count_decreases_found": "NONE -- every count is flat or increased vs both the pre-registration-time baseline and the 2026-08-21 session-end candidate-population figure. No decrease anywhere.",
+  "characterization_series_extended_same_session": {
+    "pending_resolution_inconsistency": {
+      "prior_file": "pending_resolution_inconsistency_20260821T155309Z.json",
+      "prior_count": 92,
+      "new_file": "pending_resolution_inconsistency_20260822T121640Z.json",
+      "new_count": 92,
+      "ids_entered": [],
+      "ids_left": []
+    },
+    "no_fifo_close_markets": {
+      "prior_file": "no_fifo_close_markets_20260821T155348Z.json",
+      "prior_count": 162,
+      "new_file": "no_fifo_close_markets_20260822T121721Z.json",
+      "new_count": 162,
+      "ids_entered": [],
+      "ids_left": []
+    }
+  }
+}
