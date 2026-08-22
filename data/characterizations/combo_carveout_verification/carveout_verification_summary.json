@@ -1,0 +1,34 @@
+{
+  "verified_at_utc": "2026-08-22",
+  "predicate_final": "(resolved = 0 OR resolved IS NULL) AND (end_date IS NULL OR resolution_date IS NULL) AND LENGTH(market_id) = 64 AND SUBSTR(market_id, 37) = '0000000000000000000000000000' AND condition_id IS NULL AND api_id IS NULL",
+  "predicate_note": "The condition_id/api_id IS NULL clause is included for compound-signature specificity per the task's request, but is NON-BINDING: verified that ALL 15,427 zero-padding matches already have condition_id IS NULL AND api_id IS NULL, so this clause changes nothing. CRITICALLY, condition_id/api_id nullity is NOT independently discriminating -- 505,378 total candidates share NULL/NULL (nearly the entire remaining population), so a predicate keying on identifier-nullity ALONE would have been catastrophically over-broad. The zero-padding trailing-suffix test is the only component that actually narrows to the combo cohort.",
+  "item1_predicate_exact": "stated above; keys on structural signature (market_id length 64, last 28 hex chars all zero), not title text",
+  "item2_live_recount": {
+    "count": 15427,
+    "compared_to_segment1_figure": 15427,
+    "drift": 0
+  },
+  "item3_clob_verification": {
+    "sample_size": 40,
+    "seed": 20260822,
+    "usable_responses": 0,
+    "method": "unmodified _fetch_by_clob from scripts/backfill_market_dates.py, live network calls",
+    "negative_control": "same fetch function tested against a known-resolved market (condition_id populated) from this session's own tranche writes -- returned a full usable response (closed=True, tokens populated), confirming the fetch mechanism itself works and the 0/40 result is not a broken test harness"
+  },
+  "item4_false_positive_checks": {
+    "zero_padded_with_nonnull_condition_id": 0,
+    "null_identifiers_but_not_zero_padded": 489951,
+    "note_1": "489,951 candidates share NULL condition_id/api_id but are NOT zero-padded -- confirmed these are correctly excluded from the carve-out predicate (not caught), remaining legitimate sweep candidates",
+    "ever_resolved_with_this_signature": 0,
+    "note_2": "zero markets with this zero-padding signature have EVER been resolved (resolved=1), checked across the full markets table, not just current candidates -- no writer among the 13 characterized in this codebase has ever resolved one",
+    "trade_activity": {
+      "markets_with_trades": 15427,
+      "total_trades": 23843,
+      "avg_notional_per_trade": 73.96,
+      "distinct_traders": 1445
+    },
+    "note_3": "genuine economic activity confirmed (real trades, real traders, non-trivial notional) -- these are real combo/parlay positions, not database garbage, but structurally incapable of CLOB resolution since they were never single-outcome markets CLOB tracks",
+    "ambiguous_findings": "none"
+  },
+  "verdict": "PHASE 1 CLEAN. All four verification items pass. Carve-out predicate confirmed safe to apply."
+}
