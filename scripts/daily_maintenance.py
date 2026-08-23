@@ -6,15 +6,113 @@ apply_full_elo_modifiers.py in order.
 Stops after any failed step — does not continue on bad data.
 """
 
+import glob
+import json
 import subprocess
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).parent
 SCRIPTS_DIR = Path(__file__).parent
 TRADING_SWARM_SCRIPTS = Path("/home/parison/trading-swarm/scripts")
+
+# --- Sweep checkpoint-recency hold (2026-08-23-sweep-safety-fixes.md, Fix 1) ---
+#
+# 2026-08-21-discovery-gap-closure-prereg.md's daily-step policy said the
+# "Backfill market dates" step below should be held while a sweep segment
+# is actively running; that was never enforced in code -- it ran
+# unconditionally at --limit 2000 every day. This closes that gap via
+# checkpoint recency, the mechanism 2026-08-23's amendment (23630ee) chose
+# over a lock/sentinel file, a DB flag, or running-process detection --
+# see that amendment for why each alternative was rejected (a bare lock
+# does not survive this box's crash history; recency is self-healing
+# without needing any crash-safe cleanup code).
+#
+# Window: 1800s (30 minutes). Chosen to reuse an already-battle-tested
+# constant rather than invent a new one -- it is exactly
+# segment2_write.py's own MAINTENANCE_STOP_MARGIN (the sweep driver stops
+# itself 30 minutes before the next 06:00 fire). A live segment writes a
+# checkpoint roughly once per batch: tranche 2 measured 202.6-214.0s/batch
+# (~208s) across all ten of its batches, a tight ±3% band, so 30 minutes is
+# ~8.6x the observed cadence -- real margin against one slow batch, not a
+# hair trigger -- while still short enough that a dead sweep can suppress
+# this step for at most half an hour, never days.
+#
+# Boundary: at exactly 1800.0s old, the checkpoint is treated as STALE
+# (the step RUNS) -- the comparison below is strict "<", so the window is
+# a half-open [0, 1800) recency interval. Ties resolve toward running the
+# step, consistent with fail-open: this check must never be the reason a
+# daily step silently stops running.
+SWEEP_CHECKPOINT_GLOB = str(Path(__file__).parent.parent / "data" / "checkpoints" / "segment*_checkpoint.json")
+SWEEP_RECENCY_WINDOW_SECONDS = 1800
+
+
+def _sweep_checkpoint_age_seconds(checkpoint_glob: str = SWEEP_CHECKPOINT_GLOB, now: datetime = None):
+    """
+    Returns (age_seconds, path) for the freshest sweep checkpoint matching
+    checkpoint_glob, using each checkpoint's own recorded
+    `last_updated_utc` field (the same field every sweep driver to date
+    -- tranche2_write.py, segment1_write.py, segment2_write.py -- already
+    writes on every batch), not filesystem mtime, so an unrelated copy/
+    rsync of the file cannot masquerade as recent activity.
+
+    Fail-open by construction, per the hold's own requirement that a
+    broken checkpoint must never silently disable the daily step it
+    guards: any single checkpoint file that is missing, not valid JSON,
+    or missing/malformed the `last_updated_utc` field is treated as if it
+    were not there (skipped, not raised) rather than aborting the whole
+    check. If NO checkpoint yields a usable age -- no files match the
+    glob at all, or every match is unreadable/malformed -- returns
+    (None, None), which the caller below treats as "not active".
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    try:
+        paths = glob.glob(checkpoint_glob)
+    except OSError:
+        return None, None
+
+    newest_age = None
+    newest_path = None
+    for p in paths:
+        try:
+            with open(p) as f:
+                state = json.load(f)
+            ts = state["last_updated_utc"]
+            updated = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+            age = (now - updated).total_seconds()
+        except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
+            # This one checkpoint is unreadable/malformed -- skip it, do
+            # not let it fail the whole check for every other checkpoint.
+            continue
+        if newest_age is None or age < newest_age:
+            newest_age = age
+            newest_path = p
+    return newest_age, newest_path
+
+
+def _sweep_recently_active(checkpoint_glob: str = SWEEP_CHECKPOINT_GLOB, now: datetime = None,
+                            window_seconds: float = SWEEP_RECENCY_WINDOW_SECONDS):
+    """
+    Returns (active: bool, age_seconds_or_None, path_or_None).
+
+    Absolute fail-open guard: this function must never raise, and any
+    inability to determine recency (no checkpoint, all checkpoints
+    unreadable/malformed, or an unexpected error in the helper above)
+    resolves to active=False (run the step), never active=True (hold it).
+    A broken checkpoint disabling a daily step indefinitely would be
+    strictly worse than an occasional redundant run during an active
+    sweep.
+    """
+    try:
+        age, path = _sweep_checkpoint_age_seconds(checkpoint_glob=checkpoint_glob, now=now)
+    except Exception:
+        return False, None, None
+    if age is None:
+        return False, None, None
+    return age < window_seconds, age, path
 
 # O-27: default subprocess budget for any step that doesn't specify its own.
 # Sized above the highest historical max among steps WITHOUT an explicit override —
@@ -324,8 +422,22 @@ def main():
     # The permanently-dead ~98-row prefix itself is accepted, not
     # skipped -- named follow-up, not fixed here.
     # Non-blocking: a Gamma API failure here should never abort maintenance.
+    #
+    # 2026-08-23 (sweep-safety-fixes, Fix 1): held via checkpoint recency
+    # (see _sweep_recently_active() above) instead of running
+    # unconditionally at the reduced --limit 2000 every day. A reduced
+    # limit is still a second writer into `markets` while a sweep segment
+    # is actively moving -- the hold's whole point was to avoid that
+    # entirely during an active segment, not merely shrink it.
     total_tracked += 1
-    if not run_step(
+    sweep_active, sweep_ckpt_age, sweep_ckpt_path = _sweep_recently_active()
+    if sweep_active:
+        print("\n--- Step: Backfill market dates ---")
+        print(f"    SKIPPED -- sweep checkpoint {sweep_ckpt_path} is "
+              f"{sweep_ckpt_age:.0f}s old (< {SWEEP_RECENCY_WINDOW_SECONDS}s hold "
+              f"window); a sweep segment appears to be actively running. "
+              f"This is a deliberate hold, not a step failure.")
+    elif not run_step(
         "Backfill market dates",
         SCRIPTS_DIR / "backfill_market_dates.py",
         extra_args=["--limit", "2000"],
