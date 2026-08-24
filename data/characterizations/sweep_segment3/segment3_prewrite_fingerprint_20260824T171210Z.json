@@ -1,0 +1,51 @@
+{
+  "captured_at_utc": "2026-08-24T17:12:10Z",
+  "purpose": "SEGMENT 3 pre-write fingerprint, after fresh backup (backups/markets_20260824_170855.db, 16711.9 MB, integrity-verified) and after segment3_materialize.py's live SS C + in-SQL combo/parlay carve-out + already-processed exclusion.",
+  "runway_arithmetic": {
+    "current_time_utc": "2026-08-24T17:12:10Z",
+    "next_maintenance_fire_utc": "2026-08-25T06:00:00Z",
+    "runway_seconds": 46069.4,
+    "runway_hours": 12.797,
+    "note_vs_segment2": "Segment 2's own runway was 9.04h (launched 2026-08-22T20:57:31Z, next fire 2026-08-23T06:00:01Z). This segment's runway (12.80h) is LONGER, not tighter -- the task prompt's premise ('tighter than yesterday', 'today's maintenance ran 06:00:01-15:43:48') describes 2026-08-23's maintenance run, not 2026-08-24's (which ran 06:00:01-09:48:55 and had already finished hours before this session started at 17:08). Reported per the standing instruction to verify every claim rather than propagate it; sized on the measured runway below, not the prompt's assumed shape.",
+    "target_margin_seconds": 7200,
+    "budget_seconds": 38869.4,
+    "measured_rate_s_per_call": 0.416,
+    "budget_calls": 93436.1,
+    "batches_floor": 186,
+    "segment_size_markets": 93000,
+    "projected_processing_seconds": 38688.0,
+    "projected_processing_hours": 10.747,
+    "projected_finish_utc": "2026-08-25T03:56:58Z",
+    "actual_margin_hours": 2.05
+  },
+  "exclusion_and_numbering": {
+    "note": "Segment 3 draws from a fresh, live SS C query over the current DB state -- NOT segment 1's original 103,000-row materialized list (segment 2 already fully consumed the combo-filtered portion of that tail it needed; 21,292 of its rows remain un-walked and flow back into this live query naturally, since they were never list-excluded here). Combo/parlay carve-out (LENGTH(market_id)=64 AND SUBSTR(market_id,37)=28 zeros) applied directly in SQL, not as a post-filter on a prior list. Excluded market_id sets: tranche2_sample_5000.json (5,000), segment1_list.json[:6000] (the 6,000 segment 1 actually walked in batches 1-12), segment2_list.json (60,500, fully walked) -- union 71,500, zero overlap among the three sets (confirmed: 5000+6000+60500=71500 exactly). Tranche 1 (~123 of 326 walked markets still open/indeterminate/no_clob_response) is NOT list-excluded -- it queried live with a narrower, now-stale predicate and left no fixed id enumeration to exclude by; those markets may reappear in this segment's list and would be reprocessed idempotently (mark_market_resolved()'s resolved=0 guard makes this harmless, not a correctness risk). Segment 3's own batch numbers (1-186) are a NEW, independent sequence -- not a continuation of segment 1's or segment 2's numbering.",
+    "segment1_original_list": 103000,
+    "segment1_walked_and_excluded": 6000,
+    "segment1_tail_unwalked_reflowed": 21292,
+    "tranche2_excluded": 5000,
+    "segment2_excluded": 60500,
+    "union_excluded": 71500,
+    "tranche1_unresolved_not_list_excluded_est": 123,
+    "segment3_size": 93000
+  },
+  "fields": {
+    "traders": 177271,
+    "trades": 11693676,
+    "positions": 7718517,
+    "markets": 747684,
+    "resolved_markets": 295979,
+    "geo_elec_resolved_gapclean": 10856,
+    "resolution_evidence_source": {
+      "clob": 70984,
+      "gamma": 28,
+      "hydration_fill": 1
+    },
+    "check_resolution_write_atomicity": 0,
+    "ss_c_candidate_population_raw": 448876,
+    "combo_carveout_count": 15549,
+    "ss_c_candidate_population_post_carveout": 433327,
+    "final_candidate_population_post_exclusion": 432009,
+    "note": "432,009 final candidates vs. the task's amended figure of ~427,000 -- a +5,009 (1.2%) delta, consistent with organic new-market arrival in the ~1.5 days since that figure was set (2026-08-23-post-segment2-status.md), not a discrepancy in the predicate or exclusion logic. combo_carveout_count grew from segment 2's 15,427/15,208 (raw/tail-filtered) to 15,549 here -- also consistent with organic arrival of new combo/parlay markets, not evidence any were touched by a writer (each writer's own resolved=0 predicate structurally cannot touch a market whose evidence stays absent, per the segment-1/segment-2 structural-impossibility finding)."
+  }
+}
