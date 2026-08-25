@@ -1,0 +1,62 @@
+{
+  "captured_at_utc": "2026-08-25T20:23:31Z",
+  "purpose": "SEGMENT 4 pre-write fingerprint, after fresh backup (backups/markets_20260825_201521.db, 17346.6 MB, integrity-verified) and after segment4_materialize.py's live SS C query + in-SQL combo/parlay carve-out + full 164,500-id historical exclusion (tranche2 5,000 + segment1-walked 6,000 + segment2 60,500 + segment3 93,000).",
+  "runway_arithmetic": {
+    "current_time_utc": "2026-08-25T20:13:33Z",
+    "maintenance_last_finished_utc": "2026-08-25T10:35:53Z",
+    "next_maintenance_fire_utc": "2026-08-26T06:00:00Z",
+    "runway_seconds": 35187.0,
+    "runway_hours": 9.774166666666666,
+    "target_margin_seconds": 7200,
+    "budget_seconds": 27987.0,
+    "measured_rate_s_per_call": 0.4195968966458433,
+    "measured_rate_source": "segment 3's full-run elapsed/processed: 39022.51138806343s / 93000 markets, brain/decisions/2026-08-25-post-segment3-status.md",
+    "budget_calls": 66699.73067894769,
+    "batches_floor": 133,
+    "segment_size_markets": 66500,
+    "projected_processing_seconds": 27903.19362694858,
+    "projected_processing_hours": 7.750887118596828,
+    "projected_finish_utc": "2026-08-26T03:58:36Z",
+    "actual_margin_seconds": 7283.806373,
+    "actual_margin_hours": 2.0232795480555557,
+    "note": "Computed live this session, not inherited from any prior document. Not amended live once the driver launches slightly later than the 20:13:33Z snapshot used here -- the driver's own MAINTENANCE_STOP_MARGIN (30 min before 06:00) is the binding real-time safety net regardless of this pre-launch estimate's small clock drift."
+  },
+  "exclusion_and_numbering": {
+    "note": "Segment 4 draws from a fresh, live SS C query over the current DB state, same approach as segment 3 -- NOT a re-derivation from any prior segment's materialized list. Combo/parlay carve-out applied directly in SQL. Excluded market_id sets: tranche2_sample_5000.json (5,000), segment1_list.json[:6000] (6,000), segment2_list.json (60,500, fully walked), segment3_list.json (93,000, fully walked, 186/186 batches per the segment-3 status doc) -- union 164,500, verified this session by direct set arithmetic (5000+6000+60500+93000=164500, zero overlap). Tranche 1 (~123 of 326 walked markets still open/indeterminate/no_clob_response) remains NOT list-excluded, same accepted caveat as segments 2 and 3.",
+    "tranche2_excluded": 5000,
+    "segment1_walked_excluded": 6000,
+    "segment2_excluded": 60500,
+    "segment3_excluded": 93000,
+    "union_excluded": 164500,
+    "segment4_size": 66500
+  },
+  "fields": {
+    "traders": 177351,
+    "trades": 12351605,
+    "positions": 7886452,
+    "markets": 773805,
+    "resolved_markets": 387592,
+    "geo_elec_resolved_gapclean": 10870,
+    "geo_elec_resolved_gapclean_query": "SELECT COUNT(*) FROM markets WHERE category IN ('Geopolitics','Elections') AND resolved=1 AND (trade_gap_flag=0 OR trade_gap_flag IS NULL)",
+    "geo_elec_resolved_gapclean_query_source": "tests/test_backtest_window_population.py:170-177 (old_method_market_ids), predicate reused unconditionally (no window_start filter) -- recovered this session; segment 3's status check could not verify this field against its own prior capture because the exact query had not been retained anywhere before now. Recorded here so the next check does not hit the same gap.",
+    "resolution_evidence_source": {
+      "clob": 162947,
+      "gamma": 37,
+      "hydration_fill": 1,
+      "manual_verified": 0
+    },
+    "check_resolution_write_atomicity": 0,
+    "ss_c_candidate_population_raw": 383321,
+    "combo_carveout_count": 23745,
+    "ss_c_candidate_population_post_carveout": 359576,
+    "final_candidate_population_post_exclusion": 356605,
+    "note": "final_candidate_population_post_exclusion (356,605) computed live this session with the full 164,500-id historical exclusion -- matches segment 3's post-run status-check estimate of 356,605 exactly (brain/decisions/2026-08-25-post-segment3-status.md, 'Remaining sweep population' section), confirming that estimate held over the ~4 hours between that check and this materialization with no material organic drift in the interim."
+  },
+  "integrity_check": "ok",
+  "backup": {
+    "path": "backups/markets_20260825_201521.db",
+    "size_mb": 17346.6,
+    "method": "sqlite3 Connection.backup() online backup API (WAL-safe against a live writer), scripts/backup_database.py",
+    "integrity_verified": true
+  }
+}
