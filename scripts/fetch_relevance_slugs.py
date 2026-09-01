@@ -74,8 +74,15 @@ POPULATIONS = {
 # ~3.1 s.  The design's "~12" was conservative.
 BATCH_SIZE = 100
 SLEEP_BETWEEN = 1.5          # s; batch wall-time target ~5 s (3 s req + sleep + write)
-BASELINE_REQ_S = 3.1        # measured this session at n=100
+BASELINE_REQ_S = 3.1        # measured this session at n=100, ONE Gamma call
+# unswept issues two sequential calls per batch (closed=false, closed=true;
+# 2026-09-01-slug-fetch-unswept.md "Part 2/3" -- no single `closed` value
+# returns both an open and a closed market, confirmed empirically) so its
+# pacing baseline is the paired duration, not the single-call one.
+PAIR_BASELINE_REQ_S = 2 * BASELINE_REQ_S   # 6.2s
 PACING_ABORT_MULT = 3.0     # abort if req time > 3x baseline, sustained 2 batches
+                             # swept threshold: 3.0 x 3.1s = 9.3s (unchanged)
+                             # unswept threshold: 3.0 x 6.2s = 18.6s (paired)
 NOT_FOUND_ABORT_RATE = 0.10 # abort if not_found rate > 10% once n >= 100
 MAINT_STOP_MARGIN_MIN = 30  # stop cleanly if within 30 min of 03:00 UTC
 HTTP_TIMEOUT = 45
@@ -133,10 +140,19 @@ def write_checkpoint(path: Path, state: dict) -> None:
     os.replace(tmp, path)
 
 
-def gamma_batch(cond_ids: list[str]) -> tuple[int, dict]:
+def gamma_batch(cond_ids: list[str], closed: str = "true") -> tuple[int, dict]:
     """Return (http_status, {conditionId: market_dict}).  http_status 0 on a
-    non-HTTP failure (URLError/timeout/parse)."""
-    q = [("closed", "true"), ("limit", "500")] + [("condition_ids", c) for c in cond_ids]
+    non-HTTP failure (URLError/timeout/parse).
+
+    `closed` defaults to "true" so a call site that passes nothing (the only
+    call site as of this docstring being written -- the swept path) produces
+    the byte-identical query this function always has. Gamma's `closed` param
+    is a strict binary filter, established empirically
+    (2026-09-01-slug-fetch-unswept.md "Part 2"): closed=true returns only
+    closed markets, closed=false returns only open markets, and omitting it
+    behaves like closed=false -- there is no "both" value. The unswept path
+    calls this twice (closed="false" then closed="true") and merges."""
+    q = [("closed", closed), ("limit", "500")] + [("condition_ids", c) for c in cond_ids]
     url = GAMMA_URL + "?" + urllib.parse.urlencode(q)
     req = urllib.request.Request(url, headers={"User-Agent": "relevance-slug-fetch/1.0"})
     try:
@@ -232,9 +248,26 @@ def main() -> int:
             chunk = work[i:i + args.batch_size]
             cond_ids = [mid for mid, _ in chunk]
 
-            t0 = time.time()
-            status, by_cid = gamma_batch(cond_ids)
-            req_s = time.time() - t0
+            if pop == "unswept":
+                # Two passes, merged: `closed` has no "both" value (established
+                # 2026-09-01-slug-fetch-unswept.md "Part 2"), and unswept can
+                # legitimately contain markets Gamma has already closed while
+                # this DB's `resolved` flag hasn't caught up (O-36 late-bias).
+                # A mid missing from BOTH passes is a genuine not_found.
+                t0 = time.time()
+                status_f, by_cid_f = gamma_batch(cond_ids, closed="false")
+                status_t, by_cid_t = gamma_batch(cond_ids, closed="true")
+                req_s = time.time() - t0
+                if 429 in (status_f, status_t):
+                    status, by_cid = 429, {}
+                else:
+                    by_cid = {**by_cid_f, **by_cid_t}   # disjoint: a market is
+                                                         # closed XOR open, never both
+                    status = status_f if status_f == 200 else status_t
+            else:
+                t0 = time.time()
+                status, by_cid = gamma_batch(cond_ids)
+                req_s = time.time() - t0
 
             # --- abort: rate limit ---
             if status == 429:
@@ -280,9 +313,12 @@ def main() -> int:
                     break
 
             # --- abort: sustained pacing degradation ---
-            if req_s > PACING_ABORT_MULT * BASELINE_REQ_S:
+            # unswept measures a PAIR of sequential calls against a paired
+            # baseline (2x single-call); swept is unchanged.
+            pace_baseline = PAIR_BASELINE_REQ_S if pop == "unswept" else BASELINE_REQ_S
+            if req_s > PACING_ABORT_MULT * pace_baseline:
                 slow_streak += 1
-                log(f"  slow batch: {req_s:.1f}s (> {PACING_ABORT_MULT}x{BASELINE_REQ_S}s) "
+                log(f"  slow batch: {req_s:.1f}s (> {PACING_ABORT_MULT}x{pace_baseline}s) "
                     f"streak={slow_streak}")
                 if slow_streak >= 2:
                     aborted = True
