@@ -1,0 +1,14 @@
+{
+  "status": "COMPLETE",
+  "reason": null,
+  "batches_completed": 186,
+  "n_batches": 186,
+  "cumulative_processed": 93000,
+  "cumulative_tally": {
+    "resolved": 91345,
+    "open": 1202,
+    "indeterminate": 431,
+    "no_clob_response": 22
+  },
+  "written_at_utc": "2026-08-25T04:06:52Z"
+}

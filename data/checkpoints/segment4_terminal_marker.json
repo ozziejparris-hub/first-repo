@@ -1,0 +1,14 @@
+{
+  "status": "ABORTED",
+  "reason": "ABORT CONDITION 7 (pacing): last 2 batches averaged >1.0s/call: [1.100467128276825, 1.0413392939567565]",
+  "batches_completed": 101,
+  "n_batches": 133,
+  "cumulative_processed": 50500,
+  "cumulative_tally": {
+    "resolved": 49176,
+    "open": 979,
+    "indeterminate": 247,
+    "no_clob_response": 98
+  },
+  "written_at_utc": "2026-08-26T04:04:16Z"
+}
