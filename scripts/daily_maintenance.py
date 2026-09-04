@@ -405,20 +405,24 @@ def main():
     # documented in that arc; full population stays. --geo-only stays
     # dropped permanently.
     #
-    # --limit TEMPORARILY held at 2000 (2026-08-22-daily-limit-hold.md),
-    # pending the staged sweep: this widened step has never actually
-    # executed (5fcbffe shipped 2026-08-21, first scheduled fire
-    # 2026-08-23 06:00 was pre-empted by this hold) and would plausibly
-    # resolve ~22,600 markets unattended on its first run, with none of
-    # the pre-registration's tranche gating, checkpointing, or abort
-    # thresholds. 2000 dilutes the permanently-dead ~98-row CLOB-purged
-    # prefix from ~20% of a 500-row budget to ~5%, runs ~7 minutes at the
-    # observed 0.19-0.22s/call, and gives a bounded, recoverable first
-    # live sample of the widened step's real behaviour. 35000 remains the
-    # intended steady-state value once the staged sweep has run --
-    # derived from a measured, density-validated daily-arrival maximum
-    # (16,845, 2026-08-10) with ~2x headroom -- not fixed here, not
-    # reverted.
+    # --limit stays at 2000 (2026-09-04-limit-restore-and-sweep-closure.md,
+    # superseding 2026-08-22-daily-limit-hold.md's "35000 once the sweep
+    # has run" framing). That framing is retired, not fixed: 35000's whole
+    # premise was a *cleared* backlog post-sweep, and the sweep is now
+    # formally stopped, not resumed -- the backlog was never cleared and is
+    # larger today (610k+) than when 35000 was set. Raising the limit
+    # unattended would also reopen the exact large-unreviewed-write-volume
+    # risk the 2000 hold existed to avoid, with no more mitigation now than
+    # then. The actual defect the discovery-gap lineage doc traced to this
+    # value -- the small, high-value Geo/Elec-tagged sub-population losing
+    # its exhaustive daily coverage once --geo-only's *filter* was dropped
+    # -- is a candidate-selection ordering problem, not a limit-size one:
+    # get_markets_to_backfill() now prioritises that sub-population first
+    # within the existing 2000-row budget (499 tagged rows today, well
+    # under budget) regardless of overall pool size, and the general pool
+    # still fills whatever budget remains, so newly-classified markets stay
+    # visible. See the decision doc for the full history and the numbers
+    # that ruled out a bare limit increase.
     # The permanently-dead ~98-row prefix itself is accepted, not
     # skipped -- named follow-up, not fixed here.
     # Non-blocking: a Gamma API failure here should never abort maintenance.

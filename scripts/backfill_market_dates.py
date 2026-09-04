@@ -183,26 +183,55 @@ def _fetch_by_title(session: requests.Session, title: str) -> dict | None:
         return None
 
 
+_GEO_ELEC_CANDIDATES_QUERY = """
+    SELECT DISTINCT m.market_id, m.title, m.condition_id, m.api_id
+    FROM markets m
+    INNER JOIN trades t ON (t.market_id = m.market_id OR t.market_id = m.condition_id)
+    WHERE (m.end_date IS NULL OR m.resolution_date IS NULL)
+      AND t.market_category IN ('Geopolitics', 'Elections')
+    LIMIT ?
+"""
+
+
 def get_markets_to_backfill(conn, limit: int, geo_only: bool) -> list:
-    """Return list of market dicts needing backfill."""
+    """Return list of market dicts needing backfill.
+
+    Non-geo_only runs prioritize the Geo/Elec-tagged sub-population first,
+    then fill remaining budget from the full pool. `--geo-only` was dropped
+    from the daily invocation 2026-08-21 because a category-scoped *filter*
+    made newly-classified markets invisible -- but a plain, unordered
+    `LIMIT` scan over the unscoped pool has no way to prioritise the small,
+    already-correctly-tagged, highest-priority subset, and silently starved
+    it (2026-09-04-limit-restore-and-sweep-closure.md). Ordering restores
+    that subset's exhaustive daily coverage without reintroducing the
+    filter's blind spot: unclassified/newly-classified markets still fall
+    through to the general pool below, unlike under `--geo-only`.
+    """
     if geo_only:
-        query = """
-            SELECT DISTINCT m.market_id, m.title, m.condition_id, m.api_id
-            FROM markets m
-            INNER JOIN trades t ON (t.market_id = m.market_id OR t.market_id = m.condition_id)
-            WHERE (m.end_date IS NULL OR m.resolution_date IS NULL)
-              AND t.market_category IN ('Geopolitics', 'Elections')
-            LIMIT ?
-        """
-    else:
-        query = """
+        rows = conn.execute(_GEO_ELEC_CANDIDATES_QUERY, (limit,)).fetchall()
+        return [dict(r) for r in rows]
+
+    geo_rows = conn.execute(_GEO_ELEC_CANDIDATES_QUERY, (limit,)).fetchall()
+    geo_ids = [r["market_id"] for r in geo_rows]
+    remaining = limit - len(geo_rows)
+
+    rest_rows = []
+    if remaining > 0:
+        exclude_clause = ""
+        params: tuple = (remaining,)
+        if geo_ids:
+            exclude_clause = f"AND market_id NOT IN ({','.join('?' * len(geo_ids))})"
+            params = (*geo_ids, remaining)
+        rest_query = f"""
             SELECT market_id, title, condition_id, api_id
             FROM markets
-            WHERE end_date IS NULL OR resolution_date IS NULL
+            WHERE (end_date IS NULL OR resolution_date IS NULL)
+              {exclude_clause}
             LIMIT ?
         """
-    rows = conn.execute(query, (limit,)).fetchall()
-    return [dict(r) for r in rows]
+        rest_rows = conn.execute(rest_query, params).fetchall()
+
+    return [dict(r) for r in geo_rows] + [dict(r) for r in rest_rows]
 
 
 def backfill(limit: int, dry_run: bool, geo_only: bool, sleep: float = 0.1):
