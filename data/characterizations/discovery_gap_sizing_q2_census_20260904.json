@@ -1,0 +1,2191 @@
+{
+ "generated_at": "2026-09-04T00:00:00Z-approx",
+ "method": "same as 2026-08-20-discovery-gap-sizing-prereg.md Q2 census, re-run live for the lineage task",
+ "population_n": 244,
+ "results": [
+  {
+   "market_id": "0x0465cd005a54781e052b679e2c42c7ae5b772490fdda54316f157bf537536456",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x0465cd005a54781e052b679e2c42c7ae5b772490fdda54316f157bf537536456",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x086445ea07954a360aeeddc96c292160832662b0227bdc8f07bc353dd511966f",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x086445ea07954a360aeeddc96c292160832662b0227bdc8f07bc353dd511966f",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x0904f38a374396adb24f03970dd1bce86e7b3ed20634e89c59a14274afbad7b7",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0x0904f38a374396adb24f03970dd1bce86e7b3ed20634e89c59a14274afbad7b7",
+   "classification": "indeterminate",
+   "detail": {
+    "reason": "http_404"
+   }
+  },
+  {
+   "market_id": "0x0b8ca8437261accb1faed82770c861c9eca99fd58b4fe612f314a188a9a9df60",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0x0b8ca8437261accb1faed82770c861c9eca99fd58b4fe612f314a188a9a9df60",
+   "classification": "indeterminate",
+   "detail": {
+    "reason": "http_404"
+   }
+  },
+  {
+   "market_id": "0x110170493c7d4c5d438a01dbab7390bdd58ded3321ac096221cf1040f2e9270b",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x110170493c7d4c5d438a01dbab7390bdd58ded3321ac096221cf1040f2e9270b",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x129dbcb7d39ff8df5f0d7685a2db6400b5db37d3963914486fbb7fd2bc96a923",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x129dbcb7d39ff8df5f0d7685a2db6400b5db37d3963914486fbb7fd2bc96a923",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x15de5f99db14dd323df50b4c0af7d756cea681bdc3adbe1f1b6be7194a59c978",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x15de5f99db14dd323df50b4c0af7d756cea681bdc3adbe1f1b6be7194a59c978",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x16ec51984a9a76052ad82838efe9707ec0865f664a256d8a1ab3e24e333929c5",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0x16ec51984a9a76052ad82838efe9707ec0865f664a256d8a1ab3e24e333929c5",
+   "classification": "indeterminate",
+   "detail": {
+    "reason": "http_404"
+   }
+  },
+  {
+   "market_id": "0x1b7fa10e6b102c964bbd4a7cb0a4b7a341e17fcb9f8a2c8a5d6a3b30dfb5c394",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x1b7fa10e6b102c964bbd4a7cb0a4b7a341e17fcb9f8a2c8a5d6a3b30dfb5c394",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x26d2b09d5f5d5bfd520454b3e896f368672f3a9ee542e0af6ef08e3a25e445b0",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x26d2b09d5f5d5bfd520454b3e896f368672f3a9ee542e0af6ef08e3a25e445b0",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x2c00cb09722a0f0501c5e49131b898ed57bb5c075db4dc2bcbc14908f45b8c48",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x2c00cb09722a0f0501c5e49131b898ed57bb5c075db4dc2bcbc14908f45b8c48",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x2fb2b4f6d030ed03404e844400cf763a5dfc70275a3d6bd03770287cd7bced56",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0x2fb2b4f6d030ed03404e844400cf763a5dfc70275a3d6bd03770287cd7bced56",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x3082f67beee73c7a96a5b8dbf3762ca7d26cab01a7e5512a44ca7297b9641361",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0x3082f67beee73c7a96a5b8dbf3762ca7d26cab01a7e5512a44ca7297b9641361",
+   "classification": "indeterminate",
+   "detail": {
+    "reason": "http_404"
+   }
+  },
+  {
+   "market_id": "0x30de0627e0fe97569a86d909ca72654eaf6b478ef4e46b71b6b8400df4c2bd1f",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0x30de0627e0fe97569a86d909ca72654eaf6b478ef4e46b71b6b8400df4c2bd1f",
+   "classification": "indeterminate",
+   "detail": {
+    "reason": "http_404"
+   }
+  },
+  {
+   "market_id": "0x34918035a590555ba1fb1d6a019d766ab6e557d63e7f3140b63b4550eee7f417",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x34918035a590555ba1fb1d6a019d766ab6e557d63e7f3140b63b4550eee7f417",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x378f6ce7b81670608a5a4f0fcf740e3dbb44c3e402e5b0beba49871a5c05b259",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x378f6ce7b81670608a5a4f0fcf740e3dbb44c3e402e5b0beba49871a5c05b259",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x38a1025bfc56539ed1ff8fdd468283d55cf9002412decd61aa8d6c578c7d01a2",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x38a1025bfc56539ed1ff8fdd468283d55cf9002412decd61aa8d6c578c7d01a2",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x38fa3007c7be18a217849262667e39266341cb2fd7b5f8da75472b0a9e420480",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0x38fa3007c7be18a217849262667e39266341cb2fd7b5f8da75472b0a9e420480",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x3b1d01d11565a800485bdb04958e28bab4369e3f2ebc2134d12d74bde5f3baa7",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x3b1d01d11565a800485bdb04958e28bab4369e3f2ebc2134d12d74bde5f3baa7",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x3b32ef6897c33e7cac03641f3b16f25de3bbba86c48193ae7250b81bd5dc8e36",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0x3b32ef6897c33e7cac03641f3b16f25de3bbba86c48193ae7250b81bd5dc8e36",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x3c5b93b91196c8db64e63c424979da8cfbf44a4501afd70d2480ee28fbf306a2",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x3c5b93b91196c8db64e63c424979da8cfbf44a4501afd70d2480ee28fbf306a2",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x3ce6295fd9f1a6e2798a8a8a8845f69aca182b8cf35dc59db7203415cbe8d48e",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x3ce6295fd9f1a6e2798a8a8a8845f69aca182b8cf35dc59db7203415cbe8d48e",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x3f8d20cfcf2136d0c001663603c2d7f7be0fb920534d09a193f3165a40fe9469",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x3f8d20cfcf2136d0c001663603c2d7f7be0fb920534d09a193f3165a40fe9469",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x40d88a97d39118ed79152c83b87a337c07e8e027bca5363c2c87503408431a20",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0x40d88a97d39118ed79152c83b87a337c07e8e027bca5363c2c87503408431a20",
+   "classification": "indeterminate",
+   "detail": {
+    "reason": "http_404"
+   }
+  },
+  {
+   "market_id": "0x457e4d4fc56ca3836fccb7a8bf539c787504ac841a933d65f5de0736fcae2567",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x457e4d4fc56ca3836fccb7a8bf539c787504ac841a933d65f5de0736fcae2567",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x460d3942d385cdeda20519c0c5ad804ae48dc18efc9a82e1f1be87a29e69adb3",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x460d3942d385cdeda20519c0c5ad804ae48dc18efc9a82e1f1be87a29e69adb3",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x46c862237fc39f6357ce2efa748274e4539c1ffe60cd6a89e3fe689373fa27a8",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0x46c862237fc39f6357ce2efa748274e4539c1ffe60cd6a89e3fe689373fa27a8",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x479d1a77b118ac88cc0e7e5eb4659e4954d55cd87a84d7f2b22bf5c3a8333813",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x479d1a77b118ac88cc0e7e5eb4659e4954d55cd87a84d7f2b22bf5c3a8333813",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x47fd8303835d9108252343069ada769162976137e4e1c22b94b1cb305cd35d8a",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0x47fd8303835d9108252343069ada769162976137e4e1c22b94b1cb305cd35d8a",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x4900fd99a53dc19621b3de761cdd75401fcd5733d785b9840275fe14ccd7d74c",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x4900fd99a53dc19621b3de761cdd75401fcd5733d785b9840275fe14ccd7d74c",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x4b025f45ecb861a81d74f472acd662f10553b18fa0ad71de7d5391bf2ba068ed",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x4b025f45ecb861a81d74f472acd662f10553b18fa0ad71de7d5391bf2ba068ed",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x4b2eebf64eea76b09aeb3370a62b99724f0a8ac97dd521bcb8cffce7cbb53729",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0x4b2eebf64eea76b09aeb3370a62b99724f0a8ac97dd521bcb8cffce7cbb53729",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x4b6d354831374f40d664728aa1cf4093e58f782c25ba82b782d0e08c06270486",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0x4b6d354831374f40d664728aa1cf4093e58f782c25ba82b782d0e08c06270486",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x4d8d13e33bec0960ea72b2631464f34fb7b96044eb86c16f65c069d118a5bdbc",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x4d8d13e33bec0960ea72b2631464f34fb7b96044eb86c16f65c069d118a5bdbc",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x54ff2e4ca18c44b46a5d538a09054c97665cc7a01ead6e6baad4ffdd126a7c8a",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x54ff2e4ca18c44b46a5d538a09054c97665cc7a01ead6e6baad4ffdd126a7c8a",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x57599a84bf50c94b958adb020aa2a25bf02e26453e500d3b739d86e6b783774c",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x57599a84bf50c94b958adb020aa2a25bf02e26453e500d3b739d86e6b783774c",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x62bfd28175d6b282156b96909230b5838a3d19c3bc25874e84412e48ba926702",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0x62bfd28175d6b282156b96909230b5838a3d19c3bc25874e84412e48ba926702",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x6664de877892786b699c552ef88f25ff6e4828f9a847e4f40e4d6d9cd30b1485",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x6664de877892786b699c552ef88f25ff6e4828f9a847e4f40e4d6d9cd30b1485",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x66bbf6d55e0296278858b3147689f3df9259374f158f9f028b608baa322a639c",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x66bbf6d55e0296278858b3147689f3df9259374f158f9f028b608baa322a639c",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x6710d045eb7bceb5467d0e2cf1084f353ab9eff53f627d33589e8bcbe4851162",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x6710d045eb7bceb5467d0e2cf1084f353ab9eff53f627d33589e8bcbe4851162",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x68fc8d466ddc10a1ae37b52642f36b93e413cf98ba5fe3947c242a9a727b2e94",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x68fc8d466ddc10a1ae37b52642f36b93e413cf98ba5fe3947c242a9a727b2e94",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x694830be50496910a77449d1f1b7bb9b9096649284cff696caab7c4171ecf129",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0x694830be50496910a77449d1f1b7bb9b9096649284cff696caab7c4171ecf129",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x6a4970cc0cb28947b838cec0bc32a6f6bc9d0f81a18e2c112d5c5974a69d77cd",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x6a4970cc0cb28947b838cec0bc32a6f6bc9d0f81a18e2c112d5c5974a69d77cd",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x6f56cdf896a8cdb2552661dd7b3d54dab6ef418d5be0d8a96dea3f16cbf31632",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x6f56cdf896a8cdb2552661dd7b3d54dab6ef418d5be0d8a96dea3f16cbf31632",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x707eb5c6df23e32e0b770dd0ccd1245abb7fac0dcfd24d8b68dd99e5ca737180",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x707eb5c6df23e32e0b770dd0ccd1245abb7fac0dcfd24d8b68dd99e5ca737180",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x71a296ae16844c65e3e65f89958177b74965386e2e46f5519b6c3e64e69ba0b2",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x71a296ae16844c65e3e65f89958177b74965386e2e46f5519b6c3e64e69ba0b2",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x72cae644cd7309b4a0f7c028393e56a1fe090d89fdb5388019f974c7fcc0e942",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x72cae644cd7309b4a0f7c028393e56a1fe090d89fdb5388019f974c7fcc0e942",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x73a9911393e7bd2262904c4413d9614f68bb6290ddf7d88ed607f1562d08fb05",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x73a9911393e7bd2262904c4413d9614f68bb6290ddf7d88ed607f1562d08fb05",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x76cface9f6df604ff32447bce58656b7a72b6659324d089c73a13a99f06c8aae",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x76cface9f6df604ff32447bce58656b7a72b6659324d089c73a13a99f06c8aae",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x771873c365f87bffd990644e4b688aebc1be7f18396d2eab64b996ff66e88669",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x771873c365f87bffd990644e4b688aebc1be7f18396d2eab64b996ff66e88669",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x812d9ea644c58f1e889643bbd9184e9c5fdacbba55d1f9fef2eb2d55ce5dc1c2",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0x812d9ea644c58f1e889643bbd9184e9c5fdacbba55d1f9fef2eb2d55ce5dc1c2",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x89e2bb6a985d0ca0c23b64dd396c11dd1c16ccd004e3ee34f575578b2152c762",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x89e2bb6a985d0ca0c23b64dd396c11dd1c16ccd004e3ee34f575578b2152c762",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x8bedadb00fb188c93101907ddc36c65bbc43c101256b0b069a451ff3f4cfaa47",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0x8bedadb00fb188c93101907ddc36c65bbc43c101256b0b069a451ff3f4cfaa47",
+   "classification": "indeterminate",
+   "detail": {
+    "reason": "http_404"
+   }
+  },
+  {
+   "market_id": "0x8c9b8ad3a64088a06d45e0b296a9a836203bc7f3ef35d134c57abead446a8b72",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x8c9b8ad3a64088a06d45e0b296a9a836203bc7f3ef35d134c57abead446a8b72",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x8df7be57234cff8d6eeae0d4498704fc24a81e85698d4739e1acb2007ed77c43",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x8df7be57234cff8d6eeae0d4498704fc24a81e85698d4739e1acb2007ed77c43",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x94521176f57d2ce81dde01e0b7699ca4279423042d37ed53908f0c8bfefe7e14",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x94521176f57d2ce81dde01e0b7699ca4279423042d37ed53908f0c8bfefe7e14",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x9654f26388e982fb566059486d3af4ded2f80564ea32ec0af4b51e04f1c02a07",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x9654f26388e982fb566059486d3af4ded2f80564ea32ec0af4b51e04f1c02a07",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x9767768d75f0fde1ad998e52b83999315cd5f45152a143a0153366915513e0d2",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x9767768d75f0fde1ad998e52b83999315cd5f45152a143a0153366915513e0d2",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x995a909b835457559e09acc7d804a40e0c87515dcab6e91f955d7aea33f7d707",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0x995a909b835457559e09acc7d804a40e0c87515dcab6e91f955d7aea33f7d707",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x995b9cdaa3ba93738a01d499e01048d9b43a4efb518c6966d6eb79681b961359",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0x995b9cdaa3ba93738a01d499e01048d9b43a4efb518c6966d6eb79681b961359",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0x9a0de7353469fc7af319897a8a494334b8a286d5cd8ec4b4edb6b3445a4b1597",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0x9a0de7353469fc7af319897a8a494334b8a286d5cd8ec4b4edb6b3445a4b1597",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xa31ff6771c847763f4f961ee85af4f2459bd8addba7d753a6ece040412927be2",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xa31ff6771c847763f4f961ee85af4f2459bd8addba7d753a6ece040412927be2",
+   "classification": "indeterminate",
+   "detail": {
+    "reason": "http_404"
+   }
+  },
+  {
+   "market_id": "0xa7b2adbc97c4bc438203c5eb63850e6e3fab2c8753ef3172c1df476f208d4260",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xa7b2adbc97c4bc438203c5eb63850e6e3fab2c8753ef3172c1df476f208d4260",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xa7b2c6bae0676769ab1d419eb3c0b2156d7a57104a3b735fb4f071b85c3de78b",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xa7b2c6bae0676769ab1d419eb3c0b2156d7a57104a3b735fb4f071b85c3de78b",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xa7b2cabe6466638637347bf3fac755dc0fa5ed6f31f4e59fef37496eb95dbb10",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xa7b2cabe6466638637347bf3fac755dc0fa5ed6f31f4e59fef37496eb95dbb10",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xa7b802e6dda4570479e291e5790613ef8097a3b4fc5c082dd9def15ab97bbf23",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xa7b802e6dda4570479e291e5790613ef8097a3b4fc5c082dd9def15ab97bbf23",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xa7bc9066ef012175ff82b5ab8cd8309e0686ec7e02d4e70f13c1b2c01f4b6278",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xa7bc9066ef012175ff82b5ab8cd8309e0686ec7e02d4e70f13c1b2c01f4b6278",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xa7cf623905218991d27d8322666ac09dbf52ecdbc8f8498a2db792854126ebbe",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xa7cf623905218991d27d8322666ac09dbf52ecdbc8f8498a2db792854126ebbe",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xa7ecb1e34642e58d479e209fa45e558e140c0fbfdcdf8663e0dd967736f8c575",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xa7ecb1e34642e58d479e209fa45e558e140c0fbfdcdf8663e0dd967736f8c575",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xa7ed22d24598a26e5aea50951805d8040b3fb416a17194e5e26e3d08e870bed9",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xa7ed22d24598a26e5aea50951805d8040b3fb416a17194e5e26e3d08e870bed9",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xa7ff180532ac8e0a5efa29eeee07fc8cfdc0cd3bd830ef93b5ca53cbb9922633",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xa7ff180532ac8e0a5efa29eeee07fc8cfdc0cd3bd830ef93b5ca53cbb9922633",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xa807e5a89d5371adc5b2d62310374dc1a58b34b28276f8d91108d419cee01b51",
+   "category": "Geopolitics",
+   "data_source": "background_backfill",
+   "clob_id": "0xa807e5a89d5371adc5b2d62310374dc1a58b34b28276f8d91108d419cee01b51",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xa8082a8c0cc46f33abf9b515eaad08387dee7aa0849789b3c579562b460c4533",
+   "category": "Geopolitics",
+   "data_source": "background_backfill",
+   "clob_id": "0xa8082a8c0cc46f33abf9b515eaad08387dee7aa0849789b3c579562b460c4533",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xa80c43690c162b9e035bce3fb85be8376bc552099416d3722c207ecb9ccfc58f",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xa80c43690c162b9e035bce3fb85be8376bc552099416d3722c207ecb9ccfc58f",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xa81031c0d48f834d0edcd5c0d7acba9e151e3049f886f6ab128e82d932da62ea",
+   "category": "Geopolitics",
+   "data_source": "background_backfill",
+   "clob_id": "0xa81031c0d48f834d0edcd5c0d7acba9e151e3049f886f6ab128e82d932da62ea",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xa81e63ff4a59e8611215a7cc37c86e4ac6164924b86a1f4aab73379a073f88fb",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xa81e63ff4a59e8611215a7cc37c86e4ac6164924b86a1f4aab73379a073f88fb",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xa8385abd97afc1601c28548fc257be5a732f54c26b046238929f92c4190980ad",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xa8385abd97afc1601c28548fc257be5a732f54c26b046238929f92c4190980ad",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xa84ebe4315aea73ffcce93948da4f78c3d045bd6f884df5aa4124a71f5d5b97b",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xa84ebe4315aea73ffcce93948da4f78c3d045bd6f884df5aa4124a71f5d5b97b",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xa855938dc4e43a2cbcb614854f29a5e7f032ff5dd1a33b255b6938ea46d63ce9",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xa855938dc4e43a2cbcb614854f29a5e7f032ff5dd1a33b255b6938ea46d63ce9",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xa86594cc30a08748fbf8406af27473294bc927873cb90c89b6e233b4c3af7499",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xa86594cc30a08748fbf8406af27473294bc927873cb90c89b6e233b4c3af7499",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xa884aea8dcefc81853bdce086f6f8ec8ab07bbf34f02e57385b2c10c358ff1e9",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xa884aea8dcefc81853bdce086f6f8ec8ab07bbf34f02e57385b2c10c358ff1e9",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xa88b4331ef3254c0088fb53b5fb04739521b344ce032f600c62036e3b024181d",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xa88b4331ef3254c0088fb53b5fb04739521b344ce032f600c62036e3b024181d",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xa88f153bab95c135adecb4ef146f208b3e9b4b023ddcb905b1cc5b8f1d0a6646",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xa88f153bab95c135adecb4ef146f208b3e9b4b023ddcb905b1cc5b8f1d0a6646",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xa892f28d0e44181c783b57d9fb5535833208a5a7b5e5fa57efb819e2f8ead600",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xa892f28d0e44181c783b57d9fb5535833208a5a7b5e5fa57efb819e2f8ead600",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xa89dab4d4bf98a4db3be0505210431c1b15101b7cdb7aa17602ce0b984af22fe",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xa89dab4d4bf98a4db3be0505210431c1b15101b7cdb7aa17602ce0b984af22fe",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xa89f516ada4672cfe4ed4921c9bb39e1664482d17593709bc68d6520853f6c91",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xa89f516ada4672cfe4ed4921c9bb39e1664482d17593709bc68d6520853f6c91",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xa8e117e0852bd52bed0523bc2dcf684804163e4f4977f03e55a83247360f9ace",
+   "category": "Geopolitics",
+   "data_source": "background_backfill",
+   "clob_id": "0xa8e117e0852bd52bed0523bc2dcf684804163e4f4977f03e55a83247360f9ace",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xa8edfe55964eeff0d37f538b3ea25dabf77246ef939a34372c5e94f87723f144",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xa8edfe55964eeff0d37f538b3ea25dabf77246ef939a34372c5e94f87723f144",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xa8efd2576ba9d88161cf22b0247d7b2eeba41803a7682e5308f954330f0ed0d0",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xa8efd2576ba9d88161cf22b0247d7b2eeba41803a7682e5308f954330f0ed0d0",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xa8ff8840eaeb505591531380d76bd63506b8eb44080321d6bd02a23a58cdf277",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xa8ff8840eaeb505591531380d76bd63506b8eb44080321d6bd02a23a58cdf277",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xa91ddfc41b279099da4d4ab260fdc50ed43c09f2b761d78e25c9ed0ffb0402d2",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xa91ddfc41b279099da4d4ab260fdc50ed43c09f2b761d78e25c9ed0ffb0402d2",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xa92aac656f465bc78738d94d6c569ba4df149e3e16d30082af09feabac179dc0",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xa92aac656f465bc78738d94d6c569ba4df149e3e16d30082af09feabac179dc0",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xa937bb926b429cda43ed8be2dea17a211c98233f1897cd7fb60675f5cbbe979d",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xa937bb926b429cda43ed8be2dea17a211c98233f1897cd7fb60675f5cbbe979d",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xa93cb56fcc403da7f5500046ad797db8e1d279e4c0cadb0f65dd9e51323d849c",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xa93cb56fcc403da7f5500046ad797db8e1d279e4c0cadb0f65dd9e51323d849c",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xab68e0499ffb00a893faaabeba144fe43be8d1b69bdd0e7739f8208253a69750",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xab68e0499ffb00a893faaabeba144fe43be8d1b69bdd0e7739f8208253a69750",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xac5acf33231e245fec071515eaec2245580017cbc21fd39ac9df55adc59e57e5",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xac5acf33231e245fec071515eaec2245580017cbc21fd39ac9df55adc59e57e5",
+   "classification": "indeterminate",
+   "detail": {
+    "reason": "http_404"
+   }
+  },
+  {
+   "market_id": "0xad23b96e7a01232f86955c2a719bd7b63f937e093a220bad52fbc8bd0664dedb",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xad23b96e7a01232f86955c2a719bd7b63f937e093a220bad52fbc8bd0664dedb",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xaed6455cc597aac64c06e4e85506a0efdbc1fe0d37824e77a29b09559214ada1",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xaed6455cc597aac64c06e4e85506a0efdbc1fe0d37824e77a29b09559214ada1",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xaf3bf8d44e923087523b3a40cb903eee8ed9edf98e97801d7428c4ec55faa24e",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xaf3bf8d44e923087523b3a40cb903eee8ed9edf98e97801d7428c4ec55faa24e",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xaf44d9c981fb7d830f358d651159cbe5c71cebcf853a1f518ac69915349b8403",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xaf44d9c981fb7d830f358d651159cbe5c71cebcf853a1f518ac69915349b8403",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xaf571957daa6b440aff3668559c7761bb89f82154eb6f562d44494a0df593657",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xaf571957daa6b440aff3668559c7761bb89f82154eb6f562d44494a0df593657",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xaf5763158056efaab03f1ef6b11437235ce5cb443a161d48b339a3b748d2268d",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xaf5763158056efaab03f1ef6b11437235ce5cb443a161d48b339a3b748d2268d",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xaf5dec83b4098b0cb4c0436f642236837ce87319e7429c7d2f0dd86133efd4e4",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xaf5dec83b4098b0cb4c0436f642236837ce87319e7429c7d2f0dd86133efd4e4",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xaf738ade65a375e596662e67b658e1cc99fa6de6ae2c50f36197b3c42a5e610e",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xaf738ade65a375e596662e67b658e1cc99fa6de6ae2c50f36197b3c42a5e610e",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xaf7a7e266c58b0670132984171585b9240632a5a407e9c4c7e9de2c4203d398e",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xaf7a7e266c58b0670132984171585b9240632a5a407e9c4c7e9de2c4203d398e",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xaf7e632ebe60128a9833d2fb51eed16e2bac92890d40d883c6d8cdb14c7dff4a",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xaf7e632ebe60128a9833d2fb51eed16e2bac92890d40d883c6d8cdb14c7dff4a",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xaf874c80349379303164629c3962b1456f667ca1d44edf95e0474dd13483a4b3",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xaf874c80349379303164629c3962b1456f667ca1d44edf95e0474dd13483a4b3",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xafa7cbf2bdb7ae71eadc0607903700a119f670296a3549ef92bd3c8424fc8b4d",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xafa7cbf2bdb7ae71eadc0607903700a119f670296a3549ef92bd3c8424fc8b4d",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xafa8f5d3fe3611a8de2ea250e8ae7151c98c08563f1a408fb7a7ba0c2aa103d1",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xafa8f5d3fe3611a8de2ea250e8ae7151c98c08563f1a408fb7a7ba0c2aa103d1",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xafab60675bd44e5beb21bf5d7cb61b9030b754a8572ef94352b395dd48558ebd",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xafab60675bd44e5beb21bf5d7cb61b9030b754a8572ef94352b395dd48558ebd",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xafb9e2e73bd30b38f6a6bbc77b0a2ae39cab28d036e1917656fb18c3a2c054db",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xafb9e2e73bd30b38f6a6bbc77b0a2ae39cab28d036e1917656fb18c3a2c054db",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xafc06aea99fd6f9d7ab0e4364f645ad43711bb085028912522d9f93b421f142f",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xafc06aea99fd6f9d7ab0e4364f645ad43711bb085028912522d9f93b421f142f",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb180e9dc07c37633541744711a43aaa70bf3a537b6e669e8c16909c7af39f0ad",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xb180e9dc07c37633541744711a43aaa70bf3a537b6e669e8c16909c7af39f0ad",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb2d731a19d79f893ac25eea49e9586bad297795e91d4bc113e7a4656141ab169",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb2d731a19d79f893ac25eea49e9586bad297795e91d4bc113e7a4656141ab169",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb2d876d58365e2c4c8af6a84df51a5425c8a3084b6485d7f4a10af29ce8f49e4",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb2d876d58365e2c4c8af6a84df51a5425c8a3084b6485d7f4a10af29ce8f49e4",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb2d89cc5caf4d0cc01526a933beceeb7fc7f650f06b0e4bd6847992f3460ba6b",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb2d89cc5caf4d0cc01526a933beceeb7fc7f650f06b0e4bd6847992f3460ba6b",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb2ef6fe3f14146a7cd1b800be50bcf24e7a3d8abd09b1a3ec84761921e6d57fa",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb2ef6fe3f14146a7cd1b800be50bcf24e7a3d8abd09b1a3ec84761921e6d57fa",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb2f8f1c9b5750b7d99d1c62b060b4dffac5b30082fd6b52234b5e9a90b0c15fc",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb2f8f1c9b5750b7d99d1c62b060b4dffac5b30082fd6b52234b5e9a90b0c15fc",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb305504ad6ca16df548c112bae52619ad984c1f091f2ff1d87ebbab4a31d6223",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb305504ad6ca16df548c112bae52619ad984c1f091f2ff1d87ebbab4a31d6223",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb30aea109e752d820bcca4d424f794084c58cbee78c748b9a4633e93f1f619b2",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb30aea109e752d820bcca4d424f794084c58cbee78c748b9a4633e93f1f619b2",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb323b44264cf4e125302ce5d812bec8fc7bfa56d087a925c42ad6b2a7961d1a2",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb323b44264cf4e125302ce5d812bec8fc7bfa56d087a925c42ad6b2a7961d1a2",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb32a8f9d6a33d17afda204649706b6a6e2684f5b4a983b3713da55b51fbe44af",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb32a8f9d6a33d17afda204649706b6a6e2684f5b4a983b3713da55b51fbe44af",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb32b82cadfb62a4cda93c450cec648a9d2b9de3575243a75757d7e587d60b5c8",
+   "category": "Geopolitics",
+   "data_source": "background_backfill",
+   "clob_id": "0xb32b82cadfb62a4cda93c450cec648a9d2b9de3575243a75757d7e587d60b5c8",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb33864a6acb46e0f24c0f9c287342f7bb7162c9577080e5e64f741ee5e99f72c",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb33864a6acb46e0f24c0f9c287342f7bb7162c9577080e5e64f741ee5e99f72c",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb3529e4cbcc5756ae7d5662ad1d6ddd8dd97b53bd459e2684af9bb8c4dbf582c",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xb3529e4cbcc5756ae7d5662ad1d6ddd8dd97b53bd459e2684af9bb8c4dbf582c",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb35680e90f5d777e1be123aea440fc0e1ec4e96a1a618b182e0e4f53b8e1c1cc",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb35680e90f5d777e1be123aea440fc0e1ec4e96a1a618b182e0e4f53b8e1c1cc",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb369cb28d9acfc154ccb30f13a355983771fcd06f057746e74c952f953794b7e",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb369cb28d9acfc154ccb30f13a355983771fcd06f057746e74c952f953794b7e",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb385cfb14cf0cf73fa17f2f1241dbdede37e5fdb05aed1eca59db2ed63f643fc",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb385cfb14cf0cf73fa17f2f1241dbdede37e5fdb05aed1eca59db2ed63f643fc",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb3891d3b59557cedde1dad5c365db1cff8dffb7aa189cf49ac87639af95a2468",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb3891d3b59557cedde1dad5c365db1cff8dffb7aa189cf49ac87639af95a2468",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb38afc7444a7bda0718a6997e53e761d22b5a781747642f17dfc66860f456350",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb38afc7444a7bda0718a6997e53e761d22b5a781747642f17dfc66860f456350",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb393e2a9f3c85fad61669866d5588b42033fc6a2fd78fe124eb9644fb4419713",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb393e2a9f3c85fad61669866d5588b42033fc6a2fd78fe124eb9644fb4419713",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb394c5e9b7d0c885b0af76aabf47992cf399aa21e6554a0a9990f07378b0da70",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb394c5e9b7d0c885b0af76aabf47992cf399aa21e6554a0a9990f07378b0da70",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb394f6cc7ae147c16deebd8d14fc2997c421de73c77560aeb0be5b8586ba30c9",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb394f6cc7ae147c16deebd8d14fc2997c421de73c77560aeb0be5b8586ba30c9",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb396c97d5e2a9a32137cfa128567500faf4413579bfc7d5daf81b76e6cad2cd4",
+   "category": "Geopolitics",
+   "data_source": "background_backfill",
+   "clob_id": "0xb396c97d5e2a9a32137cfa128567500faf4413579bfc7d5daf81b76e6cad2cd4",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb39e0d31a16bf622c459ebe01708ea08461cef4eb48c103f3ca79f42f060a5e3",
+   "category": "Geopolitics",
+   "data_source": "background_backfill",
+   "clob_id": "0xb39e0d31a16bf622c459ebe01708ea08461cef4eb48c103f3ca79f42f060a5e3",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb39eac53d6f459aa03c64163ac6ab0814eed5e03820e3deb6f84204b32886732",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb39eac53d6f459aa03c64163ac6ab0814eed5e03820e3deb6f84204b32886732",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb3a359b0b6027d4fae156051a5f02fb0fdc026b4af4db4fd7269173a31da89c3",
+   "category": "Geopolitics",
+   "data_source": "background_backfill",
+   "clob_id": "0xb3a359b0b6027d4fae156051a5f02fb0fdc026b4af4db4fd7269173a31da89c3",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb3a5ecd8d6b58789e2ce2535c891cc6744f8714aa5ddbb9fef82d04fd5c2dae8",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb3a5ecd8d6b58789e2ce2535c891cc6744f8714aa5ddbb9fef82d04fd5c2dae8",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb3a7b7d78e41acdb75f8b04ccfa84469a1e6a39c6544eaca600d13d51f1763bf",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb3a7b7d78e41acdb75f8b04ccfa84469a1e6a39c6544eaca600d13d51f1763bf",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb3b21c1f28f2324a4fd4470d0989670f845944e6e37253ff44f9ca3f4e54d951",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb3b21c1f28f2324a4fd4470d0989670f845944e6e37253ff44f9ca3f4e54d951",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb3b7d07b1904ad3f58105925130d5e49ce08a2d6f77b07857172ae763e50e563",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb3b7d07b1904ad3f58105925130d5e49ce08a2d6f77b07857172ae763e50e563",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb3b9f576df8efeab425798d605ee35ea09a5794365f3da77cd4f8cd8e8b0871c",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb3b9f576df8efeab425798d605ee35ea09a5794365f3da77cd4f8cd8e8b0871c",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb3c1598a60e2d038a90a43c5fdc2fcf6ac0fef3de5beb0a61062d4680f92b630",
+   "category": "Geopolitics",
+   "data_source": "background_backfill",
+   "clob_id": "0xb3c1598a60e2d038a90a43c5fdc2fcf6ac0fef3de5beb0a61062d4680f92b630",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb3cb64511434171602e5fb3516c3cc7c18b54a0def3d799cf306a4b987a7a07b",
+   "category": "Geopolitics",
+   "data_source": "background_backfill",
+   "clob_id": "0xb3cb64511434171602e5fb3516c3cc7c18b54a0def3d799cf306a4b987a7a07b",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb3d21b788d04e02a26029c54218973692da58fb930484c42a0a745fa81297def",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb3d21b788d04e02a26029c54218973692da58fb930484c42a0a745fa81297def",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb3dbadc92f3e0b82b3593354644a34855302bd81db1b461bdd8f672d680fa967",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb3dbadc92f3e0b82b3593354644a34855302bd81db1b461bdd8f672d680fa967",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb3f67ff73f83a3650273dc68d52161583f4a8a85e8144c0085d1d136d1f3285b",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb3f67ff73f83a3650273dc68d52161583f4a8a85e8144c0085d1d136d1f3285b",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb3fd81fb4514e79820cb41093a1c162e3f9f852fbbfb8a29df94b2ada0025762",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb3fd81fb4514e79820cb41093a1c162e3f9f852fbbfb8a29df94b2ada0025762",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb400be4ee7194437933b07e27bb391018b8d5e00060c6b91544173fe196333eb",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb400be4ee7194437933b07e27bb391018b8d5e00060c6b91544173fe196333eb",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb40227c5c2eed05dfbb7d06f016326a9f16a6898291c51af08d654e5a84c02b0",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb40227c5c2eed05dfbb7d06f016326a9f16a6898291c51af08d654e5a84c02b0",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb4067f81957ef1458e9712000807a4525c595f3c25a0c933ec2f69c0efb2e878",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb4067f81957ef1458e9712000807a4525c595f3c25a0c933ec2f69c0efb2e878",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb4085335ea7ffda07efc3a4ea6d9c69fb09847d3b6bdd9445daccaeafd398dc6",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb4085335ea7ffda07efc3a4ea6d9c69fb09847d3b6bdd9445daccaeafd398dc6",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb40c2b96357e732a81dd88d93e0d6658a71d674c035d063dbdec48d22c6ce133",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb40c2b96357e732a81dd88d93e0d6658a71d674c035d063dbdec48d22c6ce133",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb417204ffe273add7611fe43372031e53198d13de456e7c12345689299e9ddb3",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb417204ffe273add7611fe43372031e53198d13de456e7c12345689299e9ddb3",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb425d42083f64b2e14c27433b99faa471a1a9256ee5f172ad2e9f368b7109552",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb425d42083f64b2e14c27433b99faa471a1a9256ee5f172ad2e9f368b7109552",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb42fcb4160742306923387b3b8ac11b8685e9a16aa991d4de396284aa4eb11d4",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb42fcb4160742306923387b3b8ac11b8685e9a16aa991d4de396284aa4eb11d4",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb4419b2e4bb4315e0a407a22a3d7bb021d5ea176514a8270c80d77da7645b0e3",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb4419b2e4bb4315e0a407a22a3d7bb021d5ea176514a8270c80d77da7645b0e3",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb4453d4bd6614f76cadbac4f6e60e167a2b3b92c5b2a594fcbefdf20b5da2311",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb4453d4bd6614f76cadbac4f6e60e167a2b3b92c5b2a594fcbefdf20b5da2311",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb4456024a7f7445da26313fb1b11510c6a2b03fa80b6fe268389c4454ac4305b",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb4456024a7f7445da26313fb1b11510c6a2b03fa80b6fe268389c4454ac4305b",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb44b88cb0875d9c60b388b71c0a39e3a03b2e9ffd58ace19b81eb4ac8122c665",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb44b88cb0875d9c60b388b71c0a39e3a03b2e9ffd58ace19b81eb4ac8122c665",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb45b02bde2d71e8bb21da39ee46c01bed75c6e2a5daf974052cd7ca57319982f",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb45b02bde2d71e8bb21da39ee46c01bed75c6e2a5daf974052cd7ca57319982f",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb46419db6c7863c567b8b42ef31567b840b1e259a32a483687c15cfa9771341b",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb46419db6c7863c567b8b42ef31567b840b1e259a32a483687c15cfa9771341b",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb468127ea2c967dfc15557c3ca252893934373cce9e0045778e6f3f34d6aa494",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb468127ea2c967dfc15557c3ca252893934373cce9e0045778e6f3f34d6aa494",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb46ffe7f780a6cc6d8cde62f1be9707465db94143eab22b6fb8f8b87e0ca10f7",
+   "category": "Geopolitics",
+   "data_source": "background_backfill",
+   "clob_id": "0xb46ffe7f780a6cc6d8cde62f1be9707465db94143eab22b6fb8f8b87e0ca10f7",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb47567bb8d58a3910548587bfb418a798ea2bc2829cd483e6155305a2a9554de",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb47567bb8d58a3910548587bfb418a798ea2bc2829cd483e6155305a2a9554de",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb4763b0cd426a115244d0866362e679474e801d80966b799085cf34e63824eef",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb4763b0cd426a115244d0866362e679474e801d80966b799085cf34e63824eef",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb4764471ad1a03129357d5e07b16d2c74f0ef09b903897da69e9b798fa58abbc",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb4764471ad1a03129357d5e07b16d2c74f0ef09b903897da69e9b798fa58abbc",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb48363f308db61eeb28aff5788cdb7f6fd03907714b27ac50e0aad17c4b08ed0",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb48363f308db61eeb28aff5788cdb7f6fd03907714b27ac50e0aad17c4b08ed0",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb49f877498eeea8f2fe0287f8728e45b39306af2170c45937fd052696ecee264",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb49f877498eeea8f2fe0287f8728e45b39306af2170c45937fd052696ecee264",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb4a67adbcdcd477a990bc459c7cf25a5bc90a78076117cd9a9483ac9e85bfef9",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb4a67adbcdcd477a990bc459c7cf25a5bc90a78076117cd9a9483ac9e85bfef9",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb4b22ee50efa630184cfa86151bb83ddf137fee248a0bb71b877d978c7991bcd",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb4b22ee50efa630184cfa86151bb83ddf137fee248a0bb71b877d978c7991bcd",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb4bd46f1eda5f741d35d63de55fa61b991ce54eb16f6701aab999c2064f8ae62",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb4bd46f1eda5f741d35d63de55fa61b991ce54eb16f6701aab999c2064f8ae62",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb4c337f75aad7193e642cae5f075b70ec34fecc52c52eb29f5cac9b673873de3",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb4c337f75aad7193e642cae5f075b70ec34fecc52c52eb29f5cac9b673873de3",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb4c4b8753ac0ccc5905d6979b96a58236c52f9ea676562a17da6fb18e7d05a87",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb4c4b8753ac0ccc5905d6979b96a58236c52f9ea676562a17da6fb18e7d05a87",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb4e9927aa079fd09d5db095f284081cebbe4d1216f8c8982a29ccd8a33213add",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb4e9927aa079fd09d5db095f284081cebbe4d1216f8c8982a29ccd8a33213add",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb4fba606783db7f5c28cb5d8c8b0324503a57a998a38b7cf19e2a3b67401966c",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb4fba606783db7f5c28cb5d8c8b0324503a57a998a38b7cf19e2a3b67401966c",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb502f2822ef2048b4768b4f1bb08328875b9c64dd4d90d9f951a44b1f13a7d19",
+   "category": "Geopolitics",
+   "data_source": "background_backfill",
+   "clob_id": "0xb502f2822ef2048b4768b4f1bb08328875b9c64dd4d90d9f951a44b1f13a7d19",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb52370e4eb9c1a95809e7fee549781580938f6da5bab62edf66e775db670f326",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb52370e4eb9c1a95809e7fee549781580938f6da5bab62edf66e775db670f326",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb5652f14919497e7325100954d38c7c5f35f5988693103cbfd01ddf478eab921",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb5652f14919497e7325100954d38c7c5f35f5988693103cbfd01ddf478eab921",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb571f9daf46173f804fdce8b6398e3d557d34e1c686aaa268800470137909a42",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb571f9daf46173f804fdce8b6398e3d557d34e1c686aaa268800470137909a42",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb5a145923cd495c2144509038c0d03600564a7722b52be8a7d402fdaf8d88ae5",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb5a145923cd495c2144509038c0d03600564a7722b52be8a7d402fdaf8d88ae5",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb5a7845ed3eb2ebbfd5bcfb0120bdfa628904e261ff5db0694bd3b65f88d920c",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb5a7845ed3eb2ebbfd5bcfb0120bdfa628904e261ff5db0694bd3b65f88d920c",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb5b5c34c828c17287e65ebf9cf4f5caefeedfb656b4138212598abfe87edf079",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb5b5c34c828c17287e65ebf9cf4f5caefeedfb656b4138212598abfe87edf079",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb5c40924cfc3eba15aeeddd482db9e3d7d0a66d7138f384c10e5e0ad46febc73",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb5c40924cfc3eba15aeeddd482db9e3d7d0a66d7138f384c10e5e0ad46febc73",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb5f3599e6de7b01f433283b2b0a01a11cdbaed545d02924ae6c90e5429cbc23c",
+   "category": "Geopolitics",
+   "data_source": "background_backfill",
+   "clob_id": "0xb5f3599e6de7b01f433283b2b0a01a11cdbaed545d02924ae6c90e5429cbc23c",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb61d2916eb3685914a945d875c8cac20c0ed416e5feae761c301ef8f834a44da",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb61d2916eb3685914a945d875c8cac20c0ed416e5feae761c301ef8f834a44da",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb62cc1dfdecf0f6ceca2ab8951452eb5af8d1f60f095103aebe933e6bacec4b6",
+   "category": "Geopolitics",
+   "data_source": "background_backfill",
+   "clob_id": "0xb62cc1dfdecf0f6ceca2ab8951452eb5af8d1f60f095103aebe933e6bacec4b6",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb62d739e227bc11b76153c8046be0044177453b98dead3d73ff286c6f7f9597e",
+   "category": "Geopolitics",
+   "data_source": "background_backfill",
+   "clob_id": "0xb62d739e227bc11b76153c8046be0044177453b98dead3d73ff286c6f7f9597e",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb63fbd776203cada01a13bb21b3c52c500bcf904bdfc71627022db1f891f95c5",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xb63fbd776203cada01a13bb21b3c52c500bcf904bdfc71627022db1f891f95c5",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb65c6be7041f6fc4bb6456033255945509e94d37fdd2eddfa73f3fc767be68cb",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb65c6be7041f6fc4bb6456033255945509e94d37fdd2eddfa73f3fc767be68cb",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb65da5dbbbb097d353bfa9c7a9d94d4e634d8c8fded746a990af17b84290c437",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb65da5dbbbb097d353bfa9c7a9d94d4e634d8c8fded746a990af17b84290c437",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xb661ffa7fe2e634da9821d7a12a27ef21329c44302fdb5e5a13c754f81e0984f",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xb661ffa7fe2e634da9821d7a12a27ef21329c44302fdb5e5a13c754f81e0984f",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb6677fe451fc1949315ee2648cd5c4d78c0b65e8b147f9d72726e0c0da9ff84e",
+   "category": "Geopolitics",
+   "data_source": "background_backfill",
+   "clob_id": "0xb6677fe451fc1949315ee2648cd5c4d78c0b65e8b147f9d72726e0c0da9ff84e",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xb66b710cf927a7156315648b147d52696c16c6530a63fb7a5680daad408275f5",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xb66b710cf927a7156315648b147d52696c16c6530a63fb7a5680daad408275f5",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xb8b5349814450b8bba2ecdda2eeb9f48bd3c795bfb858bedf7a383712b877743",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xb8b5349814450b8bba2ecdda2eeb9f48bd3c795bfb858bedf7a383712b877743",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xbc5fe0ee81606e86701ed494665adb1f1480513ad08aa19cd12f2abadb674a91",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xbc5fe0ee81606e86701ed494665adb1f1480513ad08aa19cd12f2abadb674a91",
+   "classification": "indeterminate",
+   "detail": {
+    "reason": "http_404"
+   }
+  },
+  {
+   "market_id": "0xbc8fbe29eec8be37d06342967f927826d0b77b70a57fc49130532aa93e3c0247",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xbc8fbe29eec8be37d06342967f927826d0b77b70a57fc49130532aa93e3c0247",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xbc9af5e75568e61144c21afabfe952b0f9d4ed234a628e9671b081a4145cd10c",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xbc9af5e75568e61144c21afabfe952b0f9d4ed234a628e9671b081a4145cd10c",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xbca0183d52ac79842be5018198d353c62ce56037d2e70aa9e00f5e026f2b7d24",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xbca0183d52ac79842be5018198d353c62ce56037d2e70aa9e00f5e026f2b7d24",
+   "classification": "resolved",
+   "detail": {
+    "winner": "Yes"
+   }
+  },
+  {
+   "market_id": "0xbca6c65164317ece8320e2e814bf0f84c142e7ce3aa5c51a17209d45b9fb00eb",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xbca6c65164317ece8320e2e814bf0f84c142e7ce3aa5c51a17209d45b9fb00eb",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xbd0403049ab1355ba39a5df8267e21bdf88f49988b45c6aed5fa403c5ff222dd",
+   "category": "Elections",
+   "data_source": "background_backfill",
+   "clob_id": "0xbd0403049ab1355ba39a5df8267e21bdf88f49988b45c6aed5fa403c5ff222dd",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xbd0d0ab474c1b78dc5f50c001935bd8d26cb85ac9315cc9f50470aaabe2a7a2b",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xbd0d0ab474c1b78dc5f50c001935bd8d26cb85ac9315cc9f50470aaabe2a7a2b",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xbd395d67357a1862b014dfad77cb770824a64734949e789ea631509a4e1879d6",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xbd395d67357a1862b014dfad77cb770824a64734949e789ea631509a4e1879d6",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xbda477045296cf5eb84438e15e2d8d0eda814a1777b20cc71436cb422fc15a2d",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xbda477045296cf5eb84438e15e2d8d0eda814a1777b20cc71436cb422fc15a2d",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xbdf0bbe0d1fd006aec6deef5482ca94b8ff0ceea73860bda0a337c4ce50d4448",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xbdf0bbe0d1fd006aec6deef5482ca94b8ff0ceea73860bda0a337c4ce50d4448",
+   "classification": "resolved",
+   "detail": {
+    "winner": "No"
+   }
+  },
+  {
+   "market_id": "0xbebf0fc7a82e0a37c75f5ebd511c9a321f754bada306de51fb3ee99838754c57",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xbebf0fc7a82e0a37c75f5ebd511c9a321f754bada306de51fb3ee99838754c57",
+   "classification": "indeterminate",
+   "detail": {
+    "reason": "http_404"
+   }
+  },
+  {
+   "market_id": "0xbf4144ee69c04fafaf23f455cee1e240cb4a643aec6276ef6159929a4a070280",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xbf4144ee69c04fafaf23f455cee1e240cb4a643aec6276ef6159929a4a070280",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xbfeb6d4cf3eab6071e204219b0647c8224d63a12778df467311b5f2a4b3a5bd4",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xbfeb6d4cf3eab6071e204219b0647c8224d63a12778df467311b5f2a4b3a5bd4",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xc0f076bc4d90a44df34a729277e9d1f294f0cb60d2c3b1b3800908b1e15b923b",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xc0f076bc4d90a44df34a729277e9d1f294f0cb60d2c3b1b3800908b1e15b923b",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xc1e1d5a2814a6abf40e304c00a43cfd05519caa11b04665c709b0a94d8c34d05",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xc1e1d5a2814a6abf40e304c00a43cfd05519caa11b04665c709b0a94d8c34d05",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xc20bd18955fdcaea6f4f20c37d84d5388e91fc4638490ca4facf8be523dc6c13",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xc20bd18955fdcaea6f4f20c37d84d5388e91fc4638490ca4facf8be523dc6c13",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xc5b92069aa1a3319830b2e44bf51ecee36e849790bde3fd68339f5beb5a8ffad",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xc5b92069aa1a3319830b2e44bf51ecee36e849790bde3fd68339f5beb5a8ffad",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xc8c5760c26490b0cd0bedcf1c61aa86c5e09c8b2886b84ff4ea2db81d5f29388",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xc8c5760c26490b0cd0bedcf1c61aa86c5e09c8b2886b84ff4ea2db81d5f29388",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xc9e6a0be2fe2d015dc1cd9d75f4dc5b48dddee1a7043935ef5d1e981c55d5ffc",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xc9e6a0be2fe2d015dc1cd9d75f4dc5b48dddee1a7043935ef5d1e981c55d5ffc",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xccd6eb4ec0c8ac284e280ab6ceedcdd1a1813d1e130892ed1b6e98189077013e",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xccd6eb4ec0c8ac284e280ab6ceedcdd1a1813d1e130892ed1b6e98189077013e",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xcceae66d81c60f90c9679ab531b865bd7e9f95cc54f7b0634a24095519b10d65",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xcceae66d81c60f90c9679ab531b865bd7e9f95cc54f7b0634a24095519b10d65",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xcd953913ecd5bf5387092bf447fe13190871b2bc9436c85b0918b4767c3fa58a",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xcd953913ecd5bf5387092bf447fe13190871b2bc9436c85b0918b4767c3fa58a",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xd059a400cfceb9720559a5a67f53aa94381da88fa2007af5ce30f75facf57953",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xd059a400cfceb9720559a5a67f53aa94381da88fa2007af5ce30f75facf57953",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xd50c016598c499fceea10a1a714e48d9b4953487fe215daeaf916068fae722f1",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xd50c016598c499fceea10a1a714e48d9b4953487fe215daeaf916068fae722f1",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xd59f25520a8c0ea44a9c9741a97c8c3d769e21f1479b9a14e1a9d475e91f522a",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xd59f25520a8c0ea44a9c9741a97c8c3d769e21f1479b9a14e1a9d475e91f522a",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xd5ca3607dd154fe4f82f691e4213ccf77547d1685b78a13a064e343dcfa3c31c",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xd5ca3607dd154fe4f82f691e4213ccf77547d1685b78a13a064e343dcfa3c31c",
+   "classification": "indeterminate",
+   "detail": {
+    "reason": "http_404"
+   }
+  },
+  {
+   "market_id": "0xd66eadbd64b3e815e31c7994470b44fe15c7ef1146f78937d0cfaa4c04fcfda7",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xd66eadbd64b3e815e31c7994470b44fe15c7ef1146f78937d0cfaa4c04fcfda7",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xd6a1ff4759cfd9feca2b789e90f5081ce9fd7ba3db37bca669db8ca6c13dcf6d",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xd6a1ff4759cfd9feca2b789e90f5081ce9fd7ba3db37bca669db8ca6c13dcf6d",
+   "classification": "indeterminate",
+   "detail": {
+    "reason": "http_404"
+   }
+  },
+  {
+   "market_id": "0xdab2a45cdb460dde36d3ef90e89222f5251bfbc6d6b721764803d8d95bdab6a7",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xdab2a45cdb460dde36d3ef90e89222f5251bfbc6d6b721764803d8d95bdab6a7",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xe109380d49786b25c8c20ca88bfbf5ffabbe0a91a25a9d8795312d5a9701f998",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xe109380d49786b25c8c20ca88bfbf5ffabbe0a91a25a9d8795312d5a9701f998",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xe655180a65e17b6959aa722821312de23513cba6c6d2e3a55f47f198977316bf",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xe655180a65e17b6959aa722821312de23513cba6c6d2e3a55f47f198977316bf",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xe682e894cc84134d5ae4e07f8f16dbee6e57543507234ac9e42fe2bf4adf75d8",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xe682e894cc84134d5ae4e07f8f16dbee6e57543507234ac9e42fe2bf4adf75d8",
+   "classification": "indeterminate",
+   "detail": {
+    "reason": "http_404"
+   }
+  },
+  {
+   "market_id": "0xe70151207ba1c9696abc51293ff65c9d6e8cbb133af3b5430453d112977cd252",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xe70151207ba1c9696abc51293ff65c9d6e8cbb133af3b5430453d112977cd252",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xe8047958f79f888990bc4857075a1df6f3144feacb6e8c6093c589d8adbe7985",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xe8047958f79f888990bc4857075a1df6f3144feacb6e8c6093c589d8adbe7985",
+   "classification": "indeterminate",
+   "detail": {
+    "reason": "http_404"
+   }
+  },
+  {
+   "market_id": "0xe8f6367e334e7440084773c1dc7ec294d37cf39ea6b84b470bbe2bb26f506436",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xe8f6367e334e7440084773c1dc7ec294d37cf39ea6b84b470bbe2bb26f506436",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xe9b5814b6b770008d8ed384c45d41703e648d9dce3cdf3d2d15108431d4d865f",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xe9b5814b6b770008d8ed384c45d41703e648d9dce3cdf3d2d15108431d4d865f",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xea3b1d0099085f43a3098b3e1fbcbe62284ce1bda99384b3d46b82ff202ac016",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xea3b1d0099085f43a3098b3e1fbcbe62284ce1bda99384b3d46b82ff202ac016",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xeec26e9d0efd895ba65bc3f1f0cbe99f66a56833682430dc266277a6c9e6e60f",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xeec26e9d0efd895ba65bc3f1f0cbe99f66a56833682430dc266277a6c9e6e60f",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xeee75e18b53425c67035084fb8be5414331614ab4e5ec59574bc73e11817be93",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xeee75e18b53425c67035084fb8be5414331614ab4e5ec59574bc73e11817be93",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xf67cdc929ad7442696e3c61a88445a5cf06d99e1a6e7eb41f17e48d20da35ee9",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xf67cdc929ad7442696e3c61a88445a5cf06d99e1a6e7eb41f17e48d20da35ee9",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xf9b68b99b3ca714f63e49c5a595ade99bf65585e00bfa0e2ebd112cdc090456c",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xf9b68b99b3ca714f63e49c5a595ade99bf65585e00bfa0e2ebd112cdc090456c",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xf9b998d7de887c1c905b1e1bd9ae38e32eda748c42bd958d3ba1cec9bf5ab79f",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xf9b998d7de887c1c905b1e1bd9ae38e32eda748c42bd958d3ba1cec9bf5ab79f",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xfaaccc2fc08feba79d3743e59af7a3d3c6e17bcb8100198d6f385a2b0d5d5cff",
+   "category": "Geopolitics",
+   "data_source": "live_monitoring",
+   "clob_id": "0xfaaccc2fc08feba79d3743e59af7a3d3c6e17bcb8100198d6f385a2b0d5d5cff",
+   "classification": "indeterminate",
+   "detail": {
+    "reason": "http_404"
+   }
+  },
+  {
+   "market_id": "0xfb866625fdfccc5a58ab7f1b53d6c7b5ac214ee38fa38668312b4adc2ee2c1d0",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xfb866625fdfccc5a58ab7f1b53d6c7b5ac214ee38fa38668312b4adc2ee2c1d0",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xfbd0a65112e26d9a2a68dc47f8a95c6c14d22650cb4837c5429b546726661b71",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xfbd0a65112e26d9a2a68dc47f8a95c6c14d22650cb4837c5429b546726661b71",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xfc5c740e4617eb9908ceada7c91bfbe1cd41f172d703ef811d544e60a7a70bb5",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xfc5c740e4617eb9908ceada7c91bfbe1cd41f172d703ef811d544e60a7a70bb5",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xfc63bcdc71629dd77fba7e016021e4d9283d972d2a06f8552cbd25f87e5ce918",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xfc63bcdc71629dd77fba7e016021e4d9283d972d2a06f8552cbd25f87e5ce918",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xfe9d1a32b46991e6895baece1bf6bb1467b814a28aefd6f33f13c6ba91b8d3c9",
+   "category": "Elections",
+   "data_source": "live_monitoring",
+   "clob_id": "0xfe9d1a32b46991e6895baece1bf6bb1467b814a28aefd6f33f13c6ba91b8d3c9",
+   "classification": "open",
+   "detail": {}
+  },
+  {
+   "market_id": "0xffc0030fa887b259b313f7a695e34ce8776fdf1b674d1d7812f0e31782c3aca0",
+   "category": "Elections",
+   "data_source": "historical_backfill",
+   "clob_id": "0xffc0030fa887b259b313f7a695e34ce8776fdf1b674d1d7812f0e31782c3aca0",
+   "classification": "open",
+   "detail": {}
+  }
+ ]
+}
