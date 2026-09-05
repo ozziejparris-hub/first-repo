@@ -1,0 +1,2737 @@
+{
+  "spec": "directional_skill_diagnostic",
+  "seed": 42,
+  "reps": 1500,
+  "t_split": "2026-04-01 00:00:00",
+  "min_trades_per_trader": 10,
+  "min_trades_split_half": 20,
+  "alpha": 0.05,
+  "generated_at": "2026-09-05T16:12:35.383701+00:00",
+  "diagnostic_script_commit": "7aaf8d9a02cb3e5316bd12e520e88e02f586cfd8",
+  "cohort": {
+    "n_total_frozen": 169,
+    "n_zero_position": 28,
+    "n_below_min": 68,
+    "n_classifiable": 73,
+    "raw_skilled_count": 19,
+    "raw_rate": 0.2602739726027397,
+    "bh_skilled_count": 14,
+    "bh_rate": 0.1917808219178082,
+    "aggregate": {
+      "actual": 90101.00264140002,
+      "null_p95": 174136.679327598,
+      "p_value": 0.21385742838107927,
+      "skilled": false,
+      "percentile_rank": 78.66666666666666
+    },
+    "per_trader": {
+      "0x042a1caf0b0d51d4fe5abc5d8832c2c9a5ffb153": {
+        "actual": 85.26391999499833,
+        "null_p95": 373.97458262244265,
+        "p_value": 0.48634243837441704,
+        "skilled": false,
+        "percentile_rank": 51.4,
+        "n_positions": 37,
+        "bh_significant": false
+      },
+      "0x0b9ee332cef4ace68b10a546475af5cbf331154a": {
+        "actual": 150.605059260103,
+        "null_p95": 104.60694987204836,
+        "p_value": 0.0033311125916055963,
+        "skilled": true,
+        "percentile_rank": 99.73333333333333,
+        "n_positions": 13,
+        "bh_significant": true
+      },
+      "0x0cb10c40b0776e9ee8cef970af85724654dda76c": {
+        "actual": 343.5150670076029,
+        "null_p95": 642.2561861043478,
+        "p_value": 0.22451698867421718,
+        "skilled": false,
+        "percentile_rank": 77.60000000000001,
+        "n_positions": 87,
+        "bh_significant": false
+      },
+      "0x1424a9e0a0def5a86c3c6cffbd8b6c65e1b12c7f": {
+        "actual": -433.7559491449716,
+        "null_p95": 1961.3135335079749,
+        "p_value": 0.6275816122584943,
+        "skilled": false,
+        "percentile_rank": 37.266666666666666,
+        "n_positions": 37,
+        "bh_significant": false
+      },
+      "0x1e5b7d52695b34438b8021048d9a5c634f3b73d0": {
+        "actual": 31.396326655287588,
+        "null_p95": 48.379776667159945,
+        "p_value": 0.16722185209860094,
+        "skilled": false,
+        "percentile_rank": 83.33333333333334,
+        "n_positions": 28,
+        "bh_significant": false
+      },
+      "0x1f5a521a3264025f8e9660a1b11798300f3a1d35": {
+        "actual": 228.75726119999996,
+        "null_p95": 126.18099499999995,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 22,
+        "bh_significant": true
+      },
+      "0x21d5d6326f480863e1d00c5d52bba19d9cec9925": {
+        "actual": 531.2931214051187,
+        "null_p95": 308.1673568790847,
+        "p_value": 0.001998667554963358,
+        "skilled": true,
+        "percentile_rank": 99.86666666666667,
+        "n_positions": 78,
+        "bh_significant": true
+      },
+      "0x257309c4c37a38226e6921caa6b9610a23e403b1": {
+        "actual": -4.661424663143308,
+        "null_p95": 14.616952209800314,
+        "p_value": 0.6322451698867422,
+        "skilled": false,
+        "percentile_rank": 36.8,
+        "n_positions": 17,
+        "bh_significant": false
+      },
+      "0x29170d3d0bfdb77b46ebac4f7a3033fba68ebe8f": {
+        "actual": 946.2201079215747,
+        "null_p95": 796.0050151767374,
+        "p_value": 0.001998667554963358,
+        "skilled": true,
+        "percentile_rank": 99.86666666666667,
+        "n_positions": 14,
+        "bh_significant": true
+      },
+      "0x29d337076f24d135b7b2b08796edfff4e32cb2ed": {
+        "actual": -3959.9748853534834,
+        "null_p95": 6818.766892419495,
+        "p_value": 0.8047968021319121,
+        "skilled": false,
+        "percentile_rank": 19.53333333333333,
+        "n_positions": 81,
+        "bh_significant": false
+      },
+      "0x2c0e7bc014f7ca17b07350fb2290e40bbfa27ee8": {
+        "actual": 135.96636903975082,
+        "null_p95": 143.77369405390965,
+        "p_value": 0.06462358427714857,
+        "skilled": false,
+        "percentile_rank": 93.60000000000001,
+        "n_positions": 37,
+        "bh_significant": false
+      },
+      "0x30d1c420d1abde9442d6762dd6f6d5f92df04525": {
+        "actual": 411.5995581628353,
+        "null_p95": 214.00739562044956,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 68,
+        "bh_significant": true
+      },
+      "0x368ba69507fd67972059fa178af5e459b72f2458": {
+        "actual": 1237.9496947016091,
+        "null_p95": 2186.2417600081253,
+        "p_value": 0.22451698867421718,
+        "skilled": false,
+        "percentile_rank": 77.60000000000001,
+        "n_positions": 23,
+        "bh_significant": false
+      },
+      "0x3bcf0c1c1a3356b3e30054f24baece1ec59be964": {
+        "actual": 743.7781509357419,
+        "null_p95": 427.9690357271674,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 20,
+        "bh_significant": true
+      },
+      "0x413531f78b28c2f2014dd82e92f46802769ce462": {
+        "actual": -273.23189806819096,
+        "null_p95": 522.5551475561668,
+        "p_value": 0.8194536975349767,
+        "skilled": false,
+        "percentile_rank": 18.066666666666666,
+        "n_positions": 25,
+        "bh_significant": false
+      },
+      "0x478b202e6bb184505db2dbd382349cbd55518edb": {
+        "actual": 15.184081362030255,
+        "null_p95": 19.398560534059552,
+        "p_value": 0.0966022651565623,
+        "skilled": false,
+        "percentile_rank": 90.4,
+        "n_positions": 25,
+        "bh_significant": false
+      },
+      "0x4a7082261f570297d3052f5cbdb0a0e33f85a50b": {
+        "actual": -158.89376339945545,
+        "null_p95": 213.02181885507022,
+        "p_value": 0.8820786142571619,
+        "skilled": false,
+        "percentile_rank": 11.799999999999999,
+        "n_positions": 73,
+        "bh_significant": false
+      },
+      "0x4d1bcbaeed22c6da173b1a356c3c6d2270081419": {
+        "actual": 375.61341047117594,
+        "null_p95": 1607.2468162887446,
+        "p_value": 0.4103930712858095,
+        "skilled": false,
+        "percentile_rank": 59.0,
+        "n_positions": 50,
+        "bh_significant": false
+      },
+      "0x4fd22bdf1bcbf17a83afd1b630259c125632943b": {
+        "actual": -38.86153482007013,
+        "null_p95": 33.07469368925021,
+        "p_value": 0.9880079946702198,
+        "skilled": false,
+        "percentile_rank": 1.2,
+        "n_positions": 19,
+        "bh_significant": false
+      },
+      "0x51b22927d7b99ea9477a6c99b8c9397e6a4110ce": {
+        "actual": -242.93237621655544,
+        "null_p95": 169.87745945760756,
+        "p_value": 0.9973351099267155,
+        "skilled": false,
+        "percentile_rank": 0.26666666666666666,
+        "n_positions": 103,
+        "bh_significant": false
+      },
+      "0x55f35253852930ef05a1a3f8dcd0007f6b0acada": {
+        "actual": -1780.6205513946375,
+        "null_p95": 7137.757891753652,
+        "p_value": 0.6129247168554297,
+        "skilled": false,
+        "percentile_rank": 38.733333333333334,
+        "n_positions": 20,
+        "bh_significant": false
+      },
+      "0x598e55c3a20e5ac9193ab0eed24bc18884cbbe98": {
+        "actual": -9.68694582500801,
+        "null_p95": 12.71808405876969,
+        "p_value": 0.8874083944037309,
+        "skilled": false,
+        "percentile_rank": 11.266666666666666,
+        "n_positions": 48,
+        "bh_significant": false
+      },
+      "0x5b8f191a4a3e66fe9b7348891f21021399762c14": {
+        "actual": -1150.9631154661602,
+        "null_p95": 3140.9649035809557,
+        "p_value": 0.6129247168554297,
+        "skilled": false,
+        "percentile_rank": 38.733333333333334,
+        "n_positions": 129,
+        "bh_significant": false
+      },
+      "0x5f0b2ef77500dcda06d15179720b39772d1f2305": {
+        "actual": -5.6155777613465965,
+        "null_p95": 27.513358269214145,
+        "p_value": 0.6375749500333111,
+        "skilled": false,
+        "percentile_rank": 36.266666666666666,
+        "n_positions": 150,
+        "bh_significant": false
+      },
+      "0x686d5bfc5aee6aaed7bf6a11baef5b57e57d1a68": {
+        "actual": -3.4888989350613095,
+        "null_p95": 12.550129931770845,
+        "p_value": 0.6668887408394404,
+        "skilled": false,
+        "percentile_rank": 33.33333333333333,
+        "n_positions": 63,
+        "bh_significant": false
+      },
+      "0x6c7d00dbfa575d39b1d0b085e2ad496b629f4cc3": {
+        "actual": -33.12820223507562,
+        "null_p95": 29.42820355947553,
+        "p_value": 0.966022651565623,
+        "skilled": false,
+        "percentile_rank": 3.4000000000000004,
+        "n_positions": 13,
+        "bh_significant": false
+      },
+      "0x6cb6e442305e583b8fe0aeddd7a95f971c66ec83": {
+        "actual": 4259.235281583098,
+        "null_p95": 1954.8059398541893,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 91,
+        "bh_significant": true
+      },
+      "0x6f36ce54f16757df7f4dd693433dfe8932f089ca": {
+        "actual": 74.81202149895282,
+        "null_p95": 70.7845570055387,
+        "p_value": 0.03664223850766156,
+        "skilled": true,
+        "percentile_rank": 96.39999999999999,
+        "n_positions": 62,
+        "bh_significant": false
+      },
+      "0x7818687f1c2cda416877ab68d18d2c9c25f9d185": {
+        "actual": -94.85905085574984,
+        "null_p95": 1196.8955829785903,
+        "p_value": 0.5569620253164557,
+        "skilled": false,
+        "percentile_rank": 44.333333333333336,
+        "n_positions": 42,
+        "bh_significant": false
+      },
+      "0x7a3c613f4db5ec4f6f9cb8583ba45fd2fe41977c": {
+        "actual": 3466.904948428487,
+        "null_p95": 3662.912236967243,
+        "p_value": 0.07794803464357095,
+        "skilled": false,
+        "percentile_rank": 92.26666666666667,
+        "n_positions": 35,
+        "bh_significant": false
+      },
+      "0x7f51fe892219f137305b68f29d3189ec26ecd389": {
+        "actual": 188.35701850807646,
+        "null_p95": 98.5469789563509,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 66,
+        "bh_significant": true
+      },
+      "0x848df648f91091f0f90d941990764c895d1235e6": {
+        "actual": -239.86361076869593,
+        "null_p95": 1419.2614150084257,
+        "p_value": 0.6042638241172552,
+        "skilled": false,
+        "percentile_rank": 39.6,
+        "n_positions": 69,
+        "bh_significant": false
+      },
+      "0x8a1e1e8fec1fb91f12ba3b8ebec52d2eda21bd03": {
+        "actual": -1991.3100906160596,
+        "null_p95": 1195.6628092931187,
+        "p_value": 0.9966688874083944,
+        "skilled": false,
+        "percentile_rank": 0.33333333333333337,
+        "n_positions": 87,
+        "bh_significant": false
+      },
+      "0x8a7b576b7a53ef54876f9eca18bcd84f12d8782f": {
+        "actual": -474.7679808663565,
+        "null_p95": 568.0240029451222,
+        "p_value": 0.508327781479014,
+        "skilled": false,
+        "percentile_rank": 49.2,
+        "n_positions": 16,
+        "bh_significant": false
+      },
+      "0x8ae4c80b281c2e65796e10c406dd86952224273e": {
+        "actual": -44.16949690989207,
+        "null_p95": 52.918700099097144,
+        "p_value": 0.6635576282478348,
+        "skilled": false,
+        "percentile_rank": 33.666666666666664,
+        "n_positions": 12,
+        "bh_significant": false
+      },
+      "0x90c4fb7313ab0492bf991a82f46bd4c581087d1d": {
+        "actual": 4.13514036145754,
+        "null_p95": 22.65585331854246,
+        "p_value": 0.41372418387741505,
+        "skilled": false,
+        "percentile_rank": 58.666666666666664,
+        "n_positions": 10,
+        "bh_significant": false
+      },
+      "0x9690d9f51b618222c29567c3b39aac2935a5f2d5": {
+        "actual": 753.7933545419936,
+        "null_p95": 1550.335036476413,
+        "p_value": 0.2211858760826116,
+        "skilled": false,
+        "percentile_rank": 77.93333333333334,
+        "n_positions": 50,
+        "bh_significant": false
+      },
+      "0x97ead83eb0e6b7f142e63284791882f05ddf3363": {
+        "actual": 452.8396106869785,
+        "null_p95": 5762.518878468543,
+        "p_value": 0.4643570952698201,
+        "skilled": false,
+        "percentile_rank": 53.6,
+        "n_positions": 106,
+        "bh_significant": false
+      },
+      "0x9b5fb62ff41e104e65fa6cc4e57575ebd05f11c5": {
+        "actual": -421.7903941448933,
+        "null_p95": 321.1275683913487,
+        "p_value": 0.9966688874083944,
+        "skilled": false,
+        "percentile_rank": 0.33333333333333337,
+        "n_positions": 58,
+        "bh_significant": false
+      },
+      "0x9ca119b8cd7bdb890aecf1ff3b0f6e3a45cc13b5": {
+        "actual": -6242.573742627371,
+        "null_p95": 8015.414990743806,
+        "p_value": 0.8700866089273818,
+        "skilled": false,
+        "percentile_rank": 13.0,
+        "n_positions": 89,
+        "bh_significant": false
+      },
+      "0x9cb98fc57fe8a3bdf75c3b48bd419e5d262f7b80": {
+        "actual": 145.0174808139309,
+        "null_p95": 247.08830482899683,
+        "p_value": 0.301798800799467,
+        "skilled": false,
+        "percentile_rank": 69.86666666666666,
+        "n_positions": 26,
+        "bh_significant": false
+      },
+      "0x9d331d15bc923fb01acc145057efec8d17e46d64": {
+        "actual": -69.17807410252838,
+        "null_p95": 149.5822124826986,
+        "p_value": 0.748834110592938,
+        "skilled": false,
+        "percentile_rank": 25.133333333333336,
+        "n_positions": 15,
+        "bh_significant": false
+      },
+      "0x9def9524630e31ff90f884eed32c3eecfbf8d1a5": {
+        "actual": 1735.0469599608625,
+        "null_p95": 1782.4166900675925,
+        "p_value": 0.0626249167221852,
+        "skilled": false,
+        "percentile_rank": 93.8,
+        "n_positions": 29,
+        "bh_significant": false
+      },
+      "0xa0b9c52dcacc522b3e73b7756c44c9581d566048": {
+        "actual": -81.15664340476191,
+        "null_p95": 237.85695753571426,
+        "p_value": 0.6888740839440373,
+        "skilled": false,
+        "percentile_rank": 31.133333333333336,
+        "n_positions": 13,
+        "bh_significant": false
+      },
+      "0xae460abfd723d5b9005adcec714c21c9cb4779a6": {
+        "actual": 625.3615360869711,
+        "null_p95": 539.5187917865907,
+        "p_value": 0.0313124583610926,
+        "skilled": true,
+        "percentile_rank": 96.93333333333334,
+        "n_positions": 47,
+        "bh_significant": false
+      },
+      "0xb557dc93416e066a090e504fe9691bffad0def84": {
+        "actual": -44.07026136748356,
+        "null_p95": 304.06781032727713,
+        "p_value": 0.5889407061958695,
+        "skilled": false,
+        "percentile_rank": 41.13333333333333,
+        "n_positions": 77,
+        "bh_significant": false
+      },
+      "0xb8d2bf9500e4731b09f54c7ebec6bf89899ec66b": {
+        "actual": 461.21731607488306,
+        "null_p95": 6131.8400853695,
+        "p_value": 0.4876748834110593,
+        "skilled": false,
+        "percentile_rank": 51.26666666666667,
+        "n_positions": 20,
+        "bh_significant": false
+      },
+      "0xbc43a2f0deb85ba4ad316300762972089c911540": {
+        "actual": 33255.3372873943,
+        "null_p95": 13622.488612765192,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 49,
+        "bh_significant": true
+      },
+      "0xbc6bfbf1a94c441516b022a70f85a02c6dfffa9e": {
+        "actual": 94.9637479797831,
+        "null_p95": 162.5682638820743,
+        "p_value": 0.2984676882078614,
+        "skilled": false,
+        "percentile_rank": 70.19999999999999,
+        "n_positions": 38,
+        "bh_significant": false
+      },
+      "0xbdd08fc7a71196e4aa28741b903cb8e8ccbe550a": {
+        "actual": 111.11691118137952,
+        "null_p95": 114.1903215732601,
+        "p_value": 0.05463024650233178,
+        "skilled": false,
+        "percentile_rank": 94.6,
+        "n_positions": 24,
+        "bh_significant": false
+      },
+      "0xc9dcc3d90ad3e34fe4132eb8661ae728d6da9026": {
+        "actual": 1299.4766012180505,
+        "null_p95": 479.1473817924994,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 39,
+        "bh_significant": true
+      },
+      "0xd04af16a69286d40c383342d6eef7a89f76bd7ec": {
+        "actual": -256.4431997711916,
+        "null_p95": 252.18194579926853,
+        "p_value": 0.9367088607594937,
+        "skilled": false,
+        "percentile_rank": 6.333333333333334,
+        "n_positions": 19,
+        "bh_significant": false
+      },
+      "0xd10f60b88b8528db901b0fb7aecc07aa820cf12f": {
+        "actual": 2408.2413154467677,
+        "null_p95": 6376.626523128726,
+        "p_value": 0.28181212524983346,
+        "skilled": false,
+        "percentile_rank": 71.86666666666667,
+        "n_positions": 29,
+        "bh_significant": false
+      },
+      "0xd286876350bf833452276bec80d4388c6341d55d": {
+        "actual": 50.256320214013684,
+        "null_p95": 22.864031110789472,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 24,
+        "bh_significant": true
+      },
+      "0xd372cc38c91e7b3e9220c6a714cf64be36bad7c3": {
+        "actual": -5.967881607828268,
+        "null_p95": 14.790199707913201,
+        "p_value": 0.6848767488341105,
+        "skilled": false,
+        "percentile_rank": 31.533333333333335,
+        "n_positions": 19,
+        "bh_significant": false
+      },
+      "0xd44e974a3edb232aa4aedbdcc59792b76a5f67e2": {
+        "actual": 27472.783047830566,
+        "null_p95": 9016.106992288998,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 69,
+        "bh_significant": true
+      },
+      "0xdaa6a2cd4ba545befb3dbdc25d2b444c46873e62": {
+        "actual": 579.0317353572451,
+        "null_p95": 516.5113316937516,
+        "p_value": 0.0313124583610926,
+        "skilled": true,
+        "percentile_rank": 96.93333333333334,
+        "n_positions": 43,
+        "bh_significant": false
+      },
+      "0xdbd05d3401da35da06f3dabe4288f1e07377edc4": {
+        "actual": 0.9428815428088457,
+        "null_p95": 118.00817057095672,
+        "p_value": 0.49300466355762823,
+        "skilled": false,
+        "percentile_rank": 50.73333333333333,
+        "n_positions": 23,
+        "bh_significant": false
+      },
+      "0xdc03d611e5bcc9f1c87edb95edeb91671471804c": {
+        "actual": 138015.06605598878,
+        "null_p95": 121777.82437270408,
+        "p_value": 0.021319120586275817,
+        "skilled": true,
+        "percentile_rank": 97.93333333333332,
+        "n_positions": 129,
+        "bh_significant": false
+      },
+      "0xdfe3fedc5c7679be42c3d393e99d4b55247b73c4": {
+        "actual": -89443.9922402599,
+        "null_p95": 93583.88958380671,
+        "p_value": 0.938707528314457,
+        "skilled": false,
+        "percentile_rank": 6.133333333333333,
+        "n_positions": 31,
+        "bh_significant": false
+      },
+      "0xe097a66a04a3afd6de8929d19fcc41211402d811": {
+        "actual": 20.85351870134212,
+        "null_p95": 15.335373298657883,
+        "p_value": 0.013324450366422385,
+        "skilled": true,
+        "percentile_rank": 98.73333333333333,
+        "n_positions": 27,
+        "bh_significant": false
+      },
+      "0xe0f1e7751df4035f78a5eb2f4296c98b4d5bc4bd": {
+        "actual": 1251.1953770061166,
+        "null_p95": 508.62384515786647,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 33,
+        "bh_significant": true
+      },
+      "0xe33a76226eb570e53095b437f3af03335379d8f7": {
+        "actual": -110.99486041952984,
+        "null_p95": 1049.893503202448,
+        "p_value": 0.6109260493004663,
+        "skilled": false,
+        "percentile_rank": 38.93333333333333,
+        "n_positions": 34,
+        "bh_significant": false
+      },
+      "0xea41d1253bf603d7947da4659e85080dc2071c98": {
+        "actual": 933.0484615766393,
+        "null_p95": 1553.122534723911,
+        "p_value": 0.13657561625582945,
+        "skilled": false,
+        "percentile_rank": 86.4,
+        "n_positions": 191,
+        "bh_significant": false
+      },
+      "0xecaa8806a9a05049d7d5260a33dc924220e377a9": {
+        "actual": -18710.191765418047,
+        "null_p95": 24788.46327723056,
+        "p_value": 0.8754163890739507,
+        "skilled": false,
+        "percentile_rank": 12.466666666666667,
+        "n_positions": 99,
+        "bh_significant": false
+      },
+      "0xedc2834124c0465fb2ccbf239896ef65f975ad9f": {
+        "actual": -2121.1009745301963,
+        "null_p95": 2187.320409966622,
+        "p_value": 0.9447035309793471,
+        "skilled": false,
+        "percentile_rank": 5.533333333333333,
+        "n_positions": 55,
+        "bh_significant": false
+      },
+      "0xeea75cd940a8abc193b04ca78be589af3d41d491": {
+        "actual": -4.321304999999993,
+        "null_p95": 26.549485,
+        "p_value": 0.5076615589606929,
+        "skilled": false,
+        "percentile_rank": 49.266666666666666,
+        "n_positions": 13,
+        "bh_significant": false
+      },
+      "0xf23313b2d009b671667cb158658f63e9f4d66ab2": {
+        "actual": 337.55309195631065,
+        "null_p95": 209.56519889556122,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 26,
+        "bh_significant": true
+      },
+      "0xf2b05d854e0af18e70b76e96534e2e7f7a04b26b": {
+        "actual": -10480.481200159122,
+        "null_p95": 10394.261466272756,
+        "p_value": 0.9546968687541639,
+        "skilled": false,
+        "percentile_rank": 4.533333333333333,
+        "n_positions": 35,
+        "bh_significant": false
+      },
+      "0xf3b550c43f97a626049036e6f6dbb1f9413e4c72": {
+        "actual": 425.22165102837783,
+        "null_p95": 586.6692721482982,
+        "p_value": 0.19120586275816123,
+        "skilled": false,
+        "percentile_rank": 80.93333333333334,
+        "n_positions": 39,
+        "bh_significant": false
+      },
+      "0xfd2b117412a698f322b0cd18d6827dad262b8e50": {
+        "actual": 4619.851180627971,
+        "null_p95": 37915.88680265455,
+        "p_value": 0.279147235176549,
+        "skilled": false,
+        "percentile_rank": 72.13333333333334,
+        "n_positions": 24,
+        "bh_significant": false
+      },
+      "0xfd6deb2c6c5ee9c07c7c6826bbc24fed34ce962d": {
+        "actual": -7.6804217751937625,
+        "null_p95": 12.645177250206256,
+        "p_value": 0.8507661558960693,
+        "skilled": false,
+        "percentile_rank": 14.933333333333335,
+        "n_positions": 10,
+        "bh_significant": false
+      },
+      "0xff9e908b4abf8f591bc1c07915a09b34765e56a1": {
+        "actual": -848.4193443506822,
+        "null_p95": 4247.999988362151,
+        "p_value": 0.6149233844103931,
+        "skilled": false,
+        "percentile_rank": 38.53333333333334,
+        "n_positions": 103,
+        "bh_significant": false
+      }
+    },
+    "n_total_positions": 3795
+  },
+  "placebo": {
+    "n_total_frozen": 169,
+    "n_zero_position": 51,
+    "n_below_min": 67,
+    "n_classifiable": 51,
+    "raw_skilled_count": 20,
+    "raw_rate": 0.39215686274509803,
+    "bh_skilled_count": 15,
+    "bh_rate": 0.29411764705882354,
+    "aggregate": {
+      "actual": 92238.40248426591,
+      "null_p95": 59780.7589315093,
+      "p_value": 0.005996002664890073,
+      "skilled": true,
+      "percentile_rank": 99.46666666666667
+    },
+    "per_trader": {
+      "0x0484ced2f7764c28c0eef3514b48682ee0cde0ee": {
+        "actual": 4845.364371650735,
+        "null_p95": 3892.32435660114,
+        "p_value": 0.019320453031312457,
+        "skilled": true,
+        "percentile_rank": 98.13333333333333,
+        "n_positions": 75,
+        "bh_significant": false
+      },
+      "0x05dfd81903aae6f5caa20e1c1dd1d472728a882d": {
+        "actual": 6042.825499645105,
+        "null_p95": 4740.065793509115,
+        "p_value": 0.0013324450366422385,
+        "skilled": true,
+        "percentile_rank": 99.93333333333332,
+        "n_positions": 47,
+        "bh_significant": true
+      },
+      "0x197040709ae61627d3685a8d6ce1f9e82e6b398d": {
+        "actual": 364.05445168748827,
+        "null_p95": 358.3858620725436,
+        "p_value": 0.04596935376415723,
+        "skilled": true,
+        "percentile_rank": 95.46666666666667,
+        "n_positions": 43,
+        "bh_significant": false
+      },
+      "0x1c144e30f405a25f991cbd8baa15d40599090869": {
+        "actual": 2716.322738982091,
+        "null_p95": 2714.582725184829,
+        "p_value": 0.05063291139240506,
+        "skilled": true,
+        "percentile_rank": 95.0,
+        "n_positions": 183,
+        "bh_significant": false
+      },
+      "0x1cea7192af5d7b1826083a19c5be75115a2df32a": {
+        "actual": -60.75122664264195,
+        "null_p95": 134.97041165930418,
+        "p_value": 0.7628247834776816,
+        "skilled": false,
+        "percentile_rank": 23.733333333333334,
+        "n_positions": 37,
+        "bh_significant": false
+      },
+      "0x2aacd459eaea420eb0d7b94c7b03238786c6dfad": {
+        "actual": 264.1347300485102,
+        "null_p95": 282.49406158967054,
+        "p_value": 0.06928714190539641,
+        "skilled": false,
+        "percentile_rank": 93.13333333333334,
+        "n_positions": 47,
+        "bh_significant": false
+      },
+      "0x2d1d3153136eb7a7438a6538aaf81d6b05029cb4": {
+        "actual": 428.4955591373784,
+        "null_p95": 883.4153979632142,
+        "p_value": 0.21319120586275817,
+        "skilled": false,
+        "percentile_rank": 78.73333333333333,
+        "n_positions": 21,
+        "bh_significant": false
+      },
+      "0x2d29b686abeb99266ca8f9817dcfddf75921f683": {
+        "actual": 131.5003615228283,
+        "null_p95": 188.90552216053442,
+        "p_value": 0.13524317121918722,
+        "skilled": false,
+        "percentile_rank": 86.53333333333333,
+        "n_positions": 23,
+        "bh_significant": false
+      },
+      "0x323401ddadeab26148e9626cc8c33e972e718400": {
+        "actual": -26.866126122300006,
+        "null_p95": 22.61630087769999,
+        "p_value": 0.9793471019320453,
+        "skilled": false,
+        "percentile_rank": 2.0666666666666664,
+        "n_positions": 16,
+        "bh_significant": false
+      },
+      "0x32d1623dddbd4841a98da71e47f0436d2ef2b949": {
+        "actual": -108.01737920656187,
+        "null_p95": 549.6300021908166,
+        "p_value": 0.6115922718187875,
+        "skilled": false,
+        "percentile_rank": 38.86666666666667,
+        "n_positions": 60,
+        "bh_significant": false
+      },
+      "0x3838f51dd3e558db22a10a1ba520a81b4aa02c6f": {
+        "actual": 43.360428,
+        "null_p95": 27.465628,
+        "p_value": 0.0013324450366422385,
+        "skilled": true,
+        "percentile_rank": 99.93333333333332,
+        "n_positions": 11,
+        "bh_significant": true
+      },
+      "0x3b2ab5b646572a12a960310072395b4848ba1fdc": {
+        "actual": 9.979069891770006,
+        "null_p95": 5.963019411070006,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 12,
+        "bh_significant": true
+      },
+      "0x40cfb29411d29f4fa0908f2a121297042cccd21d": {
+        "actual": 1277.7397330552851,
+        "null_p95": 2870.6754782403154,
+        "p_value": 0.24716855429713525,
+        "skilled": false,
+        "percentile_rank": 75.33333333333333,
+        "n_positions": 196,
+        "bh_significant": false
+      },
+      "0x482bf5accdecfaffa67c14d4d4fbb59f428a3266": {
+        "actual": 285.310661742727,
+        "null_p95": 288.00360806371094,
+        "p_value": 0.05329780146568954,
+        "skilled": false,
+        "percentile_rank": 94.73333333333333,
+        "n_positions": 29,
+        "bh_significant": false
+      },
+      "0x4baf4239188fb0b708e4d16872986e1fa9af5fdf": {
+        "actual": -8366.651618548407,
+        "null_p95": 9734.762137423782,
+        "p_value": 0.5169886742171885,
+        "skilled": false,
+        "percentile_rank": 48.333333333333336,
+        "n_positions": 17,
+        "bh_significant": false
+      },
+      "0x4d0121458bb2f96c6440c0f3835d675ad3ce1645": {
+        "actual": 664.6524300781123,
+        "null_p95": 1006.5382858888055,
+        "p_value": 0.14790139906728847,
+        "skilled": false,
+        "percentile_rank": 85.26666666666667,
+        "n_positions": 54,
+        "bh_significant": false
+      },
+      "0x50396e4d9d11d38b0dcfd75280101a315f50946d": {
+        "actual": 1726.2839507822714,
+        "null_p95": 1269.2177828932108,
+        "p_value": 0.008660892738174551,
+        "skilled": true,
+        "percentile_rank": 99.2,
+        "n_positions": 47,
+        "bh_significant": true
+      },
+      "0x51b5b8b1574994d5472351b368f6e6e4a1af9975": {
+        "actual": 82.29503800377992,
+        "null_p95": 86.6485439388903,
+        "p_value": 0.06662225183211193,
+        "skilled": false,
+        "percentile_rank": 93.4,
+        "n_positions": 37,
+        "bh_significant": false
+      },
+      "0x5a218c7ad04135830a45c41aaed7294df7809318": {
+        "actual": -3.6362011604286426,
+        "null_p95": 50.06549519935486,
+        "p_value": 0.5502998001332445,
+        "skilled": false,
+        "percentile_rank": 45.0,
+        "n_positions": 35,
+        "bh_significant": false
+      },
+      "0x606ed7945996ae85a8002b05f83319c518b96b3a": {
+        "actual": 1645.9215556202496,
+        "null_p95": 1544.2278158192557,
+        "p_value": 0.039973351099267154,
+        "skilled": true,
+        "percentile_rank": 96.06666666666666,
+        "n_positions": 230,
+        "bh_significant": false
+      },
+      "0x61cda064c4ab8ea74880eb440ffb2dbdbeb1541e": {
+        "actual": 695.7941208394689,
+        "null_p95": 306.9264723888295,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 41,
+        "bh_significant": true
+      },
+      "0x6cd517eaa88ba717fa3aa3d5047feb0ce387f2cf": {
+        "actual": 333.5856464508752,
+        "null_p95": 859.1896600757149,
+        "p_value": 0.2798134576948701,
+        "skilled": false,
+        "percentile_rank": 72.06666666666666,
+        "n_positions": 110,
+        "bh_significant": false
+      },
+      "0x73192b9597c4496f8c338b36239bdf4218ac0299": {
+        "actual": 404.190872737814,
+        "null_p95": 633.8946260334325,
+        "p_value": 0.1552298467688208,
+        "skilled": false,
+        "percentile_rank": 84.53333333333333,
+        "n_positions": 49,
+        "bh_significant": false
+      },
+      "0x7734f02ae405576e0d3eeb59164d8c5f617c4193": {
+        "actual": 50.98679079025823,
+        "null_p95": 74.70210102824646,
+        "p_value": 0.10992671552298468,
+        "skilled": false,
+        "percentile_rank": 89.06666666666668,
+        "n_positions": 14,
+        "bh_significant": false
+      },
+      "0x77fa7e303f7a8017016a8388ef7eba40a4a31a63": {
+        "actual": -342.96708789247,
+        "null_p95": 209.2839419012208,
+        "p_value": 0.9986675549633578,
+        "skilled": false,
+        "percentile_rank": 0.13333333333333333,
+        "n_positions": 46,
+        "bh_significant": false
+      },
+      "0x7a9cc3ebd0286262acb3e07eb551f880846297a4": {
+        "actual": -6.940857963079977,
+        "null_p95": 6.230278505535441,
+        "p_value": 1.0,
+        "skilled": false,
+        "percentile_rank": 0.0,
+        "n_positions": 12,
+        "bh_significant": false
+      },
+      "0x7c4719cdf8b7e084b7dc7b42f63ee0c320a2882a": {
+        "actual": 831.8147428012815,
+        "null_p95": 832.0509778532618,
+        "p_value": 0.09193870752831446,
+        "skilled": false,
+        "percentile_rank": 90.86666666666666,
+        "n_positions": 12,
+        "bh_significant": false
+      },
+      "0x8fce065d5820ea3deb72976640290959bb952566": {
+        "actual": 309.7508390099707,
+        "null_p95": 166.6060004791444,
+        "p_value": 0.0013324450366422385,
+        "skilled": true,
+        "percentile_rank": 99.93333333333332,
+        "n_positions": 25,
+        "bh_significant": true
+      },
+      "0x9419d77566df79c2f8c6679c9933c2ac76aea40f": {
+        "actual": -112.8979281647512,
+        "null_p95": 2197.2088799647518,
+        "p_value": 0.5229846768820786,
+        "skilled": false,
+        "percentile_rank": 47.733333333333334,
+        "n_positions": 11,
+        "bh_significant": false
+      },
+      "0x96489abcb9f583d6835c8ef95ffc923d05a86825": {
+        "actual": -551.9421444942668,
+        "null_p95": 6036.746979293772,
+        "p_value": 0.558960692871419,
+        "skilled": false,
+        "percentile_rank": 44.13333333333333,
+        "n_positions": 40,
+        "bh_significant": false
+      },
+      "0x9f83f83bdfc209c6fade8a2c77ea9667e9176cd9": {
+        "actual": 4465.636454450927,
+        "null_p95": 2415.800882680096,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 86,
+        "bh_significant": true
+      },
+      "0xaa9f65acf563e0c257b5ba92e6d52301311f0df3": {
+        "actual": 64.10476602854176,
+        "null_p95": 129.44583835410288,
+        "p_value": 0.1932045303131246,
+        "skilled": false,
+        "percentile_rank": 80.73333333333333,
+        "n_positions": 15,
+        "bh_significant": false
+      },
+      "0xb6d397514208c740cdcdd36c188b7f51e1bfa093": {
+        "actual": 140.7140277925895,
+        "null_p95": 107.53933624093932,
+        "p_value": 0.001998667554963358,
+        "skilled": true,
+        "percentile_rank": 99.86666666666667,
+        "n_positions": 31,
+        "bh_significant": true
+      },
+      "0xc24f644c56793372d7272a05e5a08582baf21acd": {
+        "actual": 99.12101888000004,
+        "null_p95": 62.51372744000004,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 12,
+        "bh_significant": true
+      },
+      "0xc281ad222df6d91ba397fb3b086130998fd6e079": {
+        "actual": 49.274061719999985,
+        "null_p95": 109.048037448,
+        "p_value": 0.2385076615589607,
+        "skilled": false,
+        "percentile_rank": 76.2,
+        "n_positions": 16,
+        "bh_significant": false
+      },
+      "0xc695e1c32a30650eda67e8e0e74f9e18f36566d1": {
+        "actual": -6.893538298924103,
+        "null_p95": 20.265632884308662,
+        "p_value": 0.7195203197868087,
+        "skilled": false,
+        "percentile_rank": 28.066666666666666,
+        "n_positions": 138,
+        "bh_significant": false
+      },
+      "0xc8b9a30184244d427169cf62485dde6041b2b836": {
+        "actual": 13075.046104688852,
+        "null_p95": 10472.212475395487,
+        "p_value": 0.002664890073284477,
+        "skilled": true,
+        "percentile_rank": 99.8,
+        "n_positions": 105,
+        "bh_significant": true
+      },
+      "0xd2a857c2889af21403c3c6f92731640d4ced5bac": {
+        "actual": -199.07962100000006,
+        "null_p95": 117.53039899999997,
+        "p_value": 1.0,
+        "skilled": false,
+        "percentile_rank": 0.0,
+        "n_positions": 15,
+        "bh_significant": false
+      },
+      "0xd5db05423b6718497684ae1bbe1557746d2c3c45": {
+        "actual": 2229.916839533334,
+        "null_p95": 926.86787295041,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 91,
+        "bh_significant": true
+      },
+      "0xd784b0ff82b712cb77fdfe85c11bc02aecc68f5b": {
+        "actual": -53.05336092984651,
+        "null_p95": 43.86457107125285,
+        "p_value": 0.9820119920053297,
+        "skilled": false,
+        "percentile_rank": 1.7999999999999998,
+        "n_positions": 25,
+        "bh_significant": false
+      },
+      "0xd923b58e7874de549b0b9bd07db49eeb2878f400": {
+        "actual": -16949.987776384358,
+        "null_p95": 18590.93039213186,
+        "p_value": 0.6482345103264491,
+        "skilled": false,
+        "percentile_rank": 35.199999999999996,
+        "n_positions": 11,
+        "bh_significant": false
+      },
+      "0xd9813dd48cbda560fe9e3c37de6e764a6f4d2da8": {
+        "actual": -109.32716269869213,
+        "null_p95": 175.88901631208654,
+        "p_value": 0.7828114590273151,
+        "skilled": false,
+        "percentile_rank": 21.73333333333333,
+        "n_positions": 18,
+        "bh_significant": false
+      },
+      "0xd9e7c4534905e459ec75e9f5d828c58a12924cde": {
+        "actual": 738.799452261499,
+        "null_p95": 391.202955648388,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 32,
+        "bh_significant": true
+      },
+      "0xdcb4fa0c35d1e917dc96d25b3bdee7d4056c372a": {
+        "actual": 2.655322540683979,
+        "null_p95": 1.5047962625843683,
+        "p_value": 0.0006662225183211193,
+        "skilled": true,
+        "percentile_rank": 100.0,
+        "n_positions": 18,
+        "bh_significant": true
+      },
+      "0xe6fd18067d9b8768ee4dc45e926cf54867288bc3": {
+        "actual": 2157.444143424305,
+        "null_p95": 1366.3984057641137,
+        "p_value": 0.0033311125916055963,
+        "skilled": true,
+        "percentile_rank": 99.73333333333333,
+        "n_positions": 67,
+        "bh_significant": true
+      },
+      "0xf0d9af9effd0b4a039899901ba19a05ea1a3e4ee": {
+        "actual": 48724.599585709555,
+        "null_p95": 35807.776676739,
+        "p_value": 0.001998667554963358,
+        "skilled": true,
+        "percentile_rank": 99.86666666666667,
+        "n_positions": 19,
+        "bh_significant": true
+      },
+      "0xf6df086fd5520e86df5408d5b9871895956865b1": {
+        "actual": -36.348768002378776,
+        "null_p95": 16.583082655682073,
+        "p_value": 1.0,
+        "skilled": false,
+        "percentile_rank": 0.0,
+        "n_positions": 24,
+        "bh_significant": false
+      },
+      "0xf91a26c6db2ae08c86e972d64fb4fac409b721ba": {
+        "actual": 20.84186807409077,
+        "null_p95": 18.733905054403888,
+        "p_value": 0.03397734843437708,
+        "skilled": true,
+        "percentile_rank": 96.66666666666667,
+        "n_positions": 89,
+        "bh_significant": false
+      },
+      "0xfa323e40632edca701abc6c8cf1f82175909bd9a": {
+        "actual": 1208.2024222605444,
+        "null_p95": 2787.0582336833245,
+        "p_value": 0.26582278481012656,
+        "skilled": false,
+        "percentile_rank": 73.46666666666667,
+        "n_positions": 13,
+        "bh_significant": false
+      },
+      "0xfd166a584511e587678d9c97831f3cb8a5be0be8": {
+        "actual": -3556.9986870319417,
+        "null_p95": 4604.79984591366,
+        "p_value": 0.8587608261159227,
+        "skilled": false,
+        "percentile_rank": 14.133333333333335,
+        "n_positions": 16,
+        "bh_significant": false
+      },
+      "0xfd2b05928e63a513efda1e60d6d925b271e29ff9": {
+        "actual": 398.7492716091723,
+        "null_p95": 975.4962897473763,
+        "p_value": 0.24383744170552965,
+        "skilled": false,
+        "percentile_rank": 75.66666666666667,
+        "n_positions": 11,
+        "bh_significant": false
+      }
+    },
+    "n_total_positions": 2693
+  },
+  "cohort_split_half": {
+    "n_eligible": 59,
+    "persistence_numerator": 12,
+    "persistence_denominator": 20,
+    "persistence_rate": 0.6,
+    "per_trader": {
+      "0x042a1caf0b0d51d4fe5abc5d8832c2c9a5ffb153": {
+        "half_a": {
+          "actual": -75.87320141420615,
+          "null_p95": 69.1857491400567,
+          "p_value": 1.0,
+          "skilled": false,
+          "percentile_rank": 0.0
+        },
+        "half_b": {
+          "actual": 161.13712140920447,
+          "null_p95": 359.50656363910525,
+          "p_value": 0.5149900066622252,
+          "skilled": false,
+          "percentile_rank": 48.53333333333333
+        },
+        "n": 37
+      },
+      "0x0cb10c40b0776e9ee8cef970af85724654dda76c": {
+        "half_a": {
+          "actual": 507.7581387296837,
+          "null_p95": 421.48975355206284,
+          "p_value": 0.018654230512991338,
+          "skilled": true,
+          "percentile_rank": 98.2
+        },
+        "half_b": {
+          "actual": -164.24307172208083,
+          "null_p95": 455.6751525856159,
+          "p_value": 0.5556295802798135,
+          "skilled": false,
+          "percentile_rank": 44.46666666666667
+        },
+        "n": 87
+      },
+      "0x1424a9e0a0def5a86c3c6cffbd8b6c65e1b12c7f": {
+        "half_a": {
+          "actual": 275.21177837882436,
+          "null_p95": 1392.8592019402097,
+          "p_value": 0.42704863424383743,
+          "skilled": false,
+          "percentile_rank": 57.333333333333336
+        },
+        "half_b": {
+          "actual": -708.9677275237958,
+          "null_p95": 1295.3663813560654,
+          "p_value": 0.793471019320453,
+          "skilled": false,
+          "percentile_rank": 20.666666666666668
+        },
+        "n": 37
+      },
+      "0x1e5b7d52695b34438b8021048d9a5c634f3b73d0": {
+        "half_a": {
+          "actual": 1.4726119981525017,
+          "null_p95": 19.027865270320927,
+          "p_value": 0.4530313124583611,
+          "skilled": false,
+          "percentile_rank": 54.733333333333334
+        },
+        "half_b": {
+          "actual": 29.923714657135083,
+          "null_p95": 41.51052788506778,
+          "p_value": 0.18054630246502332,
+          "skilled": false,
+          "percentile_rank": 82.0
+        },
+        "n": 28
+      },
+      "0x1f5a521a3264025f8e9660a1b11798300f3a1d35": {
+        "half_a": {
+          "actual": 136.6252,
+          "null_p95": 103.83879999999998,
+          "p_value": 0.0013324450366422385,
+          "skilled": true,
+          "percentile_rank": 99.93333333333332
+        },
+        "half_b": {
+          "actual": 92.13206119999998,
+          "null_p95": 66.01366119999999,
+          "p_value": 0.0013324450366422385,
+          "skilled": true,
+          "percentile_rank": 99.93333333333332
+        },
+        "n": 22
+      },
+      "0x21d5d6326f480863e1d00c5d52bba19d9cec9925": {
+        "half_a": {
+          "actual": 293.48047645291433,
+          "null_p95": 204.86788202219415,
+          "p_value": 0.006662225183211193,
+          "skilled": true,
+          "percentile_rank": 99.4
+        },
+        "half_b": {
+          "actual": 237.81264495220435,
+          "null_p95": 216.93356008713306,
+          "p_value": 0.031978680879413725,
+          "skilled": true,
+          "percentile_rank": 96.86666666666667
+        },
+        "n": 78
+      },
+      "0x29d337076f24d135b7b2b08796edfff4e32cb2ed": {
+        "half_a": {
+          "actual": -2099.7064866671476,
+          "null_p95": 6172.582318465951,
+          "p_value": 0.6848767488341105,
+          "skilled": false,
+          "percentile_rank": 31.533333333333335
+        },
+        "half_b": {
+          "actual": -1860.268398686336,
+          "null_p95": 2867.4552976197688,
+          "p_value": 0.8427714856762158,
+          "skilled": false,
+          "percentile_rank": 15.733333333333333
+        },
+        "n": 81
+      },
+      "0x2c0e7bc014f7ca17b07350fb2290e40bbfa27ee8": {
+        "half_a": {
+          "actual": 77.13317703776872,
+          "null_p95": 81.47014222591089,
+          "p_value": 0.0626249167221852,
+          "skilled": false,
+          "percentile_rank": 93.8
+        },
+        "half_b": {
+          "actual": 58.8331920019821,
+          "null_p95": 123.10917436396637,
+          "p_value": 0.2678214523650899,
+          "skilled": false,
+          "percentile_rank": 73.26666666666667
+        },
+        "n": 37
+      },
+      "0x30d1c420d1abde9442d6762dd6f6d5f92df04525": {
+        "half_a": {
+          "actual": 312.3101412278254,
+          "null_p95": 214.19383779210662,
+          "p_value": 0.005996002664890073,
+          "skilled": true,
+          "percentile_rank": 99.46666666666667
+        },
+        "half_b": {
+          "actual": 99.28941693500997,
+          "null_p95": 75.04770351284262,
+          "p_value": 0.013324450366422385,
+          "skilled": true,
+          "percentile_rank": 98.73333333333333
+        },
+        "n": 68
+      },
+      "0x368ba69507fd67972059fa178af5e459b72f2458": {
+        "half_a": {
+          "actual": 1508.0001352848547,
+          "null_p95": 1478.6410146943692,
+          "p_value": 0.03264490339773484,
+          "skilled": true,
+          "percentile_rank": 96.8
+        },
+        "half_b": {
+          "actual": -270.05044058324575,
+          "null_p95": 1062.0611294864304,
+          "p_value": 0.508327781479014,
+          "skilled": false,
+          "percentile_rank": 49.2
+        },
+        "n": 23
+      },
+      "0x3bcf0c1c1a3356b3e30054f24baece1ec59be964": {
+        "half_a": {
+          "actual": 344.40930508574155,
+          "null_p95": 326.0473350857416,
+          "p_value": 0.03530979347101932,
+          "skilled": true,
+          "percentile_rank": 96.53333333333333
+        },
+        "half_b": {
+          "actual": 399.3688458500003,
+          "null_p95": 286.56884585000023,
+          "p_value": 0.0033311125916055963,
+          "skilled": true,
+          "percentile_rank": 99.73333333333333
+        },
+        "n": 20
+      },
+      "0x413531f78b28c2f2014dd82e92f46802769ce462": {
+        "half_a": {
+          "actual": -195.52563451997565,
+          "null_p95": 193.6601416572841,
+          "p_value": 0.9940039973351099,
+          "skilled": false,
+          "percentile_rank": 0.6
+        },
+        "half_b": {
+          "actual": -77.7062635482153,
+          "null_p95": 421.62059440438503,
+          "p_value": 0.6135909393737509,
+          "skilled": false,
+          "percentile_rank": 38.666666666666664
+        },
+        "n": 25
+      },
+      "0x478b202e6bb184505db2dbd382349cbd55518edb": {
+        "half_a": {
+          "actual": 2.4215300005851774,
+          "null_p95": 15.852888667635119,
+          "p_value": 0.3917388407728181,
+          "skilled": false,
+          "percentile_rank": 60.86666666666667
+        },
+        "half_b": {
+          "actual": 12.762551361445079,
+          "null_p95": 10.07131691951562,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "n": 25
+      },
+      "0x4a7082261f570297d3052f5cbdb0a0e33f85a50b": {
+        "half_a": {
+          "actual": -38.54075414074021,
+          "null_p95": 121.76106578427368,
+          "p_value": 0.5989340439706862,
+          "skilled": false,
+          "percentile_rank": 40.13333333333333
+        },
+        "half_b": {
+          "actual": -120.35300925871525,
+          "null_p95": 139.4988642470236,
+          "p_value": 0.8980679546968687,
+          "skilled": false,
+          "percentile_rank": 10.2
+        },
+        "n": 73
+      },
+      "0x4d1bcbaeed22c6da173b1a356c3c6d2270081419": {
+        "half_a": {
+          "actual": 601.6076719925853,
+          "null_p95": 790.809925115685,
+          "p_value": 0.13324450366422386,
+          "skilled": false,
+          "percentile_rank": 86.73333333333333
+        },
+        "half_b": {
+          "actual": -225.9942615214093,
+          "null_p95": 1086.543640957721,
+          "p_value": 0.5056628914057295,
+          "skilled": false,
+          "percentile_rank": 49.46666666666666
+        },
+        "n": 50
+      },
+      "0x51b22927d7b99ea9477a6c99b8c9397e6a4110ce": {
+        "half_a": {
+          "actual": -115.38325909385489,
+          "null_p95": 86.89331666168401,
+          "p_value": 1.0,
+          "skilled": false,
+          "percentile_rank": 0.0
+        },
+        "half_b": {
+          "actual": -127.54911712270052,
+          "null_p95": 137.66823991907214,
+          "p_value": 0.9320453031312458,
+          "skilled": false,
+          "percentile_rank": 6.800000000000001
+        },
+        "n": 103
+      },
+      "0x55f35253852930ef05a1a3f8dcd0007f6b0acada": {
+        "half_a": {
+          "actual": 540.6515099264309,
+          "null_p95": 1733.6054758672306,
+          "p_value": 0.2844770153231179,
+          "skilled": false,
+          "percentile_rank": 71.6
+        },
+        "half_b": {
+          "actual": -2321.272061321068,
+          "null_p95": 6671.85284485473,
+          "p_value": 0.6675549633577615,
+          "skilled": false,
+          "percentile_rank": 33.266666666666666
+        },
+        "n": 20
+      },
+      "0x598e55c3a20e5ac9193ab0eed24bc18884cbbe98": {
+        "half_a": {
+          "actual": -4.72109145646996,
+          "null_p95": 11.81515377068225,
+          "p_value": 0.7368421052631579,
+          "skilled": false,
+          "percentile_rank": 26.333333333333332
+        },
+        "half_b": {
+          "actual": -4.965854368538049,
+          "null_p95": 5.6183911626773195,
+          "p_value": 0.9067288474350433,
+          "skilled": false,
+          "percentile_rank": 9.333333333333334
+        },
+        "n": 48
+      },
+      "0x5b8f191a4a3e66fe9b7348891f21021399762c14": {
+        "half_a": {
+          "actual": -169.19044646375085,
+          "null_p95": 1260.0659766964689,
+          "p_value": 0.5989340439706862,
+          "skilled": false,
+          "percentile_rank": 40.13333333333333
+        },
+        "half_b": {
+          "actual": -981.7726690024092,
+          "null_p95": 2594.2873414168903,
+          "p_value": 0.5409726848767489,
+          "skilled": false,
+          "percentile_rank": 45.93333333333333
+        },
+        "n": 129
+      },
+      "0x5f0b2ef77500dcda06d15179720b39772d1f2305": {
+        "half_a": {
+          "actual": -10.276485686574912,
+          "null_p95": 23.188496920978057,
+          "p_value": 0.7481678880746169,
+          "skilled": false,
+          "percentile_rank": 25.2
+        },
+        "half_b": {
+          "actual": 4.660907925228319,
+          "null_p95": 12.950284242288925,
+          "p_value": 0.3051299133910726,
+          "skilled": false,
+          "percentile_rank": 69.53333333333333
+        },
+        "n": 150
+      },
+      "0x686d5bfc5aee6aaed7bf6a11baef5b57e57d1a68": {
+        "half_a": {
+          "actual": 0.9360029011901917,
+          "null_p95": 12.09740793762603,
+          "p_value": 0.4363757495003331,
+          "skilled": false,
+          "percentile_rank": 56.39999999999999
+        },
+        "half_b": {
+          "actual": -4.4249018362515,
+          "null_p95": 4.867863718963869,
+          "p_value": 0.9253830779480346,
+          "skilled": false,
+          "percentile_rank": 7.466666666666668
+        },
+        "n": 63
+      },
+      "0x6cb6e442305e583b8fe0aeddd7a95f971c66ec83": {
+        "half_a": {
+          "actual": 2424.4427810386046,
+          "null_p95": 1441.637261355216,
+          "p_value": 0.001998667554963358,
+          "skilled": true,
+          "percentile_rank": 99.86666666666667
+        },
+        "half_b": {
+          "actual": 1834.7925005444945,
+          "null_p95": 1426.7559999170414,
+          "p_value": 0.013990672884743505,
+          "skilled": true,
+          "percentile_rank": 98.66666666666667
+        },
+        "n": 91
+      },
+      "0x6f36ce54f16757df7f4dd693433dfe8932f089ca": {
+        "half_a": {
+          "actual": 61.915097263572754,
+          "null_p95": 54.47704422768406,
+          "p_value": 0.02798134576948701,
+          "skilled": true,
+          "percentile_rank": 97.26666666666667
+        },
+        "half_b": {
+          "actual": 12.896924235380066,
+          "null_p95": 33.63789764294892,
+          "p_value": 0.2618254497001999,
+          "skilled": false,
+          "percentile_rank": 73.86666666666667
+        },
+        "n": 62
+      },
+      "0x7818687f1c2cda416877ab68d18d2c9c25f9d185": {
+        "half_a": {
+          "actual": -277.4324013102094,
+          "null_p95": 664.3899539924583,
+          "p_value": 0.715522984676882,
+          "skilled": false,
+          "percentile_rank": 28.46666666666667
+        },
+        "half_b": {
+          "actual": 182.57335045445967,
+          "null_p95": 914.4757151666386,
+          "p_value": 0.38374417055296467,
+          "skilled": false,
+          "percentile_rank": 61.66666666666667
+        },
+        "n": 42
+      },
+      "0x7a3c613f4db5ec4f6f9cb8583ba45fd2fe41977c": {
+        "half_a": {
+          "actual": 589.6240031302369,
+          "null_p95": 840.2811579394469,
+          "p_value": 0.3151232511658894,
+          "skilled": false,
+          "percentile_rank": 68.53333333333333
+        },
+        "half_b": {
+          "actual": 2877.28094529825,
+          "null_p95": 3149.256010967195,
+          "p_value": 0.12591605596269154,
+          "skilled": false,
+          "percentile_rank": 87.46666666666667
+        },
+        "n": 35
+      },
+      "0x7f51fe892219f137305b68f29d3189ec26ecd389": {
+        "half_a": {
+          "actual": 49.895765126694045,
+          "null_p95": 36.171035262145956,
+          "p_value": 0.013324450366422385,
+          "skilled": true,
+          "percentile_rank": 98.73333333333333
+        },
+        "half_b": {
+          "actual": 138.4612533813824,
+          "null_p95": 92.72373883145347,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "n": 66
+      },
+      "0x848df648f91091f0f90d941990764c895d1235e6": {
+        "half_a": {
+          "actual": -58.96276357027407,
+          "null_p95": 1019.2909759829777,
+          "p_value": 0.5316455696202531,
+          "skilled": false,
+          "percentile_rank": 46.86666666666667
+        },
+        "half_b": {
+          "actual": -180.90084719842196,
+          "null_p95": 809.9705411264282,
+          "p_value": 0.5836109260493004,
+          "skilled": false,
+          "percentile_rank": 41.66666666666667
+        },
+        "n": 69
+      },
+      "0x8a1e1e8fec1fb91f12ba3b8ebec52d2eda21bd03": {
+        "half_a": {
+          "actual": -1350.0813294632958,
+          "null_p95": 978.4848680014873,
+          "p_value": 0.983344437041972,
+          "skilled": false,
+          "percentile_rank": 1.6666666666666667
+        },
+        "half_b": {
+          "actual": -641.2287611527636,
+          "null_p95": 642.9723156441742,
+          "p_value": 0.9573617588274483,
+          "skilled": false,
+          "percentile_rank": 4.266666666666667
+        },
+        "n": 87
+      },
+      "0x9690d9f51b618222c29567c3b39aac2935a5f2d5": {
+        "half_a": {
+          "actual": 664.9093797043429,
+          "null_p95": 1180.0080361625933,
+          "p_value": 0.16788807461692204,
+          "skilled": false,
+          "percentile_rank": 83.26666666666667
+        },
+        "half_b": {
+          "actual": 88.88397483765041,
+          "null_p95": 1081.2477371122534,
+          "p_value": 0.42438374417055297,
+          "skilled": false,
+          "percentile_rank": 57.599999999999994
+        },
+        "n": 50
+      },
+      "0x97ead83eb0e6b7f142e63284791882f05ddf3363": {
+        "half_a": {
+          "actual": 1656.1548996010251,
+          "null_p95": 4587.973710344607,
+          "p_value": 0.2978014656895403,
+          "skilled": false,
+          "percentile_rank": 70.26666666666667
+        },
+        "half_b": {
+          "actual": -1203.315288914047,
+          "null_p95": 3373.5105331715054,
+          "p_value": 0.7061958694203864,
+          "skilled": false,
+          "percentile_rank": 29.4
+        },
+        "n": 106
+      },
+      "0x9b5fb62ff41e104e65fa6cc4e57575ebd05f11c5": {
+        "half_a": {
+          "actual": -180.6418664159135,
+          "null_p95": 161.6801243483048,
+          "p_value": 0.9980013324450366,
+          "skilled": false,
+          "percentile_rank": 0.2
+        },
+        "half_b": {
+          "actual": -241.1485277289797,
+          "null_p95": 247.39475182401145,
+          "p_value": 0.9267155229846769,
+          "skilled": false,
+          "percentile_rank": 7.333333333333333
+        },
+        "n": 58
+      },
+      "0x9ca119b8cd7bdb890aecf1ff3b0f6e3a45cc13b5": {
+        "half_a": {
+          "actual": -3958.079438115262,
+          "null_p95": 5065.999112089463,
+          "p_value": 0.8021319120586275,
+          "skilled": false,
+          "percentile_rank": 19.8
+        },
+        "half_b": {
+          "actual": -2284.4943045121113,
+          "null_p95": 4679.206127163942,
+          "p_value": 0.6862091938707529,
+          "skilled": false,
+          "percentile_rank": 31.4
+        },
+        "n": 89
+      },
+      "0x9cb98fc57fe8a3bdf75c3b48bd419e5d262f7b80": {
+        "half_a": {
+          "actual": 162.2696960549975,
+          "null_p95": 207.31580285565528,
+          "p_value": 0.2351765489673551,
+          "skilled": false,
+          "percentile_rank": 76.53333333333333
+        },
+        "half_b": {
+          "actual": -17.252215241066644,
+          "null_p95": 82.72995988504,
+          "p_value": 0.586275816122585,
+          "skilled": false,
+          "percentile_rank": 41.4
+        },
+        "n": 26
+      },
+      "0x9def9524630e31ff90f884eed32c3eecfbf8d1a5": {
+        "half_a": {
+          "actual": 1223.3793370072667,
+          "null_p95": 975.0296104600831,
+          "p_value": 0.008660892738174551,
+          "skilled": true,
+          "percentile_rank": 99.2
+        },
+        "half_b": {
+          "actual": 511.6676229535957,
+          "null_p95": 1367.7210341265447,
+          "p_value": 0.32311792138574286,
+          "skilled": false,
+          "percentile_rank": 67.73333333333333
+        },
+        "n": 29
+      },
+      "0xae460abfd723d5b9005adcec714c21c9cb4779a6": {
+        "half_a": {
+          "actual": 375.1966946844872,
+          "null_p95": 450.572745586695,
+          "p_value": 0.09526982011992005,
+          "skilled": false,
+          "percentile_rank": 90.53333333333333
+        },
+        "half_b": {
+          "actual": 250.16484140248375,
+          "null_p95": 292.9906330703804,
+          "p_value": 0.0866089273817455,
+          "skilled": false,
+          "percentile_rank": 91.4
+        },
+        "n": 47
+      },
+      "0xb557dc93416e066a090e504fe9691bffad0def84": {
+        "half_a": {
+          "actual": -24.7763374596898,
+          "null_p95": 215.47324992068354,
+          "p_value": 0.5769487008660893,
+          "skilled": false,
+          "percentile_rank": 42.333333333333336
+        },
+        "half_b": {
+          "actual": -19.293923907793786,
+          "null_p95": 191.34751211155623,
+          "p_value": 0.5522984676882079,
+          "skilled": false,
+          "percentile_rank": 44.800000000000004
+        },
+        "n": 77
+      },
+      "0xb8d2bf9500e4731b09f54c7ebec6bf89899ec66b": {
+        "half_a": {
+          "actual": -2735.5662688000184,
+          "null_p95": 4407.934654298981,
+          "p_value": 0.5036642238507661,
+          "skilled": false,
+          "percentile_rank": 49.666666666666664
+        },
+        "half_b": {
+          "actual": 3196.7835848749014,
+          "null_p95": 2693.002087902842,
+          "p_value": 0.02531645569620253,
+          "skilled": true,
+          "percentile_rank": 97.53333333333333
+        },
+        "n": 20
+      },
+      "0xbc43a2f0deb85ba4ad316300762972089c911540": {
+        "half_a": {
+          "actual": 12777.904170459238,
+          "null_p95": 6575.999069854208,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "half_b": {
+          "actual": 20477.433116935066,
+          "null_p95": 12514.371866823214,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "n": 49
+      },
+      "0xbc6bfbf1a94c441516b022a70f85a02c6dfffa9e": {
+        "half_a": {
+          "actual": 67.35152874633899,
+          "null_p95": 129.86680313089602,
+          "p_value": 0.47968021319120585,
+          "skilled": false,
+          "percentile_rank": 52.06666666666667
+        },
+        "half_b": {
+          "actual": 27.612219233444097,
+          "null_p95": 65.69463996585417,
+          "p_value": 0.31645569620253167,
+          "skilled": false,
+          "percentile_rank": 68.4
+        },
+        "n": 38
+      },
+      "0xbdd08fc7a71196e4aa28741b903cb8e8ccbe550a": {
+        "half_a": {
+          "actual": 16.384220257884955,
+          "null_p95": 69.74097974211503,
+          "p_value": 0.36575616255829446,
+          "skilled": false,
+          "percentile_rank": 63.46666666666667
+        },
+        "half_b": {
+          "actual": 94.73269092349456,
+          "null_p95": 80.93298336221967,
+          "p_value": 0.04263824117255163,
+          "skilled": true,
+          "percentile_rank": 95.8
+        },
+        "n": 24
+      },
+      "0xc9dcc3d90ad3e34fe4132eb8661ae728d6da9026": {
+        "half_a": {
+          "actual": 600.7275790100647,
+          "null_p95": 284.9434981900455,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "half_b": {
+          "actual": 698.7490222079857,
+          "null_p95": 378.71989726880787,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "n": 39
+      },
+      "0xd10f60b88b8528db901b0fb7aecc07aa820cf12f": {
+        "half_a": {
+          "actual": 2543.2319758003987,
+          "null_p95": 4554.56036970442,
+          "p_value": 0.1932045303131246,
+          "skilled": false,
+          "percentile_rank": 80.73333333333333
+        },
+        "half_b": {
+          "actual": -134.99066035363103,
+          "null_p95": 3726.572942854459,
+          "p_value": 0.48967355096602266,
+          "skilled": false,
+          "percentile_rank": 51.06666666666667
+        },
+        "n": 29
+      },
+      "0xd286876350bf833452276bec80d4388c6341d55d": {
+        "half_a": {
+          "actual": 17.86071747419786,
+          "null_p95": 13.82070851342984,
+          "p_value": 0.009327115256495669,
+          "skilled": true,
+          "percentile_rank": 99.13333333333333
+        },
+        "half_b": {
+          "actual": 32.39560273981582,
+          "null_p95": 18.868899129766007,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "n": 24
+      },
+      "0xd44e974a3edb232aa4aedbdcc59792b76a5f67e2": {
+        "half_a": {
+          "actual": 13938.087571560398,
+          "null_p95": 7303.4484612147635,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "half_b": {
+          "actual": 13534.695476270172,
+          "null_p95": 5559.801851734564,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "n": 69
+      },
+      "0xdaa6a2cd4ba545befb3dbdc25d2b444c46873e62": {
+        "half_a": {
+          "actual": 449.0151322694366,
+          "null_p95": 392.8506127576822,
+          "p_value": 0.021985343104596936,
+          "skilled": true,
+          "percentile_rank": 97.86666666666667
+        },
+        "half_b": {
+          "actual": 130.0166030878085,
+          "null_p95": 334.59310621393035,
+          "p_value": 0.26115922718187873,
+          "skilled": false,
+          "percentile_rank": 73.93333333333332
+        },
+        "n": 43
+      },
+      "0xdbd05d3401da35da06f3dabe4288f1e07377edc4": {
+        "half_a": {
+          "actual": -7.08373681966957,
+          "null_p95": 7.081613708561665,
+          "p_value": 1.0,
+          "skilled": false,
+          "percentile_rank": 0.0
+        },
+        "half_b": {
+          "actual": 8.02661836247841,
+          "null_p95": 113.11238108887076,
+          "p_value": 0.4743504330446369,
+          "skilled": false,
+          "percentile_rank": 52.6
+        },
+        "n": 23
+      },
+      "0xdc03d611e5bcc9f1c87edb95edeb91671471804c": {
+        "half_a": {
+          "actual": 116320.3378604853,
+          "null_p95": 107777.47602437534,
+          "p_value": 0.029313790806129246,
+          "skilled": true,
+          "percentile_rank": 97.13333333333334
+        },
+        "half_b": {
+          "actual": 21694.72819550348,
+          "null_p95": 43334.20602510718,
+          "p_value": 0.21852098600932712,
+          "skilled": false,
+          "percentile_rank": 78.2
+        },
+        "n": 129
+      },
+      "0xdfe3fedc5c7679be42c3d393e99d4b55247b73c4": {
+        "half_a": {
+          "actual": 4313.018612671651,
+          "null_p95": 4295.801833079649,
+          "p_value": 0.04930046635576282,
+          "skilled": true,
+          "percentile_rank": 95.13333333333334
+        },
+        "half_b": {
+          "actual": -93757.01085293155,
+          "null_p95": 96337.44836909983,
+          "p_value": 0.9347101932045303,
+          "skilled": false,
+          "percentile_rank": 6.533333333333332
+        },
+        "n": 31
+      },
+      "0xe097a66a04a3afd6de8929d19fcc41211402d811": {
+        "half_a": {
+          "actual": 8.242250453945989,
+          "null_p95": 11.108037706054011,
+          "p_value": 0.10926049300466356,
+          "skilled": false,
+          "percentile_rank": 89.13333333333333
+        },
+        "half_b": {
+          "actual": 12.611268247396133,
+          "null_p95": 11.011744967396128,
+          "p_value": 0.028647568287808126,
+          "skilled": true,
+          "percentile_rank": 97.2
+        },
+        "n": 27
+      },
+      "0xe0f1e7751df4035f78a5eb2f4296c98b4d5bc4bd": {
+        "half_a": {
+          "actual": 604.3004879618695,
+          "null_p95": 373.08622048598875,
+          "p_value": 0.001998667554963358,
+          "skilled": true,
+          "percentile_rank": 99.86666666666667
+        },
+        "half_b": {
+          "actual": 646.8948890442471,
+          "null_p95": 330.1302847442831,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "n": 33
+      },
+      "0xe33a76226eb570e53095b437f3af03335379d8f7": {
+        "half_a": {
+          "actual": -472.1960114973806,
+          "null_p95": 1123.2520204635132,
+          "p_value": 0.709526982011992,
+          "skilled": false,
+          "percentile_rank": 29.06666666666667
+        },
+        "half_b": {
+          "actual": 361.2011510778507,
+          "null_p95": 251.58455465512338,
+          "p_value": 0.006662225183211193,
+          "skilled": true,
+          "percentile_rank": 99.4
+        },
+        "n": 34
+      },
+      "0xea41d1253bf603d7947da4659e85080dc2071c98": {
+        "half_a": {
+          "actual": 344.03980637721304,
+          "null_p95": 979.5143597124103,
+          "p_value": 0.2971352431712192,
+          "skilled": false,
+          "percentile_rank": 70.33333333333334
+        },
+        "half_b": {
+          "actual": 589.0086551994261,
+          "null_p95": 989.7580382381626,
+          "p_value": 0.1692205196535643,
+          "skilled": false,
+          "percentile_rank": 83.13333333333334
+        },
+        "n": 191
+      },
+      "0xecaa8806a9a05049d7d5260a33dc924220e377a9": {
+        "half_a": {
+          "actual": -5312.627780184702,
+          "null_p95": 10533.174436946843,
+          "p_value": 0.7694870086608927,
+          "skilled": false,
+          "percentile_rank": 23.066666666666666
+        },
+        "half_b": {
+          "actual": -13397.563985233346,
+          "null_p95": 20427.303483982567,
+          "p_value": 0.8001332445036642,
+          "skilled": false,
+          "percentile_rank": 20.0
+        },
+        "n": 99
+      },
+      "0xedc2834124c0465fb2ccbf239896ef65f975ad9f": {
+        "half_a": {
+          "actual": -821.1104095142178,
+          "null_p95": 1082.3090286125325,
+          "p_value": 0.8880746169220519,
+          "skilled": false,
+          "percentile_rank": 11.200000000000001
+        },
+        "half_b": {
+          "actual": -1299.9905650159783,
+          "null_p95": 1870.5383558578992,
+          "p_value": 0.8361092604930047,
+          "skilled": false,
+          "percentile_rank": 16.400000000000002
+        },
+        "n": 55
+      },
+      "0xf23313b2d009b671667cb158658f63e9f4d66ab2": {
+        "half_a": {
+          "actual": 281.1777097355613,
+          "null_p95": 209.04113403837047,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "half_b": {
+          "actual": 56.37538222074938,
+          "null_p95": 46.54781227880836,
+          "p_value": 0.010659560293137908,
+          "skilled": true,
+          "percentile_rank": 99.0
+        },
+        "n": 26
+      },
+      "0xf2b05d854e0af18e70b76e96534e2e7f7a04b26b": {
+        "half_a": {
+          "actual": -125.67825025510157,
+          "null_p95": 435.4476752279829,
+          "p_value": 0.6795469686875416,
+          "skilled": false,
+          "percentile_rank": 32.06666666666666
+        },
+        "half_b": {
+          "actual": -10354.802949904019,
+          "null_p95": 10394.908784466228,
+          "p_value": 0.9593604263824117,
+          "skilled": false,
+          "percentile_rank": 4.066666666666666
+        },
+        "n": 35
+      },
+      "0xf3b550c43f97a626049036e6f6dbb1f9413e4c72": {
+        "half_a": {
+          "actual": 18.82645930735629,
+          "null_p95": 90.78072194278805,
+          "p_value": 0.47301798800799466,
+          "skilled": false,
+          "percentile_rank": 52.733333333333334
+        },
+        "half_b": {
+          "actual": 406.39519172102143,
+          "null_p95": 575.2793148721012,
+          "p_value": 0.2418387741505663,
+          "skilled": false,
+          "percentile_rank": 75.86666666666667
+        },
+        "n": 39
+      },
+      "0xfd2b117412a698f322b0cd18d6827dad262b8e50": {
+        "half_a": {
+          "actual": 21137.363025016777,
+          "null_p95": 20468.464423990376,
+          "p_value": 0.02531645569620253,
+          "skilled": true,
+          "percentile_rank": 97.53333333333333
+        },
+        "half_b": {
+          "actual": -16517.511844388813,
+          "null_p95": 20299.523912812965,
+          "p_value": 0.5716189207195204,
+          "skilled": false,
+          "percentile_rank": 42.86666666666667
+        },
+        "n": 24
+      },
+      "0xff9e908b4abf8f591bc1c07915a09b34765e56a1": {
+        "half_a": {
+          "actual": -436.32343571220383,
+          "null_p95": 2285.128671647621,
+          "p_value": 0.5096602265156562,
+          "skilled": false,
+          "percentile_rank": 49.06666666666666
+        },
+        "half_b": {
+          "actual": -412.0959086384785,
+          "null_p95": 3225.0036115460925,
+          "p_value": 0.558960692871419,
+          "skilled": false,
+          "percentile_rank": 44.13333333333333
+        },
+        "n": 103
+      }
+    }
+  },
+  "placebo_split_half": {
+    "n_eligible": 32,
+    "persistence_numerator": 7,
+    "persistence_denominator": 12,
+    "persistence_rate": 0.5833333333333334,
+    "per_trader": {
+      "0x0484ced2f7764c28c0eef3514b48682ee0cde0ee": {
+        "half_a": {
+          "actual": 3986.4771714411195,
+          "null_p95": 3020.5360643184467,
+          "p_value": 0.015989340439706862,
+          "skilled": true,
+          "percentile_rank": 98.46666666666667
+        },
+        "half_b": {
+          "actual": 858.8872002096148,
+          "null_p95": 2298.6498327748254,
+          "p_value": 0.27648234510326447,
+          "skilled": false,
+          "percentile_rank": 72.39999999999999
+        },
+        "n": 75
+      },
+      "0x05dfd81903aae6f5caa20e1c1dd1d472728a882d": {
+        "half_a": {
+          "actual": 3849.396028830053,
+          "null_p95": 3673.060559107153,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "half_b": {
+          "actual": 2193.429470815053,
+          "null_p95": 1949.8604396960225,
+          "p_value": 0.005329780146568954,
+          "skilled": true,
+          "percentile_rank": 99.53333333333333
+        },
+        "n": 47
+      },
+      "0x197040709ae61627d3685a8d6ce1f9e82e6b398d": {
+        "half_a": {
+          "actual": 400.55394875674386,
+          "null_p95": 239.1613735138921,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "half_b": {
+          "actual": -36.49949706925563,
+          "null_p95": 238.21051097021632,
+          "p_value": 0.5143237841439041,
+          "skilled": false,
+          "percentile_rank": 48.6
+        },
+        "n": 43
+      },
+      "0x1c144e30f405a25f991cbd8baa15d40599090869": {
+        "half_a": {
+          "actual": 440.9603436074646,
+          "null_p95": 1546.4421623567755,
+          "p_value": 0.33044636908727515,
+          "skilled": false,
+          "percentile_rank": 67.0
+        },
+        "half_b": {
+          "actual": 2275.3623953746264,
+          "null_p95": 2339.046871351205,
+          "p_value": 0.060626249167221855,
+          "skilled": false,
+          "percentile_rank": 94.0
+        },
+        "n": 183
+      },
+      "0x1cea7192af5d7b1826083a19c5be75115a2df32a": {
+        "half_a": {
+          "actual": -83.22312149181877,
+          "null_p95": 136.1957468339425,
+          "p_value": 0.8527648234510327,
+          "skilled": false,
+          "percentile_rank": 14.733333333333334
+        },
+        "half_b": {
+          "actual": 22.471894849176817,
+          "null_p95": 52.54597452749359,
+          "p_value": 0.4823451032644903,
+          "skilled": false,
+          "percentile_rank": 51.800000000000004
+        },
+        "n": 37
+      },
+      "0x2aacd459eaea420eb0d7b94c7b03238786c6dfad": {
+        "half_a": {
+          "actual": 135.0910175779047,
+          "null_p95": 95.49443851435096,
+          "p_value": 0.009327115256495669,
+          "skilled": true,
+          "percentile_rank": 99.13333333333333
+        },
+        "half_b": {
+          "actual": 129.04371247060558,
+          "null_p95": 282.81504348420697,
+          "p_value": 0.24317121918720852,
+          "skilled": false,
+          "percentile_rank": 75.73333333333333
+        },
+        "n": 47
+      },
+      "0x2d1d3153136eb7a7438a6538aaf81d6b05029cb4": {
+        "half_a": {
+          "actual": -326.82169963297804,
+          "null_p95": 649.8333903742719,
+          "p_value": 0.765489673550966,
+          "skilled": false,
+          "percentile_rank": 23.466666666666665
+        },
+        "half_b": {
+          "actual": 755.3172587703564,
+          "null_p95": 679.7006030615496,
+          "p_value": 0.001998667554963358,
+          "skilled": true,
+          "percentile_rank": 99.86666666666667
+        },
+        "n": 21
+      },
+      "0x2d29b686abeb99266ca8f9817dcfddf75921f683": {
+        "half_a": {
+          "actual": 115.78179363941588,
+          "null_p95": 148.40605062978815,
+          "p_value": 0.09193870752831446,
+          "skilled": false,
+          "percentile_rank": 90.86666666666666
+        },
+        "half_b": {
+          "actual": 15.718567883412437,
+          "null_p95": 112.51873836332408,
+          "p_value": 0.42371752165223187,
+          "skilled": false,
+          "percentile_rank": 57.666666666666664
+        },
+        "n": 23
+      },
+      "0x32d1623dddbd4841a98da71e47f0436d2ef2b949": {
+        "half_a": {
+          "actual": 181.8515202224932,
+          "null_p95": 493.86632623299545,
+          "p_value": 0.30246502331778813,
+          "skilled": false,
+          "percentile_rank": 69.8
+        },
+        "half_b": {
+          "actual": -289.8688994290551,
+          "null_p95": 224.6714511370637,
+          "p_value": 0.9906728847435043,
+          "skilled": false,
+          "percentile_rank": 0.9333333333333335
+        },
+        "n": 60
+      },
+      "0x40cfb29411d29f4fa0908f2a121297042cccd21d": {
+        "half_a": {
+          "actual": -876.2331119804502,
+          "null_p95": 1708.9275814336354,
+          "p_value": 0.7848101265822784,
+          "skilled": false,
+          "percentile_rank": 21.53333333333333
+        },
+        "half_b": {
+          "actual": 2153.972845035735,
+          "null_p95": 2273.9240971011473,
+          "p_value": 0.061958694203864094,
+          "skilled": false,
+          "percentile_rank": 93.86666666666666
+        },
+        "n": 196
+      },
+      "0x482bf5accdecfaffa67c14d4d4fbb59f428a3266": {
+        "half_a": {
+          "actual": 233.6661348148911,
+          "null_p95": 243.7569261065371,
+          "p_value": 0.06129247168554297,
+          "skilled": false,
+          "percentile_rank": 93.93333333333334
+        },
+        "half_b": {
+          "actual": 51.644526927835855,
+          "null_p95": 185.1666560204126,
+          "p_value": 0.3157894736842105,
+          "skilled": false,
+          "percentile_rank": 68.46666666666667
+        },
+        "n": 29
+      },
+      "0x4d0121458bb2f96c6440c0f3835d675ad3ce1645": {
+        "half_a": {
+          "actual": 465.5715378571614,
+          "null_p95": 751.7752993984652,
+          "p_value": 0.16189207195203198,
+          "skilled": false,
+          "percentile_rank": 83.86666666666667
+        },
+        "half_b": {
+          "actual": 199.08089222095106,
+          "null_p95": 701.6153026141725,
+          "p_value": 0.3384410393071286,
+          "skilled": false,
+          "percentile_rank": 66.2
+        },
+        "n": 54
+      },
+      "0x50396e4d9d11d38b0dcfd75280101a315f50946d": {
+        "half_a": {
+          "actual": 658.2349876228842,
+          "null_p95": 782.7258882727691,
+          "p_value": 0.09060626249167222,
+          "skilled": false,
+          "percentile_rank": 91.0
+        },
+        "half_b": {
+          "actual": 1068.0489631593873,
+          "null_p95": 912.7156430002714,
+          "p_value": 0.016655562958027982,
+          "skilled": true,
+          "percentile_rank": 98.4
+        },
+        "n": 47
+      },
+      "0x51b5b8b1574994d5472351b368f6e6e4a1af9975": {
+        "half_a": {
+          "actual": 78.73778586445667,
+          "null_p95": 71.35310833917566,
+          "p_value": 0.03264490339773484,
+          "skilled": true,
+          "percentile_rank": 96.8
+        },
+        "half_b": {
+          "actual": 3.5572521393232353,
+          "null_p95": 42.770493921540194,
+          "p_value": 0.4170552964690207,
+          "skilled": false,
+          "percentile_rank": 58.333333333333336
+        },
+        "n": 37
+      },
+      "0x5a218c7ad04135830a45c41aaed7294df7809318": {
+        "half_a": {
+          "actual": 9.393169295935966,
+          "null_p95": 32.059799231686995,
+          "p_value": 0.3224516988674217,
+          "skilled": false,
+          "percentile_rank": 67.80000000000001
+        },
+        "half_b": {
+          "actual": -13.02937045636461,
+          "null_p95": 34.77303814300208,
+          "p_value": 0.6722185209860093,
+          "skilled": false,
+          "percentile_rank": 32.800000000000004
+        },
+        "n": 35
+      },
+      "0x606ed7945996ae85a8002b05f83319c518b96b3a": {
+        "half_a": {
+          "actual": 949.006548307596,
+          "null_p95": 1034.9909846040473,
+          "p_value": 0.0759493670886076,
+          "skilled": false,
+          "percentile_rank": 92.46666666666667
+        },
+        "half_b": {
+          "actual": 696.9150073126538,
+          "null_p95": 1044.498092730121,
+          "p_value": 0.13790806129247168,
+          "skilled": false,
+          "percentile_rank": 86.26666666666667
+        },
+        "n": 230
+      },
+      "0x61cda064c4ab8ea74880eb440ffb2dbdbeb1541e": {
+        "half_a": {
+          "actual": 235.5463526279926,
+          "null_p95": 178.7264024809597,
+          "p_value": 0.009327115256495669,
+          "skilled": true,
+          "percentile_rank": 99.13333333333333
+        },
+        "half_b": {
+          "actual": 460.2477682114762,
+          "null_p95": 262.50516605542816,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "n": 41
+      },
+      "0x6cd517eaa88ba717fa3aa3d5047feb0ce387f2cf": {
+        "half_a": {
+          "actual": 203.94584402516728,
+          "null_p95": 695.7937695435802,
+          "p_value": 0.3391072618254497,
+          "skilled": false,
+          "percentile_rank": 66.13333333333333
+        },
+        "half_b": {
+          "actual": 129.63980242570784,
+          "null_p95": 479.7742473112167,
+          "p_value": 0.3384410393071286,
+          "skilled": false,
+          "percentile_rank": 66.2
+        },
+        "n": 110
+      },
+      "0x73192b9597c4496f8c338b36239bdf4218ac0299": {
+        "half_a": {
+          "actual": 328.6368194700567,
+          "null_p95": 351.4448579674794,
+          "p_value": 0.06329113924050633,
+          "skilled": false,
+          "percentile_rank": 93.73333333333333
+        },
+        "half_b": {
+          "actual": 75.55405326775723,
+          "null_p95": 479.47369655727056,
+          "p_value": 0.43770819453697535,
+          "skilled": false,
+          "percentile_rank": 56.266666666666666
+        },
+        "n": 49
+      },
+      "0x77fa7e303f7a8017016a8388ef7eba40a4a31a63": {
+        "half_a": {
+          "actual": -120.94340106763435,
+          "null_p95": 137.29953313390087,
+          "p_value": 0.91672218520986,
+          "skilled": false,
+          "percentile_rank": 8.333333333333332
+        },
+        "half_b": {
+          "actual": -222.02368682483564,
+          "null_p95": 170.40876091358083,
+          "p_value": 0.9880079946702198,
+          "skilled": false,
+          "percentile_rank": 1.2
+        },
+        "n": 46
+      },
+      "0x8fce065d5820ea3deb72976640290959bb952566": {
+        "half_a": {
+          "actual": 162.22299208526752,
+          "null_p95": 132.26690925562053,
+          "p_value": 0.019320453031312457,
+          "skilled": true,
+          "percentile_rank": 98.13333333333333
+        },
+        "half_b": {
+          "actual": 147.5278469247032,
+          "null_p95": 122.72000229626059,
+          "p_value": 0.021319120586275817,
+          "skilled": true,
+          "percentile_rank": 97.93333333333332
+        },
+        "n": 25
+      },
+      "0x96489abcb9f583d6835c8ef95ffc923d05a86825": {
+        "half_a": {
+          "actual": 1204.1237134662172,
+          "null_p95": 3475.6220676662165,
+          "p_value": 0.3031312458361093,
+          "skilled": false,
+          "percentile_rank": 69.73333333333333
+        },
+        "half_b": {
+          "actual": -1756.0658579604835,
+          "null_p95": 4836.470747341752,
+          "p_value": 0.6755496335776149,
+          "skilled": false,
+          "percentile_rank": 32.46666666666667
+        },
+        "n": 40
+      },
+      "0x9f83f83bdfc209c6fade8a2c77ea9667e9176cd9": {
+        "half_a": {
+          "actual": 2127.839569727454,
+          "null_p95": 1492.6476238026978,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "half_b": {
+          "actual": 2337.796884723474,
+          "null_p95": 1954.6912860332993,
+          "p_value": 0.02465023317788141,
+          "skilled": true,
+          "percentile_rank": 97.6
+        },
+        "n": 86
+      },
+      "0xb6d397514208c740cdcdd36c188b7f51e1bfa093": {
+        "half_a": {
+          "actual": 98.0991860359497,
+          "null_p95": 83.09431093907385,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "half_b": {
+          "actual": 42.61484175663979,
+          "null_p95": 49.57042155275931,
+          "p_value": 0.10126582278481013,
+          "skilled": false,
+          "percentile_rank": 89.93333333333334
+        },
+        "n": 31
+      },
+      "0xc695e1c32a30650eda67e8e0e74f9e18f36566d1": {
+        "half_a": {
+          "actual": -8.20008780392008,
+          "null_p95": 13.824978872334219,
+          "p_value": 0.8314457028647568,
+          "skilled": false,
+          "percentile_rank": 16.866666666666667
+        },
+        "half_b": {
+          "actual": 1.3065495049959774,
+          "null_p95": 15.402084015261078,
+          "p_value": 0.4536975349766822,
+          "skilled": false,
+          "percentile_rank": 54.666666666666664
+        },
+        "n": 138
+      },
+      "0xc8b9a30184244d427169cf62485dde6041b2b836": {
+        "half_a": {
+          "actual": 3710.5770986773855,
+          "null_p95": 3578.080068171303,
+          "p_value": 0.029313790806129246,
+          "skilled": true,
+          "percentile_rank": 97.13333333333334
+        },
+        "half_b": {
+          "actual": 9364.469006011464,
+          "null_p95": 8567.351069969249,
+          "p_value": 0.009993337774816789,
+          "skilled": true,
+          "percentile_rank": 99.06666666666666
+        },
+        "n": 105
+      },
+      "0xd5db05423b6718497684ae1bbe1557746d2c3c45": {
+        "half_a": {
+          "actual": 1059.3807502042482,
+          "null_p95": 594.0557737038438,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "half_b": {
+          "actual": 1170.5360893290858,
+          "null_p95": 728.5556932130153,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "n": 91
+      },
+      "0xd784b0ff82b712cb77fdfe85c11bc02aecc68f5b": {
+        "half_a": {
+          "actual": -51.97326075930814,
+          "null_p95": 40.374822696271,
+          "p_value": 0.9940039973351099,
+          "skilled": false,
+          "percentile_rank": 0.6
+        },
+        "half_b": {
+          "actual": -1.080100170538371,
+          "null_p95": 23.214053784236583,
+          "p_value": 0.5516322451698867,
+          "skilled": false,
+          "percentile_rank": 44.86666666666667
+        },
+        "n": 25
+      },
+      "0xd9e7c4534905e459ec75e9f5d828c58a12924cde": {
+        "half_a": {
+          "actual": 347.4658893930675,
+          "null_p95": 310.8424142359732,
+          "p_value": 0.021985343104596936,
+          "skilled": true,
+          "percentile_rank": 97.86666666666667
+        },
+        "half_b": {
+          "actual": 391.3335628684315,
+          "null_p95": 243.62348564672507,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "n": 32
+      },
+      "0xe6fd18067d9b8768ee4dc45e926cf54867288bc3": {
+        "half_a": {
+          "actual": 564.9237655978807,
+          "null_p95": 1138.1816533727315,
+          "p_value": 0.217854763491006,
+          "skilled": false,
+          "percentile_rank": 78.26666666666667
+        },
+        "half_b": {
+          "actual": 1592.520377826424,
+          "null_p95": 811.5511262663763,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "n": 67
+      },
+      "0xf6df086fd5520e86df5408d5b9871895956865b1": {
+        "half_a": {
+          "actual": -16.210377113356895,
+          "null_p95": 10.51664448517153,
+          "p_value": 1.0,
+          "skilled": false,
+          "percentile_rank": 0.0
+        },
+        "half_b": {
+          "actual": -20.13839088902188,
+          "null_p95": 11.940131435755674,
+          "p_value": 1.0,
+          "skilled": false,
+          "percentile_rank": 0.0
+        },
+        "n": 24
+      },
+      "0xf91a26c6db2ae08c86e972d64fb4fac409b721ba": {
+        "half_a": {
+          "actual": 3.1716573233469787,
+          "null_p95": 15.394547618739868,
+          "p_value": 0.4003997335109927,
+          "skilled": false,
+          "percentile_rank": 60.0
+        },
+        "half_b": {
+          "actual": 17.67021075074379,
+          "null_p95": 9.45591057200467,
+          "p_value": 0.0006662225183211193,
+          "skilled": true,
+          "percentile_rank": 100.0
+        },
+        "n": 89
+      }
+    }
+  },
+  "separation": {
+    "rate_diff_raw": -0.13188289014235832,
+    "rate_diff_bh": -0.10233682514101533,
+    "condition_rate": false,
+    "condition_aggregate": false,
+    "separation": false
+  }
+}
