@@ -1,0 +1,712 @@
+{
+  "spec": "directional_skill_reps_bh_effect",
+  "status": "COMPLETED",
+  "generated_at": "2026-09-06T19:40:52.611487+00:00",
+  "script_commit": "ea1140effc6459dcb8795384f0fae6e4d3ad41ef",
+  "synth_seeds": [
+    20260906,
+    31337,
+    99991
+  ],
+  "reps_values": [
+    1500,
+    3000,
+    5000,
+    10000
+  ],
+  "harness_seed": 42,
+  "t_split": "2026-04-01 00:00:00",
+  "total_runtime_seconds": 473.400621,
+  "selfcheck": {
+    "passed": true,
+    "mismatches": []
+  },
+  "runs": [
+    {
+      "synth_seed": 20260906,
+      "reps": 1500,
+      "elapsed_seconds": 13.056648,
+      "cohort": {
+        "reps": 1500,
+        "group": "seed20260906-cohort-r1500",
+        "n_classifiable": 146,
+        "raw_skilled": 6,
+        "raw_rate": 0.0410958904109589,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 145,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0006662225183211193
+      },
+      "comparison": {
+        "reps": 1500,
+        "group": "seed20260906-comparison-r1500",
+        "n_classifiable": 607,
+        "raw_skilled": 29,
+        "raw_rate": 0.047775947281713346,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 501,
+        "pinned_at_floor": 1,
+        "floor_pvalue": 0.0006662225183211193
+      },
+      "pooled": {
+        "reps": 1500,
+        "group": "seed20260906-pooled-r1500",
+        "n_classifiable": 753,
+        "raw_skilled": 35,
+        "raw_rate": 0.04648074369189907,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 606,
+        "pinned_at_floor": 1,
+        "floor_pvalue": 0.0006662225183211193
+      }
+    },
+    {
+      "synth_seed": 20260906,
+      "reps": 3000,
+      "elapsed_seconds": 25.05048,
+      "cohort": {
+        "reps": 3000,
+        "group": "seed20260906-cohort-r3000",
+        "n_classifiable": 146,
+        "raw_skilled": 6,
+        "raw_rate": 0.0410958904109589,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 143,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0003332222592469177
+      },
+      "comparison": {
+        "reps": 3000,
+        "group": "seed20260906-comparison-r3000",
+        "n_classifiable": 607,
+        "raw_skilled": 30,
+        "raw_rate": 0.04942339373970346,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 550,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0003332222592469177
+      },
+      "pooled": {
+        "reps": 3000,
+        "group": "seed20260906-pooled-r3000",
+        "n_classifiable": 753,
+        "raw_skilled": 36,
+        "raw_rate": 0.04780876494023904,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 664,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0003332222592469177
+      }
+    },
+    {
+      "synth_seed": 20260906,
+      "reps": 5000,
+      "elapsed_seconds": 40.872517,
+      "cohort": {
+        "reps": 5000,
+        "group": "seed20260906-cohort-r5000",
+        "n_classifiable": 146,
+        "raw_skilled": 6,
+        "raw_rate": 0.0410958904109589,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 146,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0001999600079984003
+      },
+      "comparison": {
+        "reps": 5000,
+        "group": "seed20260906-comparison-r5000",
+        "n_classifiable": 607,
+        "raw_skilled": 30,
+        "raw_rate": 0.04942339373970346,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 571,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0001999600079984003
+      },
+      "pooled": {
+        "reps": 5000,
+        "group": "seed20260906-pooled-r5000",
+        "n_classifiable": 753,
+        "raw_skilled": 36,
+        "raw_rate": 0.04780876494023904,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 703,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0001999600079984003
+      }
+    },
+    {
+      "synth_seed": 20260906,
+      "reps": 10000,
+      "elapsed_seconds": 79.416559,
+      "cohort": {
+        "reps": 10000,
+        "group": "seed20260906-cohort-r10000",
+        "n_classifiable": 146,
+        "raw_skilled": 5,
+        "raw_rate": 0.03424657534246575,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 146,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 9.999000099990002e-05
+      },
+      "comparison": {
+        "reps": 10000,
+        "group": "seed20260906-comparison-r10000",
+        "n_classifiable": 607,
+        "raw_skilled": 30,
+        "raw_rate": 0.04942339373970346,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 589,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 9.999000099990002e-05
+      },
+      "pooled": {
+        "reps": 10000,
+        "group": "seed20260906-pooled-r10000",
+        "n_classifiable": 753,
+        "raw_skilled": 35,
+        "raw_rate": 0.04648074369189907,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 727,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 9.999000099990002e-05
+      }
+    },
+    {
+      "synth_seed": 31337,
+      "reps": 1500,
+      "elapsed_seconds": 13.026106,
+      "cohort": {
+        "reps": 1500,
+        "group": "seed31337-cohort-r1500",
+        "n_classifiable": 146,
+        "raw_skilled": 9,
+        "raw_rate": 0.06164383561643835,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 139,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0006662225183211193
+      },
+      "comparison": {
+        "reps": 1500,
+        "group": "seed31337-comparison-r1500",
+        "n_classifiable": 607,
+        "raw_skilled": 35,
+        "raw_rate": 0.057660626029654036,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 501,
+        "pinned_at_floor": 1,
+        "floor_pvalue": 0.0006662225183211193
+      },
+      "pooled": {
+        "reps": 1500,
+        "group": "seed31337-pooled-r1500",
+        "n_classifiable": 753,
+        "raw_skilled": 44,
+        "raw_rate": 0.05843293492695883,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 594,
+        "pinned_at_floor": 1,
+        "floor_pvalue": 0.0006662225183211193
+      }
+    },
+    {
+      "synth_seed": 31337,
+      "reps": 3000,
+      "elapsed_seconds": 24.835852,
+      "cohort": {
+        "reps": 3000,
+        "group": "seed31337-cohort-r3000",
+        "n_classifiable": 146,
+        "raw_skilled": 10,
+        "raw_rate": 0.0684931506849315,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 139,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0003332222592469177
+      },
+      "comparison": {
+        "reps": 3000,
+        "group": "seed31337-comparison-r3000",
+        "n_classifiable": 607,
+        "raw_skilled": 36,
+        "raw_rate": 0.05930807248764415,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 548,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0003332222592469177
+      },
+      "pooled": {
+        "reps": 3000,
+        "group": "seed31337-pooled-r3000",
+        "n_classifiable": 753,
+        "raw_skilled": 46,
+        "raw_rate": 0.06108897742363878,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 661,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0003332222592469177
+      }
+    },
+    {
+      "synth_seed": 31337,
+      "reps": 5000,
+      "elapsed_seconds": 40.280164,
+      "cohort": {
+        "reps": 5000,
+        "group": "seed31337-cohort-r5000",
+        "n_classifiable": 146,
+        "raw_skilled": 10,
+        "raw_rate": 0.0684931506849315,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 145,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0001999600079984003
+      },
+      "comparison": {
+        "reps": 5000,
+        "group": "seed31337-comparison-r5000",
+        "n_classifiable": 607,
+        "raw_skilled": 34,
+        "raw_rate": 0.05601317957166392,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 562,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0001999600079984003
+      },
+      "pooled": {
+        "reps": 5000,
+        "group": "seed31337-pooled-r5000",
+        "n_classifiable": 753,
+        "raw_skilled": 44,
+        "raw_rate": 0.05843293492695883,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 690,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0001999600079984003
+      }
+    },
+    {
+      "synth_seed": 31337,
+      "reps": 10000,
+      "elapsed_seconds": 79.530114,
+      "cohort": {
+        "reps": 10000,
+        "group": "seed31337-cohort-r10000",
+        "n_classifiable": 146,
+        "raw_skilled": 10,
+        "raw_rate": 0.0684931506849315,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 145,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 9.999000099990002e-05
+      },
+      "comparison": {
+        "reps": 10000,
+        "group": "seed31337-comparison-r10000",
+        "n_classifiable": 607,
+        "raw_skilled": 35,
+        "raw_rate": 0.057660626029654036,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 586,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 9.999000099990002e-05
+      },
+      "pooled": {
+        "reps": 10000,
+        "group": "seed31337-pooled-r10000",
+        "n_classifiable": 753,
+        "raw_skilled": 45,
+        "raw_rate": 0.05976095617529881,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 725,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 9.999000099990002e-05
+      }
+    },
+    {
+      "synth_seed": 99991,
+      "reps": 1500,
+      "elapsed_seconds": 13.017417,
+      "cohort": {
+        "reps": 1500,
+        "group": "seed99991-cohort-r1500",
+        "n_classifiable": 146,
+        "raw_skilled": 6,
+        "raw_rate": 0.0410958904109589,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 133,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0006662225183211193
+      },
+      "comparison": {
+        "reps": 1500,
+        "group": "seed99991-comparison-r1500",
+        "n_classifiable": 607,
+        "raw_skilled": 25,
+        "raw_rate": 0.04118616144975288,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 499,
+        "pinned_at_floor": 1,
+        "floor_pvalue": 0.0006662225183211193
+      },
+      "pooled": {
+        "reps": 1500,
+        "group": "seed99991-pooled-r1500",
+        "n_classifiable": 753,
+        "raw_skilled": 31,
+        "raw_rate": 0.041168658698539175,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 586,
+        "pinned_at_floor": 1,
+        "floor_pvalue": 0.0006662225183211193
+      }
+    },
+    {
+      "synth_seed": 99991,
+      "reps": 3000,
+      "elapsed_seconds": 24.7692,
+      "cohort": {
+        "reps": 3000,
+        "group": "seed99991-cohort-r3000",
+        "n_classifiable": 146,
+        "raw_skilled": 5,
+        "raw_rate": 0.03424657534246575,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 140,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0003332222592469177
+      },
+      "comparison": {
+        "reps": 3000,
+        "group": "seed99991-comparison-r3000",
+        "n_classifiable": 607,
+        "raw_skilled": 24,
+        "raw_rate": 0.039538714991762765,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 556,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0003332222592469177
+      },
+      "pooled": {
+        "reps": 3000,
+        "group": "seed99991-pooled-r3000",
+        "n_classifiable": 753,
+        "raw_skilled": 29,
+        "raw_rate": 0.03851261620185923,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 669,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0003332222592469177
+      }
+    },
+    {
+      "synth_seed": 99991,
+      "reps": 5000,
+      "elapsed_seconds": 40.271533,
+      "cohort": {
+        "reps": 5000,
+        "group": "seed99991-cohort-r5000",
+        "n_classifiable": 146,
+        "raw_skilled": 5,
+        "raw_rate": 0.03424657534246575,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 145,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0001999600079984003
+      },
+      "comparison": {
+        "reps": 5000,
+        "group": "seed99991-comparison-r5000",
+        "n_classifiable": 607,
+        "raw_skilled": 25,
+        "raw_rate": 0.04118616144975288,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 579,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0001999600079984003
+      },
+      "pooled": {
+        "reps": 5000,
+        "group": "seed99991-pooled-r5000",
+        "n_classifiable": 753,
+        "raw_skilled": 30,
+        "raw_rate": 0.0398406374501992,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 711,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 0.0001999600079984003
+      }
+    },
+    {
+      "synth_seed": 99991,
+      "reps": 10000,
+      "elapsed_seconds": 79.241131,
+      "cohort": {
+        "reps": 10000,
+        "group": "seed99991-cohort-r10000",
+        "n_classifiable": 146,
+        "raw_skilled": 5,
+        "raw_rate": 0.03424657534246575,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 144,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 9.999000099990002e-05
+      },
+      "comparison": {
+        "reps": 10000,
+        "group": "seed99991-comparison-r10000",
+        "n_classifiable": 607,
+        "raw_skilled": 25,
+        "raw_rate": 0.04118616144975288,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 585,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 9.999000099990002e-05
+      },
+      "pooled": {
+        "reps": 10000,
+        "group": "seed99991-pooled-r10000",
+        "n_classifiable": 753,
+        "raw_skilled": 30,
+        "raw_rate": 0.0398406374501992,
+        "bh_skilled": 0,
+        "bh_rate": 0.0,
+        "distinct_pvalues": 720,
+        "pinned_at_floor": 0,
+        "floor_pvalue": 9.999000099990002e-05
+      }
+    }
+  ],
+  "range_across_draws": [
+    {
+      "reps": 1500,
+      "group": "cohort",
+      "bh_rates_across_seeds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bh_counts_across_seeds": [
+        0,
+        0,
+        0
+      ],
+      "min_bh_rate": 0.0,
+      "max_bh_rate": 0.0
+    },
+    {
+      "reps": 1500,
+      "group": "comparison",
+      "bh_rates_across_seeds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bh_counts_across_seeds": [
+        0,
+        0,
+        0
+      ],
+      "min_bh_rate": 0.0,
+      "max_bh_rate": 0.0
+    },
+    {
+      "reps": 1500,
+      "group": "pooled",
+      "bh_rates_across_seeds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bh_counts_across_seeds": [
+        0,
+        0,
+        0
+      ],
+      "min_bh_rate": 0.0,
+      "max_bh_rate": 0.0
+    },
+    {
+      "reps": 3000,
+      "group": "cohort",
+      "bh_rates_across_seeds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bh_counts_across_seeds": [
+        0,
+        0,
+        0
+      ],
+      "min_bh_rate": 0.0,
+      "max_bh_rate": 0.0
+    },
+    {
+      "reps": 3000,
+      "group": "comparison",
+      "bh_rates_across_seeds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bh_counts_across_seeds": [
+        0,
+        0,
+        0
+      ],
+      "min_bh_rate": 0.0,
+      "max_bh_rate": 0.0
+    },
+    {
+      "reps": 3000,
+      "group": "pooled",
+      "bh_rates_across_seeds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bh_counts_across_seeds": [
+        0,
+        0,
+        0
+      ],
+      "min_bh_rate": 0.0,
+      "max_bh_rate": 0.0
+    },
+    {
+      "reps": 5000,
+      "group": "cohort",
+      "bh_rates_across_seeds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bh_counts_across_seeds": [
+        0,
+        0,
+        0
+      ],
+      "min_bh_rate": 0.0,
+      "max_bh_rate": 0.0
+    },
+    {
+      "reps": 5000,
+      "group": "comparison",
+      "bh_rates_across_seeds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bh_counts_across_seeds": [
+        0,
+        0,
+        0
+      ],
+      "min_bh_rate": 0.0,
+      "max_bh_rate": 0.0
+    },
+    {
+      "reps": 5000,
+      "group": "pooled",
+      "bh_rates_across_seeds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bh_counts_across_seeds": [
+        0,
+        0,
+        0
+      ],
+      "min_bh_rate": 0.0,
+      "max_bh_rate": 0.0
+    },
+    {
+      "reps": 10000,
+      "group": "cohort",
+      "bh_rates_across_seeds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bh_counts_across_seeds": [
+        0,
+        0,
+        0
+      ],
+      "min_bh_rate": 0.0,
+      "max_bh_rate": 0.0
+    },
+    {
+      "reps": 10000,
+      "group": "comparison",
+      "bh_rates_across_seeds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bh_counts_across_seeds": [
+        0,
+        0,
+        0
+      ],
+      "min_bh_rate": 0.0,
+      "max_bh_rate": 0.0
+    },
+    {
+      "reps": 10000,
+      "group": "pooled",
+      "bh_rates_across_seeds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bh_counts_across_seeds": [
+        0,
+        0,
+        0
+      ],
+      "min_bh_rate": 0.0,
+      "max_bh_rate": 0.0
+    }
+  ]
+}
