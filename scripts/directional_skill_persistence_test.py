@@ -2,49 +2,52 @@
 """
 DIRECTIONAL SKILL PERSISTENCE TEST -- executes brain/decisions/2026-09-06-
 directional-skill-persistence-prereg.md (trading-swarm 7743740) INCLUDING
-its dated 2026-09-06 amendment (split primary/secondary success criterion;
-stratified reporting by post-split position count). Approved by Oscar
-2026-09-06. Read-only against production tables. Writes no production
-table -- output goes only to the JSON artifact named on the command line.
+BOTH its dated amendments: the 2026-09-06 amendment (split primary/
+secondary success criterion; stratified reporting by post-split position
+count) and Amendment 2026-09-06b (S8 null established by an alternative
+route, fixed numerically at 0%). Approved by Oscar 2026-09-06. Read-only
+against production tables. Writes no production table -- output goes only
+to the JSON artifact named on the command line.
 
 THE QUESTION (prereg, "The question"): does directional skill, measured
 PIT-legally before T_split, persist out-of-sample? Direction in, direction
 out -- edge is out of scope by design, not computed anywhere here.
 
 HARNESS: per_trader_and_aggregate(), sign_flip_null(), classify(),
-bh_correction(), split_half() imported unchanged from
-directional_skill_diagnostic.py. weighted_pair_table(),
-weighted_two_way_gap_bootstrap() imported unchanged from
-trader_skill_metric_v2d.py. WEIGHT_FNS imported unchanged from
+bh_correction() imported unchanged from directional_skill_diagnostic.py.
+weighted_pair_table(), weighted_two_way_gap_bootstrap() imported unchanged
+from trader_skill_metric_v2d.py. WEIGHT_FNS imported unchanged from
 trader_skill_metric_v2c.py. No function body in any of those modules is
 edited by this script.
 
 REPS OVERRIDE, DOCUMENTED EXPLICITLY (prereg S2: REPS=10,000 for the
-post-split re-classification step): per_trader_and_aggregate() and
-split_half() do not take a `reps` argument -- they read the module-level
-`REPS` constant from directional_skill_diagnostic.py directly inside their
-own bodies. Since Python resolves a function's global names via its own
-module's namespace at call time, rebinding that module attribute
-(`dsd.REPS = 10000`) changes what those UNMODIFIED functions read, without
-editing directional_skill_diagnostic.py's source at all. This is the
-mechanism used here to run the imported, unchanged functions at
-REPS=10,000. `MIN_SPLIT_HALF=20`, `ALPHA=0.05`, and `SEED=42` are left
-untouched.
+post-split re-classification step): per_trader_and_aggregate() does not
+take a `reps` argument -- it reads the module-level `REPS` constant from
+directional_skill_diagnostic.py directly inside its own body. Since Python
+resolves a function's global names via its own module's namespace at call
+time, rebinding that module attribute (`dsd.REPS = 10000`) changes what
+this UNMODIFIED function reads, without editing
+directional_skill_diagnostic.py's source at all. `ALPHA=0.05` and
+`SEED=42` are left untouched.
 
-TWO SEPARATE, NEW, CLEARLY-RECORDED SEEDS beyond the harness's own
-SEED=42 (S5, unchanged, reseeded per call site inside sign_flip_null):
-SYNTH_SEED for the one-time zero-skill side draw (S8 prerequisite,
-matching Step 1's method exactly) and BOOTSTRAP_SEED for the
-trader-clustered persistence-rate CI (S6, a new statistic this
-pre-registration introduces, not part of the pre-existing harness).
+NULL, PER AMENDMENT 2026-09-06b: the S8 gate as originally specified
+(split-half persistence on an adequate denominator) was NOT MET when
+first attempted (first-repo `ea1140e`) -- the synthetic-cohort split-half
+denominator was 6, below the documented floor of 10. That gate is NOT
+retried here. Instead, per the amendment, the null is FIXED NUMERICALLY
+at 0% (BH-adjusted persistence rate under zero skill), established by the
+REPS premise test (first-repo `6dc0bf5`): BH=0 in all 36 tested cells (3
+synthetic draws x 4 REPS values x 3 groups), zero spread across draws.
+This script does not recompute that evidence -- it verifies (via
+--selfcheck) that the cited artifact still shows BH=0 in all 36 cells,
+then uses the fixed null point directly. No synthetic-null construction,
+split_half() call, or MIN_ADEQUATE_DENOMINATOR gate appears in this
+script.
 
-S8 HARD GATE: the synthetic-null persistence rate replicates Step 1's own
-failed split-half attempt (Part 2 of the null-calibration doc), applied to
-the ACTUAL twice-classifiable population (753) instead of the small frozen
-338-trader population -- using split_half(), imported unchanged, on
-zero-skill-by-construction post-split data. If its denominators are as
-inadequate as Step 1's (1, 2, 5), this script halts before computing any
-real persistence rate, per the prereg's own S8 sequencing.
+BOOTSTRAP_SEED (new, beyond the harness's own SEED=42, S5, unchanged,
+reseeded per call site inside sign_flip_null): trader-clustered
+persistence-rate CI resampling (S6, a new statistic this pre-registration
+introduces, not part of the pre-existing harness).
 """
 import argparse
 import json
@@ -61,15 +64,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scripts.trader_skill_metric_v2 import db_connect
 from scripts.trader_skill_metric_v2f import T_SPLIT, SEED, M_CHOSEN, GATE_REPS_LOCAL
 import scripts.directional_skill_diagnostic as dsd
-from scripts.directional_skill_diagnostic import (
-    load_post_split_positions, per_trader_and_aggregate, split_half,
-    MIN_SPLIT_HALF, ALPHA,
-)
+from scripts.directional_skill_diagnostic import load_post_split_positions, per_trader_and_aggregate
 from scripts.trader_skill_metric_v2d import weighted_pair_table, weighted_two_way_gap_bootstrap
 from scripts.trader_skill_metric_v2c import WEIGHT_FNS
 
 POST_SPLIT_REPS = 10000          # prereg S2, fixed, not tunable after seeing a result
-SYNTH_SEED = 20260906            # one-time zero-skill side draw, S8 prerequisite
 BOOTSTRAP_SEED = 20260907        # trader-clustered persistence-rate CI resampling
 BOOTSTRAP_REPS = 10000
 GOMEZ_CRAM_BENCHMARK = 0.44
@@ -81,12 +80,19 @@ EXPECTED_PIT_CLASSIFIABLE = 5732
 
 STRATA = [(10, 14), (14, 23), (23, 46), (46, 83), (83, None)]
 
-# S8 gate: adequacy judgment, documented rather than a silently-picked
-# threshold. Step 1's failure was single-digit denominators (1, 2, 5).
-# Below this floor is treated as a clear repeat of that failure; the
-# script still reports the exact values either way, per the prereg's own
-# instruction that this decision returns to Oscar, not to this script.
-MIN_ADEQUATE_DENOMINATOR = 10
+# Amendment 2026-09-06b: the null the real persistence rate is judged
+# against, fixed numerically, not computed by this script.
+NULL_POINT = 0.0
+NULL_PROVENANCE = dict(
+    established_by="REPS premise test (first-repo 6dc0bf5)",
+    artifact="data/characterizations/directional_skill_reps_bh_effect_20260906T193257Z.json",
+    amendment="Amendment 2026-09-06b, 2026-09-06-directional-skill-persistence-prereg.md",
+    evidence="BH-adjusted classification == 0 in all 36 tested cells "
+             "(3 independent synthetic draws x 4 REPS values x 3 groups), "
+             "zero spread across draws",
+    s8_as_originally_specified="NOT MET -- synthetic-cohort split-half denominator "
+                                "was 6, below the documented floor of 10 (first-repo ea1140e)",
+)
 
 
 def git_commit(repo_dir):
@@ -94,27 +100,6 @@ def git_commit(repo_dir):
         return subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=repo_dir, text=True).strip()
     except Exception:
         return None
-
-
-def build_synthetic_df(real_df, synth_seed):
-    """Identical construction to Step 1's Part 2 (null-calibration doc):
-    each position's side drawn ONCE at random (not per null replicate),
-    applied to the recorded (won, price) pair per the original prereg's
-    own flipped-payoff derivation. Verified against the flip*real identity."""
-    rng = np.random.default_rng(synth_seed)
-    df = real_df.copy()
-    n = len(df)
-    flip = rng.integers(0, 2, size=n) * 2 - 1
-    df['synth_flip'] = flip
-    df['synth_won'] = np.where(flip == 1, df['won'], 1 - df['won'])
-    df['synth_price'] = np.where(flip == 1, df['price'], 1 - df['price'])
-    df['synth_edge'] = df['synth_won'] - df['synth_price']
-    df['synth_weighted_edge'] = df['synth_edge'] * df['cost']
-    assert np.allclose(df['synth_weighted_edge'].to_numpy(), (flip * df['weighted_edge']).to_numpy()), \
-        "synthetic construction diverged from the flip*real-edge identity"
-    out = df.copy()
-    out['weighted_edge'] = out['synth_weighted_edge']
-    return out
 
 
 def trader_clustered_ci(outcomes, reps, seed):
@@ -136,17 +121,21 @@ def trader_clustered_ci(outcomes, reps, seed):
     return dict(point=point, ci_lo=float(ci_lo), ci_hi=float(ci_hi), n=n)
 
 
-def ci_relationship(a, b):
-    """A's relationship to B's CI: 'above' (A entirely above B), 'below'
-    (A entirely below B), 'overlap' (any overlap) -- exhaustive, no
-    fourth state, per the amendment's own framing."""
-    if a['ci_lo'] is None or b['ci_lo'] is None:
+def primary_axis_state(real_ci, null_point=NULL_POINT):
+    """A-axis, per Amendment 2026-09-06b: the null is fixed at a single
+    point (0%), not a CI, so the CI-vs-CI rule reduces to a CI-vs-point
+    rule, stated exactly as the amendment fixes it:
+    A1 (established) iff the real CI's lower bound is STRICTLY greater
+    than the null point (the CI excludes it). A2 (no persistence)
+    otherwise (the CI touches or includes the null point). A3 (reversal)
+    is structurally unreachable -- a bounded proportion cannot fall below
+    a null fixed at the statistic's own floor -- and is never returned,
+    exactly as the amendment states in advance."""
+    if real_ci['ci_lo'] is None:
         return 'undetermined'
-    if a['ci_lo'] > b['ci_hi']:
-        return 'above'
-    if a['ci_hi'] < b['ci_lo']:
-        return 'below'
-    return 'overlap'
+    if real_ci['ci_lo'] > null_point:
+        return 'A1'
+    return 'A2'
 
 
 def stratify(per_trader_result, count_by_trader, strata):
@@ -170,9 +159,10 @@ def main():
     ap.add_argument('--pit-pool-json', default='data/characterizations/directional_skill_pit_legal_pool_20260906T160303Z.json')
     ap.add_argument('--twice-classifiable-json', default='data/characterizations/directional_skill_twice_classifiable_population_20260906T170928Z.json')
     ap.add_argument('--json-out', required=True)
+    ap.add_argument('--reps-effect-json', default=NULL_PROVENANCE['artifact'],
+                     help='REPS premise test artifact -- verified (not recomputed) by --selfcheck '
+                          'to still show BH=0 in all 36 cells before the fixed null is used')
     ap.add_argument('--selfcheck', action='store_true')
-    ap.add_argument('--force-past-gate', action='store_true',
-                     help='override the S8 STOP gate -- NOT for normal use, only for post-hoc inspection after a STOP')
     ap.add_argument('-v', '--verbose', action='store_true')
     args = ap.parse_args()
 
@@ -228,79 +218,24 @@ def main():
             sys.exit(1)
         print("[selfcheck] PASSED")
 
-    # =========================================================================
-    # S8 HARD GATE -- synthetic-zero-skill null, replicating Step 1's split-half
-    # method on the ACTUAL twice-classifiable population
-    # =========================================================================
-    print(f"\n=== S8 HARD GATE: synthetic zero-skill null (SYNTH_SEED={SYNTH_SEED}) ===")
-    synth_df = build_synthetic_df(real_df, SYNTH_SEED)
-    synth_cohort_df = synth_df[synth_df['trader'].isin(cohort_traders)]
-    synth_comparison_df = synth_df[synth_df['trader'].isin(comparison_traders)]
-    synth_pooled_df = synth_df
+        print(f"\n=== selfcheck: verify (not recompute) the REPS-effect artifact still shows "
+              f"BH=0 in all 36 cells, per Amendment 2026-09-06b ===")
+        reps_effect = json.load(open(args.reps_effect_json))
+        non_zero = [(r['synth_seed'], r['reps'], g)
+                    for r in reps_effect['runs'] for g in ('cohort', 'comparison', 'pooled')
+                    if r[g]['bh_skilled'] != 0]
+        print(f"[selfcheck] {len(reps_effect['runs']) * 3} cells checked, "
+              f"{len(non_zero)} with BH != 0")
+        if non_zero:
+            print(f"[selfcheck] FAILED: the null-provenance artifact no longer supports a "
+                  f"fixed null of 0% -- {non_zero}", file=sys.stderr)
+            sys.exit(1)
+        print("[selfcheck] PASSED -- fixed null of 0% remains supported")
 
-    print("[synthetic] per-trader + aggregate classification, both groups + pooled (context)")
-    synth_cohort_result = per_trader_and_aggregate(synth_cohort_df, cohort_traders, "synthetic-cohort", verbose=True)
-    synth_comparison_result = per_trader_and_aggregate(synth_comparison_df, comparison_traders, "synthetic-comparison", verbose=True)
-    synth_pooled_result = per_trader_and_aggregate(synth_pooled_df, twice_classifiable, "synthetic-pooled", verbose=True)
-
-    print("\n[synthetic] split-half persistence -- THE S8 gate check (mirrors Step 1's failed attempt)")
-    synth_cohort_split = split_half(synth_cohort_df, "synthetic-cohort", verbose=True)
-    synth_comparison_split = split_half(synth_comparison_df, "synthetic-comparison", verbose=True)
-    synth_pooled_split = split_half(synth_pooled_df, "synthetic-pooled", verbose=True)
-
-    denominators = dict(
-        synthetic_cohort=synth_cohort_split['persistence_denominator'],
-        synthetic_comparison=synth_comparison_split['persistence_denominator'],
-        synthetic_pooled=synth_pooled_split['persistence_denominator'],
-    )
-    print(f"\n[S8 gate] denominators per group: {denominators} "
-          f"(Step 1's failure: cohort=2, placebo=1, pooled=5; floor for this run: {MIN_ADEQUATE_DENOMINATOR})")
-    gate_inadequate = any(d is not None and d < MIN_ADEQUATE_DENOMINATOR for d in denominators.values()) or \
-        any(d is None for d in denominators.values())
-
-    s8_result = dict(
-        synth_seed=SYNTH_SEED,
-        synthetic_cohort=dict(classification=synth_cohort_result, split_half=synth_cohort_split),
-        synthetic_comparison=dict(classification=synth_comparison_result, split_half=synth_comparison_split),
-        synthetic_pooled=dict(classification=synth_pooled_result, split_half=synth_pooled_split),
-        denominators=denominators,
-        min_adequate_denominator=MIN_ADEQUATE_DENOMINATOR,
-        gate_inadequate=gate_inadequate,
-    )
-
-    # Primary in-house null used for the A1/A2/A3 comparison: the pooled
-    # synthetic-cohort's own post-split BH-skilled rate under zero-skill
-    # data -- the direct chance-floor analogue of the real persistence
-    # rate's own definition (fraction of a fixed, real, pre-split-selected
-    # group reclassified as BH-skilled post-split), reported alongside the
-    # split-half denominators the S8 gate specifically checks.
-    cohort_null_outcomes = [1 if v['bh_significant'] else 0 for v in synth_cohort_result['per_trader'].values()]
-    null_ci = trader_clustered_ci(cohort_null_outcomes, BOOTSTRAP_REPS, BOOTSTRAP_SEED)
-    s8_result['null_persistence_rate_cohort_denominator_form'] = null_ci
-    print(f"[S8] synthetic-cohort post-split BH-skilled rate (chance-floor analogue of the real "
-          f"persistence rate): point={null_ci['point']:.4f} CI=[{null_ci['ci_lo']:.4f},{null_ci['ci_hi']:.4f}] "
-          f"n={null_ci['n']}")
-
-    if gate_inadequate and not args.force_past_gate:
-        print("\n[STOP] S8 gate: at least one synthetic-null split-half denominator is below the "
-              f"adequacy floor ({MIN_ADEQUATE_DENOMINATOR}), or undefined (den=0). Per the "
-              "pre-registration's own S8 sequencing, this halts before computing any real "
-              "persistence rate. Not adjusted, not enlarged. Reported for Oscar.", file=sys.stderr)
-        out = dict(
-            spec="directional_skill_persistence_test", status="STOPPED_AT_S8_GATE",
-            generated_at=datetime.now(timezone.utc).isoformat(), script_commit=git_commit(repo_dir),
-            seed=SEED, post_split_reps=POST_SPLIT_REPS, t_split=T_SPLIT, m_chosen=M_CHOSEN,
-            n_twice_classifiable=len(twice_classifiable), n_cohort=len(cohort_traders),
-            n_comparison=len(comparison_traders), s8=s8_result,
-        )
-        os.makedirs(os.path.dirname(args.json_out), exist_ok=True)
-        with open(args.json_out, 'w') as f:
-            json.dump(out, f, indent=2, default=str)
-        print(f"[json] written to {args.json_out}")
-        conn.close()
-        sys.exit(2)
-
-    print(f"\n[S8 gate] PASSED (all denominators >= {MIN_ADEQUATE_DENOMINATOR}) -- proceeding to the real test")
+    print(f"\n=== NULL, per Amendment 2026-09-06b (not computed here -- established by an "
+          f"alternative route, verified above) ===")
+    print(f"  null point: {NULL_POINT} (BH-adjusted persistence rate under zero skill)")
+    print(f"  provenance: {NULL_PROVENANCE}")
 
     # =========================================================================
     # REAL TEST -- post-split re-classification at REPS=10,000
@@ -322,10 +257,11 @@ def main():
     print(f"[comparison group post-split BH-skilled rate, context] point={comparison_ci['point']:.4f} "
           f"CI=[{comparison_ci['ci_lo']:.4f},{comparison_ci['ci_hi']:.4f}] n={comparison_ci['n']}")
 
-    # ---- primary axis: vs. in-house synthetic null ----
-    primary_state_raw = ci_relationship(real_ci, null_ci)
-    primary_cell = dict(above='A1', below='A3', overlap='A2', undetermined='undetermined')[primary_state_raw]
-    print(f"\n[PRIMARY axis] real persistence CI vs. synthetic-null CI: {primary_state_raw} -> {primary_cell}")
+    # ---- primary axis: vs. the fixed null (Amendment 2026-09-06b) ----
+    primary_cell = primary_axis_state(real_ci, NULL_POINT)
+    print(f"\n[PRIMARY axis] real persistence CI lower bound ({real_ci['ci_lo']}) vs. "
+          f"fixed null point ({NULL_POINT}): {primary_cell} "
+          f"(A3 is structurally unreachable under this null, per Amendment 2026-09-06b)")
 
     # ---- secondary axis: vs. Gomez-Cram 44% ----
     if real_ci['ci_lo'] is None:
@@ -369,7 +305,7 @@ def main():
     out = dict(
         spec="directional_skill_persistence_test", status="COMPLETED",
         generated_at=datetime.now(timezone.utc).isoformat(), script_commit=git_commit(repo_dir),
-        seed=SEED, post_split_reps=POST_SPLIT_REPS, synth_seed=SYNTH_SEED,
+        seed=SEED, post_split_reps=POST_SPLIT_REPS,
         bootstrap_seed=BOOTSTRAP_SEED, bootstrap_reps=BOOTSTRAP_REPS,
         t_split=T_SPLIT, m_chosen=M_CHOSEN, gate_reps_local=GATE_REPS_LOCAL,
         gomez_cram_benchmark=GOMEZ_CRAM_BENCHMARK,
@@ -378,12 +314,12 @@ def main():
         twice_classifiable_traders=twice_classifiable,
         persistence_cohort_traders=cohort_traders,
         comparison_group_traders=comparison_traders,
-        s8=s8_result,
+        null_point=NULL_POINT, null_provenance=NULL_PROVENANCE,
         real_cohort_classification=cohort_result,
         real_comparison_classification=comparison_result,
         real_persistence_ci=real_ci,
         real_comparison_ci=comparison_ci,
-        primary_axis=dict(relationship=primary_state_raw, cell=primary_cell),
+        primary_axis=dict(cell=primary_cell, a3_structurally_unreachable=True),
         secondary_axis=dict(cell=secondary_cell, benchmark=GOMEZ_CRAM_BENCHMARK),
         named_outcome_cell=f"{primary_cell}x{secondary_cell}",
         aggregate_test=dict(cohort=cohort_agg, comparison_context=comparison_agg),
