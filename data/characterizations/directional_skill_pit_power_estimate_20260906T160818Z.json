@@ -1,0 +1,82 @@
+{
+  "spec": "directional_skill_pit_power_estimate",
+  "generated_at": "2026-09-06T16:08:56.793266+00:00",
+  "script_commit": "f3cb20110c7712c831b83e74364dde57ed6f8493",
+  "seed": 42,
+  "t_split": "2026-04-01 00:00:00",
+  "input_pit_pool_json": "data/characterizations/directional_skill_pit_legal_pool_20260906T160303Z.json",
+  "result_of_record": {
+    "point_gap": 0.0316,
+    "ci_lo": -0.0088,
+    "ci_hi": 0.071,
+    "n_positions": 3032,
+    "n_traders": 120,
+    "width": 0.0798
+  },
+  "cost_floor_geopolitics": [
+    0.0005,
+    0.01
+  ],
+  "cost_floor_elections": [
+    0.0056,
+    0.02
+  ],
+  "results": {
+    "raw": {
+      "cohort_n_input": 711,
+      "placebo_n_input": 711,
+      "cohort": {
+        "n_pairs": 5485,
+        "n_traders": 711,
+        "n_markets": 1235,
+        "point_gap": 0.008997711340834713,
+        "ci_lo": -0.012680982255055675,
+        "ci_hi": 0.02904344411116816,
+        "n_positions": 10453,
+        "n_surviving_traders": 711
+      },
+      "placebo": {
+        "n_pairs": 3179,
+        "n_traders": 368,
+        "n_markets": 803,
+        "point_gap": 0.009868697024955853,
+        "ci_lo": -0.0154830198126576,
+        "ci_hi": 0.03582893602016584,
+        "n_positions": 5841,
+        "n_surviving_traders": 368
+      },
+      "cohort_width": 0.04172442636622384,
+      "placebo_width": 0.05131195583282344,
+      "cohort_mde_half_width": 0.02086221318311192,
+      "placebo_mde_half_width": 0.02565597791641172
+    },
+    "bh": {
+      "cohort_n_input": 504,
+      "placebo_n_input": 504,
+      "cohort": {
+        "n_pairs": 3946,
+        "n_traders": 504,
+        "n_markets": 1029,
+        "point_gap": 0.0028532391996697326,
+        "ci_lo": -0.023662864494835165,
+        "ci_hi": 0.02587478498968182,
+        "n_positions": 7733,
+        "n_surviving_traders": 504
+      },
+      "placebo": {
+        "n_pairs": 2438,
+        "n_traders": 280,
+        "n_markets": 755,
+        "point_gap": 0.016077714777282814,
+        "ci_lo": -0.013289063812605795,
+        "ci_hi": 0.04457140367927007,
+        "n_positions": 4478,
+        "n_surviving_traders": 280
+      },
+      "cohort_width": 0.049537649484516985,
+      "placebo_width": 0.05786046749187587,
+      "cohort_mde_half_width": 0.024768824742258493,
+      "placebo_mde_half_width": 0.028930233745937936
+    }
+  }
+}
