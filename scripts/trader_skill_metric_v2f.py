@@ -278,10 +278,28 @@ def build_presplit_cohort(conn, t_split, verbose=False):
 
 def match_control(profile, cohort_traders, elig_traders, seed=SEED, verbose=False):
     """Greedy nearest-neighbour match on (log positions, log markets, activity
-    span in days), from the M>=10-eligible pool, excluding the cohort itself."""
+    span in days), from the M>=10-eligible pool, excluding the cohort itself.
+
+    DETERMINISM (fixed 2026-09-06, see brain/decisions/2026-09-06-match-control-
+    determinism-fix.md): cohort_traders and elig_traders are commonly passed as
+    Python sets (every call site in this codebase does so). CPython's set
+    iteration order for strings depends on the per-process hash seed
+    (PYTHONHASHSEED, randomized fresh per process by default) -- iterating a
+    set directly, before shuffling or before building the candidate pool, made
+    the greedy match's result depend on that process-level entropy even at a
+    fixed `seed`: `seed` fully determines the numpy RNG draws, but not the
+    order those draws were applied to. Fixed by sorting every set-derived
+    sequence (cohort_list, the candidate pool) before use, so `seed` is now the
+    only source of variation, as the parameter name always implied it should
+    be. This changes nothing about the matching criteria, feature vector,
+    distance metric, or greedy 1:1 logic -- only the (previously undefined)
+    processing order. Any placebo built by this function BEFORE this fix is
+    NOT reconstructable from its recorded seed and is not retroactively
+    corrected by this change -- see the defect log for scope (result-of-record
+    and 2026-09-06 Step 3 placebos named explicitly)."""
     prof = profile.set_index('trader')
-    cohort_list = list(cohort_traders)
-    pool = [t for t in elig_traders if t not in cohort_traders]
+    cohort_list = sorted(cohort_traders)
+    pool = [t for t in sorted(elig_traders) if t not in cohort_traders]
     pool_feats = {}
     for t in pool:
         r = prof.loc[t]
