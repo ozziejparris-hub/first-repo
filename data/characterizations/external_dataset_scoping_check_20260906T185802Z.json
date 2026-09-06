@@ -1,0 +1,615 @@
+{
+  "spec": "external_dataset_scoping_check",
+  "generated_at": "2026-09-06T18:58:09.403722+00:00",
+  "script_commit": "1d34cedd96ee2dbcb72dfc6b7de27cb70d104db3",
+  "t_split": "2026-04-01 00:00:00",
+  "pnl_schema": {
+    "num_rows": 2480104,
+    "num_row_groups": 21,
+    "columns": [
+      {
+        "name": "user_address",
+        "type": "large_string"
+      },
+      {
+        "name": "pnl_total",
+        "type": "double"
+      },
+      {
+        "name": "portfolio_value",
+        "type": "double"
+      },
+      {
+        "name": "usdc_balance",
+        "type": "double"
+      },
+      {
+        "name": "pnl_sports",
+        "type": "double"
+      },
+      {
+        "name": "pnl_crypto",
+        "type": "double"
+      },
+      {
+        "name": "pnl_finance",
+        "type": "double"
+      },
+      {
+        "name": "pnl_politics",
+        "type": "double"
+      },
+      {
+        "name": "pnl_tech",
+        "type": "double"
+      },
+      {
+        "name": "pnl_culture",
+        "type": "double"
+      },
+      {
+        "name": "pnl_weather",
+        "type": "double"
+      },
+      {
+        "name": "pnl_resolved_total",
+        "type": "double"
+      },
+      {
+        "name": "pnl_resolved_sports",
+        "type": "double"
+      },
+      {
+        "name": "pnl_resolved_crypto",
+        "type": "double"
+      },
+      {
+        "name": "pnl_resolved_finance",
+        "type": "double"
+      },
+      {
+        "name": "pnl_resolved_politics",
+        "type": "double"
+      },
+      {
+        "name": "pnl_resolved_tech",
+        "type": "double"
+      },
+      {
+        "name": "pnl_resolved_culture",
+        "type": "double"
+      },
+      {
+        "name": "pnl_resolved_weather",
+        "type": "double"
+      },
+      {
+        "name": "pnl_no_fee_total",
+        "type": "double"
+      },
+      {
+        "name": "pnl_no_fee_sports",
+        "type": "double"
+      },
+      {
+        "name": "pnl_no_fee_crypto",
+        "type": "double"
+      },
+      {
+        "name": "pnl_no_fee_finance",
+        "type": "double"
+      },
+      {
+        "name": "pnl_no_fee_politics",
+        "type": "double"
+      },
+      {
+        "name": "pnl_no_fee_tech",
+        "type": "double"
+      },
+      {
+        "name": "pnl_no_fee_culture",
+        "type": "double"
+      },
+      {
+        "name": "pnl_no_fee_weather",
+        "type": "double"
+      },
+      {
+        "name": "pnl_spread_adj_total",
+        "type": "double"
+      },
+      {
+        "name": "pnl_spread_adj_sports",
+        "type": "double"
+      },
+      {
+        "name": "pnl_spread_adj_crypto",
+        "type": "double"
+      },
+      {
+        "name": "pnl_spread_adj_finance",
+        "type": "double"
+      },
+      {
+        "name": "pnl_spread_adj_politics",
+        "type": "double"
+      },
+      {
+        "name": "pnl_spread_adj_tech",
+        "type": "double"
+      },
+      {
+        "name": "pnl_spread_adj_culture",
+        "type": "double"
+      },
+      {
+        "name": "pnl_spread_adj_weather",
+        "type": "double"
+      },
+      {
+        "name": "pnl_spread_adj_resolved_total",
+        "type": "double"
+      },
+      {
+        "name": "pnl_spread_adj_resolved_sports",
+        "type": "double"
+      },
+      {
+        "name": "pnl_spread_adj_resolved_crypto",
+        "type": "double"
+      },
+      {
+        "name": "pnl_spread_adj_resolved_finance",
+        "type": "double"
+      },
+      {
+        "name": "pnl_spread_adj_resolved_politics",
+        "type": "double"
+      },
+      {
+        "name": "pnl_spread_adj_resolved_tech",
+        "type": "double"
+      },
+      {
+        "name": "pnl_spread_adj_resolved_culture",
+        "type": "double"
+      },
+      {
+        "name": "pnl_spread_adj_resolved_weather",
+        "type": "double"
+      },
+      {
+        "name": "pnl_maker_total",
+        "type": "double"
+      },
+      {
+        "name": "pnl_maker_sports",
+        "type": "double"
+      },
+      {
+        "name": "pnl_maker_crypto",
+        "type": "double"
+      },
+      {
+        "name": "pnl_maker_finance",
+        "type": "double"
+      },
+      {
+        "name": "pnl_maker_politics",
+        "type": "double"
+      },
+      {
+        "name": "pnl_maker_tech",
+        "type": "double"
+      },
+      {
+        "name": "pnl_maker_culture",
+        "type": "double"
+      },
+      {
+        "name": "pnl_maker_weather",
+        "type": "double"
+      },
+      {
+        "name": "pnl_taker_total",
+        "type": "double"
+      },
+      {
+        "name": "pnl_taker_sports",
+        "type": "double"
+      },
+      {
+        "name": "pnl_taker_crypto",
+        "type": "double"
+      },
+      {
+        "name": "pnl_taker_finance",
+        "type": "double"
+      },
+      {
+        "name": "pnl_taker_politics",
+        "type": "double"
+      },
+      {
+        "name": "pnl_taker_tech",
+        "type": "double"
+      },
+      {
+        "name": "pnl_taker_culture",
+        "type": "double"
+      },
+      {
+        "name": "pnl_taker_weather",
+        "type": "double"
+      }
+    ]
+  },
+  "features_schema": {
+    "num_rows": 2480104,
+    "num_row_groups": 21,
+    "columns": [
+      {
+        "name": "user_address",
+        "type": "large_string"
+      },
+      {
+        "name": "n_trades",
+        "type": "uint32"
+      },
+      {
+        "name": "n_transactions",
+        "type": "uint32"
+      },
+      {
+        "name": "n_maker_trades",
+        "type": "int64"
+      },
+      {
+        "name": "n_maker_transactions",
+        "type": "uint32"
+      },
+      {
+        "name": "n_markets",
+        "type": "uint32"
+      },
+      {
+        "name": "n_events",
+        "type": "uint32"
+      },
+      {
+        "name": "n_categories",
+        "type": "uint32"
+      },
+      {
+        "name": "n_counterparties",
+        "type": "uint32"
+      },
+      {
+        "name": "total_volume",
+        "type": "double"
+      },
+      {
+        "name": "avg_trade_volume",
+        "type": "double"
+      },
+      {
+        "name": "median_trade_volume",
+        "type": "double"
+      },
+      {
+        "name": "max_trade_volume",
+        "type": "double"
+      },
+      {
+        "name": "volume_std",
+        "type": "double"
+      },
+      {
+        "name": "avg_price_traded",
+        "type": "double"
+      },
+      {
+        "name": "price_std",
+        "type": "double"
+      },
+      {
+        "name": "frac_extreme_price",
+        "type": "double"
+      },
+      {
+        "name": "frac_midrange",
+        "type": "double"
+      },
+      {
+        "name": "frac_maker",
+        "type": "double"
+      },
+      {
+        "name": "maker_volume",
+        "type": "double"
+      },
+      {
+        "name": "frac_buys",
+        "type": "double"
+      },
+      {
+        "name": "buy_volume",
+        "type": "double"
+      },
+      {
+        "name": "sell_volume",
+        "type": "double"
+      },
+      {
+        "name": "net_volume",
+        "type": "double"
+      },
+      {
+        "name": "frac_night_trading",
+        "type": "double"
+      },
+      {
+        "name": "frac_weekend_trading",
+        "type": "double"
+      },
+      {
+        "name": "first_trade",
+        "type": "timestamp[ns, tz=UTC]"
+      },
+      {
+        "name": "last_trade",
+        "type": "timestamp[ns, tz=UTC]"
+      },
+      {
+        "name": "first_trade_date",
+        "type": "date32[day]"
+      },
+      {
+        "name": "last_trade_date",
+        "type": "date32[day]"
+      },
+      {
+        "name": "active_days",
+        "type": "uint32"
+      },
+      {
+        "name": "avg_time_to_resolution",
+        "type": "double"
+      },
+      {
+        "name": "avg_market_age_at_trade",
+        "type": "double"
+      },
+      {
+        "name": "frac_early_trader",
+        "type": "double"
+      },
+      {
+        "name": "frac_late_trader",
+        "type": "double"
+      },
+      {
+        "name": "frac_new_market_trades",
+        "type": "double"
+      },
+      {
+        "name": "frac_closing_market_trades",
+        "type": "double"
+      },
+      {
+        "name": "frac_binary_markets",
+        "type": "double"
+      },
+      {
+        "name": "avg_market_volume",
+        "type": "double"
+      },
+      {
+        "name": "avg_market_liquidity",
+        "type": "double"
+      },
+      {
+        "name": "avg_trades_per_market",
+        "type": "double"
+      },
+      {
+        "name": "avg_volume_per_market",
+        "type": "double"
+      },
+      {
+        "name": "trading_span_days",
+        "type": "int64"
+      },
+      {
+        "name": "frac_maker_volume",
+        "type": "double"
+      },
+      {
+        "name": "maker_txn_to_trade_ratio",
+        "type": "double"
+      },
+      {
+        "name": "buy_sell_ratio",
+        "type": "double"
+      },
+      {
+        "name": "avg_trade_imbalance",
+        "type": "double"
+      },
+      {
+        "name": "max_trade_frac",
+        "type": "double"
+      },
+      {
+        "name": "trade_size_cv",
+        "type": "double"
+      },
+      {
+        "name": "frac_day_trading",
+        "type": "double"
+      },
+      {
+        "name": "frac_multi_outcome",
+        "type": "double"
+      },
+      {
+        "name": "counterparty_ratio",
+        "type": "double"
+      },
+      {
+        "name": "frac_longshot",
+        "type": "double"
+      },
+      {
+        "name": "frac_sureshot",
+        "type": "double"
+      },
+      {
+        "name": "active_day_ratio",
+        "type": "double"
+      },
+      {
+        "name": "trades_per_week",
+        "type": "double"
+      },
+      {
+        "name": "repeat_counterparty_rate",
+        "type": "double"
+      },
+      {
+        "name": "median_time_between_trades",
+        "type": "double"
+      },
+      {
+        "name": "trading_regularity",
+        "type": "double"
+      },
+      {
+        "name": "burst_trading_score",
+        "type": "double"
+      },
+      {
+        "name": "volume_gini",
+        "type": "double"
+      },
+      {
+        "name": "category_hhi",
+        "type": "double"
+      },
+      {
+        "name": "category_entropy",
+        "type": "double"
+      },
+      {
+        "name": "counterparty_hhi",
+        "type": "double"
+      },
+      {
+        "name": "market_hhi",
+        "type": "double"
+      },
+      {
+        "name": "category_hhi_inverse",
+        "type": "double"
+      },
+      {
+        "name": "counterparty_hhi_inverse",
+        "type": "double"
+      },
+      {
+        "name": "market_hhi_inverse",
+        "type": "double"
+      },
+      {
+        "name": "oneshot_ratio",
+        "type": "double"
+      },
+      {
+        "name": "frac_both_sides",
+        "type": "double"
+      },
+      {
+        "name": "avg_positions_per_market",
+        "type": "double"
+      },
+      {
+        "name": "position_turnover",
+        "type": "double"
+      },
+      {
+        "name": "round_trip_rate",
+        "type": "double"
+      },
+      {
+        "name": "frac_held_to_resolution",
+        "type": "double"
+      },
+      {
+        "name": "avg_holding_duration",
+        "type": "double"
+      },
+      {
+        "name": "peak_trading_hour",
+        "type": "int8"
+      },
+      {
+        "name": "frac_politics",
+        "type": "double"
+      },
+      {
+        "name": "frac_sports",
+        "type": "double"
+      },
+      {
+        "name": "frac_crypto",
+        "type": "double"
+      },
+      {
+        "name": "frac_other_categories",
+        "type": "double"
+      },
+      {
+        "name": "traded_sports",
+        "type": "int8"
+      },
+      {
+        "name": "traded_crypto",
+        "type": "int8"
+      },
+      {
+        "name": "traded_finance",
+        "type": "int8"
+      },
+      {
+        "name": "traded_politics",
+        "type": "int8"
+      },
+      {
+        "name": "traded_tech",
+        "type": "int8"
+      },
+      {
+        "name": "traded_culture",
+        "type": "int8"
+      },
+      {
+        "name": "traded_weather",
+        "type": "int8"
+      }
+    ]
+  },
+  "same_address_sets_across_files": true,
+  "min_first_trade": "2022-11-21 19:50:09+00:00",
+  "max_last_trade": "2026-03-29 23:59:58+00:00",
+  "coverage_ends_before_t_split": true,
+  "n_external_addresses": 2480104,
+  "n_our_traders_addresses": 194211,
+  "n_external_not_in_our_traders": 2348455,
+  "n_overlap": 131649,
+  "n_pit_classifiable": 5732,
+  "n_pit_classifiable_in_external": 5704,
+  "n_twice_classifiable": 753,
+  "n_twice_classifiable_in_external": 753,
+  "verdict_can_increase_persistence_test_N": false
+}
