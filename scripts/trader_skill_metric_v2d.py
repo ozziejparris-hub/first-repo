@@ -110,6 +110,8 @@ import sqlite3
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import monitoring.column_definitions as cd
+
 from scripts.trader_skill_metric_v2 import load_entries, rank_corr, db_connect, SPEC_VERSION as V2_SPEC
 from scripts.trader_skill_metric_v2b import fixed_buckets, SPEC_VERSION as V2B_SPEC
 from scripts.trader_skill_metric_v2c import (
@@ -415,7 +417,7 @@ def main():
     trader_ci = per_trader_weighted_bootstrap(pairs_for_ci, reps=args.bootstrap_reps, seed=args.seed)
     eb_full = eb.merge(trader_ci, on='trader')
 
-    legendary = set(r[0] for r in conn.execute("SELECT address FROM traders WHERE geo_elo >= 2175"))
+    legendary = set(r[0] for r in conn.execute(f"SELECT address FROM traders WHERE geo_elo >= {cd.GEO_ELO_LEGENDARY}"))
 
     candidates = {}
 

@@ -139,6 +139,8 @@ import sqlite3
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import monitoring.column_definitions as cd
+
 from scripts.trader_skill_metric_v2 import (
     load_entries, load_exits, eb_shrinkage, bootstrap_ci_per_trader, rank_corr,
     db_connect, SPEC_VERSION as V2_SPEC_VERSION,
@@ -610,7 +612,7 @@ def main():
     corr_dis_no = float(np.corrcoef(ov2['disagreement'], ov2['no_frac'])[0, 1])
     print(f"[item 8] corr(rank_disagreement, No-fraction) = {corr_dis_no:.4f}")
 
-    legendary = set(r[0] for r in conn.execute("SELECT address FROM traders WHERE geo_elo >= 2175"))
+    legendary = set(r[0] for r in conn.execute(f"SELECT address FROM traders WHERE geo_elo >= {cd.GEO_ELO_LEGENDARY}"))
     ranked = primary_eb.sort_values('shrunk_mean', ascending=False)
     top_n = ranked.head(len(legendary))['trader'].tolist()
     overlap = legendary & set(top_n)

@@ -108,6 +108,8 @@ from scipy import stats
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import monitoring.column_definitions as cd
+
 from scripts.trader_skill_metric_v2 import load_entries, db_connect, SPEC_VERSION as V2_SPEC
 from scripts.trader_skill_metric_v2c import build_pairs, eb_shrinkage_weighted, WEIGHT_FNS
 from scripts.trader_skill_metric_v2d import (
@@ -434,7 +436,7 @@ def main():
     t_ci_99 = t_ci_at_alpha(pairs[pairs['trader'].isin(set(t_ci_elig['trader']))], sigma2_within, 0.01)
     sig99_corrected = t_ci_99[t_ci_99['ci_lo'] > 0]
 
-    legendary = set(r[0] for r in conn.execute("SELECT address FROM traders WHERE geo_elo >= 2175"))
+    legendary = set(r[0] for r in conn.execute(f"SELECT address FROM traders WHERE geo_elo >= {cd.GEO_ELO_LEGENDARY}"))
 
     candidates = {}
     for pct in (1, 5, 10):

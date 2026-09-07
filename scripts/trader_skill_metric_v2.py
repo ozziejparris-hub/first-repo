@@ -139,6 +139,8 @@ import sqlite3
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import monitoring.column_definitions as cd
+
 SPEC_VERSION = "SKILLV2-2026-08-15-v1"
 BOOTSTRAP_REPS = 1000
 SEED = 42
@@ -387,7 +389,7 @@ def no_heavy_concentration(entries_df, merged, verbose=False):
 
 
 def legendary_overlap(conn, entries_shrunk, verbose=False):
-    legendary = set(r[0] for r in conn.execute("SELECT address FROM traders WHERE geo_elo >= 2175"))
+    legendary = set(r[0] for r in conn.execute(f"SELECT address FROM traders WHERE geo_elo >= {cd.GEO_ELO_LEGENDARY}"))
     ranked = entries_shrunk.sort_values('shrunk_mean', ascending=False)
     top_n = ranked.head(len(legendary))['trader'].tolist()
     overlap = legendary & set(top_n)
