@@ -28,15 +28,35 @@ assertions into two kinds:
     table (snapshot_id='bt_pop_2025-11-01_v1', scripts/snapshot_backtest_population.py):
     a specific population instance pinned at a point in time, for consumers
     (B5 labelling, B3 splits) that need a population that does not move under
-    them. These numbers are fixed by construction and will never legitimately
-    change -- if they do, the snapshot table was tampered with.
+    them.
+
+2026-09-07 CORRECTION (see the removal note above SECTION 2, and trading-swarm
+brain/decisions/2026-09-07-backtest-window-population-test-chronic-failure-
+diagnosis.md, commit 00aeb93): the SNAPSHOT-facts bucket originally also
+carried FOUR reconciliation COUNTS (4658 / 54 / 555 / 573, T2 / T2b / T2c /
+T2d, plus the T2f identity). Those were NOT "fixed by construction" -- each
+compared the frozen snapshot against the LIVE legacy resolution_date query
+(old_method_market_ids), which grows as geo/elec markets resolve, so they
+drifted and failed continuously for weeks. They have been removed. The only
+frozen-snapshot facts that legitimately cannot change are len(snapshot) == 4712
+(T1) and the partition identity agree_snap + false_neg_snap == len(snapshot)
+(T2e); if either breaks, the snapshot table was tampered with.
 
 T1  SNAPSHOT count: snapshot 'bt_pop_2025-11-01_v1' is frozen at exactly 4,712
     markets, and a live re-run of the same window_start is >= that (population
     only grows from its frozen baseline, never shrinks).
-T2  SNAPSHOT reconciliation: the frozen snapshot's 4,712 = 4,658 (agree with
-    the old resolution_date method) + 54 (false negatives the old method
-    wrongly excluded) -- fixed facts about this specific pinned population.
+T1c SNAPSHOT subset of canonical_live: every market in the frozen snapshot is
+    still selected by the live canonical query -- catches a snapshot market
+    silently dropping out (losing its trades, being re-categorised, gaining a
+    trade_gap_flag). On failure it names the dropped market_ids, not just a
+    count.
+T2e SNAPSHOT partition identity: agree_snap + false_neg_snap == len(snapshot).
+    True by construction of the split over the FROZEN set; the only count-based
+    fact here that legitimately cannot change.
+    (T2 / T2b / T2c / T2d / T2f were removed 2026-09-07 -- they asserted
+    equalities against frozen (+) live composites that drift by construction.
+    See the removal note above SECTION 2 and trading-swarm brain/decisions/
+    2026-09-07-backtest-window-population-test-chronic-failure-diagnosis.md.)
 T2L LIVE reconciliation INVARIANT: whatever the live canonical/old sets are
     *right now*, they always partition consistently (agree+false_negatives==
     canonical total; agree+zero_trade+false_positives==old total) -- true by
@@ -72,15 +92,28 @@ DB_PATH = ROOT / 'data' / 'polymarket_tracker.db'
 
 SNAPSHOT_ID = 'bt_pop_2025-11-01_v1'
 
-# Fixed facts about the frozen snapshot -- these describe a specific pinned
-# population instance and will never legitimately change. If they do, the
+# Fixed fact about the frozen snapshot -- describes a specific pinned population
+# instance and will never legitimately change. If it does, the
 # backtest_population_snapshots table was modified after generation, which
 # violates the append-only/immutable contract.
 SNAPSHOT_COUNT = 4712
-SNAPSHOT_AGREE_WITH_OLD = 4658
-SNAPSHOT_FALSE_NEGATIVES = 54
-SNAPSHOT_ZERO_TRADE = 555
-SNAPSHOT_FALSE_POSITIVES = 573
+
+# REMOVED 2026-09-07: SNAPSHOT_AGREE_WITH_OLD (4658), SNAPSHOT_FALSE_NEGATIVES
+# (54), SNAPSHOT_ZERO_TRADE (555), SNAPSHOT_FALSE_POSITIVES (573) and their
+# assertions T2 / T2b / T2c / T2d / T2f. Every one asserted an EQUALITY against
+# `frozen_snapshot (+) live_old_query`, where `old` is the live legacy
+# resolution_date selector (old_method_market_ids). `old` grows every time a
+# geo/elec market is marked resolved with resolution_date >= the window start,
+# so those equalities drift BY CONSTRUCTION -- they failed continuously for
+# weeks. T2f additionally assumed no in-window market ever resolves after the
+# freeze; ~649 have. Re-baselining the constants only postpones an identical
+# failure (commit cfbc1cd already made exactly this mistake). The coverage was
+# NOT lost: the count-free forms survive as T2e (frozen-set partition identity,
+# SECTION 2) and T2L-1 / T2L-2 (live reconciliation identities, SECTION 2L), and
+# a new structural check T1c (snapshot subset of canonical_live) was added.
+# Full analysis: trading-swarm brain/decisions/
+#   2026-09-07-backtest-window-population-test-chronic-failure-diagnosis.md
+#   (commit 00aeb93), Part 4. Do not re-add these -- they cannot hold.
 
 # Known false positives (real event 2024, wrongly pulled into the
 # resolution_date>=2025-11-01 window by bulk-backfill contamination).
@@ -213,49 +246,44 @@ def run_tests() -> bool:
         f"Live count {len(live_now)} < frozen snapshot count {len(snapshot)} -- "
         f"population should be non-decreasing as more trades accrue",
     )
+    dropped_from_canonical = snapshot - live_now
+    r.check(
+        "T1c snapshot is a subset of canonical_live -- every frozen-snapshot "
+        "market is still selected by the live canonical query (catches a market "
+        "silently dropping out: losing its trades, being re-categorised, or "
+        "gaining a trade_gap_flag)",
+        not dropped_from_canonical,
+        f"{len(dropped_from_canonical)} snapshot market(s) absent from the live "
+        f"canonical result: {sorted(dropped_from_canonical)}",
+    )
 
     print("\n[SECTION 2] SNAPSHOT reconciliation (fixed facts about the frozen instance)")
     print("-" * 50)
+    # ------------------------------------------------------------------------
+    # T2 / T2b / T2c / T2d / T2f were REMOVED 2026-09-07. They asserted exact
+    # equalities (4658 / 54 / 555 / 573, and the identity agree + zero_trade +
+    # false_positives == len(old)) against `frozen_snapshot (+) old`, where
+    # `old` is the LIVE legacy resolution_date selector. `old` grows every time
+    # a geo/elec market is marked resolved with resolution_date >= the window
+    # start, so those equalities drift BY CONSTRUCTION -- they failed
+    # continuously for weeks. T2f further assumed no in-window market ever
+    # resolves after the snapshot freeze; ~649 have. Re-baselining the numbers
+    # only postpones an identical failure (commit cfbc1cd already made exactly
+    # that mistake). Coverage was NOT lost by accident: the count-free forms are
+    # T2e below (frozen-set partition identity) and T2L-1 / T2L-2 in SECTION 2L
+    # (live reconciliation identities); T1c above adds the structural
+    # subset check. Full analysis: trading-swarm brain/decisions/
+    #   2026-09-07-backtest-window-population-test-chronic-failure-diagnosis.md
+    #   (commit 00aeb93), Part 4. Do NOT re-add these -- they cannot hold.
+    # ------------------------------------------------------------------------
     old = old_method_market_ids(conn, '2025-11-01')
     agree_snap = snapshot & old
     false_negatives_snap = snapshot - old
-    old_only_snap = old - snapshot
-    old_only_snap_tape_end = tape_end_map(conn, old_only_snap)
-    zero_trade_snap = {mid for mid, te in old_only_snap_tape_end.items() if te is None}
-    false_positives_snap = {mid for mid, te in old_only_snap_tape_end.items()
-                             if te is not None and te < '2025-11-01'}
 
-    r.check(
-        f"T2  {SNAPSHOT_AGREE_WITH_OLD} markets agree between old and the frozen snapshot",
-        len(agree_snap) == SNAPSHOT_AGREE_WITH_OLD,
-        f"Expected {SNAPSHOT_AGREE_WITH_OLD}, got {len(agree_snap)}",
-    )
-    r.check(
-        f"T2b {SNAPSHOT_FALSE_NEGATIVES} false negatives (snapshot includes, old method excluded)",
-        len(false_negatives_snap) == SNAPSHOT_FALSE_NEGATIVES,
-        f"Expected {SNAPSHOT_FALSE_NEGATIVES}, got {len(false_negatives_snap)}",
-    )
-    r.check(
-        f"T2c {SNAPSHOT_ZERO_TRADE} zero-trade markets (old method included, no tape_end to "
-        f"anchor on -- dropped structurally by the canonical query's INNER JOIN)",
-        len(zero_trade_snap) == SNAPSHOT_ZERO_TRADE,
-        f"Expected {SNAPSHOT_ZERO_TRADE}, got {len(zero_trade_snap)}",
-    )
-    r.check(
-        f"T2d {SNAPSHOT_FALSE_POSITIVES} genuine false positives (old method included, real "
-        f"tape_end predates the window -- the resolution_date-is-wrong cases)",
-        len(false_positives_snap) == SNAPSHOT_FALSE_POSITIVES,
-        f"Expected {SNAPSHOT_FALSE_POSITIVES}, got {len(false_positives_snap)}",
-    )
     r.check(
         "T2e snapshot reconciliation: agree + false_negatives == snapshot total",
         len(agree_snap) + len(false_negatives_snap) == len(snapshot),
         f"{len(agree_snap)} + {len(false_negatives_snap)} != {len(snapshot)}",
-    )
-    r.check(
-        "T2f snapshot reconciliation: agree + zero_trade + false_positives == old total",
-        len(agree_snap) + len(zero_trade_snap) + len(false_positives_snap) == len(old),
-        f"{len(agree_snap)} + {len(zero_trade_snap)} + {len(false_positives_snap)} != {len(old)}",
     )
 
     print("\n[SECTION 2L] LIVE reconciliation INVARIANT (no hardcoded counts)")
