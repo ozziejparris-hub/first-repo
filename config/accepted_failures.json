@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "_README": [
+    "Known-failing checks that have been DELIBERATELY accepted.",
+    "",
+    "Entries are added ONLY by Oscar, by hand. No automated process — not CC, not",
+    "any check, not daily_maintenance — may write to this file. Adding an entry is",
+    "an explicit act of acceptance; that is the whole point.",
+    "",
+    "Semantics (monitoring/failure_age.py):",
+    "  - A failing check WITH a current (un-expired) entry here is EXPECTED. It does",
+    "    not alert. It still appears in the check's state file with its age.",
+    "  - A failing check WITHOUT an entry here is UNEXPECTED. It alerts.",
+    "  - An entry PAST its review_by date makes its finding alert again, as a",
+    "    'review due' message distinct from a new-failure message. Bump review_by",
+    "    (a deliberate act) to silence it again.",
+    "",
+    "Each entry requires: finding_key, accepted_by, accepted_on (YYYY-MM-DD),",
+    "reason, review_by (YYYY-MM-DD). Optional: resolution_hint.",
+    "",
+    "finding_key MUST match a key in the check's state-file 'findings' object:",
+    "  - canonical:   data/.canonical_drift_state.json",
+    "  - diagnostic:  data/.diagnostic_report_state.json",
+    "Keys look like 'canonical_definitions::<relpath>::<message>' or",
+    "'diagnostic::issue::<normalised-text>'.",
+    "",
+    "Seeded empty on purpose (2026-09-07). See",
+    "brain/decisions/2026-09-07-failure-age-tracking.md Part 2 for the entries that",
+    "were PROPOSED but not added — populating this is Oscar's decision."
+  ],
+  "accepted": []
+}

@@ -19,25 +19,45 @@ NOT flagged (cosmetic text):
   - monitoring/column_definitions.py  (the canonical source)
   - this script itself
 
-Exit: 0 = clean, 1 = drift found.
+Exit: 0 = clean, 1 = drift found. (Exit code is unchanged by --alert and by
+the register — a violation always exits 1; the register only governs whether
+Telegram is notified.)
+
+Failure-age tracking (2026-09-07): each violation carries a first_seen
+timestamp in data/.canonical_drift_state.json. With --alert, Telegram is
+notified only for violations Oscar has not already been shown and that are
+not accepted in config/accepted_failures.json (past their review_by date they
+alert again). See monitoring/failure_age.py and
+brain/decisions/2026-09-07-failure-age-tracking.md.
 
 Usage:
-  python scripts/check_canonical_definitions.py
+  python scripts/check_canonical_definitions.py            # report + persist state
+  python scripts/check_canonical_definitions.py --alert    # also notify Telegram
 """
 import ast
 import asyncio
-import json
 import os
 import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-# Persisted (disk) signature of the last-observed violation set, so the
-# alert only fires when something actually changed -- not identically every
-# day forever. See brain/decisions/2026-09-07-telegram-remediation.md Part 3.
+from monitoring import failure_age as fa
+
+# Persisted (disk) per-finding age state: each violation carries a first_seen
+# timestamp, so a persistent violation escalates by AGE rather than being
+# re-logged identically forever. Same file the 2026-09-07 change-detection
+# signature used; the schema is upgraded in place (load_state reseeds a
+# pre-age-schema file, stamping today as first_seen -- no invented history).
+# See brain/decisions/2026-09-07-failure-age-tracking.md.
 STATE_PATH = ROOT / "data" / ".canonical_drift_state.json"
+
+# Prefix that namespaces this check's finding keys inside the shared
+# state/register machinery. Register entries must use the full key.
+KEY_PREFIX = "canonical_definitions"
 
 EXEMPT_FILES: frozenset[Path] = frozenset({
     ROOT / "monitoring" / "column_definitions.py",
@@ -184,24 +204,26 @@ async def _send_telegram_async(token: str, chat_id: str, message: str) -> None:
     from telegram import Bot
     bot = Bot(token=token)
     MAX = 4000
+    # Plain text on purpose -- the message contains `>=` and `->` which HTML
+    # parse_mode would choke on, and the paste-at-session-start format is
+    # deliberately undecorated. See brain/decisions/2026-09-07-failure-age-tracking.md Part 3.
     if len(message) <= MAX:
-        await bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML",
+        await bot.send_message(chat_id=chat_id, text=message,
                                read_timeout=15, write_timeout=15)
     else:
         for chunk in [message[i:i+MAX] for i in range(0, len(message), MAX)]:
-            await bot.send_message(chat_id=chat_id, text=chunk, parse_mode="HTML",
+            await bot.send_message(chat_id=chat_id, text=chunk,
                                    read_timeout=15, write_timeout=15)
 
 
-def send_telegram_alert(violations: list) -> None:
-    # Fixed 2026-09-07: this was the one sender (of every Telegram sender
-    # audited across both repos) missing a credential self-load -- cron's
-    # `source .env_trading` never exports its unexported VAR=value lines to
-    # this script's Python subprocess, so bare os.getenv() always returned
-    # None here even though audit_invariants.py, run daily right before this
-    # step, works via this exact call. See
-    # brain/decisions/2026-09-07-canonical-enforcement-part1-stop.md §1.4 and
-    # brain/decisions/2026-09-07-telegram-remediation.md Part 3.
+def send_telegram_alert(message: str) -> bool:
+    """Send a pre-rendered plain-text message. Returns True only on a confirmed
+    send -- the caller uses that to decide whether to mark findings reported."""
+    # Fixed 2026-09-07 (first-repo 51e3b74): this was the one sender (of every
+    # Telegram sender audited across both repos) missing a credential self-load
+    # -- cron's `source .env_trading` never exports its unexported VAR=value
+    # lines to this script's Python subprocess. See
+    # brain/decisions/2026-09-07-canonical-enforcement-part1-stop.md §1.4.
     from dotenv import load_dotenv
     load_dotenv("/home/parison/.env_trading")
 
@@ -209,61 +231,31 @@ def send_telegram_alert(violations: list) -> None:
     chat_id = os.getenv("telegram_chat_id")
     if not token or not chat_id:
         print("[TELEGRAM] Credentials not found — skipping alert.", file=sys.stderr)
-        return
-    lines = [
-        "<b>⚠️ Canonical Definitions Drift Detected</b>",
-        f"{len(violations)} violation(s) found:\n",
-    ]
-    for rel, lineno, msg in violations[:20]:
-        lines.append(f"  • {rel}:{lineno}  {msg}")
-    if len(violations) > 20:
-        lines.append(f"  … and {len(violations) - 20} more")
-    lines.append("\nFix: replace hardcoded thresholds with constants from monitoring/column_definitions.py")
+        return False
     try:
-        asyncio.run(_send_telegram_async(token, chat_id, "\n".join(lines)))
+        asyncio.run(_send_telegram_async(token, chat_id, message))
         print("[TELEGRAM] Alert sent.")
+        return True
     except Exception as exc:
         print(f"[TELEGRAM] Failed: {exc}", file=sys.stderr)
-
-
-# ---------------------------------------------------------------------------
-# Change detection (added 2026-09-07 -- see
-# brain/decisions/2026-09-07-telegram-remediation.md Part 3)
-# ---------------------------------------------------------------------------
-
-def violation_signature(violations: list[tuple[Path, int, str]]) -> list[str]:
-    """
-    Stable, order-independent signature of a violation set: (file, message)
-    only -- deliberately excludes line number, so a violation whose line
-    shifted due to an unrelated edit elsewhere in the file doesn't look like
-    a "new" finding.
-    """
-    return sorted(f"{rel}:{msg}" for rel, _lineno, msg in violations)
-
-
-def load_previous_signature() -> list[str] | None:
-    try:
-        return json.loads(STATE_PATH.read_text())["violations"]
-    except (FileNotFoundError, json.JSONDecodeError, KeyError):
-        return None
-
-
-def save_signature(signature: list[str]) -> None:
-    STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    STATE_PATH.write_text(json.dumps({"violations": signature}, indent=2))
-
-
-def should_alert(signature: list[str], previous_signature: list[str] | None) -> bool:
-    """
-    True only if there ARE violations AND the set changed since the last
-    observed state -- an unchanged violation set (the same 7 violations,
-    every day, for 11 weeks) is not news.
-    """
-    if not signature:
         return False
-    if previous_signature is None:
-        return True
-    return signature != previous_signature
+
+
+# ---------------------------------------------------------------------------
+# Finding keys -- stable identity for a violation across runs
+# ---------------------------------------------------------------------------
+
+def finding_keys(violations: list[tuple[Path, int, str]]) -> list[str]:
+    """
+    Stable, order-independent per-finding keys: prefix::relpath::message.
+
+    Line number is deliberately excluded -- a violation whose line shifted due
+    to an unrelated edit elsewhere in the file must not look like a NEW finding
+    (that would reset its age and defeat the point of this whole mechanism).
+    The message is the rule's own templated description, which is stable as
+    long as the violation is the same kind in the same file.
+    """
+    return sorted(f"{KEY_PREFIX}::{rel}::{msg}" for rel, _lineno, msg in violations)
 
 
 # ---------------------------------------------------------------------------
@@ -300,8 +292,12 @@ def main(alert: bool = False) -> int:
         for lineno, msg in check_file(path):
             all_violations.append((path.relative_to(ROOT), lineno, msg))
 
-    signature = violation_signature(all_violations)
-    previous_signature = load_previous_signature()
+    # --- failure-age tracking + accepted-failures register --------------------
+    now = fa.utcnow()
+    state = fa.load_state(STATE_PATH)
+    new_state, classification = fa.reconcile(state, finding_keys(all_violations), now)
+    register = fa.load_register()
+    decision = fa.evaluate(classification, register, new_state, now)
 
     if all_violations:
         print(
@@ -311,26 +307,35 @@ def main(alert: bool = False) -> int:
         for rel, lineno, msg in all_violations:
             print(f"  {rel}:{lineno}  {msg}")
         print(
-            f"\nFix: replace hardcoded thresholds / gate conditions with constants from\n"
-            f"     monitoring/column_definitions.py"
+            "\nFix: replace hardcoded thresholds / gate conditions with constants from\n"
+            "     monitoring/column_definitions.py"
         )
-        # Bug-only gate (2026-09-07): alert only if the violation set changed
-        # since the last observed run -- an unchanged set is not news. See
-        # brain/decisions/2026-09-07-telegram-remediation.md Part 3.
-        if alert:
-            if should_alert(signature, previous_signature):
-                send_telegram_alert(all_violations)
-            else:
-                print("[check_canonical_definitions] unchanged from last observed run — suppressing alert")
-        save_signature(signature)
-        return 1
+    else:
+        print(
+            f"[check_canonical_definitions] CLEAN "
+            f"— 0 violations across {len(py_files)} Python files."
+        )
 
-    print(
-        f"[check_canonical_definitions] CLEAN "
-        f"— 0 violations across {len(py_files)} Python files."
-    )
-    save_signature(signature)
-    return 0
+    if new_state["prior_state_status"] != "ok":
+        print(
+            f"[check_canonical_definitions] prior state was "
+            f"'{new_state['prior_state_status']}' — every current finding seeded "
+            f"with today's date; its true age is unknown (flagged in the state file)."
+        )
+
+    message = fa.render_message("canonical drift", decision, new_state, now, STATE_PATH)
+    if message:
+        print("\n--- message ---\n" + message + "\n---------------")
+        if alert and send_telegram_alert(message):
+            fa.mark_reported(new_state, decision, now)
+    elif all_violations:
+        print(
+            "[check_canonical_definitions] all current violations are already "
+            "reported or are accepted in the register — no alert"
+        )
+
+    fa.save_state(STATE_PATH, new_state, now, check="canonical_definitions")
+    return 1 if all_violations else 0
 
 
 if __name__ == "__main__":

@@ -32,6 +32,7 @@ from .log_monitor import LogMonitor
 from .telegram_health_bot import TelegramHealthBot
 from .diagnostics import ELOSystemDiagnostics, PerformanceMonitor, FixSuggestionEngine
 from .column_definitions import GEO_ELO_LEGENDARY, GEO_ELO_NEAR_LEGENDARY
+from . import failure_age as fa
 
 
 class SystemObserver:
@@ -80,9 +81,14 @@ class SystemObserver:
         self.last_hourly_report = None
         self.last_elo_update = None  # Track last ELO update
         self.last_full_diagnostic = None  # Track last comprehensive diagnostic
-        # Persisted (disk, not in-memory) finding-set signature from the last
-        # diagnostic cycle, so change-detection survives an observer restart.
-        # See brain/decisions/2026-09-07-telegram-remediation.md Part 2.
+        # Persisted (disk, not in-memory) per-finding age state for the
+        # diagnostic report: each issue/warning carries a first_seen timestamp,
+        # so a persistent CRITICAL issue escalates by AGE rather than being
+        # re-sent identically. Survives observer restarts. Schema upgraded in
+        # place from the 2026-09-07 change-detection signature file (load_state
+        # reseeds a pre-age-schema file, stamping today -- no invented history).
+        # See monitoring/failure_age.py and
+        # brain/decisions/2026-09-07-failure-age-tracking.md.
         self.diagnostic_state_path = Path('data/.diagnostic_report_state.json')
         self.check_count = 0
         self.error_count = 0
@@ -3112,8 +3118,10 @@ Sellers:
         await self.telegram._send_message(msg)
 
     # -----------------------------------------------------------------
-    # Diagnostic-report change detection (added 2026-09-07 — see
-    # brain/decisions/2026-09-07-telegram-remediation.md Part 2)
+    # Diagnostic-report failure-age tracking + accepted-failures register
+    # (2026-09-07 — supersedes the flat change-detection signature added
+    # earlier the same day. See monitoring/failure_age.py and
+    # brain/decisions/2026-09-07-failure-age-tracking.md)
     # -----------------------------------------------------------------
 
     @staticmethod
@@ -3121,60 +3129,48 @@ Sellers:
         """
         Strip numeric tokens so a finding whose only difference cycle-to-cycle
         is a drifting number (e.g. a monotonically growing DB size, or an
-        hours-since-last-trade reading) still compares equal — otherwise every
-        cycle would look "changed" even when nothing meaningful did.
+        hours-since-last-trade reading) yields a STABLE finding key — otherwise
+        every cycle would look like a new finding and its age would keep
+        resetting.
         """
         return re.sub(r"\d+(\.\d+)?", "#", text)
 
-    @classmethod
-    def _diagnostic_signature(cls, report: Dict) -> Dict[str, List[str]]:
-        """Stable, order-independent signature of a diagnostic report's finding set."""
-        return {
-            "issues": sorted(cls._normalize_finding(i) for i in report.get('issues', [])),
-            "warnings": sorted(cls._normalize_finding(w) for w in report.get('warnings', [])),
-        }
+    def _diagnostic_finding_keys(self, report: Dict) -> tuple[List[str], List[str]]:
+        """(issue_keys, warning_keys) — namespaced, stable, numeric tokens normalised."""
+        issues = [f"diagnostic::issue::{self._normalize_finding(i)}"
+                  for i in report.get('issues', [])]
+        warnings = [f"diagnostic::warning::{self._normalize_finding(w)}"
+                    for w in report.get('warnings', [])]
+        return issues, warnings
 
-    @staticmethod
-    def _should_send_diagnostic_report(
-        overall_status: str,
-        current_signature: Dict[str, List[str]],
-        previous_signature: Optional[Dict[str, List[str]]],
-    ) -> bool:
+    def _evaluate_diagnostic(self, report: Dict, now: datetime,
+                             state: Optional[Dict] = None,
+                             register: Optional[Dict] = None):
         """
-        Bug-only gate: send only when there IS a problem (CRITICAL) AND the
-        finding set actually changed since the last cycle — not merely
-        because 6 hours passed. A CRITICAL cycle whose finding set exactly
-        matches the previous cycle's is not news (e.g. a finding that has
-        been true for 8 weeks).
+        Reconcile this report's findings against the persisted age state and the
+        accepted-failures register. Returns (message_or_None, new_state, decision).
 
-        Note: recovering from CRITICAL to WARNING/HEALTHY does not itself
-        send an "all clear" message under this gate — only a still-CRITICAL
-        cycle with a changed finding set does. This is the literal spec
-        (task Part 2); see the decision doc's "what was not determined"
-        section for this tradeoff.
+        Pure w.r.t. Telegram and the state file — the caller sends and persists.
+
+        A message is produced ONLY when overall_status == 'CRITICAL'. Warnings
+        are age-tracked on disk (visible in the state file) but never trigger a
+        send on their own, and recovering out of CRITICAL produces no "all
+        clear" — both preserve the deliberate 2026-09-07 design
+        (brain/decisions/2026-09-07-telegram-remediation.md Part 2).
         """
-        if overall_status != 'CRITICAL':
-            return False
-        if previous_signature is None:
-            return True
-        return current_signature != previous_signature
-
-    def _load_diagnostic_signature(self) -> Optional[Dict[str, List[str]]]:
-        try:
-            state = json.loads(self.diagnostic_state_path.read_text())
-            return {"issues": state.get("issues", []), "warnings": state.get("warnings", [])}
-        except (FileNotFoundError, json.JSONDecodeError):
-            return None
-
-    def _save_diagnostic_signature(self, signature: Dict[str, List[str]], overall_status: str) -> None:
-        state = {
-            "checked_at_utc": datetime.now(timezone.utc).isoformat(),
-            "overall_status": overall_status,
-            "issues": signature["issues"],
-            "warnings": signature["warnings"],
-        }
-        self.diagnostic_state_path.parent.mkdir(parents=True, exist_ok=True)
-        self.diagnostic_state_path.write_text(json.dumps(state, indent=2))
+        if state is None:
+            state = fa.load_state(self.diagnostic_state_path)
+        if register is None:
+            register = fa.load_register()
+        issue_keys, warning_keys = self._diagnostic_finding_keys(report)
+        new_state, classification = fa.reconcile(state, issue_keys + warning_keys, now)
+        decision = fa.evaluate(classification, register, new_state, now,
+                               alertable_keys=set(issue_keys))
+        message = None
+        if report.get('overall_status') == 'CRITICAL':
+            message = fa.render_message("system diagnostic", decision, new_state,
+                                        now, self.diagnostic_state_path)
+        return message, new_state, decision
 
     async def _comprehensive_diagnostic_loop(self):
         """
@@ -3214,20 +3210,25 @@ Sellers:
                     # Update timestamp
                     self.last_full_diagnostic = datetime.now()
 
-                    # Bug-only gate (2026-09-07): send only if CRITICAL AND the
-                    # finding set changed since the last cycle -- a finding that
-                    # has been true for 8 weeks is not news. Removed the
-                    # separate "CRITICAL SYSTEM ISSUES DETECTED" message that
-                    # used to fire alongside every CRITICAL report -- one
-                    # message per finding change, not two. See
-                    # brain/decisions/2026-09-07-telegram-remediation.md Part 2.
-                    signature = self._diagnostic_signature(report)
-                    previous_signature = self._load_diagnostic_signature()
-                    if self._should_send_diagnostic_report(report['overall_status'], signature, previous_signature):
-                        await self._send_diagnostic_report(report)
+                    # Failure-age gate (2026-09-07): notify only for CRITICAL
+                    # issues Oscar has not already been shown and that are not
+                    # accepted in config/accepted_failures.json. Persistent
+                    # issues escalate by age, not by re-sending identical text;
+                    # an accepted issue past its review_by date alerts again as
+                    # "review due". Warnings are age-tracked on disk but never
+                    # alert on their own. See monitoring/failure_age.py.
+                    now_utc = datetime.now(timezone.utc)
+                    diag_msg, diag_state, diag_decision = self._evaluate_diagnostic(report, now_utc)
+                    if diag_msg:
+                        sent = await self.telegram._send_message(diag_msg)
+                        if sent:
+                            fa.mark_reported(diag_state, diag_decision, now_utc)
+                            print(f"[DIAGNOSTIC] {report['overall_status']} — failure-age message sent")
+                        else:
+                            print(f"[DIAGNOSTIC] {report['overall_status']} — send failed, will retry next cycle")
                     else:
-                        print(f"[DIAGNOSTIC] {report['overall_status']} — unchanged from last cycle, suppressing send")
-                    self._save_diagnostic_signature(signature, report['overall_status'])
+                        print(f"[DIAGNOSTIC] {report['overall_status']} — nothing new to escalate, suppressing send")
+                    fa.save_state(self.diagnostic_state_path, diag_state, now_utc, check="diagnostic_report")
 
                     # Collect performance metrics
                     perf_metrics = self.performance_monitor.collect_metrics()
@@ -3249,6 +3250,13 @@ Sellers:
 
     async def _send_diagnostic_report(self, report: Dict):
         """
+        NOT CURRENTLY CALLED (2026-09-07). The diagnostic loop now sends the
+        terse failure-age message (monitoring/failure_age.render_message)
+        instead of this dense component-by-component report, which Part 3 of
+        brain/decisions/2026-09-07-failure-age-tracking.md names as the
+        readability anti-pattern. Retained intact — including the fix-engine
+        suggestions — in case a richer non-Telegram channel wants this format.
+
         Send comprehensive diagnostic report to Telegram.
 
         Args:
