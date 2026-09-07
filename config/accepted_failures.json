@@ -28,5 +28,14 @@
     "brain/decisions/2026-09-07-failure-age-tracking.md Part 2 for the entries that",
     "were PROPOSED but not added — populating this is Oscar's decision."
   ],
-  "accepted": []
+  "accepted": [
+    {
+      "finding_key": "canonical_definitions::scripts/characterize_legendary_overlap_recompute.py::Python comparison `geo_elo_active >= 2175` — replace with cd.GEO_ELO_* constant",
+      "accepted_by": "Oscar",
+      "accepted_on": "2026-09-07",
+      "reason": "Dormant single-use characterisation script (last and only execution 2026-08-18, artifact legendary_overlap_recompute_20260818T192510Z.json). The `< 2175` comparison is a deliberate probe of the legacy raw-geo_elo LEGENDARY notion, not gate logic that drifted — it is the audit-trail evidence behind the corrected 3/10 overlap figure in MASTER_HANDOVER_2026-08-15 §1. Accepted so the check can go green; the disposition (fix the literal / exempt in the checker / leave) remains open.",
+      "review_by": "2026-10-15",
+      "resolution_hint": "Choose one of the three options in 2026-09-07-canonical-violations-part2-fix.md Part 3."
+    }
+  ]
 }
