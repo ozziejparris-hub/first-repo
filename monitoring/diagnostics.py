@@ -182,11 +182,16 @@ class ELOSystemDiagnostics:
         tools = []
 
         # Check if analysis scripts exist and are importable
+        # 'ELO Integration' removed 2026-09-07 — scripts/integrate_behavioral_elo.py
+        # was deliberately deleted 2026-07-12 (61adaf5, "Stage 0c — delete dead
+        # Writer C"), same day as W_BEH=0; this entry was firing a stale CRITICAL
+        # about an intended state for ~8 weeks. See
+        # brain/decisions/2026-09-07-telegram-remediation.md Part 4a. The other
+        # four entries were checked against the repo and all still exist.
         analysis_scripts = {
             'Behavioral Analysis': 'analysis/trading_behavior_analysis.py',
             'Weighted Metrics': 'analysis/calculate_weighted_metrics.py',
             'Performance Analysis': 'analysis/trader_performance_analysis.py',
-            'ELO Integration': 'scripts/integrate_behavioral_elo.py',
             'ELO Verification': 'scripts/simulation/verify_elo_rankings.py'
         }
 

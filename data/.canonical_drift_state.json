@@ -1,0 +1,11 @@
+{
+  "violations": [
+    "scripts/characterize_legendary_overlap_recompute.py:Python comparison `geo_elo_active >= 2175` \u2014 replace with cd.GEO_ELO_* constant",
+    "scripts/trader_skill_metric_v2.py:SQL string contains `geo_elo >= 2175` \u2014 use cd.LEGENDARY_GATE_WHERE or cd.GEO_ELO_* constant",
+    "scripts/trader_skill_metric_v2b.py:SQL string contains `geo_elo >= 2175` \u2014 use cd.LEGENDARY_GATE_WHERE or cd.GEO_ELO_* constant",
+    "scripts/trader_skill_metric_v2c.py:SQL string contains `geo_elo >= 2175` \u2014 use cd.LEGENDARY_GATE_WHERE or cd.GEO_ELO_* constant",
+    "scripts/trader_skill_metric_v2d.py:SQL string contains `geo_elo >= 2175` \u2014 use cd.LEGENDARY_GATE_WHERE or cd.GEO_ELO_* constant",
+    "scripts/trader_skill_metric_v2e.py:SQL string contains `geo_elo >= 2175` \u2014 use cd.LEGENDARY_GATE_WHERE or cd.GEO_ELO_* constant",
+    "scripts/trader_skill_metric_v2f.py:SQL string contains `geo_elo >= 2175` \u2014 use cd.LEGENDARY_GATE_WHERE or cd.GEO_ELO_* constant"
+  ]
+}

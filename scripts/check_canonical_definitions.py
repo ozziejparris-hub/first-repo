@@ -26,12 +26,18 @@ Usage:
 """
 import ast
 import asyncio
+import json
 import os
 import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+# Persisted (disk) signature of the last-observed violation set, so the
+# alert only fires when something actually changed -- not identically every
+# day forever. See brain/decisions/2026-09-07-telegram-remediation.md Part 3.
+STATE_PATH = ROOT / "data" / ".canonical_drift_state.json"
 
 EXEMPT_FILES: frozenset[Path] = frozenset({
     ROOT / "monitoring" / "column_definitions.py",
@@ -188,6 +194,17 @@ async def _send_telegram_async(token: str, chat_id: str, message: str) -> None:
 
 
 def send_telegram_alert(violations: list) -> None:
+    # Fixed 2026-09-07: this was the one sender (of every Telegram sender
+    # audited across both repos) missing a credential self-load -- cron's
+    # `source .env_trading` never exports its unexported VAR=value lines to
+    # this script's Python subprocess, so bare os.getenv() always returned
+    # None here even though audit_invariants.py, run daily right before this
+    # step, works via this exact call. See
+    # brain/decisions/2026-09-07-canonical-enforcement-part1-stop.md §1.4 and
+    # brain/decisions/2026-09-07-telegram-remediation.md Part 3.
+    from dotenv import load_dotenv
+    load_dotenv("/home/parison/.env_trading")
+
     token   = os.getenv("telegram_alerts_token")
     chat_id = os.getenv("telegram_chat_id")
     if not token or not chat_id:
@@ -207,6 +224,46 @@ def send_telegram_alert(violations: list) -> None:
         print("[TELEGRAM] Alert sent.")
     except Exception as exc:
         print(f"[TELEGRAM] Failed: {exc}", file=sys.stderr)
+
+
+# ---------------------------------------------------------------------------
+# Change detection (added 2026-09-07 -- see
+# brain/decisions/2026-09-07-telegram-remediation.md Part 3)
+# ---------------------------------------------------------------------------
+
+def violation_signature(violations: list[tuple[Path, int, str]]) -> list[str]:
+    """
+    Stable, order-independent signature of a violation set: (file, message)
+    only -- deliberately excludes line number, so a violation whose line
+    shifted due to an unrelated edit elsewhere in the file doesn't look like
+    a "new" finding.
+    """
+    return sorted(f"{rel}:{msg}" for rel, _lineno, msg in violations)
+
+
+def load_previous_signature() -> list[str] | None:
+    try:
+        return json.loads(STATE_PATH.read_text())["violations"]
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        return None
+
+
+def save_signature(signature: list[str]) -> None:
+    STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    STATE_PATH.write_text(json.dumps({"violations": signature}, indent=2))
+
+
+def should_alert(signature: list[str], previous_signature: list[str] | None) -> bool:
+    """
+    True only if there ARE violations AND the set changed since the last
+    observed state -- an unchanged violation set (the same 7 violations,
+    every day, for 11 weeks) is not news.
+    """
+    if not signature:
+        return False
+    if previous_signature is None:
+        return True
+    return signature != previous_signature
 
 
 # ---------------------------------------------------------------------------
@@ -243,6 +300,9 @@ def main(alert: bool = False) -> int:
         for lineno, msg in check_file(path):
             all_violations.append((path.relative_to(ROOT), lineno, msg))
 
+    signature = violation_signature(all_violations)
+    previous_signature = load_previous_signature()
+
     if all_violations:
         print(
             f"[check_canonical_definitions] DRIFT DETECTED "
@@ -254,14 +314,22 @@ def main(alert: bool = False) -> int:
             f"\nFix: replace hardcoded thresholds / gate conditions with constants from\n"
             f"     monitoring/column_definitions.py"
         )
+        # Bug-only gate (2026-09-07): alert only if the violation set changed
+        # since the last observed run -- an unchanged set is not news. See
+        # brain/decisions/2026-09-07-telegram-remediation.md Part 3.
         if alert:
-            send_telegram_alert(all_violations)
+            if should_alert(signature, previous_signature):
+                send_telegram_alert(all_violations)
+            else:
+                print("[check_canonical_definitions] unchanged from last observed run — suppressing alert")
+        save_signature(signature)
         return 1
 
     print(
         f"[check_canonical_definitions] CLEAN "
         f"— 0 violations across {len(py_files)} Python files."
     )
+    save_signature(signature)
     return 0
 
 

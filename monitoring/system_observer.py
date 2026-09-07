@@ -15,7 +15,9 @@ This is an independent watchdog process that monitors the main monitoring system
 """
 
 import asyncio
+import json
 import logging
+import re
 import signal
 import sys
 import sqlite3
@@ -78,6 +80,10 @@ class SystemObserver:
         self.last_hourly_report = None
         self.last_elo_update = None  # Track last ELO update
         self.last_full_diagnostic = None  # Track last comprehensive diagnostic
+        # Persisted (disk, not in-memory) finding-set signature from the last
+        # diagnostic cycle, so change-detection survives an observer restart.
+        # See brain/decisions/2026-09-07-telegram-remediation.md Part 2.
+        self.diagnostic_state_path = Path('data/.diagnostic_report_state.json')
         self.check_count = 0
         self.error_count = 0
 
@@ -120,8 +126,8 @@ class SystemObserver:
         print(f"[OBSERVER] Telegram alerts: enabled")
         print(f"[OBSERVER] Health check interval: 60s")
         print(f"[OBSERVER] Hourly reports: enabled")
-        print(f"[OBSERVER] Daily reports: enabled (23:00 UTC)")
-        print(f"[OBSERVER] Weekly reports: enabled (Sunday 20:00 UTC)")
+        print(f"[OBSERVER] Daily reports: PAUSED 2026-09-07 (unconditional digest, bug-only channel remediation)")
+        print(f"[OBSERVER] Weekly reports: PAUSED 2026-09-07 (unconditional digest, bug-only channel remediation)")
         print(f"[OBSERVER] Analysis scheduler: enabled (daily 01:00 UTC)")
         print(f"[OBSERVER] Trend analysis: enabled (every 6 hours)")
         print(f"[OBSERVER] Comprehensive diagnostics: every 6h")
@@ -138,8 +144,14 @@ class SystemObserver:
             asyncio.create_task(self._health_check_loop()),
             asyncio.create_task(self._log_monitor_loop()),
             asyncio.create_task(self._hourly_report_loop()),
-            asyncio.create_task(self._daily_report_loop()),
-            asyncio.create_task(self._weekly_report_loop()),
+            # PAUSED 2026-09-07 (bug-only Telegram channel remediation) — daily
+            # report (23:00 UTC unconditional digest, no health gate) and
+            # weekly report loop. Purely informational scheduled sends have no
+            # place on a channel meant to carry only actionable findings.
+            # Reversible: uncomment the two lines below. Ledger:
+            # brain/decisions/2026-09-07-telegram-remediation.md Part 5.
+            # asyncio.create_task(self._daily_report_loop()),
+            # asyncio.create_task(self._weekly_report_loop()),
             asyncio.create_task(self._analysis_report_loop()),
             asyncio.create_task(self._trend_analysis_loop()),
             asyncio.create_task(self._elo_update_loop()),
@@ -402,6 +414,19 @@ class SystemObserver:
                 print(f"[OBSERVER] Error in log monitor loop: {e}")
                 await asyncio.sleep(5)
 
+    @staticmethod
+    def _should_send_hourly_report(metrics: Dict) -> bool:
+        """
+        Gate for the hourly status report: HEALTHY hours are silent.
+
+        Extracted as a pure, directly-testable function 2026-09-07 — the
+        inline version this replaced gated on metrics["status"], a key
+        _collect_metrics() never sets (only "health_status"), so it was
+        always True regardless of actual health. See
+        brain/decisions/2026-09-07-telegram-remediation.md Part 1.
+        """
+        return metrics.get("health_status") != "healthy" or metrics.get("error_count", 0) > 0
+
     async def _hourly_report_loop(self):
         """
         Hourly status report loop.
@@ -468,7 +493,7 @@ class SystemObserver:
                     await self._check_elo_staleness()
 
                     # Only send hourly report if not fully healthy — HEALTHY hours are silent
-                    if metrics.get("status") != "healthy" or metrics.get("error_count", 0) > 0:
+                    if self._should_send_hourly_report(metrics):
                         await self.telegram.send_hourly_report(metrics)
 
                     self.last_hourly_report = now
@@ -484,6 +509,10 @@ class SystemObserver:
 
     async def _daily_report_loop(self):
         """
+        NOT CURRENTLY SCHEDULED (paused 2026-09-07, see run()'s task list) —
+        unconditional digest, no health gate, out of place on a bug-only
+        channel. Function kept intact for reversibility.
+
         Send comprehensive daily report at 23:00 UTC.
 
         Report includes:
@@ -527,6 +556,10 @@ class SystemObserver:
 
     async def _weekly_report_loop(self):
         """
+        NOT CURRENTLY SCHEDULED (paused 2026-09-07, see run()'s task list) —
+        unconditional digest, out of place on a bug-only channel. Function
+        kept intact for reversibility.
+
         Send comprehensive weekly report every Sunday at 20:00 UTC.
 
         Report includes:
@@ -3078,6 +3111,71 @@ Sellers:
 
         await self.telegram._send_message(msg)
 
+    # -----------------------------------------------------------------
+    # Diagnostic-report change detection (added 2026-09-07 — see
+    # brain/decisions/2026-09-07-telegram-remediation.md Part 2)
+    # -----------------------------------------------------------------
+
+    @staticmethod
+    def _normalize_finding(text: str) -> str:
+        """
+        Strip numeric tokens so a finding whose only difference cycle-to-cycle
+        is a drifting number (e.g. a monotonically growing DB size, or an
+        hours-since-last-trade reading) still compares equal — otherwise every
+        cycle would look "changed" even when nothing meaningful did.
+        """
+        return re.sub(r"\d+(\.\d+)?", "#", text)
+
+    @classmethod
+    def _diagnostic_signature(cls, report: Dict) -> Dict[str, List[str]]:
+        """Stable, order-independent signature of a diagnostic report's finding set."""
+        return {
+            "issues": sorted(cls._normalize_finding(i) for i in report.get('issues', [])),
+            "warnings": sorted(cls._normalize_finding(w) for w in report.get('warnings', [])),
+        }
+
+    @staticmethod
+    def _should_send_diagnostic_report(
+        overall_status: str,
+        current_signature: Dict[str, List[str]],
+        previous_signature: Optional[Dict[str, List[str]]],
+    ) -> bool:
+        """
+        Bug-only gate: send only when there IS a problem (CRITICAL) AND the
+        finding set actually changed since the last cycle — not merely
+        because 6 hours passed. A CRITICAL cycle whose finding set exactly
+        matches the previous cycle's is not news (e.g. a finding that has
+        been true for 8 weeks).
+
+        Note: recovering from CRITICAL to WARNING/HEALTHY does not itself
+        send an "all clear" message under this gate — only a still-CRITICAL
+        cycle with a changed finding set does. This is the literal spec
+        (task Part 2); see the decision doc's "what was not determined"
+        section for this tradeoff.
+        """
+        if overall_status != 'CRITICAL':
+            return False
+        if previous_signature is None:
+            return True
+        return current_signature != previous_signature
+
+    def _load_diagnostic_signature(self) -> Optional[Dict[str, List[str]]]:
+        try:
+            state = json.loads(self.diagnostic_state_path.read_text())
+            return {"issues": state.get("issues", []), "warnings": state.get("warnings", [])}
+        except (FileNotFoundError, json.JSONDecodeError):
+            return None
+
+    def _save_diagnostic_signature(self, signature: Dict[str, List[str]], overall_status: str) -> None:
+        state = {
+            "checked_at_utc": datetime.now(timezone.utc).isoformat(),
+            "overall_status": overall_status,
+            "issues": signature["issues"],
+            "warnings": signature["warnings"],
+        }
+        self.diagnostic_state_path.parent.mkdir(parents=True, exist_ok=True)
+        self.diagnostic_state_path.write_text(json.dumps(state, indent=2))
+
     async def _comprehensive_diagnostic_loop(self):
         """
         Comprehensive diagnostic loop - runs every 6 hours.
@@ -3116,13 +3214,20 @@ Sellers:
                     # Update timestamp
                     self.last_full_diagnostic = datetime.now()
 
-                    # Send diagnostic report to Telegram
-                    await self._send_diagnostic_report(report)
-
-                    # If critical issues found, send additional alert
-                    if report['overall_status'] == 'CRITICAL':
-                        critical_msg = "🚨 CRITICAL SYSTEM ISSUES DETECTED\n\nCheck diagnostic report above for details and fixes!"
-                        await self.telegram._send_message(critical_msg)
+                    # Bug-only gate (2026-09-07): send only if CRITICAL AND the
+                    # finding set changed since the last cycle -- a finding that
+                    # has been true for 8 weeks is not news. Removed the
+                    # separate "CRITICAL SYSTEM ISSUES DETECTED" message that
+                    # used to fire alongside every CRITICAL report -- one
+                    # message per finding change, not two. See
+                    # brain/decisions/2026-09-07-telegram-remediation.md Part 2.
+                    signature = self._diagnostic_signature(report)
+                    previous_signature = self._load_diagnostic_signature()
+                    if self._should_send_diagnostic_report(report['overall_status'], signature, previous_signature):
+                        await self._send_diagnostic_report(report)
+                    else:
+                        print(f"[DIAGNOSTIC] {report['overall_status']} — unchanged from last cycle, suppressing send")
+                    self._save_diagnostic_signature(signature, report['overall_status'])
 
                     # Collect performance metrics
                     perf_metrics = self.performance_monitor.collect_metrics()
@@ -3199,7 +3304,15 @@ Sellers:
         msg_parts.append("**📈 Key Metrics:**")
 
         elo_metrics = report['details']['elo_system'].get('metrics', {})
-        msg_parts.append(f"  • ELO coverage: {elo_metrics.get('elo_coverage', 0)*100:.1f}%")
+        # 'ELO coverage' removed 2026-09-07 — numerator (traders with
+        # comprehensive_elo IS NOT NULL) is ~the entire traders table, since
+        # comprehensive_elo has a schema DEFAULT of 1500; denominator (traders
+        # with >=30 trades) is a genuinely restrictive subset, so this ratio was
+        # structurally guaranteed to exceed 100% and measured nothing. comprehensive_elo
+        # is deprecated for skill work (MASTER_HANDOVER_2026-08-15 §1). See
+        # brain/decisions/2026-09-07-telegram-remediation.md Part 4b. Only other
+        # consumer was diagnostics.py's own (permanently unreachable) <0.5/<0.8
+        # issue/warning branches on the same value — not touched here.
         msg_parts.append(f"  • ROI coverage: {elo_metrics.get('roi_coverage', 0)*100:.1f}%")
 
         db_metrics = report['details']['database'].get('metrics', {})
