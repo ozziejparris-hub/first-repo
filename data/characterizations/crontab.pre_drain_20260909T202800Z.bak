@@ -1,0 +1,48 @@
+@reboot sudo cpupower frequency-set -u 2000MHz
+0 3 * * *  /home/parison/trading-swarm/scripts/cron_wrappers/run_database_backup.sh
+0 6 * * *  /home/parison/trading-swarm/scripts/cron_wrappers/run_daily_maintenance.sh
+0 7 * * 1  /home/parison/trading-swarm/scripts/cron_wrappers/run_feedback_loop.sh
+30 7 * * 1 /home/parison/trading-swarm/scripts/cron_wrappers/run_changelog_monitor.sh
+# PAUSED 2026-07-15 (Tier-3 token-bleed audit) — research-scout rated NOT-USEFUL: 20% of runs
+# timeout with zero output, 14% complete with zero findings, ~65% of surviving output is
+# duplicate re-filing of the same ~20 stories (dedup bug, e.g. DeepSeek V4 filed 9x in a month).
+# Reactivate deliberately during swarm consolidation, one at a time, after dedup fix is verified.
+# Ledger: brain/decisions/2026-07-15-tier3-pause-token-bleed.md
+#0 8 * * *  /home/parison/trading-swarm/scripts/cron_wrappers/run_research_scout.sh
+# PAUSED 2026-08-31 (Tier-3 Claude-credit shutdown) — code-hygiene-agent (was: 0 20 * * 5, Fri 20:00 UTC).
+# Weekly Claude Sonnet session via spawn_agent.sh tier 3; stopped per Oscar to halt
+# Claude subscription-quota consumption. Reversible: uncomment the line below.
+# Ledger: brain/decisions/2026-08-31-tier3-credit-shutdown.md
+#0 20 * * 5 /home/parison/trading-swarm/scripts/cron_wrappers/run_code_hygiene.sh
+# PAUSED 2026-08-31 (Tier-3 Claude-credit shutdown) — training-librarian-agent (was: 0 9 * * 6, Sat 09:00 UTC).
+# Weekly Claude Sonnet session via spawn_agent.sh tier 3; stopped per Oscar to halt
+# Claude subscription-quota consumption. Reversible: uncomment the line below.
+# Ledger: brain/decisions/2026-08-31-tier3-credit-shutdown.md
+#0 9 * * 6  /home/parison/trading-swarm/scripts/cron_wrappers/run_training_librarian.sh
+# PAUSED 2026-07-15 (Tier-3 token-bleed audit) — integration-test-agent rated REDUNDANT: CI has
+# failed 10 consecutive Sundays, 6 categories tagged SYSTEMIC (3rd-10th consecutive recurrence),
+# re-diagnosing known unfixed issues weekly at full Sonnet-agentic-audit cost. Reactivate
+# deliberately during swarm consolidation once underlying issues are actually fixed.
+# Ledger: brain/decisions/2026-07-15-tier3-pause-token-bleed.md
+#0 23 * * 0 /home/parison/trading-swarm/scripts/cron_wrappers/run_integration_test.sh
+# PAUSED 2026-08-31 (Tier-3 Claude-credit shutdown) — performance-analyst-agent (was: 0 6 * * 1, Mon 06:00 UTC).
+# Weekly Claude Sonnet session via spawn_agent.sh tier 3; stopped per Oscar to halt
+# Claude subscription-quota consumption. Reversible: uncomment the line below.
+# Ledger: brain/decisions/2026-08-31-tier3-credit-shutdown.md
+#0 6 * * 1  /home/parison/trading-swarm/scripts/cron_wrappers/run_performance_analyst.sh
+# PAUSED 2026-08-31 (Tier-3 Claude-credit shutdown) — signal-agent (was: 0 8 * * 1, Mon 08:00 UTC).
+# Weekly Claude Sonnet session via spawn_agent.sh tier 3; stopped per Oscar to halt
+# Claude subscription-quota consumption. Reversible: uncomment the line below.
+# Ledger: brain/decisions/2026-08-31-tier3-credit-shutdown.md
+#0 8 * * 1  /home/parison/trading-swarm/scripts/cron_wrappers/run_signal_agent.sh
+# PAUSED 2026-07-15 (Tier-3 token-bleed audit) — research-scout, evening duplicate of the 08:00
+# run above. See same ledger entry.
+#0 20 * * * /home/parison/trading-swarm/scripts/cron_wrappers/run_research_scout.sh
+30 7 * * 1  cd /home/parison/projects/first-repo && python3 scripts/legendary_positions_scan.py --min-traders 2 --min-gap 15 >> /home/parison/trading-swarm/logs/positions_scan.log 2>&1
+# PAUSED 2026-08-31 (Tier-3 Claude-credit shutdown) — trader-intelligence-agent (was: 15 7 * * 1, Mon 07:15 UTC).
+# Weekly Claude Sonnet session via spawn_agent.sh tier 3; stopped per Oscar to halt
+# Claude subscription-quota consumption. Reversible: uncomment the line below.
+# Ledger: brain/decisions/2026-08-31-tier3-credit-shutdown.md
+#15 7 * * 1 /home/parison/trading-swarm/scripts/cron_wrappers/run_trader_intelligence.sh
+0 2 * * * /home/parison/projects/first-repo/scripts/backup_offsite.sh >> /home/parison/trading-swarm/logs/backup_offsite.log 2>&1
+30 3 * * 0 /home/parison/projects/first-repo/scripts/weekly_resolution_sweep.sh

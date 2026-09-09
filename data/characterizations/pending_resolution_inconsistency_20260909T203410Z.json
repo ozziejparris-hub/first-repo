@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-09-09T20:34:10.514931+00:00",
+  "db_path": "/home/parison/projects/first-repo/data/polymarket_tracker.db",
+  "params": {
+    "window_end": "2026-04-01 00:00:00",
+    "no_window": false
+  },
+  "canonical_population": 7330,
+  "v2f_population": 7165,
+  "symmetric_diff_canonical_only": 165,
+  "pending_resolution_inconsistency_count": 0,
+  "pending_market_ids": [],
+  "tape_end_month_buckets": {},
+  "bucketing_note": "bucketed by MAX(trades.timestamp) per market (tape_end), NOT markets.resolution_date -- resolution_date is documented elsewhere as mutable with no audit trail and is not a reliable ordering key."
+}
