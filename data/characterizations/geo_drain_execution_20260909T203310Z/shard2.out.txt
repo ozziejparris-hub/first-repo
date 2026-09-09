@@ -1,0 +1,16 @@
+Fetching pending trades on resolved Geo/Elections markets...
+Found 5000 pending trades to evaluate.
+  Batch committed: 1000/5000 trades processed (won=695, lost=305, invalid=0)
+  Batch committed: 2000/5000 trades processed (won=1250, lost=750, invalid=0)
+  Batch committed: 3000/5000 trades processed (won=1548, lost=1452, invalid=0)
+  Batch committed: 4000/5000 trades processed (won=2074, lost=1926, invalid=0)
+  Batch committed: 5000/5000 trades processed (won=2693, lost=2307, invalid=0)
+
+Updating geo_resolved_trades_count for 347 traders...
+
+Done.
+  Total evaluated : 5000
+  Won             : 2693
+  Lost            : 2307
+  Invalid         : 0
+  Traders updated : 347
