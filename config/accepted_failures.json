@@ -19,14 +19,19 @@
     "reason, review_by (YYYY-MM-DD). Optional: resolution_hint.",
     "",
     "finding_key MUST match a key in the check's state-file 'findings' object:",
-    "  - canonical:   data/.canonical_drift_state.json",
-    "  - diagnostic:  data/.diagnostic_report_state.json",
-    "Keys look like 'canonical_definitions::<relpath>::<message>' or",
-    "'diagnostic::issue::<normalised-text>'.",
+    "  - canonical:        data/.canonical_drift_state.json",
+    "  - diagnostic:       data/.diagnostic_report_state.json",
+    "  - audit_invariants: data/.audit_invariants_state.json",
+    "Keys look like 'canonical_definitions::<relpath>::<message>',",
+    "'diagnostic::issue::<normalised-text>', or",
+    "'audit_invariants::<invariant name>' (get it from the check's own",
+    "finding_keys(); do not hand-type it).",
     "",
     "Seeded empty on purpose (2026-09-07). See",
     "brain/decisions/2026-09-07-failure-age-tracking.md Part 2 for the entries that",
-    "were PROPOSED but not added — populating this is Oscar's decision."
+    "were PROPOSED but not added, and brain/decisions/2026-09-09-final-telegram-cut.md",
+    "for the four audit_invariants entries added below — populating this is Oscar's",
+    "decision."
   ],
   "accepted": [
     {
@@ -36,6 +41,38 @@
       "reason": "Dormant single-use characterisation script (last and only execution 2026-08-18, artifact legendary_overlap_recompute_20260818T192510Z.json). The `< 2175` comparison is a deliberate probe of the legacy raw-geo_elo LEGENDARY notion, not gate logic that drifted — it is the audit-trail evidence behind the corrected 3/10 overlap figure in MASTER_HANDOVER_2026-08-15 §1. Accepted so the check can go green; the disposition (fix the literal / exempt in the checker / leave) remains open.",
       "review_by": "2026-10-15",
       "resolution_hint": "Choose one of the three options in 2026-09-07-canonical-violations-part2-fix.md Part 3."
+    },
+    {
+      "finding_key": "audit_invariants::pending on resolved non-gap markets (flagged traders)",
+      "accepted_by": "Oscar",
+      "accepted_on": "2026-09-09",
+      "reason": "Per 2026-09-09-telegram-senders-audit-db-audit-and-legendary.md §1.3(1): a within-cycle backlog gauge, not a zero-floor invariant. The audit runs at daily_maintenance step 7; evaluate_new_trader_results.py, whose target population is exactly this predicate, runs at step 21 — so each day's audit reads whatever accumulated since the previous day's step 21 before that day's step 21 clears it. Count oscillates between ~0 and hundreds of thousands with no trend and returns to 0 on many days. REAL but self-healing; root-caused in 2026-08-19-pending-invariant-regression.md Q4. FLOOR_PENDING_FLAGGED=0 was aspirational (commit e72fd5e), never held. Not a new problem; carries no decision.",
+      "review_by": "2026-12-01",
+      "resolution_hint": "None required — self-healing. If the swings are unwanted, move the audit step after step 21 in daily_maintenance.py, or change the invariant's floor semantics."
+    },
+    {
+      "finding_key": "audit_invariants::timestamp mixed formats (per-column breakdown)",
+      "accepted_by": "Oscar",
+      "accepted_on": "2026-09-09",
+      "reason": "Per 2026-09-09-telegram-senders-audit-db-audit-and-legendary.md §1.3(3): FLOOR_TS_TOTAL=24996 is a stale point-in-time capture (commit b30c5ff, 2026-06-18, 'expected until Teardown 3' — never happened), the same pattern as the backtest test's unvalidated hardcoded counts. Separately there is a real, already-recorded, growing write-path regression (2026-08-30-end-to-end-verification.md finding #8, '~650/day'), entirely in markets.end_date and markets.resolution_date; driver pinned this session to scripts/backfill_market_dates.py's _parse_end_date(), which writes Python .isoformat() (T-separated) into columns whose canonical format is space-separated, daily via daily_maintenance at --limit 2000. Known open item, not news each day. Shorter review window because it is growing and its driver is known.",
+      "review_by": "2026-10-15",
+      "resolution_hint": "Fix scripts/backfill_market_dates.py to emit space-separated timestamps (contract §16), then normalise the accumulated T-separated rows; and revisit FLOOR_TS_TOTAL / the check's aggregate-masking design (2026-06-29-overhang-ledger.md item 5.1)."
+    },
+    {
+      "finding_key": "audit_invariants::data_source not in canonical set (write-path regression)",
+      "accepted_by": "Oscar",
+      "accepted_on": "2026-09-09",
+      "reason": "Per 2026-09-09-telegram-senders-audit-db-audit-and-legendary.md §1.3(4): a closed historical set, already recorded (2026-08-30-end-to-end-verification.md finding #10 'frozen legacy population, not growing', classified COSMETIC; 2026-08-30-canonical-writer-column-gap.md §2.3). The 577 rows are 178 markets + 399 trades, all data_source='gap_recovery_20260811' — a literal from the 2026-08-11 gap-recovery operation that was never added to cd.DATA_SOURCE_MARKETS / cd.DATA_SOURCE_TRADES. FLOOR_DS_INVALID=0 is a correct deliberate floor; the check re-measures each run (it stepped 580 to 577 on 2026-08-17). Static, bounded, low severity.",
+      "review_by": "2026-12-01",
+      "resolution_hint": "Add 'gap_recovery_20260811' to cd.DATA_SOURCE_MARKETS and cd.DATA_SOURCE_TRADES in monitoring/column_definitions.py, or re-stamp the 577 rows to an in-set value."
+    },
+    {
+      "finding_key": "audit_invariants::total_invested vs SUM(entry_total_cost) mismatch >5%",
+      "accepted_by": "Oscar",
+      "accepted_on": "2026-09-09",
+      "reason": "Per 2026-09-09-telegram-senders-audit-db-audit-and-legendary.md §1.3(5): reconciliation lag between traders.total_invested and SUM(positions.entry_total_cost), not corruption. Already recorded (2026-08-30-end-to-end-verification.md finding #11: 'slow drift ~10-15/day ... no identified consumer depends on this being exact', classified COSMETIC). FLOOR_INVESTED_MISMATCH=0 is an aspirational Tier-3 baseline (commit e72fd5e) tied to a Teardown that was never scheduled. The check re-measures each run; it holds flat for weeks then steps as reconcile batches / new closed-position tranches land.",
+      "review_by": "2026-12-01",
+      "resolution_hint": "Run/extend scripts/reconcile_trader_aggregates.py against the drifted population, or set a non-zero Tier-3 baseline and schedule the Teardown."
     }
   ]
 }

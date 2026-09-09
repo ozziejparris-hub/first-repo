@@ -4,12 +4,21 @@ Data-integrity audit harness for polymarket_tracker.db.
 
 Runs invariant checks across Tier 1 (CRITICAL), Tier 2 (REGRESSION),
 and Tier 3 (structural baseline) categories. Read-only against the four
-core tables; only writes its JSON report.
+core tables; writes its JSON report and its failure-age state file.
+
+Failure-age tracking (2026-09-09): each failing invariant carries a first_seen
+timestamp in data/.audit_invariants_state.json. With --alert, Telegram is
+notified only for a failing invariant Oscar has not already been shown and that
+is not accepted in config/accepted_failures.json (past its review_by it alerts
+again as "review due"). A persistently-failing invariant no longer re-sends an
+identical message every day. The Tier-1 CRITICAL exit code (2 -> maintenance
+ABORT) is unchanged and independent of the alert gate. See
+monitoring/failure_age.py and brain/decisions/2026-09-09-final-telegram-cut.md.
 
 Usage:
     python3 scripts/audit_invariants.py
     python3 scripts/audit_invariants.py --verbose   # print example violating rows
-    python3 scripts/audit_invariants.py --alert     # Telegram alert on failures
+    python3 scripts/audit_invariants.py --alert     # Telegram (failure-age gated)
 """
 
 import argparse
@@ -24,12 +33,27 @@ from typing import Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import monitoring.column_definitions as cd
+from monitoring import failure_age as fa
 
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
 DB_PATH    = Path("/home/parison/projects/first-repo/data/polymarket_tracker.db")
 OUTPUT_DIR = Path("/home/parison/trading-swarm/brain/agent-outputs/data-audit")
+
+# Per-finding failure-age state (2026-09-09). Each failing invariant carries a
+# first_seen timestamp here, so a persistently-failing invariant escalates by
+# AGE and only alerts once — not identically every day for months. A finding
+# that Oscar has accepted in config/accepted_failures.json is tracked here but
+# never alerts (until its review_by). See monitoring/failure_age.py and
+# brain/decisions/2026-09-09-final-telegram-cut.md.
+STATE_PATH = DB_PATH.parent / ".audit_invariants_state.json"
+
+# Namespace for this check's finding keys inside the shared state/register
+# machinery. Register entries in config/accepted_failures.json must use the
+# full "audit_invariants::<invariant name>" key — get it from finding_keys(),
+# do not hand-type it.
+KEY_PREFIX = "audit_invariants"
 
 # ---------------------------------------------------------------------------
 # FLOORS
@@ -848,56 +872,69 @@ def determine_status(tier: int, floor: int, count: int) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Telegram alert
+# Finding keys — stable identity for a failing invariant across runs
+# ---------------------------------------------------------------------------
+
+def finding_keys(results: list) -> list[str]:
+    """
+    Stable, order-independent per-finding keys: "audit_invariants::<invariant name>".
+
+    One key per REGRESSION or CRITICAL result. A PASS / OBSERVE is not a finding.
+
+    The invariant *name* (the first element of every check tuple) is the identity
+    — the row COUNT is deliberately excluded. Day-to-day fluctuation in a
+    persistently-failing invariant (e.g. the geo/elections pending backlog
+    drifting 24,103 → 24,644) must not read as a NEW finding and reset its age;
+    that is the whole point of failure-age tracking. Same reasoning as
+    check_canonical_definitions.finding_keys() excluding line numbers.
+    """
+    return sorted(
+        f"{KEY_PREFIX}::{r['name']}"
+        for r in results
+        if r["status"] in ("REGRESSION", "CRITICAL")
+    )
+
+
+# ---------------------------------------------------------------------------
+# Telegram alert — plain text, pre-rendered by monitoring.failure_age
 # ---------------------------------------------------------------------------
 
 async def _send_telegram_async(token: str, chat_id: str, message: str) -> None:
     from telegram import Bot
     bot = Bot(token=token)
     MAX = 4000
+    # Plain text on purpose — the failure-age message contains '>=' / '->' and a
+    # bare path, which HTML parse_mode would choke on. Matches
+    # check_canonical_definitions.py's sender.
     if len(message) <= MAX:
-        await bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML",
+        await bot.send_message(chat_id=chat_id, text=message,
                                read_timeout=15, write_timeout=15)
     else:
         for chunk in [message[i:i+MAX] for i in range(0, len(message), MAX)]:
-            await bot.send_message(chat_id=chat_id, text=chunk, parse_mode="HTML",
+            await bot.send_message(chat_id=chat_id, text=chunk,
                                    read_timeout=15, write_timeout=15)
 
 
-def send_telegram_alert(results: list, summary: dict) -> None:
+def send_telegram_alert(message: str) -> bool:
+    """
+    Send a pre-rendered plain-text message. Returns True only on a confirmed
+    send — the caller uses that to decide whether to mark findings reported.
+
+    Credentials come from the environment. main() self-loads /home/parison/.env_trading
+    (cron does not export it) before run_audit() is called — do not move that load.
+    """
     token   = os.getenv("telegram_alerts_token")
     chat_id = os.getenv("telegram_chat_id")
     if not token or not chat_id:
         print("[TELEGRAM] Credentials not found — skipping alert.", file=sys.stderr)
-        return
-
-    criticals   = [r for r in results if r["status"] == "CRITICAL"]
-    regressions = [r for r in results if r["status"] == "REGRESSION"]
-    if not criticals and not regressions:
-        return
-
-    lines = [
-        f"<b>🔍 DB Audit — {summary['audit_date']}</b>",
-        (f"Checked {summary['total']} invariants: "
-         f"{summary['critical']} CRITICAL, {summary['regression']} REGRESSION, "
-         f"{summary['pass']} PASS"),
-        "",
-    ]
-    if criticals:
-        lines.append("<b>🚨 CRITICAL (Tier-1 violations):</b>")
-        for r in criticals:
-            lines.append(f"  • {r['name']} — {r['count']:,} rows")
-        lines.append("")
-    if regressions:
-        lines.append("<b>⚠️ REGRESSIONS (above floor):</b>")
-        for r in regressions:
-            lines.append(f"  • {r['name']} — {r['count']:,} (floor {r['floor']:,})")
-
+        return False
     try:
-        asyncio.run(_send_telegram_async(token, chat_id, "\n".join(lines)))
+        asyncio.run(_send_telegram_async(token, chat_id, message))
         print("[TELEGRAM] Alert sent.")
+        return True
     except Exception as exc:
         print(f"[TELEGRAM] Failed: {exc}", file=sys.stderr)
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -977,8 +1014,37 @@ def run_audit(verbose: bool = False, alert: bool = False) -> tuple[int, int]:
                                    indent=2, default=str))
     print(f"\n  Report → {out_path}")
 
-    if alert:
-        send_telegram_alert(results, summary)
+    # ---- failure-age tracking + accepted-failures register (2026-09-09) ----
+    # Every REGRESSION/CRITICAL invariant carries a first_seen timestamp in
+    # STATE_PATH. Telegram is notified only for a finding Oscar has not already
+    # been shown and that is not accepted in config/accepted_failures.json (past
+    # its review_by it alerts again as "review due"). A persistently-failing
+    # invariant no longer re-sends an identical message every day. The full
+    # summary table still prints to stdout and the JSON report is unchanged —
+    # this gates the *alert*, not the audit. See monitoring/failure_age.py and
+    # brain/decisions/2026-09-09-final-telegram-cut.md.
+    fa_now       = fa.utcnow()
+    fa_state     = fa.load_state(STATE_PATH)
+    fa_new_state, fa_class = fa.reconcile(fa_state, finding_keys(results), fa_now)
+    fa_register  = fa.load_register()
+    fa_decision  = fa.evaluate(fa_class, fa_register, fa_new_state, fa_now)
+
+    if fa_new_state["prior_state_status"] != "ok":
+        print(f"  [failure-age] prior state was '{fa_new_state['prior_state_status']}' "
+              f"— current findings seeded with today's date; true age unknown "
+              f"(flagged in {STATE_PATH.name}).")
+
+    fa_message = fa.render_message("DB audit invariants", fa_decision,
+                                  fa_new_state, fa_now, STATE_PATH)
+    if fa_message:
+        print("\n--- alert message ---\n" + fa_message + "\n---------------------")
+        if alert and send_telegram_alert(fa_message):
+            fa.mark_reported(fa_new_state, fa_decision, fa_now)
+    elif any(r["status"] in ("REGRESSION", "CRITICAL") for r in results):
+        print("  [failure-age] all failing invariants are already reported or "
+              "accepted in config/accepted_failures.json — no alert")
+
+    fa.save_state(STATE_PATH, fa_new_state, fa_now, check="audit_invariants")
 
     return n_critical, n_regression
 

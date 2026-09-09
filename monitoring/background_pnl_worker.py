@@ -442,7 +442,14 @@ class BackgroundPnLWorker:
                 result['n_positions'], result['n_closed'], elapsed,
             )
         elif elapsed > 5:
-            self.logger.warning(
+            # SILENCED 2026-09-09 (final Telegram cut, Oscar): a slow P&L
+            # reconstruction is a performance observation, not an error. At
+            # WARNING level system_observer's log monitor picked this up and
+            # relayed it to Telegram as "COMPONENT ERROR: Unknown"
+            # (Slow: 0x… — N trades took Ns). Logged at INFO so it stays in
+            # the log but off the alert channel. Reversible: restore .warning.
+            # Ledger: brain/decisions/2026-09-09-final-telegram-cut.md.
+            self.logger.info(
                 "Slow: %s — %d trades took %.1fs",
                 trader_address[:10], trade_count, elapsed,
             )

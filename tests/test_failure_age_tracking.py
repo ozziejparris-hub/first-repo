@@ -304,9 +304,46 @@ def run_tests():
                 "fields are skipped (the rest still load)",
                 list(reg["entries"]) == ["k1"])
 
+    # The committed register (config/accepted_failures.json) is a live,
+    # human-maintained file — it gains entries over time (first one 2026-09-07,
+    # four more 2026-09-09). Assert its SHAPE and that every entry load_register
+    # returned is well-formed, NOT equality with a literal. (An earlier version
+    # hard-asserted == {"entries": {}} and broke the moment the first entry
+    # landed — the same brittle-literal anti-pattern removed from
+    # test_backtest_window_population.py. Do not reintroduce a literal here.)
     real_register = fa.load_register()  # the committed config/accepted_failures.json
-    r.check("12d the committed register is present and seeded EMPTY",
-            real_register == {"entries": {}})
+    r.check("12d the committed register loads with the expected shape",
+            isinstance(real_register, dict)
+            and set(real_register) == {"entries"}
+            and isinstance(real_register["entries"], dict))
+
+    raw = json.loads((ROOT / "config" / "accepted_failures.json").read_text())
+    raw_accepted = raw.get("accepted", [])
+    r.check("12e every committed register entry is well-formed "
+            "(none silently dropped by load_register)",
+            len(real_register["entries"]) == len(raw_accepted),
+            f"{len(real_register['entries'])} loaded vs {len(raw_accepted)} in file")
+
+    def _entry_valid(e):
+        if not all(isinstance(e.get(f), str) and e[f].strip()
+                   for f in ("finding_key", "accepted_by", "accepted_on",
+                             "reason", "review_by")):
+            return False
+        try:
+            fa._parse_date(e["accepted_on"])
+            fa._parse_date(e["review_by"])
+        except ValueError:
+            return False
+        return True
+
+    r.check("12f every committed register entry validates "
+            "(required string fields + parseable accepted_on / review_by)",
+            all(_entry_valid(e) for e in real_register["entries"].values()),
+            "at least one committed entry has a missing field or bad date")
+
+    r.check("12g committed register keys are unique and namespaced",
+            len(real_register["entries"]) == len(set(real_register["entries"]))
+            and all("::" in k for k in real_register["entries"]))
 
     # ---------------------------------------------------------------
     # 13. finding keys are line-number independent (canonical check)

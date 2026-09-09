@@ -131,7 +131,9 @@ class SystemObserver:
         print(f"[OBSERVER] Monitoring PID: {self.monitoring_pid or 'auto-detect'}")
         print(f"[OBSERVER] Telegram alerts: enabled")
         print(f"[OBSERVER] Health check interval: 60s")
-        print(f"[OBSERVER] Hourly reports: enabled")
+        print(f"[OBSERVER] Hourly status report: SILENCED 2026-09-09 (final Telegram cut) — hourly loop still runs freeze/consensus/staleness checks")
+        print(f"[OBSERVER] Startup announcement: SILENCED 2026-09-09 (final Telegram cut)")
+        print(f"[OBSERVER] Legendary-trade alert: SILENCED 2026-09-09 (final Telegram cut) — retired STR-003 signal era")
         print(f"[OBSERVER] Daily reports: PAUSED 2026-09-07 (unconditional digest, bug-only channel remediation)")
         print(f"[OBSERVER] Weekly reports: PAUSED 2026-09-07 (unconditional digest, bug-only channel remediation)")
         print(f"[OBSERVER] Analysis scheduler: enabled (daily 01:00 UTC)")
@@ -142,13 +144,20 @@ class SystemObserver:
         print(f"[OBSERVER] Auto ELO updates: enabled (direct call, no subprocess)")
         print()
 
-        # Send startup notification
-        await self.telegram.send_startup_notification()
+        # SILENCED 2026-09-09 (final Telegram cut, Oscar): "SYSTEM OBSERVER
+        # STARTED" is a lifecycle announcement, not an actionable finding.
+        # Reversible: uncomment the line below. Ledger:
+        # brain/decisions/2026-09-09-final-telegram-cut.md.
+        # await self.telegram.send_startup_notification()
 
         # Start background tasks
         tasks = [
             asyncio.create_task(self._health_check_loop()),
             asyncio.create_task(self._log_monitor_loop()),
+            # _hourly_report_loop still runs: it hosts the monitoring-freeze
+            # alert, the smart-money consensus checks and the ELO-staleness
+            # check. Only the hourly *status report* send inside it is
+            # silenced (2026-09-09, see the loop body).
             asyncio.create_task(self._hourly_report_loop()),
             # PAUSED 2026-09-07 (bug-only Telegram channel remediation) — daily
             # report (23:00 UTC unconditional digest, no health gate) and
@@ -487,7 +496,16 @@ class SystemObserver:
                     # High value trades disabled (noise) — legendary trades enabled (signal)
                     # await self._check_high_value_trades()
 
-                    await self._check_legendary_trades()
+                    # SILENCED 2026-09-09 (final Telegram cut, Oscar): the
+                    # legendary-trade alert works correctly (gate reads
+                    # geo_elo_active >= cd.GEO_ELO_LEGENDARY) but it reports
+                    # position-taking from the retired STR-003 signal era and
+                    # informs no current decision. The function
+                    # _check_legendary_trades() is left intact for
+                    # reversibility — only this call site is disabled.
+                    # Reversible: uncomment the line below. Ledger:
+                    # brain/decisions/2026-09-09-final-telegram-cut.md.
+                    # await self._check_legendary_trades()
 
                     # Check for smart money consensus (runs every hour)
                     await self._check_consensus_positions()
@@ -498,9 +516,15 @@ class SystemObserver:
                     # Log ELO staleness date alongside hourly report
                     await self._check_elo_staleness()
 
-                    # Only send hourly report if not fully healthy — HEALTHY hours are silent
-                    if self._should_send_hourly_report(metrics):
-                        await self.telegram.send_hourly_report(metrics)
+                    # SILENCED 2026-09-09 (final Telegram cut, Oscar): the hourly
+                    # status report carries no actionable content, and its gate
+                    # (_should_send_hourly_report) fires on error_count > 0, which
+                    # is effectively always true. The rest of this loop
+                    # (freeze / consensus / staleness) still runs and still
+                    # alerts. Reversible: uncomment the two lines below. Ledger:
+                    # brain/decisions/2026-09-09-final-telegram-cut.md.
+                    # if self._should_send_hourly_report(metrics):
+                    #     await self.telegram.send_hourly_report(metrics)
 
                     self.last_hourly_report = now
 

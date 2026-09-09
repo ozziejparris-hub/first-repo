@@ -1,0 +1,39 @@
+{
+  "check": "audit_invariants",
+  "findings": {
+    "audit_invariants::data_source not in canonical set (write-path regression)": {
+      "age_unknown_at_first_seen": true,
+      "first_seen_utc": "2026-09-09T18:08:34.656977+00:00",
+      "last_seen_utc": "2026-09-09T18:10:44.673467+00:00",
+      "reported_at_utc": null
+    },
+    "audit_invariants::pending on resolved non-gap geo/elections markets": {
+      "age_unknown_at_first_seen": true,
+      "first_seen_utc": "2026-09-09T18:08:34.656977+00:00",
+      "last_seen_utc": "2026-09-09T18:10:44.673467+00:00",
+      "reported_at_utc": null
+    },
+    "audit_invariants::pending on resolved non-gap markets (flagged traders)": {
+      "age_unknown_at_first_seen": true,
+      "first_seen_utc": "2026-09-09T18:08:34.656977+00:00",
+      "last_seen_utc": "2026-09-09T18:10:44.673467+00:00",
+      "reported_at_utc": null
+    },
+    "audit_invariants::timestamp mixed formats (per-column breakdown)": {
+      "age_unknown_at_first_seen": true,
+      "first_seen_utc": "2026-09-09T18:08:34.656977+00:00",
+      "last_seen_utc": "2026-09-09T18:10:44.673467+00:00",
+      "reported_at_utc": null
+    },
+    "audit_invariants::total_invested vs SUM(entry_total_cost) mismatch >5%": {
+      "age_unknown_at_first_seen": true,
+      "first_seen_utc": "2026-09-09T18:08:34.656977+00:00",
+      "last_seen_utc": "2026-09-09T18:10:44.673467+00:00",
+      "reported_at_utc": null
+    }
+  },
+  "prior_state_status": "ok",
+  "resolved_history": {},
+  "schema_version": 2,
+  "updated_at_utc": "2026-09-09T18:10:44.673467+00:00"
+}
