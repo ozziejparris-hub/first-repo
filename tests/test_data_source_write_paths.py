@@ -1116,7 +1116,7 @@ def test_14_backfill_insert_ignore_conflict_preserves_origin(results: TestResult
                 market_category, outcome, outcome_bet, shares, price,
                 side, timestamp, notified, completed, was_successful,
                 trade_result, data_source
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,0,0,NULL,'pending','background_backfill')
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,0,0,NULL,?,'background_backfill')
         """, (
             'trade_t14_001',
             '0xtest014',
@@ -1128,6 +1128,7 @@ def test_14_backfill_insert_ignore_conflict_preserves_origin(results: TestResult
             float(0.5),
             'BUY',
             '2026-01-01 12:00:00',
+            'pending',
         ))
         conn.commit()
         conn.close()
@@ -1180,7 +1181,7 @@ def test_15_regression_lock_backfill_trade_not_default_api(results: TestResults)
                 market_category, outcome, outcome_bet, shares, price,
                 side, timestamp, notified, completed, was_successful,
                 trade_result, data_source
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,0,0,NULL,'pending','background_backfill')
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,0,0,NULL,?,'background_backfill')
         """, (
             'trade_t15_lock',
             '0xtest015',
@@ -1192,6 +1193,7 @@ def test_15_regression_lock_backfill_trade_not_default_api(results: TestResults)
             float(0.5),
             'BUY',
             '2026-01-01 00:00:00',
+            'pending',
         ))
         conn.commit()
         conn.close()

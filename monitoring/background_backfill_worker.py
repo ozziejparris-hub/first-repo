@@ -31,10 +31,53 @@ from datetime import datetime
 from typing import Optional
 
 from .database import Database
+from .trade_evaluator import TradeEvaluator
 
 _THREAD_POOL = concurrent.futures.ThreadPoolExecutor(
     max_workers=1, thread_name_prefix="backfill_worker"
 )
+
+# Canonical win/loss evaluator, used to resolve a backfilled trade at insert time
+# when its market is already resolved (instead of always writing 'pending' and
+# leaving it for the daily evaluator, scripts/backfill_trade_results_geo.py).
+# TradeEvaluator.evaluate_trade() is a pure function of its arguments — it never
+# touches self.db / self.client — so (None, None) is safe and this adds no I/O.
+# Do NOT reimplement evaluation here; that local reimplementation is exactly what
+# the 2026-08-19 repoint (8cfeb8e) removed.
+_INGEST_EVALUATOR = TradeEvaluator(None, None)
+
+
+def _resolve_ingest_trade_result(trade: dict, market_row) -> str:
+    """Resolve a backfilled trade's trade_result at insert time.
+
+    Returns 'won'/'lost' only when the trade's market is already resolved with a
+    usable winning_outcome; otherwise returns 'pending' so the row is picked up
+    later by the daily evaluator. This REDUCES the pending inflow; it does not
+    remove the need for the daily evaluator.
+
+    market_row is (resolved, winning_outcome) from the markets table, or None if
+    the market is not in `markets` yet. Falls through to 'pending' for: market
+    absent, market not resolved, NULL/blank/'unknown' winning_outcome, or an
+    'invalid' evaluator verdict (unusable outcome/side data on the trade).
+
+    Pure: no DB, no network. The usability gate mirrors
+    scripts/backfill_trade_results_geo.py's fetch predicate
+    (winning_outcome NOT IN ('unknown','') AND NOT NULL); the .lower() here is a
+    safe superset (a cased 'Unknown' also falls through to 'pending').
+    """
+    if market_row is None:
+        return 'pending'
+    resolved, winning_outcome = market_row
+    if resolved != 1:
+        return 'pending'
+    wo = '' if winning_outcome is None else str(winning_outcome).strip()
+    if not wo or wo.lower() == 'unknown':
+        return 'pending'
+    result = _INGEST_EVALUATOR.evaluate_trade(
+        {'outcome_bet': trade.get('outcome', ''), 'side': trade.get('side', '')},
+        wo,
+    )
+    return result if result in ('won', 'lost') else 'pending'
 
 _TRADER_TIMEOUT = 45          # per-trader budget (seconds) — pagination capped at 2000 trades
 _MAX_FAILURES = 3             # skip trader for the session after this many consecutive failures
@@ -264,6 +307,39 @@ class BackgroundBackfillWorker:
                 trader_address[:10], exc,
             )
 
+    def _fetch_market_resolutions(self, condition_ids: set) -> dict:
+        """Return {market_id: (resolved, winning_outcome)} for the given ids that
+        exist in `markets`.
+
+        One short-lived read-only connection, opened and closed BEFORE
+        _process_trader_sync's write connection — so the write transaction's shape
+        (first statement = INSERT, single commit per trader) is unchanged. Under
+        WAL a plain SELECT takes no write lock and cannot block the live monitor.
+        This is a batch lookup (chunked at 900 ids), never per-row.
+        """
+        if not condition_ids:
+            return {}
+        ids = [c for c in condition_ids if c]
+        out: dict = {}
+        if not ids:
+            return out
+        conn = self.db.get_connection()
+        try:
+            cursor = conn.cursor()
+            for i in range(0, len(ids), 900):
+                chunk = ids[i:i + 900]
+                placeholders = ",".join("?" for _ in chunk)
+                cursor.execute(
+                    f"SELECT market_id, resolved, winning_outcome "
+                    f"FROM markets WHERE market_id IN ({placeholders})",
+                    chunk,
+                )
+                for market_id, resolved, winning_outcome in cursor.fetchall():
+                    out[market_id] = (resolved, winning_outcome)
+        finally:
+            conn.close()
+        return out
+
     def _process_trader_sync(self, trader_address: str) -> dict:
         """
         Fetch and insert historical trades for one trader.
@@ -279,6 +355,13 @@ class BackgroundBackfillWorker:
         raw_trades = self._fetch_all_trades(trader_address)
         n_total = len(raw_trades)
         n_inserted = 0
+
+        # Batch-level market-resolution lookup so an already-resolved market's
+        # trades can be evaluated at insert instead of written 'pending'. Done on
+        # its own connection, fully closed before the write connection below.
+        market_res = self._fetch_market_resolutions(
+            {trade.get("conditionId", "") for trade in raw_trades}
+        )
 
         conn = self.db.get_connection()
         cursor = conn.cursor()
@@ -302,13 +385,21 @@ class BackgroundBackfillWorker:
                 condition_id = trade.get("conditionId", "")
                 title = trade.get("title", "Unknown Market")
 
+                # Evaluate at insert if the market is already resolved; otherwise
+                # 'pending' (unchanged behaviour for that case). Existing rows are
+                # never touched — this is INSERT OR IGNORE, so a trade_id / tx_hash
+                # collision leaves the stored row (and its trade_result) as-is.
+                trade_result = _resolve_ingest_trade_result(
+                    trade, market_res.get(condition_id)
+                )
+
                 cursor.execute("""
                     INSERT OR IGNORE INTO trades (
                         trade_id, trader_address, market_id, market_title,
                         market_category, outcome, outcome_bet, shares, price,
                         side, timestamp, notified, completed, was_successful,
                         trade_result, data_source
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,0,0,NULL,'pending','background_backfill')
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,0,0,NULL,?,'background_backfill')
                 """, (
                     trade_id,
                     trade.get("proxyWallet", trader_address),
@@ -321,6 +412,7 @@ class BackgroundBackfillWorker:
                     float(trade.get("price", 0) or 0),
                     trade.get("side", ""),
                     timestamp,
+                    trade_result,
                 ))
                 n_inserted += cursor.rowcount
 
