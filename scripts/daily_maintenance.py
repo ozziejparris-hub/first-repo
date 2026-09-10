@@ -164,6 +164,20 @@ STEPS = [
     ("Score STR-002 signals",              SCRIPTS_DIR / "score_str002_signals.py",        None, True),
     ("Resolve LEGENDARY trader markets",   SCRIPTS_DIR / "resolve_legendary_markets.py", ["--limit", "50"], True),
     ("Evaluate new trader results",        SCRIPTS_DIR / "evaluate_new_trader_results.py", None, True),
+    # All-geo/elec pending-result evaluator — the non-flagged counterpart to the step
+    # above (which only touches is_flagged=1 traders). Closes the gap root-caused in
+    # 2026-08-19-pending-invariant-regression.md Q4: no daily evaluator existed for the
+    # check_pending_geo population, so background_backfill's hardcoded-'pending' ingest
+    # kept rebuilding it (~460 new rows in the first post-drain cycle). --limit 1000 is
+    # a top-up, NOT a drain — the 24,390-row historical backlog was cleared separately
+    # on 2026-09-09 (drain eee49ee); see 2026-09-09-geo-backfill-wiring-decision.md and
+    # 2026-09-10-geo-backfill-wiring-implementation.md (limit sized against the first
+    # observed post-drain cycle, not the assessment's stale ~20/day estimate).
+    # Position here: after the step-7 audit gate (so check_pending_geo keeps reading the
+    # true backlog) and immediately before the post-eval reconcile below (one settlement
+    # point covers both evaluators' geo_resolved_trades_count writes). Non-blocking:
+    # settlement pass, not a gate. Batched 1000/commit; default 3h budget is ample.
+    ("Evaluate geo/elec pending results (all traders)", SCRIPTS_DIR / "backfill_trade_results_geo.py", ["--limit", "1000"], True),
     # Settles geo counts after post-audit evaluation. evaluate_new_trader_results flips
     # pending→won/lost on geo trades, changing geo_resolved_trades_count. Running here
     # ensures the next morning's audit opens on a clean reconciled state.
