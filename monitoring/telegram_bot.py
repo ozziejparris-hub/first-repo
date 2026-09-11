@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -9,6 +10,13 @@ from telegram.ext import (
 )
 from typing import Optional, Callable
 from datetime import datetime
+
+# See monitoring/telegram_health_bot.py for why: httpx (used internally by
+# python-telegram-bot) logs each request's full URL -- including the bot
+# token, which Telegram's API embeds in the URL path -- at INFO. Capping
+# this logger to WARNING does not affect error visibility: httpx surfaces
+# transport errors as exceptions, not via this logger.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 class TelegramNotifier:

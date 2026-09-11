@@ -201,7 +201,16 @@ class DriftVisitor(ast.NodeVisitor):
 # ---------------------------------------------------------------------------
 
 async def _send_telegram_async(token: str, chat_id: str, message: str) -> None:
+    import logging
     from telegram import Bot
+    # httpx (python-telegram-bot's HTTP backend) logs each request's full
+    # URL -- including the bot token, which Telegram embeds in the URL
+    # path -- at INFO. Not currently reachable in this script's own root
+    # logger config, but this process doesn't control what else got
+    # imported first; cap it defensively. httpx reports transport errors
+    # via exceptions, not this logger, so nothing is lost.
+    # See brain/decisions/2026-09-11-telegram-token-log-leak.md.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     bot = Bot(token=token)
     MAX = 4000
     # Plain text on purpose -- the message contains `>=` and `->` which HTML

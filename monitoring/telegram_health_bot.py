@@ -13,10 +13,23 @@ Alert Types:
 """
 
 import asyncio
+import logging
 from datetime import datetime
 from typing import Dict, List, Optional
 from telegram import Bot
 from telegram.error import TelegramError
+
+# python-telegram-bot's Bot uses httpx internally, and httpx logs every
+# request at INFO -- including the full URL. Telegram's Bot API puts the
+# bot token in the URL path (/bot<TOKEN>/sendMessage), so at INFO this
+# logger leaks the live credential to whatever handler the process's root
+# logger ends up with (e.g. a daily analysis-scheduler import that calls
+# logging.basicConfig(level=logging.INFO) elsewhere in the process).
+# httpx only uses this logger for the access-log-style request/response
+# line; real transport errors surface as raised exceptions, not via this
+# logger, so capping it to WARNING loses no error visibility.
+# See brain/decisions/2026-09-11-telegram-token-log-leak.md.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # Import error parsing for detailed alerts
 try:

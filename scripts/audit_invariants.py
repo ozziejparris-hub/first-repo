@@ -900,7 +900,14 @@ def finding_keys(results: list) -> list[str]:
 # ---------------------------------------------------------------------------
 
 async def _send_telegram_async(token: str, chat_id: str, message: str) -> None:
+    import logging
     from telegram import Bot
+    # See check_canonical_definitions.py's sender for why: httpx logs each
+    # request's full URL -- including the bot token embedded in the path
+    # -- at INFO. Capped defensively; httpx reports errors via exceptions,
+    # not this logger, so nothing is lost.
+    # See brain/decisions/2026-09-11-telegram-token-log-leak.md.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     bot = Bot(token=token)
     MAX = 4000
     # Plain text on purpose — the failure-age message contains '>=' / '->' and a
