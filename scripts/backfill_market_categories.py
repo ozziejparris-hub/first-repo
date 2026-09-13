@@ -71,14 +71,42 @@ def setup_logging() -> logging.Logger:
 
 
 def load_state() -> dict:
+    """
+    Load pagination/progress state.
+
+    last_seen_market_id (str | None) replaces the old last_processed_offset
+    (int). OFFSET-based pagination drifted permanently on any batch with a
+    mix of classified/skipped rows, because the underlying WHERE
+    category='Unknown' result set shrinks as rows get classified within a
+    run -- a fixed position number stops meaning the same row. market_id is
+    a stable, never-reused, never-renumbered primary key, so a keyset
+    cursor (WHERE market_id > last_seen_market_id) cannot drift the same
+    way: it advances only past rows that were actually fetched, regardless
+    of how many other rows enter or leave the matching set around them.
+
+    A pre-existing state file from before this fix will have
+    last_processed_offset but no last_seen_market_id -- that old field is
+    intentionally dropped (not migrated: it no longer corresponds to
+    anything meaningful under keyset pagination) and last_seen_market_id
+    defaults to None, restarting the scan from the true beginning of the
+    current category='Unknown' set. This is deliberate, not a fallback of
+    convenience: it is the only way to reach the rows the old bug had
+    already made permanently unreachable.
+    """
     path = Path(STATE_FILE)
     if path.exists():
         try:
             with open(path) as f:
-                return json.load(f)
+                raw = json.load(f)
+            return {
+                "last_seen_market_id": raw.get("last_seen_market_id"),
+                "total_classified": raw.get("total_classified", 0),
+                "total_skipped": raw.get("total_skipped", 0),
+                "errors": raw.get("errors", 0),
+            }
         except (json.JSONDecodeError, OSError):
             pass
-    return {"last_processed_offset": 0, "total_classified": 0, "total_skipped": 0, "errors": 0}
+    return {"last_seen_market_id": None, "total_classified": 0, "total_skipped": 0, "errors": 0}
 
 
 def save_state(state: dict) -> None:
@@ -99,18 +127,38 @@ def build_keyword_where() -> str:
     return f"({conditions})"
 
 
-def fetch_batch(conn: sqlite3.Connection, offset: int, batch_size: int) -> list[dict]:
-    keyword_clause = build_keyword_where()
-    sql = f"""
-        SELECT market_id, title
-        FROM markets
-        WHERE category = 'Unknown'
-          AND title IS NOT NULL
-          AND {keyword_clause}
-        ORDER BY market_id
-        LIMIT ? OFFSET ?
+def fetch_batch(conn: sqlite3.Connection, after_market_id: str | None, batch_size: int) -> list[dict]:
     """
-    rows = conn.execute(sql, (batch_size, offset)).fetchall()
+    Keyset pagination: fetch the next batch of Unknown markets with
+    market_id strictly greater than after_market_id (None means start from
+    the beginning). market_id is the table's primary key -- a stable
+    anchor that isn't affected by rows entering or leaving the
+    category='Unknown' result set, unlike an OFFSET position.
+    """
+    keyword_clause = build_keyword_where()
+    if after_market_id is None:
+        sql = f"""
+            SELECT market_id, title
+            FROM markets
+            WHERE category = 'Unknown'
+              AND title IS NOT NULL
+              AND {keyword_clause}
+            ORDER BY market_id
+            LIMIT ?
+        """
+        rows = conn.execute(sql, (batch_size,)).fetchall()
+    else:
+        sql = f"""
+            SELECT market_id, title
+            FROM markets
+            WHERE category = 'Unknown'
+              AND title IS NOT NULL
+              AND market_id > ?
+              AND {keyword_clause}
+            ORDER BY market_id
+            LIMIT ?
+        """
+        rows = conn.execute(sql, (after_market_id, batch_size)).fetchall()
     return [{"market_id": row["market_id"], "title": row["title"]} for row in rows]
 
 
@@ -228,7 +276,7 @@ def main() -> None:
 
     state = load_state()
     logger.info(
-        f"Resuming from offset={state['last_processed_offset']} "
+        f"Resuming from last_seen_market_id={state['last_seen_market_id']!r} "
         f"total_classified={state['total_classified']} "
         f"total_skipped={state['total_skipped']} "
         f"errors={state['errors']}"
@@ -242,16 +290,40 @@ def main() -> None:
 
     try:
         while True:
-            offset = state["last_processed_offset"]
+            cursor = state["last_seen_market_id"]
 
             if args.limit is not None and run_classified + run_skipped >= args.limit:
                 logger.info(f"Reached --limit {args.limit} for this run, stopping.")
                 break
 
-            markets = fetch_batch(conn, offset, args.batch_size)
+            markets = fetch_batch(conn, cursor, args.batch_size)
             if not markets:
-                logger.info("No more Unknown markets matching keyword filter. Done.")
+                # Reached the current end of the matching set. Wrap the
+                # cursor back to the beginning rather than leaving it
+                # pinned here forever: new markets keep entering
+                # category='Unknown' daily, and since market_id is a
+                # content hash (not chronological), a newly-added market
+                # can sort anywhere -- including "behind" this cursor.
+                # Without a wrap, such a market would never be reachable
+                # again under keyset pagination once the cursor passes it.
+                if state["last_seen_market_id"] is not None:
+                    logger.info(
+                        "No more Unknown markets matching keyword filter past the "
+                        "current cursor -- wrapping to the beginning for next run."
+                    )
+                    state["last_seen_market_id"] = None
+                    save_state(state)
+                else:
+                    logger.info("No Unknown markets matching keyword filter. Done.")
                 break
+
+            # Advance the cursor to the last (highest market_id, since the
+            # query is ORDER BY market_id ASC) row in THIS batch, regardless
+            # of what happens to it below (classified, skipped, or an
+            # error) -- this is what makes the cursor immune to the
+            # shrinking-set drift: it tracks a value that was actually
+            # fetched, never a position that other rows can shift under it.
+            new_cursor = markets[-1]["market_id"]
 
             batch_num += 1
             titles = [m["title"] for m in markets]
@@ -259,7 +331,7 @@ def main() -> None:
             classifications = call_ollama(titles, logger)
             if classifications is None:
                 state["errors"] += 1
-                state["last_processed_offset"] = offset + len(markets)
+                state["last_seen_market_id"] = new_cursor
                 save_state(state)
                 logger.warning(f"[BATCH {batch_num}] Ollama call failed, skipping batch of {len(markets)}")
                 time.sleep(SLEEP_BETWEEN_BATCHES)
@@ -278,14 +350,14 @@ def main() -> None:
                     logger.error(f"Commit failed for batch {batch_num}: {e}")
                     conn.execute("ROLLBACK")
                     state["errors"] += 1
-                    state["last_processed_offset"] = offset + len(markets)
+                    state["last_seen_market_id"] = new_cursor
                     save_state(state)
                     time.sleep(SLEEP_BETWEEN_BATCHES)
                     continue
 
             state["total_classified"] += classified
             state["total_skipped"] += skipped
-            state["last_processed_offset"] = offset + len(markets)
+            state["last_seen_market_id"] = new_cursor
             run_classified += classified
             run_skipped += skipped
             markets_since_commit += len(markets)
@@ -293,7 +365,7 @@ def main() -> None:
             save_state(state)
 
             print(
-                f"[BATCH {batch_num}] processed={state['last_processed_offset']} "
+                f"[BATCH {batch_num}] last_seen_market_id={state['last_seen_market_id']} "
                 f"classified={state['total_classified']} "
                 f"skipped={state['total_skipped']} "
                 f"errors={state['errors']}"
