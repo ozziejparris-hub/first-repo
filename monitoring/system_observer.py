@@ -291,6 +291,13 @@ class SystemObserver:
 
         while self.running:
             try:
+                # Prune ErrorParser's unbounded error_history/error_groups here, not in
+                # the 2s log-monitor loop: this is in-memory-only (no I/O), so the 60s
+                # cadence is plenty for a 24h retention window, and calling it every 2s
+                # would just rebuild the same structures 30x more often for no benefit.
+                # See brain/decisions/2026-09-13-observer-burst-loop-and-memory-diagnosis.md.
+                self.log_monitor.clear_old_errors()
+
                 # Refresh PID from file on every cycle so stale startup PID never blocks detection
                 current_pid = self._read_monitoring_pid_from_file()
                 if current_pid and current_pid != self.monitoring_pid:
