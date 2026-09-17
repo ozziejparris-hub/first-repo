@@ -4,7 +4,7 @@ import re
 import time
 from collections import OrderedDict
 from datetime import datetime
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from .database import Database
 from .polymarket_client import PolymarketClient
 from .trader_analyzer import TraderAnalyzer
@@ -40,6 +40,19 @@ GAMMA_CATEGORY_MAP: dict = {
     'Politics':           'Geopolitics',
 }
 
+# 2026-09-17: the Data API's real per-call cap, confirmed by direct testing
+# (requests for >10000 are silently truncated to 10000; the previous 500
+# here was an unexamined client-side constant, not an API limit). See
+# trading-swarm brain/decisions/2026-09-17-ingestion-fetch-ceiling-fix.md.
+FETCH_PAGE_LIMIT = 10000
+# Defensive cap on how many pages check_for_new_trades() will walk back per
+# cycle. At ~15-28 trades/sec (measured range, 2026-09-17/18) this bounds a
+# single cycle's catch-up work to at most a few hours of gap; a larger gap
+# is covered incrementally over several cycles rather than in one — bounded
+# worst-case cost per cycle, not unbounded like the notify-queue bug this
+# design deliberately avoids repeating.
+MAX_FETCH_PAGES_PER_CYCLE = 30
+
 
 def safe_print(message: str, fallback: str = None):
     """
@@ -58,6 +71,23 @@ def safe_print(message: str, fallback: str = None):
             except (OSError, UnicodeEncodeError):
                 pass  # Give up if even fallback fails
         # Silently skip if no fallback or fallback also fails
+
+
+def _parse_trade_timestamp(raw_ts) -> Optional[datetime]:
+    """
+    Parse a Data API trade's raw `timestamp` field (unix seconds, unix
+    milliseconds, or an ISO string) into a naive local datetime. Returns
+    None on anything unparseable. Shared by the per-page cursor check and
+    the final batch_max_ts computation in check_for_new_trades() -- same
+    parsing rules, one place.
+    """
+    try:
+        if isinstance(raw_ts, (int, float)):
+            ts = raw_ts / 1000 if raw_ts > 1e10 else raw_ts
+            return datetime.fromtimestamp(ts)
+        return datetime.fromisoformat(str(raw_ts).replace('Z', '+00:00'))
+    except Exception:
+        return None
 
 
 class PolymarketMonitor:
@@ -812,6 +842,68 @@ class PolymarketMonitor:
         safe_print(f"[OK] Initial scan complete. Flagged {newly_flagged} traders.")
         safe_print(f"[INFO] {summary}")
 
+    async def _fetch_recent_trades_paginated(self) -> tuple:
+        """
+        Page backward through the platform-wide /trades feed (newest first,
+        confirmed strictly non-increasing by timestamp within and across
+        pages) until a page's oldest trade reaches last_trade_timestamp, a
+        page comes back short (end of available history), or the defensive
+        MAX_FETCH_PAGES_PER_CYCLE cap is hit. Returns (all_trades, pages_fetched).
+
+        2026-09-17: the Data API's "after" param is confirmed IGNORED
+        server-side (tested directly with both ISO and unix-epoch values --
+        identical "most recent" results regardless of the value passed).
+        There is no server-side timestamp filter for this endpoint, so this
+        client-side pagination + cursor comparison is the only way to bound
+        a fetch to "since we last checked" -- previously a single 500-row
+        snapshot covered well under a minute of platform activity against
+        75-205 minute cycle gaps (~0.15-2%); this covers the full gap
+        (bounded by the page cap above) at the server's real 10,000-row cap
+        instead of the old unexamined 500 constant. Each page fetch is off
+        the event loop (asyncio.to_thread) so pagination cannot reintroduce
+        the starvation the cycle-wait fix just addressed. Extracted to its
+        own method so the pagination mechanism is testable in isolation
+        (see tests/test_fetch_ceiling_pagination.py). See trading-swarm
+        brain/decisions/2026-09-17-ingestion-fetch-ceiling-fix.md.
+        """
+        all_recent_trades: List[Dict] = []
+        pages_fetched = 0
+        for page in range(MAX_FETCH_PAGES_PER_CYCLE):
+            pages_fetched = page + 1
+            page_trades = await asyncio.to_thread(
+                self.polymarket.get_market_trades,
+                market_id=None,
+                limit=FETCH_PAGE_LIMIT,
+                offset=page * FETCH_PAGE_LIMIT,
+            )
+            if not page_trades:
+                break
+            all_recent_trades.extend(page_trades)
+
+            # Trades within a page are newest-first, so the last element is
+            # this page's oldest.
+            oldest_ts_this_page = _parse_trade_timestamp(page_trades[-1].get('timestamp'))
+            reached_cursor = (
+                self.last_trade_timestamp is not None
+                and oldest_ts_this_page is not None
+                and oldest_ts_this_page <= self.last_trade_timestamp
+            )
+            end_of_history = len(page_trades) < FETCH_PAGE_LIMIT
+
+            # No cursor yet (cold start / first ever run): one page only,
+            # matching the previous single-snapshot startup behaviour --
+            # there is nothing to "catch up to" without a prior cursor.
+            if reached_cursor or end_of_history or self.last_trade_timestamp is None:
+                break
+        else:
+            safe_print(
+                f"[WARNING] Hit MAX_FETCH_PAGES_PER_CYCLE ({MAX_FETCH_PAGES_PER_CYCLE}) "
+                f"before reaching last_trade_timestamp — gap is larger than one cycle "
+                f"can cover; continuing to catch up over subsequent cycles."
+            )
+
+        return all_recent_trades, pages_fetched
+
     async def check_for_new_trades(self):
         """Check for new trades from flagged traders."""
         flagged_traders = self.db.get_flagged_traders()
@@ -822,31 +914,19 @@ class PolymarketMonitor:
 
         safe_print(f"Monitoring {len(flagged_traders)} flagged traders...")
 
-        # Strategy: Fetch all recent trades and filter for our flagged traders
-        # This is more efficient than calling get_trader_history() for each trader
         safe_print("Fetching recent trades from Polymarket...")
-        all_recent_trades = self.polymarket.get_market_trades(
-            market_id=None, limit=500, after_timestamp=self.last_trade_timestamp
-        )
+        all_recent_trades, pages_fetched = await self._fetch_recent_trades_paginated()
 
-        safe_print(f"[OK] Fetched {len(all_recent_trades)} recent trades")
-        _monitor_logger.info(f"Fetched {len(all_recent_trades)} recent trades")
+        safe_print(f"[OK] Fetched {len(all_recent_trades)} recent trades across {pages_fetched} page(s)")
+        _monitor_logger.info(f"Fetched {len(all_recent_trades)} recent trades across {pages_fetched} page(s)")
 
         # Compute max timestamp across ALL fetched trades so the cursor advances
         # even when no flagged traders appear in this batch.
         batch_max_ts: Optional[datetime] = None
         for _t in all_recent_trades:
-            _ts_raw = _t.get('timestamp')
-            try:
-                if isinstance(_ts_raw, (int, float)):
-                    _ts = _ts_raw / 1000 if _ts_raw > 1e10 else _ts_raw
-                    _ts_dt = datetime.fromtimestamp(_ts)
-                else:
-                    _ts_dt = datetime.fromisoformat(str(_ts_raw).replace('Z', '+00:00'))
-                if batch_max_ts is None or _ts_dt > batch_max_ts:
-                    batch_max_ts = _ts_dt
-            except Exception:
-                pass
+            _ts_dt = _parse_trade_timestamp(_t.get('timestamp'))
+            if _ts_dt is not None and (batch_max_ts is None or _ts_dt > batch_max_ts):
+                batch_max_ts = _ts_dt
 
         # Convert flagged traders to a set for fast lookup
         flagged_set = set(flagged_traders)
@@ -907,8 +987,9 @@ class PolymarketMonitor:
             except:
                 timestamp = datetime.now()
 
-            # Client-side cursor filter — definitive safety net against duplicates
-            # regardless of whether the API honoured the after_timestamp param.
+            # Client-side cursor filter — the only filter against duplicates;
+            # confirmed 2026-09-17 the Data API has no server-side timestamp
+            # filter for this endpoint at all (see the pagination loop above).
             if self.last_trade_timestamp is not None and timestamp <= self.last_trade_timestamp:
                 duplicate_count += 1
                 continue

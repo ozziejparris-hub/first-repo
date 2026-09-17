@@ -214,45 +214,72 @@ class PolymarketClient:
             print(f"Error fetching all markets: {e}")
             return []
 
-    def get_market_trades(self, market_id: str, limit: int = 100,
-                          after_timestamp: Optional[datetime] = None) -> List[Dict]:
+    def get_market_trades(self, market_id: Optional[str], limit: int = 100,
+                          offset: int = 0, max_retries: int = 3) -> List[Dict]:
         """
-        Fetch recent trades for a specific market using the Data API.
+        Fetch recent trades from the Data API's /trades endpoint, newest
+        first (confirmed strictly non-increasing by timestamp within a page,
+        2026-09-17).
 
-        Uses the public Data API which doesn't require authentication.
-        after_timestamp: if provided, passed to the API as "after" (ISO format) as a
-        best-effort server-side filter; client-side filtering in check_for_new_trades()
-        is the definitive safety net regardless.
+        market_id: server "market" param (a conditionId). None fetches
+            platform-wide.
+        limit: server's real hard cap is 10,000 (confirmed 2026-09-17 by
+            direct testing -- requests above that are silently truncated to
+            10,000; the previous 500 here was an unexamined client-side
+            constant, not an API limit). See trading-swarm
+            brain/decisions/2026-09-17-ingestion-fetch-ceiling-fix.md.
+        offset: pages backward through the feed. Confirmed 2026-09-17 to
+            paginate reliably platform-wide, per-market, and per-user (the
+            latter already relied on by background_backfill_worker.py).
+
+        There is deliberately no timestamp-filter parameter: the Data API's
+        "after" param is confirmed IGNORED server-side (tested directly
+        2026-09-17 with both ISO and unix-epoch values -- identical
+        "most recent" results regardless of the value passed). Callers that
+        need "trades since X" must page via `offset` and compare timestamps
+        client-side; passing a now-removed after_timestamp here would have
+        silently done nothing, which is exactly what happened before this
+        was tested.
+
+        max_retries: on HTTP 429, retries with exponential backoff
+        (1s, 2s, 4s, ...) before giving up and returning []. 429s are a
+        real, observed condition on this API under sustained load (see
+        background_backfill_worker.py's per-trader pagination).
         """
-        try:
-            url = f"{self.data_api_url}/trades"
-            params = {
-                "limit": min(limit, 500)  # Data API max is 500
-            }
+        url = f"{self.data_api_url}/trades"
+        params = {
+            "limit": min(limit, 10000),
+            "offset": offset,
+        }
+        if market_id:
+            params["market"] = market_id
 
-            # Add market filter if provided (use conditionId for Data API)
-            if market_id:
-                params["market"] = market_id
+        for attempt in range(max_retries):
+            try:
+                response = requests.get(url, params=params, timeout=30)
 
-            # Best-effort server-side timestamp filter (ignored if API doesn't support it)
-            if after_timestamp is not None:
-                params["after"] = after_timestamp.isoformat()
+                if response.status_code == 429:
+                    wait = 2 ** attempt
+                    print(f"[RATE LIMIT] /trades 429 (offset={offset}), "
+                          f"backing off {wait}s (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(wait)
+                    continue
 
-            # Data API is public, no auth needed
-            response = requests.get(url, params=params, timeout=30)
+                if response.status_code != 200:
+                    print(f"Error fetching trades for {market_id} (offset={offset}): "
+                          f"{response.status_code}")
+                    return []
 
-            if response.status_code != 200:
-                print(f"Error fetching trades for {market_id}: {response.status_code}")
+                data = response.json()
+                return data if isinstance(data, list) else []
+
+            except Exception as e:
+                print(f"Error fetching trades for market {market_id} (offset={offset}): {e}")
                 return []
 
-            data = response.json()
-
-            # Data API returns a list of trades
-            return data if isinstance(data, list) else []
-
-        except Exception as e:
-            print(f"Error fetching trades for market {market_id}: {e}")
-            return []
+        print(f"[RATE LIMIT] /trades still 429 after {max_retries} attempts "
+              f"(offset={offset}) -- giving up for this page")
+        return []
 
     def get_trader_history(self, trader_address: str, limit: int = 1000) -> List[Dict]:
         """
