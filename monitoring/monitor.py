@@ -103,6 +103,12 @@ class PolymarketMonitor:
         self.ai_agent = ai_agent  # Store AI agent
         self.check_interval = check_interval
         self.is_running = False
+        # 2026-09-17: signals the cycle-wait (monitoring_loop) to end its
+        # single asyncio.wait_for() early on a stop request, instead of
+        # polling is_running every second for up to check_interval seconds.
+        # See trading-swarm
+        # brain/decisions/2026-09-17-oos-hash-methodology-and-cycle-compounding.md.
+        self._stop_event = asyncio.Event()
         self.last_trade_timestamp: Optional[datetime] = None
         saved = self.db.get_monitor_state('last_trade_timestamp')
         if saved:
@@ -122,6 +128,7 @@ class PolymarketMonitor:
         """Request the monitor to stop."""
         safe_print("[STOP] Stop requested via Telegram")
         self.is_running = False
+        self._stop_event.set()
 
     async def _refresh_event_category_map(self) -> None:
         """
@@ -1020,10 +1027,12 @@ class PolymarketMonitor:
 
         # Telegram notifications disabled - Observer handles all notifications
 
-        # Mark all as notified
-        for trade in unnotified_trades:
-            # FIX-2 2026-05-25: moved to thread pool to unblock event loop
-            await asyncio.to_thread(self.db.mark_trade_notified, trade['trade_id'])
+        # Mark all as notified in a single statement (2026-09-17: was one
+        # asyncio.to_thread(mark_trade_notified) call per row here — every
+        # row a separate connection+commit and a separate chance to lose the
+        # event loop. See trading-swarm
+        # brain/decisions/2026-09-17-oos-hash-methodology-and-cycle-compounding.md.
+        await asyncio.to_thread(self.db.mark_all_unnotified_as_notified)
 
     def _update_activity_timestamp(self):
         """
@@ -1314,13 +1323,34 @@ class PolymarketMonitor:
 
                 # Telegram notifications disabled - Observer monitors logs and sends alerts
 
-            # Wait for next cycle or until stop is requested
-            for _ in range(self.check_interval):
-                if not self.is_running:
-                    break
-                await asyncio.sleep(1)
+            # Wait for next cycle or until stop is requested.
+            await self._wait_for_next_cycle()
 
         safe_print("\n[STOP] Monitoring loop stopped")
+
+    async def _wait_for_next_cycle(self):
+        """
+        Wait up to check_interval seconds, or until a stop is requested,
+        whichever comes first.
+
+        2026-09-17: was `for _ in range(check_interval): await
+        asyncio.sleep(1)` — 900 separate event-loop wakeups at the default
+        900s check_interval, each a chance to be delayed by the two
+        continuously-running background workers (pnl_worker,
+        backfill_worker). The watchdog's single `await asyncio.sleep(300)`
+        held perfectly all night under the same contention; this single
+        `asyncio.wait_for()` on an event matches that pattern while still
+        ending promptly on a stop request (request_stop()/stop() call
+        self._stop_event.set()) instead of trading starvation for a
+        shutdown hang. See trading-swarm
+        brain/decisions/2026-09-17-oos-hash-methodology-and-cycle-compounding.md.
+        Extracted to its own method so it's testable without constructing a
+        full PolymarketMonitor (whose __init__ opens the production DB).
+        """
+        try:
+            await asyncio.wait_for(self._stop_event.wait(), timeout=self.check_interval)
+        except asyncio.TimeoutError:
+            pass  # normal case: check_interval elapsed with no stop request
 
     async def _watchdog_loop(self):
         """
@@ -1363,6 +1393,7 @@ class PolymarketMonitor:
         safe_print("="*70 + "\n")
 
         self.is_running = True
+        self._stop_event.clear()
 
         # Skip initial scan if traders are already flagged — the periodic re-scan
         # every 10 cycles handles ongoing discovery. Initial scan only needed on
@@ -1419,6 +1450,7 @@ class PolymarketMonitor:
         """
         safe_print("\n[STOP] Stopping Polymarket Monitor...")
         self.is_running = False
+        self._stop_event.set()
 
         # NEW: Stop background P&L worker
         if hasattr(self, 'pnl_worker'):

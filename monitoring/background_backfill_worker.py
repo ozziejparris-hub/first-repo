@@ -393,13 +393,17 @@ class BackgroundBackfillWorker:
                     trade, market_res.get(condition_id)
                 )
 
+                # notified=1: backfilled history is not new activity, so there is
+                # nothing to notify about (2026-09-17: this was the queue that
+                # accumulated to 143,829 rows overnight — see trading-swarm
+                # brain/decisions/2026-09-17-oos-hash-methodology-and-cycle-compounding.md).
                 cursor.execute("""
                     INSERT OR IGNORE INTO trades (
                         trade_id, trader_address, market_id, market_title,
                         market_category, outcome, outcome_bet, shares, price,
                         side, timestamp, notified, completed, was_successful,
                         trade_result, data_source
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,0,0,NULL,?,'background_backfill')
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,1,0,NULL,?,'background_backfill')
                 """, (
                     trade_id,
                     trade.get("proxyWallet", trader_address),

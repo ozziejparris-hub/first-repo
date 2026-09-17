@@ -471,6 +471,29 @@ class Database:
         finally:
             conn.close()
 
+    def mark_all_unnotified_as_notified(self) -> int:
+        """Mark every currently-unnotified trade as notified in one statement.
+
+        2026-09-17: replaces a per-row mark_trade_notified() loop in
+        notify_new_trades() (one connection+commit per row, ~55-64ms each)
+        that was the dominant cost behind cycle bodies growing 2s->125min
+        overnight once the unnotified backlog reached ~54k-144k rows. See
+        trading-swarm brain/decisions/2026-09-17-oos-hash-methodology-and-cycle-compounding.md.
+        Returns the number of rows updated.
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("UPDATE trades SET notified = 1 WHERE notified = 0")
+        rowcount = cursor.rowcount
+
+        try:
+            conn.commit()
+        finally:
+            conn.close()
+
+        return rowcount
+
     def get_unnotified_trades(self) -> List[Dict]:
         """Get all trades that haven't been notified yet."""
         conn = self.get_connection()
